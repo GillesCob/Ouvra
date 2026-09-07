@@ -50,6 +50,24 @@ landingPresentationBtn.addEventListener("click", () => {
 });
 landingDemoBtn.addEventListener("click", () => activateView("viewer"));
 
+// Parallax du hero landing : background-position-y plutot que
+// background-attachment:fixed (peu fiable sur mobile Safari dans un
+// conteneur qui scroll lui-meme, cf #view-landing overflow-y:auto). Deplace
+// l'image plus lentement que le scroll, s'arrete une fois le hero sorti de
+// l'ecran (au-dela, plus besoin de recalculer).
+const viewLandingEl = document.getElementById("view-landing");
+const landingHeroEl = document.getElementById("landingHero");
+viewLandingEl.addEventListener(
+  "scroll",
+  () => {
+    const heroHeight = landingHeroEl.offsetHeight;
+    const scrollTop = viewLandingEl.scrollTop;
+    if (scrollTop > heroHeight) return;
+    landingHeroEl.style.backgroundPositionY = `calc(50% + ${scrollTop * 0.35}px)`;
+  },
+  { passive: true }
+);
+
 const viewerWrap = document.getElementById("viewerWrap");
 const viewViewer = document.getElementById("view-viewer");
 const infoPanel = document.getElementById("infoPanel");
