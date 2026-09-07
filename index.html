@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <title>Ouvra · POC coordination BIM</title>
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://ouvra.gillescobigo.com/" />
+    <meta property="og:title" content="Ouvra · Ouvrir le BIM" />
+    <meta property="og:description" content="Proof of Concept d'une application pour faciliter le travail du BIM Manager sur chantier et ouvrir l'accès à la maquette à tous les acteurs du projet." />
+    <meta property="og:image" content="https://ouvra.gillescobigo.com/images/bim-illustration.jpg" />
+    <meta property="og:image:width" content="1920" />
+    <meta property="og:image:height" content="1080" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <header id="navbar">
+      <button type="button" id="navbarBrand"><img src="/images/ouvra-icon.png" alt="" id="navbarBrandIcon">OUVRA</button>
+      <button type="button" id="navbarToggle" aria-label="Ouvrir le menu">☰</button>
+      <nav id="navbarLinks">
+        <button type="button" class="nav-link" data-view="presentation">Présentation</button>
+        <button type="button" class="nav-link" data-view="viewer">Viewer</button>
+        <button type="button" class="nav-link" data-view="collision">Collision</button>
+        <button type="button" class="nav-link" data-view="discussions">Discussions</button>
+      </nav>
+    </header>
+
+    <div id="appBody">
+      <div id="view-landing" class="view">
+        <div id="landingHero">
+          <div id="landingHeroOverlay"></div>
+          <div id="landingHeroText">
+            <img src="/images/ouvra-logo.png" alt="Ouvra · Ouvrir le BIM" id="landingHeroLogo">
+            <p>Après 10 ans dans le BIM (coordination sur TPR2 et MRS3 à Marseille, BIM Manager sur Mareterra à Monaco), j'ai développé un premier outil pour faire gagner en efficacité les BIM Managers sur le terrain et ouvrir l'accès à la maquette à tous les acteurs du projet, en conception comme en exécution. Cette présentation en est la preuve de concept : l'idée est qu'on identifie ensemble vos besoins réels pour le développer plus loin, avec vous.</p>
+          </div>
+        </div>
+
+        <div id="landingIntro">
+          <h2 id="landingIntroTitle">Ce que vous trouverez dans cette présentation</h2>
+
+          <div class="landing-part">
+            <p class="landing-part-eyebrow">Partie 1 · La démarche</p>
+            <div class="landing-part-grid">
+              <div class="landing-part-card">
+                <span class="landing-part-num">01</span>
+                <h3>Un état des lieux</h3>
+                <p>Les problèmes concrets rencontrés aujourd'hui avec le BIM sur les chantiers, et les solutions qu'on peut construire ensemble pour chacun d'eux.</p>
+              </div>
+              <div class="landing-part-card">
+                <span class="landing-part-num">02</span>
+                <h3>Les fonctionnalités identifiées</h3>
+                <p>Ce qu'un outil qui répond à ces problématiques devrait proposer, à affiner ensemble selon vos besoins réels.</p>
+              </div>
+              <div class="landing-part-card">
+                <span class="landing-part-num">03</span>
+                <h3>Une feuille de route</h3>
+                <p>Une proposition des étapes envisagées pour développer réellement cette application, toutes à discuter ensemble.</p>
+              </div>
+            </div>
+            <button type="button" id="landingPresentationBtn" class="landing-part-btn">Accéder à la présentation</button>
+          </div>
+
+          <hr class="landing-divider">
+
+          <div class="landing-part">
+            <p class="landing-part-eyebrow">Partie 2 · La preuve de faisabilité</p>
+            <p class="landing-part-lead">J'ai développé une première version volontairement simplifiée de l'application, afin de prouver la viabilité des outils que j'imagine utiliser (visionneuse IFC open source, compression des maquettes pour une navigation fluide dans le navigateur, ...) et donner un premier aperçu concret du résultat.</p>
+
+            <div class="landing-subblock">
+              <p id="landingSectionsLabel">Fonctionnalités présentées dans ce POC</p>
+              <div id="landingSections" class="landing-part-grid">
+                <div class="landing-part-card">
+                  <h3>Viewer</h3>
+                  <p>Permettre l'exploration et l'interaction avec les maquettes directement dans le navigateur, sans installer aucun logiciel.</p>
+                </div>
+                <div class="landing-part-card">
+                  <h3>Détection de collision</h3>
+                  <p>Détecter les conflits entre maquettes, localiser précisément leur position et en discuter pour les résoudre avant qu'ils ne deviennent des problèmes sur le chantier.</p>
+                </div>
+                <div class="landing-part-card">
+                  <h3>Échanges autour de la maquette</h3>
+                  <p>Annoter et discuter directement sur la maquette, au bureau comme sur le chantier, avec une seule source de vérité partagée par tous.</p>
+                </div>
+              </div>
+            </div>
+            <button type="button" id="landingDemoBtn" class="landing-part-btn">Accéder à la démo</button>
+          </div>
+        </div>
+
+        <footer id="landingFooter">
+          <a class="footer-credit" href="https://gillescobigo.com" target="_blank" rel="noopener noreferrer">
+            <img src="/images/logo-gc-white.png" alt="">
+            <span>Réalisé par <span class="footer-credit-name">Gilles Cobigo</span></span>
+          </a>
+        </footer>
+      </div>
+
+      <div id="view-presentation" class="view" hidden>
+        <button type="button" id="presentationSidebarToggle" aria-label="Afficher les sections">☰ Sections</button>
+        <div id="presentationSidebarBackdrop" hidden></div>
+        <div id="presentationSidebar">
+          <p class="presentation-sidebar-label">Sections</p>
+          <ul class="info-list" id="presentationSectionsList"></ul>
+        </div>
+        <div id="presentationContent"></div>
+      </div>
+
+      <div id="view-viewer" class="view" hidden>
+        <div id="viewerWrap">
+          <canvas id="viewerCanvas"></canvas>
+          <div id="loadingOverlay"><div class="spinner"></div></div>
+          <div id="viewerToolbar">
+            <button id="recenterBtn" title="Recentrer la caméra sur la maquette">Recentrer</button>
+            <button id="newDiscussionBtn" title="Ouvrir une nouvelle discussion à partir de ce point de vue">Nouvelle discussion</button>
+          </div>
+
+          <div id="coupeToolbar">
+            <button id="coupeBtn" title="Cliquez ensuite sur une surface de la maquette pour y créer une coupe">Créer une coupe</button>
+            <button id="coupeInvertBtn" title="Inverser le côté coupé" hidden>Inverser la coupe</button>
+            <button id="coupeToggleVisibilityBtn" title="Afficher ou masquer le rectangle/poignées du plan de coupe" hidden>Masquer le plan de coupe</button>
+          </div>
+        </div>
+
+        <!-- Hors de #viewerWrap expres (05/09) : ce conteneur est deplace tel
+             quel dans le DOM (Collision, fil de discussion), ce bouton ne
+             doit rester visible que dans l'onglet Viewer lui-meme. -->
+        <button type="button" id="infoPanelToggle" aria-label="Afficher les niveaux, maquettes et infos">☰ Infos</button>
+        <div id="infoPanelBackdrop" hidden></div>
+        <aside id="infoPanel" class="side-panel">
+          <details class="info-section" id="section-niveaux" open>
+            <summary class="info-section-title">
+              <span>Niveaux</span>
+              <button type="button" id="niveauxResetBtn" class="reset-btn">Tout afficher</button>
+            </summary>
+            <ul class="info-list" id="niveauxList"></ul>
+          </details>
+
+          <details class="info-section" id="section-maquettes" open>
+            <summary class="info-section-title">
+              <span>Maquettes</span>
+              <button type="button" id="maquettesResetBtn" class="reset-btn">Tout afficher</button>
+            </summary>
+            <ul class="info-list" id="maquettesList"></ul>
+          </details>
+
+          <details class="info-section" id="section-fiche" open>
+            <summary class="info-section-title"><span>Info sélection</span></summary>
+            <p class="info-empty" id="fichePlaceholder">Cliquez sur un élément de la maquette, ou sur le nom d'un niveau.</p>
+            <dl class="fiche-content" id="ficheContent" hidden></dl>
+            <div id="ficheDocs"></div>
+          </details>
+        </aside>
+
+        <!-- Mobile uniquement (cf media query) : evite d'ouvrir le tiroir
+             "☰ Infos" complet juste pour voir la fiche d'un element tape,
+             une modale discrete en bas d'ecran suffit. -->
+        <div id="ficheSheet" role="dialog" aria-label="Info sélection">
+          <div id="ficheSheetHeader">
+            <span>Info sélection</span>
+            <button type="button" id="ficheSheetClose" aria-label="Fermer">✕</button>
+          </div>
+          <dl class="fiche-content" id="ficheSheetContent"></dl>
+          <div id="ficheSheetDocs"></div>
+        </div>
+      </div>
+
+      <div id="view-collision" class="view" hidden>
+        <div id="collisionRecap">
+          <h2>Interactions entre maquettes</h2>
+          <p class="info-empty" id="detectionsEmpty">Pas de maquettes permettant une vraie détection de collision pour l'instant : les conflits présentés ici sont simulés, posés manuellement à titre d'exemple.</p>
+          <ul class="info-list" id="detectionsList"></ul>
+        </div>
+
+        <div id="collisionDetail" hidden>
+          <div id="collisionLeft">
+            <button type="button" id="collisionBackBtn" class="reset-btn">← Interactions</button>
+            <div id="collisionViewerSlot">
+              <button type="button" id="collisionInfoPanelToggle" aria-label="Afficher les maquettes et collisions">☰ Infos</button>
+            </div>
+            <div id="collisionDiscussion" hidden>
+              <h3 id="collisionDiscussionTitle" title="Cliquer pour voir le titre complet">Discussion</h3>
+              <ul id="discussionMessages"></ul>
+              <form id="discussionReplyForm" hidden>
+                <textarea id="discussionReplyInput" placeholder="Répondre..." rows="2"></textarea>
+                <button type="submit">Envoyer</button>
+              </form>
+            </div>
+          </div>
+
+          <div id="collisionInfoPanelBackdrop" hidden></div>
+          <aside id="collisionInfoPanel" class="side-panel">
+            <details class="info-section" id="section-collision-maquettes" open>
+              <summary class="info-section-title"><span>Maquettes</span></summary>
+              <ul class="info-list" id="collisionMaquettesList"></ul>
+            </details>
+
+            <details class="info-section" id="section-collision-liste" open>
+              <summary class="info-section-title"><span>Collisions</span></summary>
+              <ul class="info-list" id="collisionsList"></ul>
+            </details>
+          </aside>
+        </div>
+      </div>
+
+      <div id="view-discussions" class="view" hidden>
+        <div id="discussionsListPane">
+          <h2>Discussions</h2>
+          <p class="info-empty" id="discussionsFilterNote">Chaque utilisateur retrouve ici ses discussions en cours : celles qu'il a créées, et celles où il est tagué.</p>
+          <div id="discussionsTypeFilter">
+            <button type="button" class="thread-toggle-btn active" data-filter="tout">Tout</button>
+            <button type="button" class="thread-toggle-btn" data-filter="collision">Collision</button>
+            <button type="button" class="thread-toggle-btn" data-filter="discussion">Discussion</button>
+          </div>
+          <p class="info-empty" id="discussionsThreadsEmpty" hidden>Aucun fil pour l'instant.</p>
+          <ul class="info-list" id="discussionsThreadsList"></ul>
+        </div>
+
+        <div id="discussionsDetailPane" hidden>
+          <div id="discussionsDetailContent">
+            <button type="button" id="discussionsBackBtn" class="reset-btn">← Discussions</button>
+
+            <div id="threadVisualWrap">
+              <div id="threadVisualToggle">
+                <button type="button" class="thread-toggle-btn active" data-mode="apres" title="La maquette actuelle, mise à jour">Après</button>
+                <button type="button" class="thread-toggle-btn" data-mode="avant" title="La maquette au moment de la création du fil">Avant</button>
+              </div>
+              <div id="threadSnapshotPane">
+                <p class="info-empty">Image de la maquette au moment de la création de la discussion, afin de garder une trace de l'état initial</p>
+              </div>
+              <div id="threadViewerPane" hidden></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="ctaBanner">
+      <p>Intéressé ?</p>
+      <a href="https://gillescobigo.com/contact" target="_blank" rel="noopener noreferrer">Me contacter</a>
+    </div>
+
+    <div id="docModalOverlay" hidden>
+      <div id="docModal" role="dialog" aria-modal="true">
+        <button id="docModalClose" aria-label="Fermer">×</button>
+        <h3 id="docModalName"></h3>
+        <dl id="docModalMeta">
+          <dt>Version</dt><dd id="docModalVersion"></dd>
+          <dt>Lot</dt><dd id="docModalLot"></dd>
+          <dt>Type</dt><dd id="docModalType"></dd>
+        </dl>
+        <div id="docModalPreview">
+          <div id="docModalPreviewPage">
+            <span id="docModalPreviewLabel">Document consulté</span>
+          </div>
+        </div>
+        <button id="docModalDownload">Télécharger</button>
+      </div>
+    </div>
+
+    <div id="downloadModalOverlay" hidden>
+      <div id="downloadModal" role="dialog" aria-modal="true">
+        <p>Le document sera téléchargé sur l'ordinateur afin de simplifier sa consultation.</p>
+        <button id="downloadModalOk">Ok</button>
+      </div>
+    </div>
+
+    <div id="newDiscussionModalOverlay" hidden>
+      <div id="newDiscussionModal" role="dialog" aria-modal="true">
+        <button id="newDiscussionClose" aria-label="Fermer">×</button>
+        <h3>Nouvelle discussion</h3>
+        <form id="newDiscussionForm">
+          <label class="modal-field">
+            Sujet / zone concernée
+            <input type="text" id="newDiscussionZone" required>
+          </label>
+          <label class="modal-field">
+            Premier commentaire
+            <textarea id="newDiscussionComment" rows="3" required></textarea>
+          </label>
+          <fieldset id="newDiscussionRecipients">
+            <legend>Destinataires</legend>
+          </fieldset>
+          <button type="submit">Créer la discussion</button>
+        </form>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

@@ -1,0 +1,1347 @@
+:root {
+  --bg: #0d1117;
+  --surface: #161b22;
+  --border: #30363d;
+  --text: #c9d1d9;
+  --muted: #8b949e;
+  --accent: #58a6ff;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font: 14px/1.4 system-ui, -apple-system, sans-serif;
+}
+
+#navbar {
+  position: relative;
+  /* Toujours au-dessus des voiles plein ecran (tiroirs mobiles, modales
+     document/telechargement, cf z-index 30 a 51 plus bas) : un element
+     sans position (comme la navbar avant ce correctif) est toujours peint
+     derriere un element positionne, meme avec un z-index plus faible. Un
+     voile oublie ouvert rendait donc la navbar injoignable au premier tap. */
+  z-index: 60;
+  height: 52px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 0 18px;
+}
+
+#navbarBrand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 14px;
+  background: none;
+  border: none;
+  color: var(--text);
+  cursor: pointer;
+  padding: 0;
+  font-family: inherit;
+}
+#navbarBrandIcon { height: 22px; width: auto; }
+#navbarBrand:hover { color: var(--accent); }
+
+#navbarLinks { display: flex; gap: 4px; }
+
+.nav-link {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 13px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.nav-link:hover { color: var(--text); }
+.nav-link.active { color: var(--text); background: var(--bg); }
+
+#navbarToggle {
+  display: none;
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: var(--text);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+
+/* Mobile (05/09) : la navbar (4 onglets + marque) ne tient pas sur un petit
+   ecran, le menu passe en tiroir derriere un bouton hamburger. */
+@media (max-width: 768px) {
+  #navbarToggle { display: block; font-size: 26px; padding: 6px 10px; }
+  #navbarLinks {
+    display: none;
+    position: fixed;
+    top: 52px;
+    left: 0;
+    right: 0;
+    flex-direction: column;
+    gap: 0;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 8px;
+    z-index: 40;
+  }
+  #navbarLinks.open { display: flex; }
+  .nav-link { width: 100%; text-align: left; padding: 10px 12px; }
+}
+
+#appBody {
+  height: calc(100% - 52px - 56px);
+}
+
+/* Bandeau CTA : element de flux normal (pas position fixed), place apres
+   #appBody et deduit de son calc ci-dessus. Reduit la hauteur disponible de
+   toutes les vues (viewer inclus) plutot que de flotter par-dessus, pour ne
+   rien masquer des toolbars/panneaux positionnes en bas de chaque vue. */
+#ctaBanner {
+  height: 56px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  padding: 0 18px;
+  text-align: center;
+}
+#ctaBanner p { margin: 0; font-size: 13px; color: var(--muted); }
+#ctaBanner a {
+  color: #fff;
+  background: var(--accent);
+  font-size: 13px;
+  font-weight: 700;
+  padding: 8px 16px;
+  border-radius: 6px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+#ctaBanner a:hover { opacity: 0.9; }
+@media (max-width: 480px) {
+  #ctaBanner p { display: none; }
+}
+
+.view {
+  display: flex;
+  height: 100%;
+}
+.view[hidden] { display: none; }
+
+/* Ancrage pour #infoPanelToggle (position absolute), place directement ici
+   plutot que dans #viewerWrap qui est deplace dans le DOM ailleurs. */
+#view-viewer { position: relative; }
+
+#viewerWrap {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+#viewerCanvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+#loadingOverlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(13, 17, 23, 0.6);
+}
+#loadingOverlay.hidden { display: none; }
+
+.spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid rgba(255, 255, 255, 0.25);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+#loadingOverlay.error {
+  background: rgba(13, 17, 23, 0.85);
+  color: #f85149;
+  font-size: 13px;
+  padding: 16px;
+  text-align: center;
+}
+
+#viewerToolbar, #coupeToolbar {
+  position: absolute;
+  right: 16px;
+  display: flex;
+  gap: 8px;
+  max-width: calc(100% - 32px);
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+#viewerToolbar { top: 16px; }
+#coupeToolbar { bottom: 16px; }
+#coupeToolbar[hidden] { display: none; }
+#viewerToolbar button, #coupeToolbar button {
+  padding: 7px 12px;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 12.5px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+#viewerToolbar button:hover, #coupeToolbar button:hover { border-color: var(--accent); }
+#viewerToolbar button.active, #coupeToolbar button.active { border-color: var(--accent); color: var(--accent); }
+
+.side-panel {
+  flex: 0 0 300px;
+  border-left: 1px solid var(--border);
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+#infoPanelToggle { display: none; }
+#infoPanelBackdrop { display: none; }
+
+/* Mobile (05/09) : le panneau Niveaux/Maquettes/Info selection partage sinon
+   la largeur avec le canvas (300px fixes), qui doit au contraire prendre
+   toute la page. Meme principe que le tiroir "Sections" de la Presentation :
+   masque par defaut, ouvert en overlay via un bouton dedie. */
+@media (max-width: 768px) {
+  #infoPanelToggle {
+    display: block;
+    position: absolute;
+    right: 16px;
+    bottom: 16px;
+    padding: 7px 12px;
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 12.5px;
+    cursor: pointer;
+    z-index: 30;
+  }
+  /* Meme bouton "Infos" en bas a droite qu'en Collision (coherence des 2
+     ecrans) : decale la barre de coupe pour laisser un vrai espace entre
+     les deux plutot que de les laisser se toucher. */
+  #coupeToolbar { right: 110px; }
+  #infoPanelBackdrop:not([hidden]) {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 45;
+  }
+  #infoPanel {
+    position: fixed;
+    top: 52px;
+    right: 0;
+    bottom: 0;
+    width: 280px;
+    z-index: 46;
+    transform: translateX(100%);
+    transition: transform 0.2s ease;
+  }
+  #infoPanel.open { transform: translateX(0); }
+}
+
+#ficheSheet { display: none; }
+
+@media (max-width: 768px) {
+  #ficheSheet {
+    display: block;
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
+    max-height: 42vh;
+    overflow-y: auto;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.4);
+    padding: 12px 14px 14px;
+    z-index: 40;
+    transform: translateY(calc(100% + 24px));
+    transition: transform 0.2s ease;
+  }
+  #ficheSheet.open { transform: translateY(0); }
+}
+
+#ficheSheetHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+#ficheSheetClose {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 4px;
+}
+#ficheSheetClose:hover { color: var(--text); }
+
+#collisionInfoPanelToggle { display: none; }
+#collisionInfoPanelBackdrop { display: none; }
+
+/* Meme principe pour la page Collision : le panneau Maquettes/Collisions
+   masque par defaut sur mobile, ouvert en overlay. Le bouton "← Interactions"
+   n'a plus besoin d'un clone flottant (deplace au-dessus de l'encart de la
+   visionneuse, deja visible a toutes les tailles d'ecran, cf #collisionBackBtn
+   plus bas) : seul le bouton "Infos" reste flottant sur la maquette. */
+@media (max-width: 768px) {
+  #collisionInfoPanelToggle {
+    display: block;
+    position: absolute;
+    bottom: 16px;
+    right: 16px;
+    padding: 7px 12px;
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 12.5px;
+    cursor: pointer;
+    z-index: 30;
+  }
+  #collisionInfoPanelBackdrop:not([hidden]) {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 45;
+  }
+  #collisionInfoPanel {
+    position: fixed;
+    top: 52px;
+    right: 0;
+    bottom: 0;
+    width: 280px;
+    z-index: 46;
+    transform: translateX(100%);
+    transition: transform 0.2s ease;
+  }
+  #collisionInfoPanel.open { transform: translateX(0); }
+}
+
+.info-section {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  overflow-y: auto;
+}
+
+#section-niveaux { flex: 1.3; }
+#section-maquettes { flex: 0.8; }
+#section-fiche { flex: 1.5; border-bottom: none; }
+
+#section-niveaux:not([open]),
+#section-maquettes:not([open]),
+#section-fiche:not([open]) {
+  flex: 0 0 auto;
+}
+
+.info-section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 0 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+.info-section-title:last-child { margin-bottom: 0; }
+
+.reset-btn {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: normal;
+  cursor: pointer;
+  padding: 2px 4px;
+}
+.reset-btn:hover { text-decoration: underline; }
+
+.info-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.info-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.niveau-item input[type="checkbox"] { flex-shrink: 0; }
+.niveau-name {
+  flex: 1;
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  padding: 0;
+}
+.niveau-name:hover { color: var(--accent); }
+
+.maquette-item { }
+.maquette-item input[type="checkbox"] { flex-shrink: 0; }
+.maquette-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+.maquette-name {
+  flex: 1;
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  padding: 0;
+}
+.maquette-name:hover { color: var(--accent); }
+.maquette-count { color: var(--muted); font-size: 11.5px; }
+
+.info-empty {
+  color: var(--muted);
+  font-size: 12.5px;
+  margin: 0;
+}
+
+.fiche-content {
+  margin: 0;
+  font-size: 12.5px;
+}
+.fiche-content dt { color: var(--muted); margin-top: 6px; }
+.fiche-content dd { margin: 0; color: var(--text); }
+
+.doc-lot {
+  font-size: 10.5px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 8px 0 4px;
+}
+.doc-item {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  width: 100%;
+  padding: 5px 8px;
+  border-radius: 6px;
+  border: none;
+  background: none;
+  color: var(--text);
+  font-size: 12.5px;
+  text-align: left;
+  cursor: pointer;
+}
+.doc-item:hover { background: var(--bg); }
+.doc-name { flex: 1; }
+.doc-version {
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+#docModalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+#docModalOverlay[hidden] { display: none; }
+
+#docModal {
+  position: relative;
+  width: 360px;
+  max-width: calc(100vw - 40px);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px;
+}
+#docModal h3 { margin: 0 24px 12px 0; font-size: 15px; }
+#docModalClose {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+#docModalMeta { margin: 0 0 14px; font-size: 12.5px; }
+#docModalMeta dt { color: var(--muted); float: left; width: 60px; clear: left; }
+#docModalMeta dd { margin: 0 0 4px 60px; color: var(--text); }
+#docModalPreview {
+  height: 160px;
+  background: var(--bg);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px;
+  margin-bottom: 14px;
+}
+#docModalPreviewPage {
+  width: 100%;
+  height: 100%;
+  background: #ffffff;
+  border-radius: 3px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 10px;
+}
+#docModalPreviewLabel {
+  color: #1f2328;
+  font-size: 14px;
+  font-weight: 700;
+}
+#docModalDownload {
+  width: 100%;
+  padding: 9px;
+  background: var(--accent);
+  color: #0d1117;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+#downloadModalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 51;
+}
+#downloadModalOverlay[hidden] { display: none; }
+
+#downloadModal {
+  width: 300px;
+  max-width: calc(100vw - 40px);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px;
+  text-align: center;
+}
+#downloadModal p { margin: 0 0 16px; font-size: 13px; color: var(--text); }
+#downloadModalOk {
+  width: 100%;
+  padding: 9px;
+  background: var(--accent);
+  color: #0d1117;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+#newDiscussionModalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+#newDiscussionModalOverlay[hidden] { display: none; }
+
+#newDiscussionModal {
+  position: relative;
+  width: 380px;
+  max-width: calc(100vw - 40px);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px;
+}
+#newDiscussionModal h3 { margin: 0 24px 14px 0; font-size: 15px; }
+#newDiscussionClose {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.modal-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 12px;
+}
+.modal-field input, .modal-field textarea {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  padding: 7px 9px;
+  resize: none;
+}
+
+/* iOS Safari zoome automatiquement la page au focus d'un champ dont le
+   font-size est < 16px : oblige l'utilisateur a dezoomer lui-meme apres
+   coup. Remonte a 16px sur mobile uniquement, sans toucher a la densite
+   visuelle du desktop. */
+@media (max-width: 768px) {
+  .modal-field input, .modal-field textarea { font-size: 16px; }
+}
+
+#newDiscussionRecipients {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  margin: 0 0 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+#newDiscussionRecipients legend { font-size: 11px; color: var(--muted); padding: 0 4px; }
+#newDiscussionRecipients label { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text); }
+
+#newDiscussionForm > button[type="submit"] {
+  width: 100%;
+  padding: 9px;
+  background: var(--accent);
+  color: #0d1117;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+#view-collision { flex-direction: column; }
+
+#collisionRecap { flex: 1; padding: 24px; overflow-y: auto; }
+#collisionRecap[hidden] { display: none; }
+#collisionRecap h2 { margin: 0 0 16px; font-size: 16px; }
+
+.detection-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13.5px;
+  cursor: pointer;
+  margin-bottom: 8px;
+}
+.detection-item:hover { border-color: var(--accent); }
+.detection-count {
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 12px;
+  background: var(--bg);
+  padding: 3px 9px;
+  border-radius: 20px;
+}
+
+#collisionDetail {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+#collisionDetail[hidden] { display: none; }
+
+#collisionLeft {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+#collisionViewerSlot {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  border-top: 1px solid var(--border);
+}
+#collisionViewerSlot #viewerWrap { position: absolute; inset: 0; }
+
+#collisionDiscussion {
+  /* Hauteur fixe (200px), collee en bas de page (Collision et Discussions) :
+     pas de redimensionnement a la main (retire, source de bugs). Si plus de
+     messages que la hauteur ne peut en montrer, #discussionMessages scrolle
+     seul en interne (cf plus bas). */
+  height: 200px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  padding: 12px 16px;
+}
+#collisionDiscussion[hidden] { display: none; }
+#collisionDiscussion h3 {
+  flex-shrink: 0;
+  margin: 0 0 8px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+#collisionDiscussion h3.expanded { white-space: normal; }
+
+#discussionMessages {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+.discussion-message { font-size: 12.5px; }
+.discussion-auteur { font-weight: 700; color: var(--text); }
+.discussion-texte { color: var(--text); margin-top: 2px; }
+
+#discussionReplyForm {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  align-items: center;
+  flex-shrink: 0;
+}
+#discussionReplyForm[hidden] { display: none; }
+#discussionReplyInput {
+  flex: 1;
+  resize: none;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font: inherit;
+  font-size: 12.5px;
+  padding: 6px 8px;
+}
+/* Place apres la regle ci-dessus (meme specificite, cascade = ordre) :
+   une regle mobile plus haute dans le fichier etait ecrasee par le
+   font-size 12.5px ci-dessus. iOS Safari zoome automatiquement la page
+   au focus d'un champ < 16px, d'ou le zoom signale au clic pour repondre. */
+@media (max-width: 768px) {
+  #discussionReplyInput { font-size: 16px; }
+}
+#discussionReplyForm button {
+  padding: 7px 12px;
+  background: var(--accent);
+  color: #0d1117;
+  border: none;
+  border-radius: 6px;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+#collisionBackBtn { align-self: flex-start; margin: 12px 14px 0; }
+
+.collision-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  padding: 8px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--text);
+  font-size: 12.5px;
+  text-align: left;
+  cursor: pointer;
+}
+.collision-item:hover { background: var(--bg); }
+.collision-item.active { background: var(--bg); border: 1px solid var(--accent); }
+.collision-zone { font-weight: 700; }
+.collision-meta { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 11px; }
+
+.status-badge {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 2px 7px;
+  border-radius: 20px;
+}
+.status-badge.nouveau { color: #f0883e; background: rgba(240, 136, 62, 0.15); }
+.status-badge.confirme { color: #f85149; background: rgba(248, 81, 73, 0.15); }
+.status-badge.ecarte { color: var(--muted); background: var(--bg); }
+
+.info-list li.collision-ecartes-wrapper { display: block; padding: 0; margin-top: 4px; }
+.collision-ecartes summary {
+  cursor: pointer;
+  font-size: 11px;
+  color: var(--muted);
+  padding: 6px 8px;
+  list-style: none;
+}
+.collision-ecartes summary::-webkit-details-marker { display: none; }
+.collision-ecartes summary::before { content: "▸ "; }
+.collision-ecartes[open] summary::before { content: "▾ "; }
+.collision-ecartes .info-list { margin-top: 2px; padding-left: 4px; }
+
+/* Page Discussions : liste de fils, puis detail d'un fil (maquette avant/apres
+   uniquement, sans messages ni reponse, retire le 05/09). */
+#view-discussions { flex-direction: column; }
+
+#discussionsListPane { flex: 1; padding: 24px; overflow-y: auto; }
+#discussionsListPane[hidden] { display: none; }
+#discussionsListPane h2 { margin: 0 0 4px; font-size: 16px; }
+#discussionsFilterNote { margin-bottom: 10px; }
+#discussionsTypeFilter { display: flex; gap: 6px; margin-bottom: 16px; }
+
+.thread-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13.5px;
+  cursor: pointer;
+  margin-bottom: 8px;
+  text-align: left;
+}
+.thread-item:hover { border-color: var(--accent); }
+.thread-main { display: flex; flex-direction: column; gap: 4px; }
+.thread-meta { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 11px; }
+
+.thread-type-badge {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 2px 7px;
+  border-radius: 20px;
+  flex-shrink: 0;
+}
+.thread-type-badge.collision { color: var(--accent); background: rgba(88, 166, 255, 0.15); }
+.thread-type-badge.discussion { color: #a371f7; background: rgba(163, 113, 247, 0.15); }
+
+#discussionsDetailPane {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+#discussionsDetailPane[hidden] { display: none; }
+/* #threadVisualWrap est le flex:1 de cette colonne (comme #collisionViewerSlot
+   en Collision), le reste (bouton retour, titre, toggle, indice) garde sa
+   hauteur naturelle. #collisionDiscussion (bloc discussion partage avec
+   Collision, ajoute apres ce wrapper) reste fixe collee en bas de page,
+   jamais dans un scroll : aucun overflow-y ici, sinon la maquette elle-meme
+   se retrouvait a defiler avec le reste du texte (05/09, corrige le 06/09). */
+#discussionsDetailContent {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 0 24px 24px;
+}
+/* Inutile sur desktop : l'onglet "Discussions" de la navbar, toujours
+   visible, ramene deja a la liste (cf reset dans le handler de clic navbar).
+   Garde uniquement sur mobile, ou la navbar est derriere le hamburger. */
+#discussionsBackBtn { display: none; align-self: flex-start; margin: 12px 0 0; }
+@media (max-width: 768px) {
+  #discussionsBackBtn { display: inline-block; }
+}
+
+#threadVisualWrap {
+  flex: 1;
+  min-height: 0;
+  /* Annule le padding de #discussionsDetailContent (24px, garde pour le
+     texte : bouton retour) sur les 3 cotes concernes : la visionneuse
+     doit aller bord a bord comme #collisionViewerSlot, ni retrecie sur
+     les cotes, ni espacee du bloc discussion en dessous. Pas de
+     border-bottom : #collisionDiscussion a deja son propre border-top,
+     doublure evitee. */
+  margin: 0 -24px -24px;
+  border-radius: 0;
+  overflow: hidden;
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+  position: relative;
+}
+#threadSnapshotPane {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  text-align: center;
+}
+#threadSnapshotPane[hidden] { display: none; }
+#threadViewerPane { height: 100%; position: relative; }
+#threadViewerPane[hidden] { display: none; }
+#threadViewerPane #viewerWrap { position: absolute; inset: 0; }
+
+/* Deplace a l'interieur de #threadVisualWrap (overlay flottant, comme
+   #viewerToolbar sur le Viewer) plutot qu'en flex sibling en dessous :
+   sinon cette rangee de boutons + son texte d'explication grignotaient
+   de la hauteur sur le flex:1, la visionneuse finissait plus basse
+   qu'en Collision a hauteur de page egale. Explication "Avant"/"Après"
+   reportee en title (tooltip) plutot qu'en paragraphe visible. */
+#threadVisualToggle {
+  position: absolute;
+  top: 15px;
+  left: 10px;
+  z-index: 5;
+  display: flex;
+  gap: 6px;
+}
+#threadVisualToggle .thread-toggle-btn { background: rgba(13, 17, 23, 0.75); }
+#threadVisualToggle .thread-toggle-btn.active { background: var(--surface); }
+.thread-toggle-btn {
+  padding: 5px 12px;
+  background: var(--bg);
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.thread-toggle-btn.active { color: var(--text); border-color: var(--accent); background: var(--surface); }
+
+/* Page Landing (accueil, accessible via le bouton "OUVRA" de la
+   navbar) : image + pitch + 3 sections + boutons vers Presentation/Viewer.
+   Page Presentation : le drawer seul (contenu porte depuis le mockup vault
+   cdc-dashboard.html, restyle avec les tokens de l'app). */
+#view-landing {
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+#landingHero {
+  position: relative;
+  flex-shrink: 0;
+  min-height: 340px;
+  background-image: url("/images/bim-illustration.jpg");
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  align-items: flex-end;
+}
+#landingHeroOverlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(13, 17, 23, 0.55) 0%, rgba(13, 17, 23, 0.92) 100%);
+}
+#landingHeroText {
+  position: relative;
+  padding: 40px;
+  max-width: 640px;
+}
+#landingHeroLogo { display: block; width: 220px; max-width: 60%; height: auto; margin: 0 0 16px; }
+#landingHeroText p { margin: 0; font-size: 14px; line-height: 1.6; color: rgba(255, 255, 255, 0.85); }
+
+#landingIntro { flex-shrink: 0; padding: 40px 40px 0; }
+#landingIntroTitle {
+  margin: 0 0 32px;
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.landing-part { margin-bottom: 40px; }
+.landing-divider { border: none; border-top: 1px solid var(--border); margin: 8px 0 48px; }
+.landing-part-eyebrow {
+  margin: 0 0 14px;
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+}
+
+.landing-part-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+.landing-part-card {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--accent);
+  border-radius: 10px;
+  padding: 20px 18px 18px;
+}
+.landing-part-num {
+  display: block;
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--accent);
+  opacity: 0.5;
+  margin-bottom: 6px;
+}
+.landing-part-card h3 { margin: 0 0 8px; font-size: 15px; }
+.landing-part-card p { margin: 0; font-size: 13px; color: var(--muted); line-height: 1.55; }
+
+.landing-part-lead {
+  margin: 0 0 22px;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+/* Cartes plus discretes qu'en Partie 1 (pas de bandeau accent) : signale
+   un niveau en dessous, pas une 2e liste equivalente aux 3 sections du
+   cahier des charges. */
+.landing-subblock .landing-part-card { border-top-color: var(--border); }
+
+#landingSectionsLabel {
+  margin: 0 0 12px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+
+.landing-part-btn {
+  display: block;
+  width: fit-content;
+  margin: 22px auto 0;
+  padding: 10px 22px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  background: var(--accent);
+  color: #0d1117;
+  border: none;
+}
+
+#presentationSidebar {
+  flex: 0 0 260px;
+  border-right: 1px solid var(--border);
+  background: var(--surface);
+  padding: 20px 12px;
+  overflow-y: auto;
+}
+.presentation-sidebar-label {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  margin: 0 0 8px;
+  padding: 0 8px;
+}
+.pres-section-item {
+  width: 100%;
+  padding: 9px 10px;
+  border-radius: 8px;
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+.pres-section-item:hover { color: var(--text); background: var(--bg); }
+.pres-section-item.active { color: var(--accent); background: var(--accent-bg, rgba(88, 166, 255, 0.12)); font-weight: 700; }
+
+#presentationContent {
+  flex: 1;
+  min-width: 0;
+  padding: 32px 40px 60px;
+  overflow-y: auto;
+}
+.pres-panel { display: none; }
+.pres-panel.active { display: block; }
+.pres-panel h2 { font-size: 21px; margin: 0 0 8px; }
+.pres-next-btn { display: none; }
+.pres-hint { color: var(--muted); font-size: 13px; margin: 0 0 18px; }
+
+#presentationSidebarToggle { display: none; }
+#presentationSidebarBackdrop { display: none; }
+
+/* Mobile (05/09) : le tiroir de sections partage sinon la largeur avec le
+   contenu (260px fixes sur un ecran qui en fait 375), rendant les cards
+   illisibles. Il passe en tiroir superpose (position fixed), cache par
+   defaut, ouvert par un bouton dedie plutot qu'a cote du contenu. */
+@media (max-width: 768px) {
+  /* Sans ca, le bouton "Sections" et le contenu restent cote a cote (le
+     tiroir etant sorti du flux flex en position fixed juste en dessous). */
+  #view-presentation { flex-direction: column; }
+  #presentationSidebarToggle {
+    display: block;
+    margin: 12px 16px 0;
+    padding: 8px 14px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    font-size: 13px;
+    cursor: pointer;
+    align-self: flex-start;
+  }
+  #presentationSidebarBackdrop:not([hidden]) {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 45;
+  }
+  #presentationSidebar {
+    position: fixed;
+    top: 52px;
+    left: 0;
+    bottom: 0;
+    width: 240px;
+    z-index: 46;
+    transform: translateX(-100%);
+    transition: transform 0.2s ease;
+  }
+  #presentationSidebar.open { transform: translateX(0); }
+  #presentationContent { padding: 20px 16px 40px; }
+  .pres-next-btn {
+    display: block;
+    width: 100%;
+    margin-top: 24px;
+    padding: 12px 16px;
+    border-radius: 8px;
+    border: none;
+    background: var(--accent);
+    color: #0d1117;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+}
+
+.pres-card {
+  max-width: 780px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 18px 20px;
+  margin-bottom: 14px;
+}
+.pres-card h3 { font-size: 14px; margin: 0 0 8px; }
+.pres-card p { font-size: 13px; line-height: 1.6; margin: 0 0 8px; }
+.pres-card p:last-child { margin-bottom: 0; }
+.pres-card p.muted { color: var(--muted); }
+.pres-card ul { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.6; }
+.pres-card li { margin-bottom: 6px; }
+
+.pres-demo-vs-reel {
+  border-left: 2px solid var(--accent);
+  padding-left: 12px;
+  margin: 10px 0 14px;
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+.pres-demo-vs-reel strong { color: var(--text); }
+
+/* Section Constat : mise en page dediee (grille de cartes numerotees), plus
+   marquee que le reste du CDC, pensee pour etre scannee rapidement. */
+.constat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.constat-card {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: 8px;
+  padding: 16px 18px 14px;
+}
+.constat-num {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 6px;
+}
+.constat-card h3 { font-size: 13.5px; margin: 0 0 6px; }
+.constat-card p { font-size: 12.5px; line-height: 1.55; color: var(--muted); margin: 0; }
+.constat-card p.constat-note { margin-top: 6px; font-style: italic; }
+
+.constat-card.is-demo { border-left-color: #3fb950; }
+.constat-card.is-demo .constat-num { color: #3fb950; }
+.constat-card.is-missing { border-left-color: #f85149; }
+.constat-card.is-missing .constat-num { color: #f85149; }
+
+/* Cartes retournables (section Constat & reponse) : le constat en face
+   avant, la reponse en face arriere, retournee au clic. */
+.flip-card { height: 280px; cursor: pointer; perspective: 1200px; }
+.flip-card-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.5s;
+  transform-style: preserve-3d;
+}
+.flip-card.flipped .flip-card-inner { transform: rotateY(180deg); }
+.flip-card-face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.flip-card-back { transform: rotateY(180deg); }
+.flip-card-face p { flex: 1; overflow-y: auto; }
+.flip-card-footer {
+  margin-top: 8px;
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+}
+.flip-card-back .flip-card-footer { color: #3fb950; }
+
+.flip-hint-icon {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  width: 18px;
+  height: 18px;
+  color: var(--muted);
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+@keyframes flip-peek {
+  0%, 100% { transform: rotateY(0deg); }
+  50% { transform: rotateY(180deg); }
+}
+.flip-card.peek .flip-card-inner { animation: flip-peek 2.2s ease; }
+
+.constat-highlight {
+  background: rgba(88, 166, 255, 0.1);
+  border-radius: 10px;
+  padding: 16px 20px;
+  font-size: 13.5px;
+  line-height: 1.6;
+  margin: 4px 0 22px;
+}
+
+.table-scroll { overflow-x: auto; }
+.pres-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.pres-table th, .pres-table td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+.pres-table th { color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.03em; }
+@media (max-width: 768px) {
+  .pres-table { min-width: 480px; }
+}
+
+.pres-two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.pres-feat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.pres-feat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+.pres-feat-card .pres-fi-num { font-size: 11px; color: var(--accent); font-weight: 700; }
+@media (max-width: 768px) {
+  .pres-two-col { grid-template-columns: 1fr; }
+}
+.pres-feat-card h3 { font-size: 13px; margin: 6px 0 5px; }
+.pres-feat-card p { font-size: 12px; color: var(--muted); margin: 0; }
+
+/* Footer credit, reproduit a la lettre de Projets/V1-Echanges/mockups/preview-prospect.html
+   (meme pattern que PreviewCredit.tsx du portfolio), avec le logo blanc pour le fond sombre
+   de l'app. */
+#landingFooter { flex-shrink: 0; display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 20px; margin-top: 32px; margin-bottom: 24px; padding: 12px 8px; color: var(--muted); font-size: 14px; }
+#landingFooter .footer-credit, .pres-panel-footer { display: flex; align-items: center; gap: 10px; color: var(--muted); text-decoration: none; transition: color .15s ease; }
+#landingFooter .footer-credit:hover, .pres-panel-footer:hover { color: var(--text); }
+#landingFooter .footer-credit img, .pres-panel-footer img { height: 32px; width: auto; opacity: .9; }
+.pres-panel-footer { justify-content: center; margin: 48px 0 0; }
+#landingFooter .footer-linkedin { display: flex; align-items: center; gap: 6px; color: var(--muted); text-decoration: none; transition: color .15s ease; }
+#landingFooter .footer-linkedin:hover { color: var(--text); }
+#landingFooter .footer-linkedin svg { width: 18px; height: 18px; }
