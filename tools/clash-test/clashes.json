@@ -1,0 +1,279 @@
+[
+    {
+        "name": "Structure vs Toiture",
+        "a": [
+            {
+                "file": "/Users/gillescobigo/Documents/Gilles/Pro/Developer/Claude/Ouvra/tools/clash-test/../../public/models/Projet_structure.ifc"
+            }
+        ],
+        "b": [
+            {
+                "file": "/Users/gillescobigo/Documents/Gilles/Pro/Developer/Claude/Ouvra/tools/clash-test/../../public/models/Toit_Metal_2.ifc"
+            }
+        ],
+        "mode": "collision",
+        "allow_touching": false,
+        "clashes": {
+            "0w5mREx295pe_ygZN$MU9f-3SWCa1Nkb6shp6EZ_X2trE": {
+                "a_global_id": "0w5mREx295pe_ygZN$MU9f",
+                "b_global_id": "3SWCa1Nkb6shp6EZ_X2trE",
+                "a_ifc_class": "IfcSlab",
+                "b_ifc_class": "IfcBeam",
+                "a_name": "Sol:Dalle en b\u00e9ton - 160 mm:249681",
+                "b_name": "L-Corni\u00e8res:CAE50x8:2409",
+                "type": "collision",
+                "p1": [
+                    5.004251218351831,
+                    6.462596852529085,
+                    9.65000000000002
+                ],
+                "p2": [
+                    5.0491232827323,
+                    6.462596852529085,
+                    9.65000000000002
+                ],
+                "distance": 0.0
+            },
+            "0w5mREx295pe_ygZN$MU9f-3SWCa1Nkb6shp6EZ_X2tqm": {
+                "a_global_id": "0w5mREx295pe_ygZN$MU9f",
+                "b_global_id": "3SWCa1Nkb6shp6EZ_X2tqm",
+                "a_ifc_class": "IfcSlab",
+                "b_ifc_class": "IfcBeam",
+                "a_name": "Sol:Dalle en b\u00e9ton - 160 mm:249681",
+                "b_name": "L-Corni\u00e8res:CAE50x8:2327",
+                "type": "collision",
+                "p1": [
+                    5.004251218351831,
+                    1.4625968525290838,
+                    9.65000000000002
+                ],
+                "p2": [
+                    5.111018252008867,
+                    1.4625968525290838,
+                    9.65000000000002
+                ],
+                "distance": 0.0
+            },
+            "0w5mREx295pe_ygZN$MU9f-3SWCa1Nkb6shp6EZ_X2trs": {
+                "a_global_id": "0w5mREx295pe_ygZN$MU9f",
+                "b_global_id": "3SWCa1Nkb6shp6EZ_X2trs",
+                "a_ifc_class": "IfcSlab",
+                "b_ifc_class": "IfcBeam",
+                "a_name": "Sol:Dalle en b\u00e9ton - 160 mm:249681",
+                "b_name": "L-Corni\u00e8res:CAE50x8:2385",
+                "type": "collision",
+                "p1": [
+                    5.132266795285211,
+                    -6.268949526173399,
+                    9.65000000000002
+                ],
+                "p2": [
+                    5.330593389050787,
+                    -6.070622932407823,
+                    9.65000000000002
+                ],
+                "distance": 0.0
+            },
+            "0w5mREx295pe_ygZN$MU9m-3SWCa1Nkb6shp6EZ_X2trE": {
+                "a_global_id": "0w5mREx295pe_ygZN$MU9m",
+                "b_global_id": "3SWCa1Nkb6shp6EZ_X2trE",
+                "a_ifc_class": "IfcSlab",
+                "b_ifc_class": "IfcBeam",
+                "a_name": "Sol:Dalle en b\u00e9ton - 160 mm:249672",
+                "b_name": "L-Corni\u00e8res:CAE50x8:2409",
+                "type": "collision",
+                "p1": [
+                    20.606616427357416,
+                    6.462596852529085,
+                    9.65000000000002
+                ],
+                "p2": [
+                    20.606616427357416,
+                    6.465834947767159,
+                    9.65000000000002
+                ],
+                "distance": 0.0
+            },
+            "0w5mREx295pe_ygZN$MU9m-3SWCa1Nkb6shp6EZ_X2tqm": {
+                "a_global_id": "0w5mREx295pe_ygZN$MU9m",
+                "b_global_id": "3SWCa1Nkb6shp6EZ_X2tqm",
+                "a_ifc_class": "IfcSlab",
+                "b_ifc_class": "IfcBeam",
+                "a_name": "Sol:Dalle en b\u00e9ton - 160 mm:249672",
+                "b_name": "L-Corni\u00e8res:CAE50x8:2327",
+                "type": "collision",
+                "p1": [
+                    20.60661642735741,
+                    1.462596852529084,
+                    9.65000000000002
+                ],
+                "p2": [
+                    20.606616427357412,
+                    1.465834947767158,
+                    9.65000000000002
+                ],
+                "distance": 0.0
+            },
+            "0w5mREx295pe_ygZN$MU9m-3SWCa1Nkb6shp6EZ_X2tqU": {
+                "a_global_id": "0w5mREx295pe_ygZN$MU9m",
+                "b_global_id": "3SWCa1Nkb6shp6EZ_X2tqU",
+                "a_ifc_class": "IfcSlab",
+                "b_ifc_class": "IfcBeam",
+                "a_name": "Sol:Dalle en b\u00e9ton - 160 mm:249672",
+                "b_name": "L-Corni\u00e8res:CAE50x8:2361",
+                "type": "collision",
+                "p1": [
+                    20.32592073798287,
+                    -6.0804340688794385,
+                    9.624999999999995
+                ],
+                "p2": [
+                    20.32592073798287,
+                    -6.080434068879429,
+                    9.648194865230662
+                ],
+                "distance": 0.0
+            },
+            "0w5mREx295pe_ygZN$MU87-3SWCa1Nkb6shp6EZ_X2tqm": {
+                "a_global_id": "0w5mREx295pe_ygZN$MU87",
+                "b_global_id": "3SWCa1Nkb6shp6EZ_X2tqm",
+                "a_ifc_class": "IfcSlab",
+                "b_ifc_class": "IfcBeam",
+                "a_name": "Sol:Dalle en b\u00e9ton - 200 mm:249663",
+                "b_name": "L-Corni\u00e8res:CAE50x8:2327",
+                "type": "collision",
+                "p1": [
+                    19.68360574557845,
+                    1.4625968525290842,
+                    9.65000000000002
+                ],
+                "p2": [
+                    20.30398163636298,
+                    1.4625968525290842,
+                    9.65000000000002
+                ],
+                "distance": 0.0
+            },
+            "0w5mREx295pe_ygZN$MU87-3SWCa1Nkb6shp6EZ_X2tqU": {
+                "a_global_id": "0w5mREx295pe_ygZN$MU87",
+                "b_global_id": "3SWCa1Nkb6shp6EZ_X2tqU",
+                "a_ifc_class": "IfcSlab",
+                "b_ifc_class": "IfcBeam",
+                "a_name": "Sol:Dalle en b\u00e9ton - 200 mm:249663",
+                "b_name": "L-Corni\u00e8res:CAE50x8:2361",
+                "type": "collision",
+                "p1": [
+                    20.30398163636298,
+                    -6.058494967259538,
+                    9.64904180617167
+                ],
+                "p2": [
+                    20.30398163636298,
+                    -6.0584949672595485,
+                    9.624999999999995
+                ],
+                "distance": 0.0
+            },
+            "0w5mREx295pe_ygZN$MR78-3SWCa1Nkb6shp6EZ_X2tss": {
+                "a_global_id": "0w5mREx295pe_ygZN$MR78",
+                "b_global_id": "3SWCa1Nkb6shp6EZ_X2tss",
+                "a_ifc_class": "IfcWallStandardCase",
+                "b_ifc_class": "IfcBeam",
+                "a_name": "Mur de base:Ext. Voile BA 16:236784",
+                "b_name": "IPE-Poutrelles:IPE80:2449",
+                "type": "collision",
+                "p1": [
+                    6.691402982063351,
+                    9.98546585621366,
+                    10.114315764564928
+                ],
+                "p2": [
+                    6.69032340556148,
+                    9.98546585621366,
+                    10.11406652469076
+                ],
+                "distance": 0.0
+            },
+            "0w5mREx295pe_ygZN$MR78-3SWCa1Nkb6shp6EZ_X2tse": {
+                "a_global_id": "0w5mREx295pe_ygZN$MR78",
+                "b_global_id": "3SWCa1Nkb6shp6EZ_X2tse",
+                "a_ifc_class": "IfcWallStandardCase",
+                "b_ifc_class": "IfcBeam",
+                "a_name": "Mur de base:Ext. Voile BA 16:236784",
+                "b_name": "IPE-Poutrelles:IPE80:2447",
+                "type": "collision",
+                "p1": [
+                    9.87560942977005,
+                    9.968859456282782,
+                    10.849447747317331
+                ],
+                "p2": [
+                    9.87560942977005,
+                    9.98546585621365,
+                    10.849447747317333
+                ],
+                "distance": 0.0
+            },
+            "0w5mREx295pe_ygZN$MR78-3SWCa1Nkb6shp6EZ_X2tsi": {
+                "a_global_id": "0w5mREx295pe_ygZN$MR78",
+                "b_global_id": "3SWCa1Nkb6shp6EZ_X2tsi",
+                "a_ifc_class": "IfcWallStandardCase",
+                "b_ifc_class": "IfcBeam",
+                "a_name": "Mur de base:Ext. Voile BA 16:236784",
+                "b_name": "IPE-Poutrelles:IPE80:2443",
+                "type": "collision",
+                "p1": [
+                    15.754509429770106,
+                    9.905465856213672,
+                    10.816690782037277
+                ],
+                "p2": [
+                    15.754509429770106,
+                    9.97188558567056,
+                    10.816690782037277
+                ],
+                "distance": 0.0
+            },
+            "0w5mREx295pe_ygZN$MR78-3SWCa1Nkb6shp6EZ_X2tso": {
+                "a_global_id": "0w5mREx295pe_ygZN$MR78",
+                "b_global_id": "3SWCa1Nkb6shp6EZ_X2tso",
+                "a_ifc_class": "IfcWallStandardCase",
+                "b_ifc_class": "IfcBeam",
+                "a_name": "Mur de base:Ext. Voile BA 16:236784",
+                "b_name": "IPE-Poutrelles:IPE80:2453",
+                "type": "collision",
+                "p1": [
+                    18.78879741459898,
+                    9.985465856213619,
+                    10.1161702036258
+                ],
+                "p2": [
+                    18.7876029820633,
+                    9.985465856213619,
+                    10.116445960104732
+                ],
+                "distance": 0.0
+            },
+            "0w5mREx295pe_ygZN$MR78-3SWCa1Nkb6shp6EZ_X2tsk": {
+                "a_global_id": "0w5mREx295pe_ygZN$MR78",
+                "b_global_id": "3SWCa1Nkb6shp6EZ_X2tsk",
+                "a_ifc_class": "IfcWallStandardCase",
+                "b_ifc_class": "IfcBeam",
+                "a_name": "Mur de base:Ext. Voile BA 16:236784",
+                "b_name": "IPE-Poutrelles:IPE80:2441",
+                "type": "collision",
+                "p1": [
+                    12.773796664901603,
+                    9.905465856213672,
+                    11.444799999999997
+                ],
+                "p2": [
+                    12.794698690143408,
+                    9.905465856213672,
+                    11.444799999999997
+                ],
+                "distance": 0.0
+            }
+        }
+    }
+]

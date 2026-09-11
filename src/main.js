@@ -1,4 +1,4 @@
-import { Viewer, WebIFCLoaderPlugin, XKTLoaderPlugin, SectionPlanesPlugin } from "@xeokit/xeokit-sdk";
+import { Viewer, WebIFCLoaderPlugin, XKTLoaderPlugin, SectionPlanesPlugin, Mesh, ReadableGeometry, PhongMaterial, buildSphereGeometry } from "@xeokit/xeokit-sdk";
 import * as WebIFC from "web-ifc";
 
 const loadingOverlay = document.getElementById("loadingOverlay");
@@ -19,6 +19,9 @@ const ficheSheet = document.getElementById("ficheSheet");
 const ficheSheetClose = document.getElementById("ficheSheetClose");
 const ficheSheetContent = document.getElementById("ficheSheetContent");
 const ficheSheetDocs = document.getElementById("ficheSheetDocs");
+const collisionFichePlaceholder = document.getElementById("collisionFichePlaceholder");
+const collisionFicheContent = document.getElementById("collisionFicheContent");
+const collisionFicheDocs = document.getElementById("collisionFicheDocs");
 const docModalOverlay = document.getElementById("docModalOverlay");
 const docModalClose = document.getElementById("docModalClose");
 const docModalName = document.getElementById("docModalName");
@@ -120,6 +123,9 @@ const newDiscussionRecipients = document.getElementById("newDiscussionRecipients
 // retourne", pas un bouton (pointer-events: none, cf CSS), le clic reste
 // gere par la carte entiere.
 const FLIP_HINT_ICON = `<svg class="flip-hint-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7"/><polyline points="21 3 21 9 15 9"/></svg>`;
+
+const EYE_OPEN_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z"/><circle cx="12" cy="12" r="3"/></svg>`;
+const EYE_CLOSED_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a21.8 21.8 0 0 1 5.06-6.06M9.9 4.24A10.4 10.4 0 0 1 12 4c7 0 11 8 11 8a21.7 21.7 0 0 1-2.16 3.19M14.12 14.12a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
 
 const CONSTAT_REPONSE = [
   {
@@ -468,6 +474,9 @@ navLinks.forEach((link) => {
     if (!collisionDetail.hidden) {
       collisionDetail.hidden = true;
       collisionRecap.hidden = false;
+      clearClashMarkers();
+      clearClashElementColors();
+      deselectEntity();
     }
     // Meme chose pour un fil de discussion reste ouvert : sinon revenir sur
     // Discussions via la navbar rouvre le meme fil au lieu de la liste.
@@ -623,14 +632,19 @@ const MAQUETTES = [
   { id: "cea", src: "/models/Maquette_CEA.xkt", label: "Maquette CEA", color: "#a371f7", format: "xkt", shown: true }
 ];
 
-// Detections + clashs simules (pas de vrai moteur de detection geometrique
-// pour ce POC). guid des paires structure/toit verifiees par script (AABB
-// des 2 elements reellement en intersection, cf script Node jetable du
-// 04/09, distance 0.000m mesuree), pas choisies au hasard : le "zoom sur la
-// collision" doit cibler un vrai point de croisement, pas de l'espace vide.
-// Statuts (nouveau/confirme/ecarte) : reflete le champ `statut` deja prevu
-// dans le CDC (carte Detection de conflits), pas piloté par un vrai
-// recalcul de diff entre versions pour cette demo.
+// Detections + clashs : sortie brute d'un vrai run IfcClash (mode
+// "collision", cf tools/clash-test/run_clash.py) sur Projet_structure.ifc
+// vs Toit_Metal_2.ifc, rien retouche/invente a la main (11/09, porte depuis
+// IES/Chantier ou le meme run a ete fait le 10/09 sur les memes maquettes).
+// Chaque entree correspond a un resultat exact du fichier tools/clash-test/
+// clashes.json : entityIds = a_global_id/b_global_id, ifcPoint = milieu de
+// p1/p2 (le point de contact reel calcule par IfcClash, repris tel quel,
+// converti en repere Y-up seulement au moment de l'affichage, cf
+// clashCenter/ifcPointToViewer), zone = a_name/b_name reformules en
+// francais (contenu deja present dans le fichier, pas une invention),
+// statut "nouveau" et auteur "Detection automatique" par defaut car
+// IfcClash ne produit ni triage humain ni conversation, uniquement de la
+// geometrie.
 const DETECTIONS = [
   { id: "structure-toiture", modeles: ["archi", "toit"], label: "Structure ↔ Toiture métallique" }
 ];
@@ -639,52 +653,151 @@ const CLASHES = [
   {
     id: "clash-1",
     detectionId: "structure-toiture",
-    zone: "Poteau / poutre toiture, zone nord",
+    zone: "Dalle béton 160mm ↔ Cornière CAE50x8 (#2409)",
     disciplineA: "Structure",
     disciplineB: "Toiture métallique",
-    severite: "Bloquant",
+    severite: "À qualifier",
     statut: "nouveau",
-    angle: 40,
-    auteur: "Julie Martin (BE Structure)",
-    tagged: ["Vous", "Karim Haddad (Charpente)"],
-    entityIds: ["0w5mREx295pe_ygZN$MU87", "3SWCa1Nkb6shp6EZ_X2tqm"],
-    discussion: [
-      { auteur: "Julie Martin (BE Structure)", texte: "Le poteau intersecte la panne de toiture à cet endroit, à revoir avec le charpentier." },
-      { auteur: "Karim Haddad (Charpente)", texte: "Confirmé, on décale la panne de 15 cm côté nord." }
-    ]
+    angle: 60,
+    auteur: "Détection automatique (IfcClash)",
+    tagged: [],
+    entityIds: ["0w5mREx295pe_ygZN$MU9f", "3SWCa1Nkb6shp6EZ_X2trE"],
+    ifcPoint: [5.0267, 6.4626, 9.65],
+    discussion: []
   },
   {
     id: "clash-2",
     detectionId: "structure-toiture",
-    zone: "Membrure / poteau, zone est",
+    zone: "Dalle béton 160mm ↔ Cornière CAE50x8 (#2327)",
     disciplineA: "Structure",
     disciplineB: "Toiture métallique",
-    severite: "Moyen",
-    statut: "confirme",
-    angle: 170,
-    auteur: "Karim Haddad (Charpente)",
-    tagged: ["Vous"],
-    entityIds: ["0w5mREx295pe_ygZN$MU9m", "3SWCa1Nkb6shp6EZ_X2trE"],
-    discussion: [
-      { auteur: "Julie Martin (BE Structure)", texte: "Détection remontée sur la membrure est, à côté du poteau de refend." },
-      { auteur: "Karim Haddad (Charpente)", texte: "Léger recouvrement, sans impact structurel." },
-      { auteur: "Julie Martin (BE Structure)", texte: "Confirmé de mon côté, la tolérance de pose reste dans la marge acceptée." },
-      { auteur: "Sofia Benali (Coordination BIM)", texte: "Merci, je marque ce clash comme confirmé/traité dans le suivi." },
-      { auteur: "Karim Haddad (Charpente)", texte: "Validé, pas d'action nécessaire." }
-    ]
+    severite: "À qualifier",
+    statut: "nouveau",
+    angle: 100,
+    auteur: "Détection automatique (IfcClash)",
+    tagged: [],
+    entityIds: ["0w5mREx295pe_ygZN$MU9f", "3SWCa1Nkb6shp6EZ_X2tqm"],
+    ifcPoint: [5.0576, 1.4626, 9.65],
+    discussion: []
   },
   {
     id: "clash-3",
     detectionId: "structure-toiture",
-    zone: "Poteau / poutre toiture, zone sud",
+    zone: "Dalle béton 160mm ↔ Cornière CAE50x8 (#2327)",
     disciplineA: "Structure",
     disciplineB: "Toiture métallique",
-    severite: "Faible",
-    statut: "ecarte",
-    angle: 280,
-    auteur: "Sofia Benali (Coordination BIM)",
-    tagged: ["Vous"],
-    entityIds: ["0w5mREx295pe_ygZN$MU9f", "3SWCa1Nkb6shp6EZ_X2trs"],
+    severite: "À qualifier",
+    statut: "nouveau",
+    angle: 140,
+    auteur: "Détection automatique (IfcClash)",
+    tagged: [],
+    entityIds: ["0w5mREx295pe_ygZN$MU9m", "3SWCa1Nkb6shp6EZ_X2tqm"],
+    ifcPoint: [20.6066, 1.4642, 9.65],
+    discussion: []
+  },
+  {
+    id: "clash-4",
+    detectionId: "structure-toiture",
+    zone: "Dalle béton 160mm ↔ Cornière CAE50x8 (#2361)",
+    disciplineA: "Structure",
+    disciplineB: "Toiture métallique",
+    severite: "À qualifier",
+    statut: "nouveau",
+    angle: 180,
+    auteur: "Détection automatique (IfcClash)",
+    tagged: [],
+    entityIds: ["0w5mREx295pe_ygZN$MU9m", "3SWCa1Nkb6shp6EZ_X2tqU"],
+    ifcPoint: [20.3259, -6.0804, 9.6366],
+    discussion: []
+  },
+  {
+    id: "clash-5",
+    detectionId: "structure-toiture",
+    zone: "Dalle béton 200mm ↔ Cornière CAE50x8 (#2361)",
+    disciplineA: "Structure",
+    disciplineB: "Toiture métallique",
+    severite: "À qualifier",
+    statut: "nouveau",
+    angle: 220,
+    auteur: "Détection automatique (IfcClash)",
+    tagged: [],
+    entityIds: ["0w5mREx295pe_ygZN$MU87", "3SWCa1Nkb6shp6EZ_X2tqU"],
+    ifcPoint: [20.304, -6.0585, 9.637],
+    discussion: []
+  },
+  {
+    id: "clash-6",
+    detectionId: "structure-toiture",
+    zone: "Voile béton BA16 ↔ Poutrelle IPE80 (#2449)",
+    disciplineA: "Structure",
+    disciplineB: "Toiture métallique",
+    severite: "À qualifier",
+    statut: "nouveau",
+    angle: 260,
+    auteur: "Détection automatique (IfcClash)",
+    tagged: [],
+    entityIds: ["0w5mREx295pe_ygZN$MR78", "3SWCa1Nkb6shp6EZ_X2tss"],
+    ifcPoint: [6.6909, 9.9855, 10.1142],
+    discussion: []
+  },
+  {
+    id: "clash-7",
+    detectionId: "structure-toiture",
+    zone: "Voile béton BA16 ↔ Poutrelle IPE80 (#2443)",
+    disciplineA: "Structure",
+    disciplineB: "Toiture métallique",
+    severite: "À qualifier",
+    statut: "nouveau",
+    angle: 300,
+    auteur: "Détection automatique (IfcClash)",
+    tagged: [],
+    entityIds: ["0w5mREx295pe_ygZN$MR78", "3SWCa1Nkb6shp6EZ_X2tsi"],
+    ifcPoint: [15.7545, 9.9387, 10.8167],
+    discussion: []
+  },
+  {
+    id: "clash-8",
+    detectionId: "structure-toiture",
+    zone: "Voile béton BA16 ↔ Poutrelle IPE80 (#2441)",
+    disciplineA: "Structure",
+    disciplineB: "Toiture métallique",
+    severite: "À qualifier",
+    statut: "nouveau",
+    angle: 340,
+    auteur: "Détection automatique (IfcClash)",
+    tagged: [],
+    entityIds: ["0w5mREx295pe_ygZN$MR78", "3SWCa1Nkb6shp6EZ_X2tsk"],
+    ifcPoint: [12.7842, 9.9055, 11.4448],
+    discussion: []
+  },
+  {
+    id: "clash-9",
+    detectionId: "structure-toiture",
+    zone: "Voile béton BA16 ↔ Poutrelle IPE80 (#2453)",
+    disciplineA: "Structure",
+    disciplineB: "Toiture métallique",
+    severite: "À qualifier",
+    statut: "nouveau",
+    angle: 20,
+    auteur: "Détection automatique (IfcClash)",
+    tagged: [],
+    entityIds: ["0w5mREx295pe_ygZN$MR78", "3SWCa1Nkb6shp6EZ_X2tso"],
+    ifcPoint: [18.7882, 9.9855, 10.1163],
+    discussion: []
+  },
+  {
+    id: "clash-10",
+    detectionId: "structure-toiture",
+    zone: "Voile béton BA16 ↔ Poutrelle IPE80 (#2447)",
+    disciplineA: "Structure",
+    disciplineB: "Toiture métallique",
+    severite: "À qualifier",
+    statut: "nouveau",
+    angle: 80,
+    auteur: "Détection automatique (IfcClash)",
+    tagged: [],
+    entityIds: ["0w5mREx295pe_ygZN$MR78", "3SWCa1Nkb6shp6EZ_X2tse"],
+    ifcPoint: [9.8756, 9.9772, 10.8494],
     discussion: []
   }
 ];
@@ -1097,7 +1210,11 @@ function openDetection(detection) {
   applyVisibility();
   renderMaquetteRows(collisionMaquettesList, subset);
 
-  renderCollisionsList(CLASHES.filter((c) => c.detectionId === detection.id));
+  const detectionClashes = CLASHES.filter((c) => c.detectionId === detection.id);
+  renderCollisionsList(detectionClashes);
+  renderClashMarkers(detectionClashes);
+  clearClashElementColors();
+  deselectEntity();
 
   collisionDiscussion.hidden = true;
   discussionMessages.innerHTML = "";
@@ -1108,15 +1225,32 @@ function openDetection(detection) {
 
 function buildCollisionItem(clash) {
   const li = document.createElement("li");
+  li.className = "collision-item-row";
+
+  // Affiche/masque le marqueur 3D de ce clash precisement, independamment
+  // de la selection (bouton juste a cote) : utile pour ne garder visibles
+  // que les zones qui interessent quand on est sur la maquette, sans
+  // devoir passer par chaque clash un par un dans la vue 3D.
+  let markerShown = true;
+  const toggle = document.createElement("button");
+  toggle.type = "button";
+  toggle.className = "collision-marker-toggle";
+  toggle.innerHTML = EYE_OPEN_ICON;
+  toggle.title = "Masquer cette zone dans la maquette";
+  toggle.addEventListener("click", (e) => {
+    e.stopPropagation();
+    markerShown = !markerShown;
+    toggle.innerHTML = markerShown ? EYE_OPEN_ICON : EYE_CLOSED_ICON;
+    toggle.title = markerShown ? "Masquer cette zone dans la maquette" : "Afficher cette zone dans la maquette";
+    const marker = clashMarkers.get(clash.id);
+    if (marker) marker.visible = markerShown;
+  });
+
   const btn = document.createElement("button");
   btn.type = "button";
   btn.className = "collision-item";
-  btn.addEventListener("click", () => {
-    collisionsList.querySelectorAll(".collision-item").forEach((el) => el.classList.remove("active"));
-    btn.classList.add("active");
-    selectClash(clash);
-    closeCollisionInfoPanelDrawer();
-  });
+  btn.dataset.clashId = clash.id;
+  btn.addEventListener("click", () => activateClash(clash));
 
   const zone = document.createElement("span");
   zone.className = "collision-zone";
@@ -1132,7 +1266,7 @@ function buildCollisionItem(clash) {
   meta.append(badge, disciplines);
 
   btn.append(zone, meta);
-  li.appendChild(btn);
+  li.append(toggle, btn);
   return li;
 }
 
@@ -1164,16 +1298,41 @@ function renderCollisionsList(clashes) {
   }
 }
 
+// Le repli "milieu de la zone de chevauchement des AABB" (utilise avant le
+// portage du 11/09) s'est revele faux pour des elements longs/diagonaux
+// (ex. cornieres de toiture) : l'AABB d'une corniere en diagonale couvre
+// une zone bien plus large que sa geometrie reelle, donc son chevauchement
+// avec l'AABB d'une grande dalle n'a plus rien a voir avec le point de
+// contact reel. Verifie dans le code source de xeokit (WebIFCLoaderPlugin.
+// load, package @xeokit/xeokit-sdk) : les positions issues de web-ifc
+// (GetVertexArray) sont copiees telles quelles dans le SceneModel, sans
+// aucune rotation d'axe appliquee cote xeokit. Comme la maquette s'affiche
+// bien debout (toiture en haut), la conversion Z-up (repere natif IFC,
+// utilise par ifcopenshell/IfcClash) -> Y-up (convention du viewer) est
+// necessairement faite par web-ifc lui-meme au moment de generer la
+// geometrie. Conversion standard (rotation -90 deg autour de X) : x
+// inchange, y_viewer = z_ifc, z_viewer = -y_ifc.
+function ifcPointToViewer(p) {
+  return [p[0], p[2], -p[1]];
+}
+
+function clashCenter(clash) {
+  // Point p1/p2 reel calcule par IfcClash (clashes.json, moyenne stockee
+  // dans clash.ifcPoint), converti dans le repere du viewer : le vrai point
+  // de contact geometrique, quelle que soit la forme/longueur des 2
+  // elements, contrairement a une approximation par boite englobante.
+  if (clash.ifcPoint) return ifcPointToViewer(clash.ifcPoint);
+  // Repli si jamais un clash n'a pas de point IfcClash precalcule.
+  const [aabbA, aabbB] = clash.entityIds.map((id) => viewer.scene.getAABB([id]));
+  return [0, 1, 2].map((axis) => {
+    const min = Math.max(aabbA[axis], aabbB[axis]);
+    const max = Math.min(aabbA[axis + 3], aabbB[axis + 3]);
+    return (min + max) / 2;
+  });
+}
+
 function flyToClash(clash) {
-  // Centre sur le milieu des 2 elements impliques (approximation du point de
-  // croisement, pas de vraie geometrie d'intersection calculee pour ce POC).
-  const aabbs = clash.entityIds.map((id) => viewer.scene.getAABB([id]));
-  const centers = aabbs.map((a) => [(a[0] + a[3]) / 2, (a[1] + a[4]) / 2, (a[2] + a[5]) / 2]);
-  const center = [
-    (centers[0][0] + centers[1][0]) / 2,
-    (centers[0][1] + centers[1][1]) / 2,
-    (centers[0][2] + centers[1][2]) / 2
-  ];
+  const center = clashCenter(clash);
   // Distance fixe et courte (unites du modele = metres) plutot qu'un calcul
   // base sur la taille des elements : un poteau/une poutre peut etre long,
   // mais on veut un plan rapproche sur le point de croisement, pas sur
@@ -1188,6 +1347,101 @@ function flyToClash(clash) {
   ];
 
   viewer.cameraFlight.flyTo({ eye, look: center, up: [0, 1, 0], duration: 1.2 });
+}
+
+// Marqueurs 3D (spheres colorees) aux points de croisement des clashs de la
+// detection ouverte. Geometrie/materiau partages (1 seul PhongMaterial gris
+// neutre), la couleur par statut est appliquee via `mesh.colorize` par
+// instance plutot que de creer un materiau par couleur. Pickable : id
+// prefixe CLASH_MARKER_ID_PREFIX, repere dans handleViewerPick pour
+// activer le meme clash que dans la liste au clic sur sa bulle.
+const CLASH_MARKER_ID_PREFIX = "clash-marker-";
+const CLASH_MARKER_COLORS = {
+  nouveau: [0.941, 0.533, 0.243], // #f0883e
+  confirme: [0.973, 0.318, 0.286], // #f85149
+  ecarte: [0.44, 0.47, 0.5] // gris, cf var(--muted)
+};
+const CLASH_MARKER_RADIUS = 0.18;
+const CLASH_MARKER_RADIUS_ACTIVE = 0.32;
+const CLASH_MARKER_OPACITY = 0.2;
+const CLASH_MARKER_OPACITY_ACTIVE = 0.55;
+
+let clashMarkerGeometry = null;
+let clashMarkerMaterial = null;
+const clashMarkers = new Map(); // clash.id -> Mesh
+let activeClashMarkerId = null;
+
+function ensureClashMarkerAssets() {
+  if (clashMarkerGeometry) return;
+  clashMarkerGeometry = new ReadableGeometry(viewer.scene, buildSphereGeometry({
+    radius: 1, heightSegments: 12, widthSegments: 12
+  }));
+  clashMarkerMaterial = new PhongMaterial(viewer.scene, { diffuse: [1, 1, 1], emissive: [1, 1, 1] });
+}
+
+function clearClashMarkers() {
+  clashMarkers.forEach((mesh) => mesh.destroy());
+  clashMarkers.clear();
+  activeClashMarkerId = null;
+}
+
+function renderClashMarkers(clashes) {
+  clearClashMarkers();
+  ensureClashMarkerAssets();
+  clashes.forEach((clash) => {
+    const center = clashCenter(clash);
+    const mesh = new Mesh(viewer.scene, {
+      id: CLASH_MARKER_ID_PREFIX + clash.id,
+      geometry: clashMarkerGeometry,
+      material: clashMarkerMaterial,
+      position: center,
+      scale: [CLASH_MARKER_RADIUS, CLASH_MARKER_RADIUS, CLASH_MARKER_RADIUS],
+      colorize: CLASH_MARKER_COLORS[clash.statut] || CLASH_MARKER_COLORS.nouveau,
+      opacity: CLASH_MARKER_OPACITY,
+      pickable: true
+    });
+    clashMarkers.set(clash.id, mesh);
+  });
+}
+
+// Grossit le marqueur du clash actuellement selectionne pour le reperer
+// dans le nuage de spheres, remet l'ancien a sa taille normale.
+function highlightClashMarker(clash) {
+  if (activeClashMarkerId && clashMarkers.has(activeClashMarkerId)) {
+    const previous = clashMarkers.get(activeClashMarkerId);
+    previous.scale = [CLASH_MARKER_RADIUS, CLASH_MARKER_RADIUS, CLASH_MARKER_RADIUS];
+    previous.opacity = CLASH_MARKER_OPACITY;
+  }
+  const current = clashMarkers.get(clash.id);
+  if (current) {
+    current.scale = [CLASH_MARKER_RADIUS_ACTIVE, CLASH_MARKER_RADIUS_ACTIVE, CLASH_MARKER_RADIUS_ACTIVE];
+    current.opacity = CLASH_MARKER_OPACITY_ACTIVE;
+  }
+  activeClashMarkerId = clash.id;
+}
+
+// Colore les 2 vrais elements en collision (rouge/vert) uniquement quand on
+// clique sur une collision precise (jamais dans la vue recap des
+// detections). clash.entityIds vient directement de IfcClash (ordre
+// [a_global_id, b_global_id] du resultat, cf clashes.json) : le role
+// element 1/element 2 est celui du moteur de detection, pas un choix fait
+// clash par clash ici.
+const CLASH_ELEMENT_COLOR_A = [1, 0.2, 0.2];
+const CLASH_ELEMENT_COLOR_B = [0.25, 1, 0.3];
+let colorizedClashEntityIds = [];
+
+function clearClashElementColors() {
+  if (colorizedClashEntityIds.length === 0) return;
+  viewer.scene.setObjectsColorized(colorizedClashEntityIds, null);
+  colorizedClashEntityIds = [];
+}
+
+function highlightClashElements(clash) {
+  clearClashElementColors();
+  const [idA, idB] = clash.entityIds;
+  viewer.scene.setObjectsColorized([idA], CLASH_ELEMENT_COLOR_A);
+  viewer.scene.setObjectsColorized([idB], CLASH_ELEMENT_COLOR_B);
+  colorizedClashEntityIds = [idA, idB];
 }
 
 let currentDiscussionThread = null;
@@ -1244,8 +1498,20 @@ function showThreadDiscussion(thread) {
 
 function selectClash(clash) {
   flyToClash(clash);
+  highlightClashMarker(clash);
+  highlightClashElements(clash);
   recenterTarget = () => flyToClash(clash);
   showThreadDiscussion(clash);
+}
+
+// Point d'entree commun pour selectionner un clash, que ce soit via la
+// ligne de la liste ou un clic direct sur sa bulle 3D dans le viewer.
+function activateClash(clash) {
+  collisionsList.querySelectorAll(".collision-item").forEach((el) => {
+    el.classList.toggle("active", el.dataset.clashId === clash.id);
+  });
+  selectClash(clash);
+  closeCollisionInfoPanelDrawer();
 }
 
 // Titre tronque (CSS) si trop long pour la largeur du panneau discussion :
@@ -1269,6 +1535,9 @@ function goBackToDetections() {
   collisionRecap.hidden = false;
   viewViewer.insertBefore(viewerWrap, infoPanel);
   recenterTarget = null;
+  clearClashMarkers();
+  clearClashElementColors();
+  deselectEntity();
   restoreAllModelsVisible();
 }
 collisionBackBtn.addEventListener("click", goBackToDetections);
@@ -1596,6 +1865,13 @@ function showFiche(entity) {
   const docs = DOCS_BY_ELEMENT[entity.id] || [];
   showSelection(rows, docs);
 
+  // Meme fiche que le tiroir Viewer, dans le panneau Collision (section
+  // "Info sélection" en bas du drawer) : utile pour identifier precisement
+  // l'element rouge ou vert d'une collision selectionnee.
+  renderFicheInto(collisionFicheContent, collisionFicheDocs, rows, docs);
+  collisionFichePlaceholder.hidden = true;
+  collisionFicheContent.hidden = false;
+
   // Mobile : evite d'obliger a ouvrir le tiroir "☰ Infos" en entier juste
   // pour voir la fiche d'un element tape, une modale discrete en bas
   // d'ecran suffit (memes donnees que le tiroir).
@@ -1610,10 +1886,22 @@ function clearFiche() {
   ficheContent.hidden = true;
   ficheContent.innerHTML = "";
   ficheDocs.innerHTML = "";
+  collisionFichePlaceholder.hidden = false;
+  collisionFicheContent.hidden = true;
+  collisionFicheContent.innerHTML = "";
+  collisionFicheDocs.innerHTML = "";
   closeFicheSheet();
 }
 
 let selectedEntity = null;
+
+function deselectEntity() {
+  if (selectedEntity) {
+    selectedEntity.selected = false;
+    selectedEntity = null;
+  }
+  clearFiche();
+}
 
 // Coupe par surface : clic sur "Créer une coupe" arme le mode, le prochain
 // clic sur la maquette pose le plan a cet endroit avec la normale de la
@@ -1700,6 +1988,14 @@ function handleViewerPick(canvasCoords) {
   }
 
   const hit = viewer.scene.pick({ canvasPos: canvasCoords });
+
+  // Clic sur une bulle de collision : meme effet que cliquer la ligne dans
+  // la liste, pas une selection d'element classique (fiche/proprietes).
+  if (hit && hit.entity && typeof hit.entity.id === "string" && hit.entity.id.startsWith(CLASH_MARKER_ID_PREFIX)) {
+    const clash = CLASHES.find((c) => c.id === hit.entity.id.slice(CLASH_MARKER_ID_PREFIX.length));
+    if (clash) activateClash(clash);
+    return;
+  }
 
   if (selectedEntity) {
     selectedEntity.selected = false;
