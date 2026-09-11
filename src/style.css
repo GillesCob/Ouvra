@@ -740,6 +740,29 @@ html, body {
 }
 #collisionViewerSlot #viewerWrap { position: absolute; inset: 0; }
 
+/* Zone d'accueil des 2 maquettes agrandie : panneau Maquettes/Collisions/
+   Info selection retreci par rapport a la largeur par defaut de .side-panel
+   (300px, partagee avec l'onglet Viewer), specifique a la page Collision
+   uniquement. */
+#collisionInfoPanel { flex: 0 0 260px; }
+
+/* Repartition verticale des 3 accordeons du panneau Collision (meme
+   mecanisme que #section-niveaux/#section-maquettes/#section-fiche de
+   l'onglet Viewer) : la liste des collisions (potentiellement longue,
+   scrollable en interne) est reduite au profit de "Info selection", pour
+   que les 4 parametres IFC (Nom/Type/Maquette/Niveau) restent visibles
+   d'un coup d'oeil des qu'un element est selectionne, sans avoir a
+   scroller. */
+#section-collision-maquettes { flex: 0.6; }
+#section-collision-liste { flex: 0.8; }
+#section-collision-fiche { flex: 1.4; border-bottom: none; }
+
+#section-collision-maquettes:not([open]),
+#section-collision-liste:not([open]),
+#section-collision-fiche:not([open]) {
+  flex: 0 0 auto;
+}
+
 #collisionDiscussion {
   /* Hauteur fixe (200px), collee en bas de page (Collision et Discussions) :
      pas de redimensionnement a la main (retire, source de bugs). Si plus de

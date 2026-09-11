@@ -884,8 +884,12 @@ function threadType(thread) {
 let discussionsTypeFilterValue = "tout";
 
 function renderDiscussionsPage() {
+  // Les collisions (detection automatique IfcClash, aucun auteur/tag humain
+  // sur les entrees reelles) passent toujours, contrairement aux fils de
+  // discussion classiques qui restent filtres sur "mes fils" (cree par moi
+  // ou j'y suis tagge).
   const threads = [...CLASHES, ...DISCUSSIONS]
-    .filter((t) => t.auteur === CURRENT_USER || (t.tagged || []).includes(CURRENT_USER))
+    .filter((t) => threadType(t) === "collision" || t.auteur === CURRENT_USER || (t.tagged || []).includes(CURRENT_USER))
     .filter((t) => discussionsTypeFilterValue === "tout" || threadType(t) === discussionsTypeFilterValue);
 
   discussionsThreadsList.innerHTML = "";
