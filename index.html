@@ -24,6 +24,7 @@
         <button type="button" class="nav-link" data-view="viewer" data-persona="presentation-globale bim-manager synthese be projeteur externe">Viewer</button>
         <button type="button" class="nav-link" data-view="collision" data-persona="presentation-globale bim-manager synthese be">Collision</button>
         <button type="button" class="nav-link" data-view="discussions" data-persona="presentation-globale bim-manager synthese be">Discussions</button>
+        <button type="button" class="nav-link" data-view="projeteur" data-persona="projeteur">Todo</button>
       </nav>
       <button type="button" id="activateProfilesBtn">Activer les profils</button>
       <select id="personaSelect" aria-label="Changer de profil" hidden>
@@ -208,6 +209,8 @@
                 <h3 id="collisionDiscussionTitle" title="Cliquer pour voir le titre complet">Discussion</h3>
                 <button type="button" id="collisionDiscussionToggle" aria-label="Réduire la discussion" title="Réduire/agrandir la discussion">▾</button>
               </div>
+              <span id="threadAssignedBadge" hidden></span>
+              <button type="button" id="createInstructionBtn" hidden>→ Créer une instruction pour le projeteur</button>
               <ul id="discussionMessages"></ul>
               <form id="discussionReplyForm" hidden>
                 <textarea id="discussionReplyInput" placeholder="Répondre..." rows="2"></textarea>
@@ -266,6 +269,21 @@
               <div id="threadViewerPane" hidden></div>
             </div>
           </div>
+        </div>
+      </div>
+
+      <!-- Onglet Todo (persona Projeteur, porte depuis IES le 16/09) : liste
+           des instructions creees par le Bureau d'etudes (cf
+           createInstructionBtn dans main.js), meme detail partage que
+           Discussions (discussionsDetailPane). Pas de page "Reunion de
+           synthese" cote Ouvra (hors perimetre, specifique aux donnees
+           client d'IES) : les instructions sont creees directement depuis un
+           fil Collision/Discussions ouvert, jamais depuis une reunion. -->
+      <div id="view-projeteur" class="view" hidden>
+        <div id="projeteurListPane">
+          <h2>Todo</h2>
+          <p class="info-empty" id="projeteurThreadsEmpty" hidden>Aucune instruction pour l'instant.</p>
+          <ul class="info-list" id="projeteurThreadsList"></ul>
         </div>
       </div>
 

@@ -106,10 +106,14 @@ const discussionReplyForm = document.getElementById("discussionReplyForm");
 const discussionReplyInput = document.getElementById("discussionReplyInput");
 const discussionsThreadsList = document.getElementById("discussionsThreadsList");
 const discussionsThreadsEmpty = document.getElementById("discussionsThreadsEmpty");
+const projeteurThreadsList = document.getElementById("projeteurThreadsList");
+const projeteurThreadsEmpty = document.getElementById("projeteurThreadsEmpty");
 const discussionsListPane = document.getElementById("discussionsListPane");
 const discussionsDetailPane = document.getElementById("discussionsDetailPane");
 const collisionDiscussionTitle = document.getElementById("collisionDiscussionTitle");
 const collisionDiscussionToggle = document.getElementById("collisionDiscussionToggle");
+const threadAssignedBadge = document.getElementById("threadAssignedBadge");
+const createInstructionBtn = document.getElementById("createInstructionBtn");
 const discussionsBackBtn = document.getElementById("discussionsBackBtn");
 const threadSnapshotPane = document.getElementById("threadSnapshotPane");
 const threadViewerPane = document.getElementById("threadViewerPane");
@@ -604,7 +608,7 @@ const PERSONA_DEFAULT_VIEW = {
   "bim-manager": "viewer",
   synthese: "discussions",
   be: "discussions",
-  projeteur: "viewer",
+  projeteur: "projeteur",
   externe: "viewer"
 };
 
@@ -668,14 +672,16 @@ function applyPersona(persona, forceNav) {
 // est recalculee dynamiquement depuis navLinks a chaque appel, pour ne
 // jamais diverger du vrai gating de applyPersona.
 //
-// Ecart assume par rapport a IES (16/09) : IES porte aussi une page
-// "Réunion de synthèse" et un onglet "Todo" (mecanisme d'instruction
-// Bureau d'etudes -> Projeteur), avec un bouton "+ Ajouter à la réunion de
-// synthèse" reserve au profil Responsable Synthese. Ouvra n'a pas ces
-// pages/donnees (specifiques au projet client d'IES) : seul le mecanisme de
-// profils lui-meme et le filtrage generique Collision/Discussions par
-// profil sont portes ici. Le profil Projeteur reste donc volontairement
-// restreint au seul onglet Viewer (pas de Todo dediee a lui proposer).
+// Ecart assume par rapport a IES (16/09, mis a jour le meme jour suite a
+// validation explicite de Gilles) : le mecanisme d'instruction Bureau
+// d'etudes -> Projeteur (badge "Pris en charge par...", bouton "Créer une
+// instruction pour le projeteur", onglet Todo dedie) EST porte ici. Reste
+// hors perimetre : la page "Réunion de synthèse" elle-meme et son bouton
+// "+ Ajouter à la réunion de synthèse", specifiques a une page qu'Ouvra n'a
+// pas (propre aux donnees/maquettes du projet client d'IES). Les
+// instructions se creent donc directement depuis un fil Collision/
+// Discussions ouvert (cf createInstructionBtn plus bas), jamais depuis une
+// reunion.
 const PERSONA_INTRO_CONTENT = {
   "bim-manager": {
     label: "BIM Manager",
@@ -693,26 +699,27 @@ const PERSONA_INTRO_CONTENT = {
     fonctionnalites: [
       { titre: "Suivi des fils", desc: "Suivi de l'état de tous les fils de discussion et collisions." }
     ],
-    approfondissement: "Garde Collision/Discussions visibles au même titre que le BIM Manager, pour prioriser en amont ce qui doit être arbitré.",
+    approfondissement: "Voit directement dans la liste des fils le badge \"Pris en charge par Bureau d'études\" dès qu'une instruction a été créée pour un Projeteur, sans avoir à ouvrir chaque fil un par un, pour savoir en un coup d'œil ce qui reste vraiment à son arbitrage.",
     lien: "Fait remonter, dans un cadre commun, ce que chaque métier identifie sur la maquette, pour transformer des remarques éparses en décisions actées et partagées par tous les acteurs du projet."
   },
   be: {
     label: "Bureau d'études",
-    qui: "Instruit techniquement les points remontés, jusqu'à leur résolution sur la maquette.",
+    qui: "Instruit techniquement les points remontés, jusqu'à leur traduction en tâche concrète pour un Projeteur.",
     fonctionnalites: [
-      { titre: "Ouvrir un fil", desc: "Ouvrir n'importe quel fil (collision ou discussion classique) et y répondre." }
+      { titre: "Ouvrir un fil", desc: "Ouvrir n'importe quel fil (collision ou discussion classique) et y répondre." },
+      { titre: "Instruction Projeteur", desc: "Déclencher une instruction dédiée pour le Projeteur." }
     ],
-    approfondissement: "Accède aux mêmes onglets Collision/Discussions que le BIM Manager et le Responsable Synthèse, pour instruire directement les points qui le concernent.",
-    lien: "Traduit un point soulevé collectivement sur la maquette en réponse technique concrète, sans perdre le lien avec la discussion d'origine."
+    approfondissement: "Le bouton \"Créer une instruction pour le projeteur\" duplique tout le contexte 3D du fil source (caméra, niveaux affichés, maquettes visibles) dans un nouveau fil dédié BE ↔ Projeteur, en laissant une trace visible sur le fil d'origine. Ce bouton apparaît sous le titre du fil ouvert (Collision ou Discussions), tant qu'il ne s'agit pas déjà d'une instruction en cours.",
+    lien: "Traduit un point soulevé collectivement sur la maquette en une tâche précise pour le Projeteur, sans perdre le lien avec la discussion d'origine ni le contexte 3D qui l'a fait naître."
   },
   projeteur: {
     label: "Projeteur",
-    qui: "Modélisateur qui corrige ou complète la maquette suite aux échanges remontés par le Bureau d'études.",
+    qui: "Modélisateur qui corrige ou complète la maquette suite aux instructions reçues du Bureau d'études.",
     fonctionnalites: [
-      { titre: "Navigation dédiée", desc: "Naviguer et explorer la maquette 3D." }
+      { titre: "Todo dédiée", desc: "Onglet Todo listant uniquement les instructions qui le concernent (badge \"À traiter\" / \"Traité\")." }
     ],
-    approfondissement: "Profil volontairement restreint au Viewer dans cette démonstration : pas d'accès à Collision/Discussions, pour rester concentré sur la modélisation.",
-    lien: "Intervient directement sur la maquette à partir des retours reçus, avec le même point de référence commun que les autres acteurs."
+    approfondissement: "Ouvrir une tâche restaure exactement le contexte 3D que le Bureau d'études avait sous les yeux au moment de l'instruction (niveaux, maquettes affichées, caméra), sans avoir à le reconstituer lui-même.",
+    lien: "Referme la boucle en intervenant directement sur la maquette à partir d'une tâche héritée d'un échange collectif, avec le contexte exact qui l'a motivée, sans avoir à reconstituer l'historique par lui-même."
   },
   externe: {
     label: "Externe sans compte",
@@ -1082,7 +1089,8 @@ const CLASHES = [
     tagged: [],
     entityIds: ["0w5mREx295pe_ygZN$MR78", "3SWCa1Nkb6shp6EZ_X2tss"],
     ifcPoint: [6.6909, 9.9855, 10.1142],
-    discussion: []
+    discussion: [],
+    assignedTo: "Bureau d'études"
   },
   {
     id: "clash-7",
@@ -1181,7 +1189,8 @@ const DISCUSSIONS = [
     maquettes: [{ id: "archi", visible: true }, { id: "toit", visible: false }, { id: "cea", visible: false }],
     discussion: [
       { auteur: "Sofia Benali (Coordination BIM)", texte: "Peux-tu confirmer l'emplacement du tableau électrique sur ce niveau ?" }
-    ]
+    ],
+    assignedTo: "Bureau d'études"
   },
   {
     id: "disc-3",
@@ -1210,7 +1219,53 @@ const DISCUSSIONS = [
     ],
     discussion: [
       { auteur: "Vous", texte: "Les lits apparaissent ici, au R+2, mais ne devraient pas y être : ils sont rattachés au mauvais niveau dans la maquette. Peux-tu corriger le rattachement dans le modèle source ?" }
-    ]
+    ],
+    assignedTo: "Bureau d'études"
+  },
+  // Instructions BE -> Projeteur (portees depuis IES le 16/09) : issues de
+  // fils/clashs existants (sourceThreadId conserve le lien vers le fil
+  // d'origine, meme mecanisme que createInstructionBtn), pour peupler
+  // l'onglet Todo du Projeteur au chargement plutot que de dependre d'une
+  // creation manuelle en session.
+  {
+    id: "disc-5",
+    zone: "Niveau R+2, lits",
+    auteur: "Vous (Bureau d'études)",
+    tagged: ["Projeteur"],
+    open: true,
+    isInstruction: true,
+    sourceThreadId: "disc-4",
+    maquettes: [{ id: "archi", visible: false }, { id: "toit", visible: false }, { id: "cea", visible: true }],
+    niveaux: [
+      { name: "Soubassement", checked: false },
+      { name: "R+0", checked: false },
+      { name: "R+1", checked: false },
+      { name: "R+2", checked: true },
+      { name: "R+3", checked: false }
+    ],
+    discussion: [{ auteur: "Vous (Bureau d'études)", texte: "Instruction issue du fil « Niveau R+2, lits » : à traiter." }]
+  },
+  {
+    id: "disc-6",
+    zone: "Niveau 2, local technique",
+    auteur: "Vous (Bureau d'études)",
+    tagged: ["Projeteur"],
+    open: true,
+    isInstruction: true,
+    sourceThreadId: "disc-2",
+    maquettes: [{ id: "archi", visible: true }, { id: "toit", visible: false }, { id: "cea", visible: false }],
+    discussion: [{ auteur: "Vous (Bureau d'études)", texte: "Instruction issue du fil « Niveau 2, local technique » : à traiter." }]
+  },
+  {
+    id: "disc-7",
+    zone: "Voile béton BA16 ↔ Poutrelle IPE80 (#2449)",
+    auteur: "Vous (Bureau d'études)",
+    tagged: ["Projeteur"],
+    open: true,
+    isInstruction: true,
+    sourceThreadId: "clash-6",
+    maquettes: [{ id: "archi", visible: false }, { id: "toit", visible: true }, { id: "cea", visible: false }],
+    discussion: [{ auteur: "Vous (Bureau d'études)", texte: "Instruction issue du fil « Voile béton BA16 ↔ Poutrelle IPE80 (#2449) » : à traiter." }]
   }
 ];
 
@@ -1257,6 +1312,15 @@ function renderDiscussionsPage() {
     meta.textContent = "Créé par " + thread.auteur + " · " + thread.discussion.length + " message" + (thread.discussion.length > 1 ? "s" : "");
     main.append(titre, meta);
 
+    // Visible par le Responsable Synthese sans ouvrir le fil (porte depuis
+    // IES le 16/09).
+    if (thread.assignedTo) {
+      const assignedTag = document.createElement("span");
+      assignedTag.className = "thread-assigned-tag";
+      assignedTag.textContent = "Pris en charge par " + thread.assignedTo;
+      main.appendChild(assignedTag);
+    }
+
     const badge = document.createElement("span");
     badge.className = "thread-type-badge " + type;
     badge.textContent = type === "collision" ? "Collision" : "Discussion";
@@ -1264,6 +1328,44 @@ function renderDiscussionsPage() {
     btn.append(main, badge);
     li.appendChild(btn);
     discussionsThreadsList.appendChild(li);
+  });
+}
+
+// Vue Todo (persona Projeteur, porte depuis IES le 16/09) : memes fils que
+// DISCUSSIONS, filtres sur les instructions creees par le BE et taguees
+// "Projeteur" (cf createInstructionBtn). Meme rendu de ligne (.thread-item/
+// .thread-main/.thread-meta) que renderDiscussionsPage, mais liste et
+// filtre distincts : le Projeteur ne doit voir ici que ce qui lui a ete
+// assigne, pas tous ses fils comme dans l'onglet Discussions.
+function renderProjeteurList() {
+  const threads = DISCUSSIONS.filter((t) => t.isInstruction && (t.tagged || []).includes("Projeteur"));
+
+  projeteurThreadsList.innerHTML = "";
+  projeteurThreadsEmpty.hidden = threads.length > 0;
+
+  threads.forEach((thread) => {
+    const li = document.createElement("li");
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "thread-item";
+    btn.addEventListener("click", () => openThreadDetail(thread, "projeteur"));
+
+    const main = document.createElement("div");
+    main.className = "thread-main";
+    const titre = document.createElement("span");
+    titre.textContent = thread.zone;
+    const meta = document.createElement("span");
+    meta.className = "thread-meta";
+    meta.textContent = "Instruction de " + thread.auteur;
+    main.append(titre, meta);
+
+    const badge = document.createElement("span");
+    badge.className = "thread-type-badge discussion";
+    badge.textContent = isThreadOpen(thread) ? "À traiter" : "Traité";
+
+    btn.append(main, badge);
+    li.appendChild(btn);
+    projeteurThreadsList.appendChild(li);
   });
 }
 
@@ -1328,8 +1430,19 @@ threadToggleBtns.forEach((btn) => {
 });
 
 let currentThread = null;
+// Onglet a rouvrir au clic sur "← Discussions" (discussionsBackBtn, porte
+// depuis IES le 16/09) : le detail d'un fil est un DOM partage
+// (discussionsDetailPane, a l'interieur de view-discussions), reutilise tel
+// quel pour la vue Todo plutot que duplique (memes toggles avant/apres,
+// meme viewer). "discussions" par defaut ; "projeteur" quand le fil est
+// ouvert depuis renderProjeteurList.
+let discussionsReturnView = "discussions";
 
-function openThreadDetail(thread) {
+function openThreadDetail(thread, returnView) {
+  discussionsReturnView = returnView || "discussions";
+  // discussionsDetailPane vit dans view-discussions : la basculer visible
+  // avant de l'utiliser, meme quand on vient de la vue Todo.
+  activateView("discussions");
   discussionsListPane.hidden = true;
   discussionsDetailPane.hidden = false;
   currentThread = thread;
@@ -1361,13 +1474,25 @@ discussionsBackBtn.addEventListener("click", () => {
   discussionsListPane.hidden = false;
   recenterTarget = null;
   restoreAllModelsVisible();
-  renderDiscussionsPage();
-  if (history.replaceState) {
-    history.replaceState(null, "", "#discussions");
+
+  // Retour vers la vue Todo (porte depuis IES le 16/09) si le fil a ete
+  // ouvert depuis elle, plutot que de retomber systematiquement sur la
+  // liste Discussions.
+  const returnView = discussionsReturnView;
+  discussionsReturnView = "discussions";
+  if (returnView === "projeteur") {
+    activateView("projeteur");
+    renderProjeteurList();
+  } else {
+    renderDiscussionsPage();
+    if (history.replaceState) {
+      history.replaceState(null, "", "#discussions");
+    }
   }
 });
 
 renderDiscussionsPage();
+renderProjeteurList();
 
 // Creation d'un nouveau fil depuis le Viewer, a partir du point de vue et de
 // l'etat (niveaux/maquettes affiches) mis en place par l'utilisateur.
@@ -1842,6 +1967,16 @@ function showThreadDiscussion(thread) {
 
   discussionReplyForm.hidden = !isOpen;
   discussionReplyInput.value = "";
+
+  // Instruction BE -> Projeteur (portee depuis IES le 16/09) : bouton
+  // reserve au profil Bureau d'etudes, jamais propose depuis une
+  // instruction deja creee (pas de chaine BE -> Projeteur -> Projeteur).
+  // Badge visible par tous des qu'un fil a ete pris en charge (demande
+  // explicite : le Responsable Synthese doit voir que ce n'est plus a lui
+  // d'agir).
+  threadAssignedBadge.hidden = !thread.assignedTo;
+  if (thread.assignedTo) threadAssignedBadge.textContent = "Pris en charge par " + thread.assignedTo;
+  createInstructionBtn.hidden = personaSelect.value !== "be" || !!thread.isInstruction;
 }
 
 function selectClash(clash) {
@@ -1886,6 +2021,39 @@ discussionReplyForm.addEventListener("submit", (e) => {
   currentDiscussionThread.discussion.push({ auteur: "Vous", texte });
   renderDiscussionMessages(currentDiscussionThread);
   discussionReplyInput.value = "";
+});
+
+// Instruction BE -> Projeteur (portee depuis IES le 16/09) : copie le
+// contexte 3D du fil source (meme mecanisme que "Nouvelle discussion",
+// captureViewerState) dans un nouveau fil dedie a 2, plutot que d'ajouter le
+// Projeteur au fil existant (qui reste multi-metiers). Le fil source garde
+// une trace (assignedTo) pour que le Responsable Synthese sache que c'est
+// desormais gere par le BE, sans avoir a suivre le fil dedie lui-meme.
+createInstructionBtn.addEventListener("click", () => {
+  if (!currentDiscussionThread) return;
+  const source = currentDiscussionThread;
+  const snapshot = captureViewerState();
+
+  const thread = {
+    id: "disc-" + Date.now(),
+    zone: source.zone,
+    auteur: "Vous (Bureau d'études)",
+    tagged: ["Projeteur"],
+    open: true,
+    isInstruction: true,
+    sourceThreadId: source.id,
+    camera: snapshot.camera,
+    niveaux: snapshot.niveaux,
+    maquettes: snapshot.maquettes,
+    coupe: snapshot.coupe,
+    discussion: [{ auteur: "Vous (Bureau d'études)", texte: "Instruction issue du fil « " + source.zone + " » : à traiter." }]
+  };
+  DISCUSSIONS.push(thread);
+  source.assignedTo = "Bureau d'études";
+
+  renderDiscussionsPage();
+  renderProjeteurList();
+  openThreadDetail(thread);
 });
 
 function goBackToDetections() {

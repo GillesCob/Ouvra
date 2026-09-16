@@ -912,6 +912,8 @@ html, body {
   margin: 0 0 8px;
 }
 #collisionDiscussion.collapsed { height: auto; }
+#collisionDiscussion.collapsed #threadAssignedBadge,
+#collisionDiscussion.collapsed #createInstructionBtn,
 #collisionDiscussion.collapsed #discussionMessages,
 #collisionDiscussion.collapsed #discussionReplyForm {
   display: none;
@@ -944,6 +946,40 @@ html, body {
   cursor: pointer;
 }
 #collisionDiscussion h3.expanded { white-space: normal; }
+
+/* Instruction Bureau d'etudes -> Projeteur (portee depuis IES le 16/09) :
+   bouton visible uniquement pour le profil Bureau d'etudes, badge visible
+   pour tout le monde des qu'un fil a ete pris en charge (visibilite
+   demandee pour le Responsable Synthese, qui doit voir que ce n'est plus a
+   lui d'agir). */
+#threadAssignedBadge {
+  display: inline-block;
+  margin: 4px 0 8px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(92, 122, 95, 0.15);
+  color: var(--accent);
+  font-size: 10.5px;
+  font-weight: 700;
+}
+#threadAssignedBadge[hidden] { display: none; }
+
+#createInstructionBtn {
+  display: block;
+  width: 100%;
+  margin: 0 0 10px;
+  padding: 8px 12px;
+  background: rgba(92, 122, 95, 0.15);
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: left;
+}
+#createInstructionBtn:hover { background: var(--accent); color: #fff; }
+#createInstructionBtn[hidden] { display: none; }
 
 #discussionMessages {
   list-style: none;
@@ -1106,6 +1142,24 @@ html, body {
 }
 .thread-type-badge.collision { color: var(--accent); background: rgba(88, 166, 255, 0.15); }
 .thread-type-badge.discussion { color: #a371f7; background: rgba(163, 113, 247, 0.15); }
+
+/* Meme info que #threadAssignedBadge (detail d'un fil), mais dans la liste
+   (portee depuis IES le 16/09) : le Responsable Synthese doit voir en un
+   coup d'oeil qu'un fil est deja pris en charge par le BE, sans avoir a
+   l'ouvrir. */
+.thread-assigned-tag {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+/* Onglet Todo (persona Projeteur, porte depuis IES le 16/09) : liste des
+   instructions creees par le Bureau d'etudes (cf createInstructionBtn),
+   meme detail partage que Discussions (discussionsDetailPane), cf
+   openThreadDetail(thread, "projeteur") dans main.js. */
+#view-projeteur { flex-direction: column; }
+#projeteurListPane { flex: 1; padding: 24px; overflow-y: auto; }
+#projeteurListPane h2 { margin: 0 0 16px; font-size: 16px; }
 
 #discussionsDetailPane {
   flex: 1;
