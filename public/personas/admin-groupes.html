@@ -1,0 +1,750 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<link rel="icon" type="image/png" href="https://gillescobigo.com/images/logo-gc-white.png">
+<title>Exploration BIM chantier - Administration des groupes / visibilite</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap');
+  :root {
+    --bg: #0d1117; --panel: #161b22; --border: #30363d; --text: #c9d1d9; --muted: #8b949e;
+    --accent: #787152; --accent-bg: rgba(120,113,82,0.14); --purple: #a371f7; --purple-bg: rgba(163,113,247,0.15);
+    --green: #3fb950; --green-bg: rgba(63,185,80,0.15);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body { font-family: "Inter", system-ui, sans-serif; background: var(--bg); color: var(--text); display: flex; flex-direction: column; }
+  h1, h2, h3 { font-family: "Poppins", "Inter", sans-serif; }
+  .topbar { background: var(--panel); border-bottom: 1px solid var(--border); padding: 0 20px; height: 52px; display: flex; align-items: center; font-size: 13.5px; font-weight: 600; flex-shrink: 0; }
+  .topbar span { font-weight: 400; color: var(--muted); }
+
+  .app-body { flex: 1; display: flex; min-height: 0; }
+
+  .groups-panel { width: 250px; flex-shrink: 0; border-right: 1px solid var(--border); background: var(--panel); padding: 16px 12px; overflow-y: auto; }
+  .groups-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; color: var(--muted); margin: 0 0 10px; padding: 0 6px; }
+  .new-group-btn { width: 100%; font-family: inherit; font-size: 12.5px; font-weight: 600; border-radius: 8px; padding: 9px 10px; margin-bottom: 12px; cursor: pointer; background: var(--accent-bg); color: var(--accent); border: 1px solid transparent; }
+  .new-group-btn:hover { background: var(--accent); color: #fff; }
+
+  .admin-tabs { display: flex; gap: 4px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 3px; margin-bottom: 14px; }
+  .tab-btn { flex: 1; font-family: inherit; font-size: 11.5px; font-weight: 600; padding: 7px 8px; border-radius: 6px; border: none; background: none; color: var(--muted); cursor: pointer; }
+  .tab-btn.active { background: var(--panel); color: var(--text); }
+
+  .group-row, .maquette-row { width: 100%; text-align: left; font-family: inherit; background: none; border: none; border-radius: 8px; padding: 9px 10px; margin-bottom: 3px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--text); }
+  .maquette-row[hidden] { display: none; }
+  .group-row:hover, .maquette-row:hover { background: var(--bg); }
+  .group-row.active, .maquette-row.active { background: var(--accent-bg); }
+  .group-row.active .group-name, .maquette-row.active .maquette-name { color: var(--accent); font-weight: 700; }
+  .group-name, .maquette-name { font-size: 13px; font-weight: 600; }
+  .group-count, .maquette-lot { font-size: 10.5px; color: var(--muted); flex-shrink: 0; }
+
+  .status-chip { display: inline-block; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 999px; }
+  .status-chip.accent { color: var(--accent); background: var(--accent-bg); }
+  .status-chip.green { color: var(--green); background: var(--green-bg); }
+
+  .maquette-row-global { border: 1px solid var(--border); margin-bottom: 8px; }
+  .maquette-row-global .maquette-name { color: var(--accent); }
+
+  .mini-viewer-wrap { margin-top: 24px; }
+  .mini-viewer-canvas { width: 50%; aspect-ratio: 16 / 9; height: auto; display: block; margin: 0 auto; border-radius: 8px; border: 1px solid var(--border); background: #000; touch-action: none; }
+  .mini-viewer-actions { margin-top: 10px; display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; }
+  .mini-viewer-saved-hint { font-size: 11.5px; color: var(--green); font-weight: 600; }
+
+  .detail-panel { flex: 1; overflow-y: auto; padding: 24px 28px 60px; }
+  .detail-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+  .detail-title { font-size: 18px; font-weight: 700; margin: 0; }
+  .detail-actions { display: flex; gap: 8px; }
+  .ghost-btn { font-family: inherit; font-size: 11.5px; font-weight: 600; border-radius: 7px; padding: 6px 10px; cursor: pointer; background: none; border: 1px solid var(--border); color: var(--muted); }
+  .ghost-btn:hover { color: var(--text); border-color: var(--text); }
+  .detail-sub { font-size: 12.5px; color: var(--muted); margin: 0 0 22px; }
+
+  .section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; color: var(--muted); margin: 24px 0 10px; }
+  .section-title:first-of-type { margin-top: 0; }
+
+  .checklist { display: flex; flex-direction: column; gap: 2px; }
+  .check-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 7px; font-size: 13px; }
+  .check-row:hover { background: var(--bg); }
+  .check-row input { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; }
+  .check-row label { cursor: pointer; flex: 1; }
+
+  .be-row { padding: 12px 0; border-top: 1px solid var(--border); }
+  .be-row:first-child { border-top: none; }
+  .be-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 9px; }
+  .be-name { font-size: 12.5px; font-weight: 700; }
+  .be-group-tag { font-size: 10px; font-weight: 700; color: var(--purple); background: var(--purple-bg); border-radius: 999px; padding: 2px 8px; margin-left: 8px; }
+  .add-be-btn { margin-top: 12px; font-family: inherit; font-size: 12px; font-weight: 600; border-radius: 8px; padding: 8px 12px; cursor: pointer; background: none; border: 1px dashed var(--border); color: var(--muted); width: 100%; text-align: left; }
+  .add-be-btn:hover { color: var(--accent); border-color: var(--accent); background: var(--accent-bg); }
+  .be-scope { display: flex; gap: 5px; flex-wrap: wrap; }
+  .scope-chip { font-family: inherit; font-size: 10.5px; font-weight: 700; padding: 4px 9px; border-radius: 999px; border: 1px solid var(--border); background: var(--bg); color: var(--muted); cursor: pointer; }
+  .scope-chip.on { background: var(--accent-bg); color: var(--accent); border-color: transparent; }
+  .be-members { display: flex; flex-wrap: wrap; gap: 6px; }
+  .be-member-chip { font-size: 11px; background: var(--bg); border: 1px solid var(--border); border-radius: 999px; padding: 3px 10px; color: var(--muted); }
+  .section-hint { font-size: 11.5px; color: var(--muted); margin: -4px 0 12px; }
+
+  @media (max-width: 560px) {
+    .app-body { flex-direction: column; }
+    .groups-panel { width: 100%; border-right: none; border-bottom: 1px solid var(--border); }
+  }
+</style>
+</head>
+<body>
+  <nav class="topbar">Administration des droits</nav>
+
+  <div class="app-body">
+    <div class="groups-panel">
+      <div class="admin-tabs">
+        <button class="tab-btn active" data-tab="maquettes">Maquettes</button>
+        <button class="tab-btn" data-tab="groupes">Groupes</button>
+      </div>
+
+      <div class="tab-panel" data-tab-panel="groupes" hidden>
+        <button class="new-group-btn">+ Nouveau groupe</button>
+
+        <button class="group-row active" data-group="bim-management">
+          <span class="group-name">BIM Management</span>
+          <span class="group-count">2</span>
+        </button>
+        <button class="group-row" data-group="structure">
+          <span class="group-name">Structure</span>
+          <span class="group-count">2</span>
+        </button>
+        <button class="group-row" data-group="cvc">
+          <span class="group-name">CVC</span>
+          <span class="group-count">1</span>
+        </button>
+        <button class="group-row" data-group="elec">
+          <span class="group-name">ELEC</span>
+          <span class="group-count">1</span>
+        </button>
+      </div>
+
+      <div class="tab-panel" data-tab-panel="maquettes">
+        <button class="new-group-btn">+ Importer une maquette</button>
+
+        <button class="maquette-row maquette-row-global" data-maquette="global-demo" data-project="demo">
+          <span class="maquette-name">Projet Global</span>
+        </button>
+        <button class="maquette-row active" data-maquette="structure" data-project="demo">
+          <span class="maquette-name">Maquette STR</span>
+          <span class="maquette-lot">Structure</span>
+        </button>
+        <button class="maquette-row" data-maquette="toiture" data-project="demo">
+          <span class="maquette-name">Maquette TOITURE</span>
+          <span class="maquette-lot">Charpente métallique</span>
+        </button>
+        <button class="maquette-row" data-maquette="cea" data-project="demo">
+          <span class="maquette-name">Maquette CEA</span>
+          <span class="maquette-lot">Architecture</span>
+        </button>
+        <button class="maquette-row maquette-row-global" data-maquette="global-hospital" data-project="hospital-xkt">
+          <span class="maquette-name">Vue d'ensemble (toutes les maquettes)</span>
+        </button>
+        <button class="maquette-row" data-maquette="hospital-archi" data-project="hospital-xkt">
+          <span class="maquette-name">Architecture</span>
+          <span class="maquette-lot">Architecture</span>
+        </button>
+        <button class="maquette-row" data-maquette="hospital-meca" data-project="hospital-xkt">
+          <span class="maquette-name">Mechanical (CVC)</span>
+          <span class="maquette-lot">CVC</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="detail-panel">
+
+      <div class="detail-group" data-tab-panel="groupes" hidden>
+
+      <div class="group-detail" data-group-detail="bim-management">
+        <div class="detail-head">
+          <h1 class="detail-title">BIM Management</h1>
+          <div class="detail-actions">
+            <button class="ghost-btn">Renommer</button>
+            <button class="ghost-btn">Supprimer</button>
+          </div>
+        </div>
+        <p class="detail-sub">2 intervenants · vue d'ensemble, accès complet par défaut</p>
+
+        <p class="section-title">Lots visibles</p>
+        <p class="section-hint">Niveau groupe : type d'accès, commun à tout le groupe.</p>
+        <div class="checklist">
+          <div class="check-row"><input type="checkbox" id="bm-e1" checked /><label for="bm-e1">Gros œuvre</label></div>
+          <div class="check-row"><input type="checkbox" id="bm-e2" checked /><label for="bm-e2">CVC</label></div>
+          <div class="check-row"><input type="checkbox" id="bm-e3" checked /><label for="bm-e3">Électricité</label></div>
+          <div class="check-row"><input type="checkbox" id="bm-e4" checked /><label for="bm-e4">Structure</label></div>
+        </div>
+
+        <p class="section-title">Entreprises et bâtiments visibles</p>
+        <p class="section-hint">Le périmètre (quelles tours) se règle par entreprise, pas par personne : les personnes héritent du scope de leur entreprise.</p>
+        <div class="be-row">
+          <div class="be-head">
+            <span class="be-name">Entreprise BIM 1</span>
+            <span class="be-scope">
+              <button class="scope-chip on">Tour 1</button>
+              <button class="scope-chip on">Tour 2</button>
+              <button class="scope-chip on">Tour 3</button>
+              <button class="scope-chip on">Tour 4</button>
+            </span>
+          </div>
+          <div class="be-members">
+            <span class="be-member-chip">Personne 1</span>
+            <span class="be-member-chip">Personne 2</span>
+          </div>
+        </div>
+        <button class="add-be-btn">+ Ajouter une entreprise</button>
+      </div>
+
+      <div class="group-detail" data-group-detail="structure" hidden>
+        <div class="detail-head">
+          <h1 class="detail-title">Structure</h1>
+          <div class="detail-actions">
+            <button class="ghost-btn">Renommer</button>
+            <button class="ghost-btn">Supprimer</button>
+          </div>
+        </div>
+        <p class="detail-sub">2 intervenants · lot structure, périmètre différent par personne</p>
+
+        <p class="section-title">Lots visibles</p>
+        <p class="section-hint">Niveau groupe : type d'accès, commun à tout le groupe.</p>
+        <div class="checklist">
+          <div class="check-row"><input type="checkbox" id="st-e1" checked /><label for="st-e1">Gros œuvre</label></div>
+          <div class="check-row"><input type="checkbox" id="st-e2" /><label for="st-e2">CVC</label></div>
+          <div class="check-row"><input type="checkbox" id="st-e3" /><label for="st-e3">Électricité</label></div>
+          <div class="check-row"><input type="checkbox" id="st-e4" checked /><label for="st-e4">Structure</label></div>
+        </div>
+
+        <p class="section-title">Entreprises et bâtiments visibles</p>
+        <p class="section-hint">Même groupe, même type d'accès, mais périmètre différent par entreprise : Entreprise STR 1 ne voit que Tour 1, Entreprise STR 2 ne voit que Tour 2. Les personnes rattachées héritent du scope de leur entreprise, rien à régler pour chacune.</p>
+        <div class="be-row">
+          <div class="be-head">
+            <span class="be-name">Entreprise STR 1<span class="be-group-tag">+ ELEC</span></span>
+            <span class="be-scope">
+              <button class="scope-chip on">Tour 1</button>
+              <button class="scope-chip">Tour 2</button>
+              <button class="scope-chip">Tour 3</button>
+              <button class="scope-chip">Tour 4</button>
+            </span>
+          </div>
+          <div class="be-members">
+            <span class="be-member-chip">Personne 1</span>
+          </div>
+        </div>
+        <div class="be-row">
+          <div class="be-head">
+            <span class="be-name">Entreprise STR 2</span>
+            <span class="be-scope">
+              <button class="scope-chip">Tour 1</button>
+              <button class="scope-chip on">Tour 2</button>
+              <button class="scope-chip">Tour 3</button>
+              <button class="scope-chip">Tour 4</button>
+            </span>
+          </div>
+          <div class="be-members">
+            <span class="be-member-chip">Personne 1</span>
+          </div>
+        </div>
+        <button class="add-be-btn">+ Ajouter une entreprise</button>
+      </div>
+
+      <div class="group-detail" data-group-detail="cvc" hidden>
+        <div class="detail-head">
+          <h1 class="detail-title">CVC</h1>
+          <div class="detail-actions">
+            <button class="ghost-btn">Renommer</button>
+            <button class="ghost-btn">Supprimer</button>
+          </div>
+        </div>
+        <p class="detail-sub">1 intervenant · lot CVC, périmètre par personne</p>
+
+        <p class="section-title">Lots visibles</p>
+        <p class="section-hint">Niveau groupe : type d'accès, commun à tout le groupe.</p>
+        <div class="checklist">
+          <div class="check-row"><input type="checkbox" id="cv-e1" /><label for="cv-e1">Gros œuvre</label></div>
+          <div class="check-row"><input type="checkbox" id="cv-e2" checked /><label for="cv-e2">CVC</label></div>
+          <div class="check-row"><input type="checkbox" id="cv-e3" /><label for="cv-e3">Électricité</label></div>
+          <div class="check-row"><input type="checkbox" id="cv-e4" /><label for="cv-e4">Structure</label></div>
+        </div>
+
+        <p class="section-title">Entreprises et bâtiments visibles</p>
+        <p class="section-hint">Périmètre réglé par entreprise, les personnes rattachées héritent.</p>
+        <div class="be-row">
+          <div class="be-head">
+            <span class="be-name">Entreprise CVC 1</span>
+            <span class="be-scope">
+              <button class="scope-chip on">Tour 1</button>
+              <button class="scope-chip on">Tour 2</button>
+              <button class="scope-chip">Tour 3</button>
+              <button class="scope-chip">Tour 4</button>
+            </span>
+          </div>
+          <div class="be-members">
+            <span class="be-member-chip">Personne 1</span>
+          </div>
+        </div>
+        <button class="add-be-btn">+ Ajouter une entreprise</button>
+      </div>
+
+      <div class="group-detail" data-group-detail="elec" hidden>
+        <div class="detail-head">
+          <h1 class="detail-title">ELEC</h1>
+          <div class="detail-actions">
+            <button class="ghost-btn">Renommer</button>
+            <button class="ghost-btn">Supprimer</button>
+          </div>
+        </div>
+        <p class="detail-sub">1 intervenant · lot électricité, périmètre par personne</p>
+
+        <p class="section-title">Lots visibles</p>
+        <p class="section-hint">Niveau groupe : type d'accès, commun à tout le groupe.</p>
+        <div class="checklist">
+          <div class="check-row"><input type="checkbox" id="el-e1" /><label for="el-e1">Gros œuvre</label></div>
+          <div class="check-row"><input type="checkbox" id="el-e2" /><label for="el-e2">CVC</label></div>
+          <div class="check-row"><input type="checkbox" id="el-e3" checked /><label for="el-e3">Électricité</label></div>
+          <div class="check-row"><input type="checkbox" id="el-e4" /><label for="el-e4">Structure</label></div>
+        </div>
+
+        <p class="section-title">Entreprises et bâtiments visibles</p>
+        <p class="section-hint">Périmètre réglé par entreprise, les personnes rattachées héritent. Une entreprise peut être rattachée à plusieurs groupes (badge violet) : elle apparaît alors dans chacun, avec le même périmètre de bâtiments partout.</p>
+        <div class="be-row">
+          <div class="be-head">
+            <span class="be-name">Entreprise ELEC 1</span>
+            <span class="be-scope">
+              <button class="scope-chip on">Tour 1</button>
+              <button class="scope-chip">Tour 2</button>
+              <button class="scope-chip">Tour 3</button>
+              <button class="scope-chip">Tour 4</button>
+            </span>
+          </div>
+          <div class="be-members">
+            <span class="be-member-chip">Personne 1</span>
+          </div>
+        </div>
+        <div class="be-row">
+          <div class="be-head">
+            <span class="be-name">Entreprise STR 1<span class="be-group-tag">+ Structure</span></span>
+            <span class="be-scope">
+              <button class="scope-chip on">Tour 1</button>
+              <button class="scope-chip">Tour 2</button>
+              <button class="scope-chip">Tour 3</button>
+              <button class="scope-chip">Tour 4</button>
+            </span>
+          </div>
+          <div class="be-members">
+            <span class="be-member-chip">Personne 1</span>
+          </div>
+        </div>
+        <button class="add-be-btn">+ Ajouter une entreprise</button>
+      </div>
+
+      </div>
+
+      <div class="detail-group" data-tab-panel="maquettes">
+
+        <div class="maquette-detail" data-maquette-detail="structure" data-project="demo">
+          <div class="detail-head">
+            <h1 class="detail-title" data-name-target="structure">Maquette STR</h1>
+            <div class="detail-actions">
+              <button class="ghost-btn" data-rename="structure">Renommer</button>
+            </div>
+          </div>
+          <p class="detail-sub">Nom initial : Projet_structure.ifc · Lot Structure</p>
+
+          <p class="section-title">Statut</p>
+          <span class="status-chip accent">IFC (aperçu Admin converti XKT)</span>
+
+          <p class="section-title">Poids</p>
+          <p class="detail-sub">2,6 Mo (IFC, servi tel quel dans le Viewer) → 2,5 Mo (XKT, aperçu ci-dessous uniquement)</p>
+        </div>
+
+        <div class="maquette-detail" data-maquette-detail="toiture" data-project="demo" hidden>
+          <div class="detail-head">
+            <h1 class="detail-title" data-name-target="toiture">Maquette TOITURE</h1>
+            <div class="detail-actions">
+              <button class="ghost-btn" data-rename="toiture">Renommer</button>
+            </div>
+          </div>
+          <p class="detail-sub">Nom initial : Toit_Metal_2.ifc · Lot Charpente métallique</p>
+
+          <p class="section-title">Statut</p>
+          <span class="status-chip accent">IFC (aperçu Admin converti XKT)</span>
+
+          <p class="section-title">Poids</p>
+          <p class="detail-sub">260 Ko (IFC, servi tel quel dans le Viewer) → 224 Ko (XKT, aperçu ci-dessous uniquement)</p>
+        </div>
+
+        <div class="maquette-detail" data-maquette-detail="global-demo" data-project="demo" hidden>
+          <h1 class="detail-title">Projet Global</h1>
+          <p class="detail-sub">Telle que la charge le Viewer pour tous les acteurs du projet.</p>
+        </div>
+
+        <div class="maquette-detail" data-maquette-detail="cea" data-project="demo" hidden>
+          <div class="detail-head">
+            <h1 class="detail-title" data-name-target="cea">Maquette CEA</h1>
+            <div class="detail-actions">
+              <button class="ghost-btn" data-rename="cea">Renommer</button>
+            </div>
+          </div>
+          <p class="detail-sub">Nom initial : Maquette_CEA.xkt · Lot Architecture</p>
+
+          <p class="section-title">Statut</p>
+          <span class="status-chip green">Convertie XKT</span>
+
+          <p class="section-title">Poids</p>
+          <p class="detail-sub">27 Mo (IFC) → 8,6 Mo (XKT)</p>
+        </div>
+
+        <div class="maquette-detail" data-maquette-detail="global-hospital" data-project="hospital-xkt" hidden>
+          <h1 class="detail-title">Vue d'ensemble</h1>
+          <p class="detail-sub">Telle que la charge le Viewer pour tous les acteurs du projet.</p>
+        </div>
+
+        <div class="maquette-detail" data-maquette-detail="hospital-archi" data-project="hospital-xkt" hidden>
+          <div class="detail-head">
+            <h1 class="detail-title" data-name-target="hospital-archi">Architecture</h1>
+            <div class="detail-actions">
+              <button class="ghost-btn" data-rename="hospital-archi">Renommer</button>
+            </div>
+          </div>
+          <p class="detail-sub">Nom initial : architecture.xkt · Lot Architecture</p>
+
+          <p class="section-title">Statut</p>
+          <span class="status-chip green">Convertie XKT</span>
+
+          <p class="section-title">Poids</p>
+          <p class="detail-sub">81 Mo (IFC) → 26 Mo (XKT)</p>
+        </div>
+
+        <div class="maquette-detail" data-maquette-detail="hospital-meca" data-project="hospital-xkt" hidden>
+          <div class="detail-head">
+            <h1 class="detail-title" data-name-target="hospital-meca">Mechanical (CVC)</h1>
+            <div class="detail-actions">
+              <button class="ghost-btn" data-rename="hospital-meca">Renommer</button>
+            </div>
+          </div>
+          <p class="detail-sub">Nom initial : mechanical.xkt · Lot CVC</p>
+
+          <p class="section-title">Statut</p>
+          <span class="status-chip green">Convertie XKT</span>
+
+          <p class="section-title">Poids</p>
+          <p class="detail-sub">73 Mo (IFC) → 20 Mo (XKT)</p>
+        </div>
+
+        <!-- Apercu 3D partage (14/09) : un seul viewer xeokit reutilise pour
+             toutes les maquettes/la vue d'ensemble, contenu recharge au clic
+             sur une ligne plutot qu'une instance par maquette (evite de
+             multiplier les contextes WebGL sur une seule page). Bouton
+             "vue de depart" visible seulement sur les entrees "Vue
+             d'ensemble" : c'est cette vue combinee, pas une maquette isolee,
+             qui correspond a ce que chargent reellement les autres profils. -->
+        <div class="mini-viewer-wrap">
+          <canvas id="miniViewerCanvas" class="mini-viewer-canvas"></canvas>
+          <div class="mini-viewer-actions">
+            <button class="ghost-btn" id="miniViewerSaveBtn" hidden>Définir comme vue de départ pour tous les acteurs</button>
+            <button class="ghost-btn" id="miniViewerSaveMaquetteBtn" hidden>Enregistrer le point de vue de cette maquette</button>
+            <button class="ghost-btn" id="miniViewerUseGlobalBtn" hidden>Reprendre la vue globale du chantier</button>
+            <span class="mini-viewer-saved-hint" id="miniViewerSavedHint" hidden>Vue enregistrée.</span>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <script type="module">
+    import { Viewer, XKTLoaderPlugin } from "https://cdn.jsdelivr.net/npm/@xeokit/xeokit-sdk@2.6.114/dist/xeokit-sdk.es.js";
+
+    // Apercu 3D (14/09) : un seul viewer xeokit partage pour toutes les
+    // maquettes + les 2 "Vue d'ensemble" (un par projet), contenu recharge a
+    // chaque selection plutot qu'une instance par ligne (un seul contexte
+    // WebGL en plus de celui de l'app principale, pas 6). Toutes les sources
+    // sont deja en .xkt (conversion faite le 14/09 pour Structure/Toiture,
+    // deja XKT pour CEA et WestRiverSide), donc XKTLoaderPlugin seul suffit,
+    // pas besoin de web-ifc ici.
+    // Meme ratio largeur/hauteur que le vrai canvas du Viewer (14/09,
+    // precision demandee : la version reduite ici doit rester
+    // proportionnellement identique, pas juste "large" au hasard, pour que
+    // la vue composee corresponde exactement une fois ouverte dans #viewer).
+    // Calcule depuis la fenetre reelle de l'app (meme origine, iframe) moins
+    // le panneau lateral fixe (300px, cf .side-panel) et la navbar (52px) ;
+    // ratio 16/9 en repli si l'acces cross-frame est impossible (ouverture
+    // du fichier hors iframe).
+    (function setMiniViewerRatio() {
+      var ratio = 16 / 9;
+      try {
+        var parentWin = window.parent !== window ? window.parent : window;
+        var viewerWidth = parentWin.innerWidth - 300;
+        var viewerHeight = parentWin.innerHeight - 52;
+        if (viewerWidth > 0 && viewerHeight > 0) ratio = viewerWidth / viewerHeight;
+      } catch (e) {
+        // Acces cross-origin refuse, on garde le ratio par defaut.
+      }
+      document.getElementById("miniViewerCanvas").style.aspectRatio = String(ratio);
+    })();
+
+    var miniViewer = new Viewer({ canvasId: "miniViewerCanvas", transparent: false });
+    miniViewer.scene.canvas.backgroundColor = [0.05, 0.07, 0.09];
+    var miniXktLoader = new XKTLoaderPlugin(miniViewer);
+
+    // Aperçu Admin en XKT (ports depuis IES le 16/09) : Projet_structure.xkt/
+    // Toit_Metal_2.xkt sont des copies converties dediees a ce mini-viewer
+    // (le Viewer principal d'Ouvra sert les .ifc bruts pour ces 2 maquettes,
+    // choix assume du 04/09, cf commentaire MAQUETTES dans src/main.js).
+    var MAQUETTE_SOURCES = {
+      structure: ["/models/Projet_structure.xkt"],
+      toiture: ["/models/Toit_Metal_2.xkt"],
+      cea: ["/models/Maquette_CEA.xkt"],
+      "hospital-archi": ["/models/hospital/architecture.xkt"],
+      "hospital-meca": ["/models/hospital/mechanical.xkt"],
+      "global-demo": ["/models/Projet_structure.xkt", "/models/Toit_Metal_2.xkt", "/models/Maquette_CEA.xkt"],
+      "global-hospital": ["/models/hospital/architecture.xkt", "/models/hospital/mechanical.xkt"]
+    };
+    // Seules les 2 entrees "Vue d'ensemble" peuvent definir la vue de depart :
+    // c'est cette vue combinee, jamais une maquette isolee, que charge
+    // reellement loadProject() dans l'app principale pour tous les profils.
+    var GLOBAL_PROJECT_KEYS = { "global-demo": "demo", "global-hospital": "hospital-xkt" };
+    // Projet de chaque entree (maquette isolee ou vue d'ensemble), pour
+    // recuperer la bonne vue de depart enregistree meme sur une maquette
+    // individuelle (14/09, demande explicite : un lot doit s'ouvrir sur le
+    // meme point de vue que la vue d'ensemble du projet, pas un cadrage
+    // auto different par maquette).
+    var MAQUETTE_PROJECT = {
+      structure: "demo",
+      toiture: "demo",
+      cea: "demo",
+      "hospital-archi": "hospital-xkt",
+      "hospital-meca": "hospital-xkt",
+      "global-demo": "demo",
+      "global-hospital": "hospital-xkt"
+    };
+    var DEFAULT_CAMERA_STORAGE_PREFIX = "chantier-default-camera-";
+    // Point de vue propre a UNE maquette individuelle (14/09, demande
+    // explicite : la vue de depart globale du projet peut mal cadrer un lot
+    // precis, ex. la toiture metallique peu visible depuis le point de vue
+    // d'ensemble). Distinct de chantier-default-camera-* : reste local a
+    // l'aperçu Admin, jamais lu par l'app principale.
+    var MAQUETTE_CAMERA_STORAGE_PREFIX = "admin-maquette-camera-";
+
+    function getSavedCameraState(projectKey) {
+      try {
+        var raw = localStorage.getItem(DEFAULT_CAMERA_STORAGE_PREFIX + projectKey);
+        if (raw) return JSON.parse(raw);
+      } catch (e) {
+        // localStorage indisponible ou valeur corrompue, pas de vue enregistree.
+      }
+      return null;
+    }
+
+    function getSavedMaquetteCameraState(id) {
+      try {
+        var raw = localStorage.getItem(MAQUETTE_CAMERA_STORAGE_PREFIX + id);
+        if (raw) return JSON.parse(raw);
+      } catch (e) {
+        // localStorage indisponible ou valeur corrompue, pas de vue enregistree.
+      }
+      return null;
+    }
+
+    var miniViewerSaveBtn = document.getElementById("miniViewerSaveBtn");
+    var miniViewerSaveMaquetteBtn = document.getElementById("miniViewerSaveMaquetteBtn");
+    var miniViewerUseGlobalBtn = document.getElementById("miniViewerUseGlobalBtn");
+    var miniViewerSavedHint = document.getElementById("miniViewerSavedHint");
+    var currentMiniViewerId = null;
+
+    function clearMiniViewer() {
+      Object.keys(miniViewer.scene.models).forEach(function (id) {
+        miniViewer.scene.models[id].destroy();
+      });
+    }
+
+    function loadMiniViewer(id) {
+      currentMiniViewerId = id;
+      miniViewerSavedHint.hidden = true;
+      var isGlobal = id in GLOBAL_PROJECT_KEYS;
+      miniViewerSaveBtn.hidden = !isGlobal;
+      miniViewerSaveMaquetteBtn.hidden = isGlobal;
+      miniViewerUseGlobalBtn.hidden = isGlobal;
+      clearMiniViewer();
+      var sources = MAQUETTE_SOURCES[id] || [];
+      var loadedCount = 0;
+      sources.forEach(function (src, i) {
+        var model = miniXktLoader.load({ id: id + "-" + i, src: src, edges: true });
+        model.on("loaded", function () {
+          loadedCount++;
+          if (loadedCount === sources.length) {
+            // Priorite : point de vue propre a cette maquette > vue de
+            // depart du projet > cadrage automatique sur sa boite englobante.
+            var saved = isGlobal ? null : getSavedMaquetteCameraState(id);
+            if (!saved) saved = getSavedCameraState(MAQUETTE_PROJECT[id]);
+            if (saved) {
+              miniViewer.cameraFlight.flyTo({ eye: saved.eye, look: saved.look, up: saved.up, duration: 0 });
+            } else {
+              miniViewer.cameraFlight.flyTo({ aabb: miniViewer.scene.getAABB(), duration: 0 });
+            }
+          }
+        });
+      });
+    }
+
+    miniViewerSaveBtn.addEventListener("click", function () {
+      var projectKey = GLOBAL_PROJECT_KEYS[currentMiniViewerId];
+      if (!projectKey) return;
+      var cam = miniViewer.camera;
+      var state = { eye: cam.eye.slice(), look: cam.look.slice(), up: cam.up.slice() };
+      try {
+        localStorage.setItem(DEFAULT_CAMERA_STORAGE_PREFIX + projectKey, JSON.stringify(state));
+        miniViewerSavedHint.hidden = false;
+      } catch (e) {
+        window.alert("Stockage local indisponible, la vue de depart n'a pas pu etre enregistree.");
+      }
+    });
+
+    miniViewerSaveMaquetteBtn.addEventListener("click", function () {
+      if (!currentMiniViewerId || currentMiniViewerId in GLOBAL_PROJECT_KEYS) return;
+      var cam = miniViewer.camera;
+      var state = { eye: cam.eye.slice(), look: cam.look.slice(), up: cam.up.slice() };
+      try {
+        localStorage.setItem(MAQUETTE_CAMERA_STORAGE_PREFIX + currentMiniViewerId, JSON.stringify(state));
+        miniViewerSavedHint.hidden = false;
+      } catch (e) {
+        window.alert("Stockage local indisponible, le point de vue n'a pas pu etre enregistre.");
+      }
+    });
+
+    miniViewerUseGlobalBtn.addEventListener("click", function () {
+      if (!currentMiniViewerId || currentMiniViewerId in GLOBAL_PROJECT_KEYS) return;
+      var saved = getSavedCameraState(MAQUETTE_PROJECT[currentMiniViewerId]);
+      if (!saved) {
+        window.alert("Aucune vue de départ n'a encore été enregistrée pour ce projet (cf \"Projet Global\").");
+        return;
+      }
+      miniViewer.cameraFlight.flyTo({ eye: saved.eye, look: saved.look, up: saved.up, duration: 0.5 });
+    });
+
+    var groupRows = Array.prototype.slice.call(document.querySelectorAll(".group-row"));
+    var groupDetails = Array.prototype.slice.call(document.querySelectorAll(".group-detail"));
+    groupRows.forEach(function (row) {
+      row.addEventListener("click", function () {
+        groupRows.forEach(function (r) { r.classList.remove("active"); });
+        row.classList.add("active");
+        var target = row.dataset.group;
+        groupDetails.forEach(function (d) { d.hidden = d.dataset.groupDetail !== target; });
+      });
+    });
+
+    // Renommage des maquettes (14/09) : le nom initial (fichier source) reste
+    // toujours visible et fixe dans le detail ("Nom initial : ..."), seul le
+    // nom affiche (liste + titre du detail) est modifiable, pour donner un
+    // intitule plus clair aux utilisateurs sans perdre la tracabilite du
+    // fichier d'origine. Persistance locale (localStorage) comme le reste de
+    // l'etat de l'app (chantier-persona, chantier-active-view...), pas de
+    // backend reel a ce stade.
+    // Noms par defaut alignes sur les labels reellement utilises dans le
+    // Viewer (PROJECTS dans src/main.js), pas sur le nom de fichier : le nom
+    // affiche doit etre celui deja connu des utilisateurs de l'app.
+    var MAQUETTE_DEFAULT_NAMES = {
+      structure: "Maquette STR",
+      toiture: "Maquette TOITURE",
+      cea: "Maquette CEA",
+      "hospital-archi": "Architecture",
+      "hospital-meca": "Mechanical (CVC)"
+    };
+    var MAQUETTE_NAME_STORAGE_KEY = "admin-maquette-display-names";
+    var maquetteDisplayNames = {};
+    try {
+      maquetteDisplayNames = JSON.parse(localStorage.getItem(MAQUETTE_NAME_STORAGE_KEY) || "{}");
+    } catch (e) {
+      maquetteDisplayNames = {};
+    }
+
+    function getMaquetteDisplayName(id) {
+      return maquetteDisplayNames[id] || MAQUETTE_DEFAULT_NAMES[id] || id;
+    }
+
+    function renderMaquetteNames() {
+      // .maquette-row-global ("Projet Global"/"Vue d'ensemble") exclues :
+      // pas de bouton Renommer sur ces entrees, jamais dans
+      // MAQUETTE_DEFAULT_NAMES, sinon le fallback "|| id" les ecrasait avec
+      // l'id brut ("global-demo") a chaque appel.
+      document.querySelectorAll(".maquette-row:not(.maquette-row-global)").forEach(function (row) {
+        var nameEl = row.querySelector(".maquette-name");
+        if (nameEl) nameEl.textContent = getMaquetteDisplayName(row.dataset.maquette);
+      });
+      document.querySelectorAll("[data-name-target]").forEach(function (el) {
+        el.textContent = getMaquetteDisplayName(el.dataset.nameTarget);
+      });
+    }
+    renderMaquetteNames();
+
+    document.querySelectorAll("[data-rename]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var id = btn.dataset.rename;
+        var current = getMaquetteDisplayName(id);
+        var next = window.prompt("Nom affiché pour cette maquette :", current);
+        if (next === null) return;
+        next = next.trim();
+        if (!next) return;
+        maquetteDisplayNames[id] = next;
+        try {
+          localStorage.setItem(MAQUETTE_NAME_STORAGE_KEY, JSON.stringify(maquetteDisplayNames));
+        } catch (e) {
+          // localStorage indisponible, pas bloquant pour la session en cours.
+        }
+        renderMaquetteNames();
+      });
+    });
+
+    var maquetteRows = Array.prototype.slice.call(document.querySelectorAll(".maquette-row"));
+    var maquetteDetails = Array.prototype.slice.call(document.querySelectorAll(".maquette-detail"));
+    maquetteRows.forEach(function (row) {
+      row.addEventListener("click", function () {
+        maquetteRows.forEach(function (r) { r.classList.remove("active"); });
+        row.classList.add("active");
+        var target = row.dataset.maquette;
+        maquetteDetails.forEach(function (d) { d.hidden = d.dataset.maquetteDetail !== target; });
+        loadMiniViewer(target);
+      });
+    });
+
+    // Ne montrer que les maquettes du projet actuellement charge dans l'app
+    // (Demo POC / WestRiverSide), passe en query string par adminFrame.src
+    // (cf navLinks click handler dans main.js). Sans parametre (ouverture
+    // directe du fichier hors iframe), tout reste visible par defaut.
+    var currentProject = new URLSearchParams(window.location.search).get("project");
+    if (currentProject) {
+      var firstVisibleRow = null;
+      maquetteRows.forEach(function (row) {
+        var visible = row.dataset.project === currentProject;
+        row.hidden = !visible;
+        if (visible && !firstVisibleRow) firstVisibleRow = row;
+      });
+      maquetteDetails.forEach(function (d) {
+        if (d.dataset.project !== currentProject) d.hidden = true;
+      });
+      if (firstVisibleRow && !firstVisibleRow.classList.contains("active")) {
+        firstVisibleRow.click();
+      } else if (firstVisibleRow) {
+        loadMiniViewer(firstVisibleRow.dataset.maquette);
+      }
+    } else {
+      // Ouverture directe du fichier hors iframe (pas de query string) :
+      // initialise l'apercu sur la ligne active par defaut (structure).
+      loadMiniViewer("structure");
+    }
+
+    var tabBtns = Array.prototype.slice.call(document.querySelectorAll(".tab-btn"));
+    var tabPanels = Array.prototype.slice.call(document.querySelectorAll("[data-tab-panel]"));
+    tabBtns.forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        tabBtns.forEach(function (b) { b.classList.remove("active"); });
+        btn.classList.add("active");
+        var target = btn.dataset.tab;
+        tabPanels.forEach(function (p) { p.hidden = p.dataset.tabPanel !== target; });
+      });
+    });
+
+    Array.prototype.slice.call(document.querySelectorAll(".scope-chip")).forEach(function (chip) {
+      chip.addEventListener("click", function () { chip.classList.toggle("on"); });
+    });
+  </script>
+</body>
+</html>

@@ -40,6 +40,7 @@ const downloadModalOk = document.getElementById("downloadModalOk");
 const navLinks = Array.from(document.querySelectorAll(".nav-link"));
 const navbarLinksEl = document.getElementById("navbarLinks");
 const navbarEl = document.getElementById("navbar");
+const adminFrame = document.getElementById("adminFrame");
 const personaSelect = document.getElementById("personaSelect");
 const activateProfilesBtn = document.getElementById("activateProfilesBtn");
 const profilsActivateBtn = document.getElementById("profilsActivateBtn");
@@ -536,6 +537,14 @@ navLinks.forEach((link) => {
       applyVisibility();
       viewer.cameraFlight.flyTo(initialCameraState || DEFAULT_CAMERA_STATE);
     }
+    // Admin (porte depuis IES le 16/09) : la liste des maquettes ne doit
+    // montrer que celles du projet actuellement charge, jamais les 2
+    // melangees. Le mockup est un iframe statique, donc le projet lui est
+    // passe en query string ; src reaffecte a chaque clic pour refleter le
+    // projet courant.
+    if (link.dataset.view === "admin") {
+      adminFrame.src = "/personas/admin-groupes.html?project=" + encodeURIComponent(projectSelect.value);
+    }
     navbarLinksEl.classList.remove("open");
   });
 });
@@ -607,6 +616,13 @@ if (validViews.includes(hashView)) {
 }
 if (savedView !== "landing") {
   activateView(savedView);
+  // adminFrame.src n'est normalement fixe que dans le handler de clic des
+  // nav-links (cf plus haut) : une restauration directe au rechargement
+  // (pas de clic) le laissait vide, page blanche dans l'onglet Admin apres
+  // F5 (porte depuis IES le 16/09).
+  if (savedView === "admin") {
+    adminFrame.src = "/personas/admin-groupes.html?project=" + encodeURIComponent(projectSelect.value);
+  }
 }
 
 // Cles de projet (portees depuis IES le 16/09, declarees ici plutot qu'a
@@ -730,7 +746,9 @@ const PERSONA_INTRO_CONTENT = {
     qui: "Pilote la coordination transverse du projet, interface entre les corps de métier.",
     fonctionnalites: [
       { titre: "Maquette 3D complète", desc: "Explorer librement la maquette 3D complète du projet." },
-      { titre: "Collisions et discussions", desc: "Suivre toutes les collisions détectées et tous les fils de discussion." }
+      { titre: "Collisions et discussions", desc: "Suivre toutes les collisions détectées et tous les fils de discussion." },
+      { titre: "Administration des droits", desc: "Gérer les groupes, les entreprises et leur périmètre de lots/bâtiments visibles." },
+      { titre: "Gestion des maquettes", desc: "Renommer chaque maquette pour plus de clarté et définir la vue de départ utilisée par tous les acteurs du projet." }
     ],
     approfondissement: "Avec le Responsable Synthèse, c'est le seul profil qui garde Collision/Discussions toujours visibles, pour pouvoir arbitrer sur l'ensemble du projet.",
     lien: "Coordonne tous les autres profils autour d'une même maquette : c'est lui qui garantit que chaque métier retrouve une information fiable et à jour sur l'avancement réel du projet."
@@ -2744,15 +2762,48 @@ IfcAPI.SetWasmPath("/wasm/");
 let ifcLoader = null;
 let xktLoader = null;
 
-// Fallback sur DEFAULT_CAMERA_STATE/HOSPITAL_CAMERA_STATE (portee depuis
-// IES le 16/09, valeurs trouvees a la main via le log camera console) selon
-// le projet charge. Pas de vue calee pour un projet qui n'en aurait pas
-// (aucun ici, les 2 projets d'Ouvra en ont une) : retourne null, le point
-// d'appel cadrerait alors sur la boite englobante reelle des maquettes.
+// Vue de depart definissable par le BIM Manager (porte depuis IES le 16/09,
+// cf ecran Admin > Maquettes > "Vue d'ensemble") : ecrit dans le meme
+// localStorage que l'app (meme origine, l'ecran Admin tourne dans un iframe
+// sur ce domaine), cle scopee par projet pour ne jamais melanger les 2
+// projets. Fallback sur DEFAULT_CAMERA_STATE/HOSPITAL_CAMERA_STATE (valeurs
+// trouvees a la main via le log camera console) si rien n'a ete enregistre.
 function getDefaultCameraState(projectKey) {
+  try {
+    const stored = localStorage.getItem("chantier-default-camera-" + projectKey);
+    if (stored) return JSON.parse(stored);
+  } catch (e) {
+    // localStorage indisponible ou valeur corrompue, on retombe sur le defaut.
+  }
   if (projectKey === HOSPITAL_PROJECT_KEY) return HOSPITAL_CAMERA_STATE;
   if (projectKey === DEMO_PROJECT_KEY) return DEFAULT_CAMERA_STATE;
   return null;
+}
+
+// Renommage d'une maquette depuis Admin > Maquettes (porte depuis IES le
+// 16/09) : ids differents cote Admin (structure/toiture/cea/hospital-archi/
+// hospital-meca) et cote PROJECTS ci-dessus (archi/toit/cea/hosp-arch/
+// hosp-mep), d'ou cette table de correspondance plutot qu'un id partage
+// (aurait force a toucher tout le reste du code qui depend deja des ids
+// PROJECTS existants).
+const ADMIN_MAQUETTE_ID_MAP = {
+  archi: "structure",
+  toit: "toiture",
+  cea: "cea",
+  "hosp-arch": "hospital-archi",
+  "hosp-mep": "hospital-meca"
+};
+
+function getAdminDisplayLabel(maquetteId, fallbackLabel) {
+  const adminId = ADMIN_MAQUETTE_ID_MAP[maquetteId];
+  if (!adminId) return fallbackLabel;
+  try {
+    const names = JSON.parse(localStorage.getItem("admin-maquette-display-names") || "{}");
+    if (names[adminId]) return names[adminId];
+  } catch (e) {
+    // localStorage indisponible ou valeur corrompue, on garde le label par defaut.
+  }
+  return fallbackLabel;
 }
 
 // Selecteur de projet/maquette (porte depuis IES le 16/09) : remplace
@@ -2764,7 +2815,11 @@ function loadProject(projectKey) {
     if (maquette.model) maquette.model.destroy();
   });
   MAQUETTES.length = 0;
-  PROJECTS[projectKey].forEach((m) => MAQUETTES.push(Object.assign({}, m)));
+  PROJECTS[projectKey].forEach((m) => {
+    const maquette = Object.assign({}, m);
+    maquette.label = getAdminDisplayLabel(maquette.id, maquette.label);
+    MAQUETTES.push(maquette);
+  });
 
   niveauxState.length = 0;
   // renderNiveaux() sort tot si la maquette source des niveaux n'est pas
@@ -2850,4 +2905,18 @@ projectSelect.addEventListener("change", () => {
   if (!ifcLoader) return;
   loadProject(projectSelect.value);
   applyPersona(personaSelect.value, false);
+});
+
+// Renommage en direct (porte depuis IES le 16/09) : l'ecran Admin tourne
+// dans un iframe de meme origine, l'evenement "storage" se declenche donc
+// bien ici des qu'il ecrit dans localStorage, sans recharger la page (qui
+// remettrait a zero la camera/le point de vue en cours et tout le reste de
+// la session).
+window.addEventListener("storage", (e) => {
+  if (e.key !== "admin-maquette-display-names") return;
+  MAQUETTES.forEach((maquette) => {
+    maquette.label = getAdminDisplayLabel(maquette.id, maquette.label);
+  });
+  renderMaquetteRows(maquettesList, MAQUETTES);
+  renderMaquetteRows(collisionMaquettesList, MAQUETTES);
 });

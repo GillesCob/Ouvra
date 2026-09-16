@@ -25,6 +25,7 @@
         <button type="button" class="nav-link" data-view="collision" data-persona="presentation-globale bim-manager synthese be">Collision</button>
         <button type="button" class="nav-link" data-view="discussions" data-persona="presentation-globale bim-manager synthese be">Discussions</button>
         <button type="button" class="nav-link" data-view="projeteur" data-persona="projeteur">Todo</button>
+        <button type="button" class="nav-link" data-view="admin" data-persona="bim-manager">Admin</button>
       </nav>
       <select id="projectSelect" aria-label="Changer de projet/maquette" title="Changer de projet/maquette">
         <option value="demo">Démo POC</option>
@@ -289,6 +290,17 @@
           <p class="info-empty" id="projeteurThreadsEmpty" hidden>Aucune instruction pour l'instant.</p>
           <ul class="info-list" id="projeteurThreadsList"></ul>
         </div>
+      </div>
+
+      <!-- Admin (porte depuis IES le 16/09) : gestion des groupes/entreprises
+           et des lots/batiments visibles, reserve au profil BIM Manager
+           (data-persona sur le nav-link). Mockup autonome (donnees en dur,
+           aucune persistance reelle sauf le renommage de maquette et la vue
+           de depart, qui ecrivent dans le meme localStorage que l'app
+           principale, meme origine), meme mecanisme que les autres vues
+           persona (iframe statique). -->
+      <div id="view-admin" class="view" hidden>
+        <iframe id="adminFrame" title="Administration des droits"></iframe>
       </div>
 
       <!-- Ecran de presentation persona (porte depuis IES le 16/09) : affiche

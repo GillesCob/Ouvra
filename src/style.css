@@ -1188,6 +1188,11 @@ html, body {
 #projeteurListPane { flex: 1; padding: 24px; overflow-y: auto; }
 #projeteurListPane h2 { margin: 0 0 16px; font-size: 16px; }
 
+/* Admin (porte depuis IES le 16/09) : iframe plein cadre, meme mecanisme que
+   #syntheseFrame cote IES (non porte ici, page absente d'Ouvra). */
+#view-admin { flex-direction: column; }
+#adminFrame { flex: 1; width: 100%; height: 100%; border: none; display: block; }
+
 #discussionsDetailPane {
   flex: 1;
   min-height: 0;
