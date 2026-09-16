@@ -1868,20 +1868,229 @@ function clashCenter(clash) {
   });
 }
 
+// Distance de cadrage (portee depuis IES le 16/09, corrige un signalement de
+// Gilles : la distance fixe de 2,2m laissait un espace vide excessif autour
+// des 2 elements en conflit, ou au contraire les rognait, selon leur taille
+// reelle) : utilisee par flyToClash pour determiner le rayon de recherche
+// des elements voisins candidats a l'occlusion. Basee sur la diagonale du
+// PLUS PETIT des 2 elements ("voir le plus petit element en entier", sinon
+// un grand element type dalle imposait un recul excessif meme quand seul le
+// petit element interessait la vue), avec un plancher a 2m pour ne pas
+// zoomer a l'exces sur un tout petit element (boulon, platine).
+function clashFrameDistance(clash) {
+  const [idA, idB] = clash.entityIds;
+  const aabbA = viewer.scene.getAABB([idA]);
+  const aabbB = viewer.scene.getAABB([idB]);
+  const diagonalA = Math.hypot(aabbA[3] - aabbA[0], aabbA[4] - aabbA[1], aabbA[5] - aabbA[2]);
+  const diagonalB = Math.hypot(aabbB[3] - aabbB[0], aabbB[4] - aabbB[1], aabbB[5] - aabbB[2]);
+  const smallerDiagonal = Math.min(diagonalA, diagonalB);
+  return Math.max(2, smallerDiagonal * 1.3);
+}
+
+// Intersection segment/AABB, methode des "slabs" (portee depuis IES le
+// 16/09) : origin + dir avec dir = target - origin, teste si le segment
+// [0,1] traverse la boite. Cote CPU, aucun appel GPU (contrairement au
+// picking souris du viewer) : reste rapide meme appele des centaines de
+// fois par ouverture de clash.
+function segmentIntersectsAabb(origin, dir, aabb) {
+  let tmin = 0;
+  let tmax = 1;
+  for (let i = 0; i < 3; i++) {
+    const o = origin[i];
+    const d = dir[i];
+    const min = aabb[i];
+    const max = aabb[i + 3];
+    if (Math.abs(d) < 1e-9) {
+      if (o < min || o > max) return false;
+      continue;
+    }
+    let t1 = (min - o) / d;
+    let t2 = (max - o) / d;
+    if (t1 > t2) { const tmp = t1; t1 = t2; t2 = tmp; }
+    tmin = Math.max(tmin, t1);
+    tmax = Math.min(tmax, t2);
+    if (tmin > tmax) return false;
+  }
+  return true;
+}
+
+function vecCross(a, b) {
+  return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+}
+
+function vecDot(a, b) {
+  return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+}
+
+// Base camera (avant/droite/haut) a partir de la direction camera->centre
+// (portee depuis IES le 16/09) : necessaire pour projeter les coins de
+// l'element sur les 2 axes ecran et savoir combien de recul est reellement
+// necessaire dans CETTE direction precise (cf requiredDistanceForAabb).
+function cameraBasisFromDir(dirUnit) {
+  const forward = [-dirUnit[0], -dirUnit[1], -dirUnit[2]];
+  let right = vecCross(forward, [0, 1, 0]);
+  const rightLen = Math.hypot(right[0], right[1], right[2]);
+  right = rightLen > 1e-6 ? right.map((v) => v / rightLen) : [1, 0, 0];
+  const up = vecCross(right, forward);
+  return { forward, right, up };
+}
+
+// Marge de securite sous le FOV reel de la camera (portee depuis IES le
+// 16/09) : la camera par defaut de xeokit a un FOV de 60deg (demi-angle
+// 30deg), on vise un demi-angle plus etroit (25deg) pour garder de la marge
+// (bord de canvas, panneaux UI, coins arrondis d'un element non
+// parfaitement aligne) plutot que de coller au strict necessaire et
+// risquer de rogner un coin.
+const CLASH_HALF_FOV_TAN = Math.tan(25 * Math.PI / 180);
+const CLASH_FRAME_MARGIN = 1.15;
+
+// Distance de recul necessaire pour que TOUT l'element (ses 8 coins d'AABB)
+// tienne dans le cadre en regardant depuis la direction dirUnit (portee
+// depuis IES le 16/09, corrige un signalement avec capture d'ecran : une
+// poutre longue depassait du cadre a gauche/droite malgre une distance
+// suffisante "en moyenne", car l'ancienne formule ignorait l'orientation
+// reelle de l'element par rapport a la camera). Projette chaque coin sur
+// les axes droite/haut de la camera : garantit une vue complete quelle que
+// soit l'orientation de l'element, pas juste une approximation isotrope.
+function requiredDistanceForAabb(aabb, center, dirUnit) {
+  const { right, up } = cameraBasisFromDir(dirUnit);
+  let rightExtent = 0;
+  let upExtent = 0;
+  for (let i = 0; i < 8; i++) {
+    const corner = [
+      i & 1 ? aabb[3] : aabb[0],
+      i & 2 ? aabb[4] : aabb[1],
+      i & 4 ? aabb[5] : aabb[2]
+    ];
+    const offset = [corner[0] - center[0], corner[1] - center[1], corner[2] - center[2]];
+    rightExtent = Math.max(rightExtent, Math.abs(vecDot(offset, right)));
+    upExtent = Math.max(upExtent, Math.abs(vecDot(offset, up)));
+  }
+  return Math.max(2, (Math.max(rightExtent, upExtent) / CLASH_HALF_FOV_TAN) * CLASH_FRAME_MARGIN);
+}
+
+function aabbNearPoint(aabb, point, margin) {
+  return point[0] >= aabb[0] - margin && point[0] <= aabb[3] + margin &&
+    point[1] >= aabb[1] - margin && point[1] <= aabb[4] + margin &&
+    point[2] >= aabb[2] - margin && point[2] <= aabb[5] + margin;
+}
+
+// Angle de camera qui minimise les elements entre la camera et le clash
+// (portee depuis IES le 16/09) : teste plusieurs angles candidats autour du
+// point de contact, compte pour chacun combien d'elements locaux (deja
+// filtres par clashFrameDistance, jamais le modele entier) sont traverses
+// en ligne droite vers le point de contact et les centres des 2 elements
+// colores, garde l'angle qui en traverse le moins. Chaque candidat calcule
+// sa PROPRE distance via requiredDistanceForAabb, garantissant que le plus
+// petit des 2 elements tient entierement dans le cadre quel que soit
+// l'angle finalement retenu. Simple test rayon/AABB, pas de picking GPU :
+// reste de l'ordre de la milliseconde meme avec des dizaines de
+// combinaisons angle/hauteur.
+const CLASH_ANGLE_CANDIDATES = 12;
+// Hauteurs testees en plus de l'azimut, en degres d'elevation (portee depuis
+// IES le 16/09) : sur un grand element plat comme une dalle, une seule
+// hauteur fixe pouvait garder la camera quasiment a plat contre la surface.
+// Un angle plus eleve donne une vue en 3/4 plus lisible. Inclut des
+// elevations NEGATIVES (camera en dessous) : quand le plus grand element
+// (ex. une dalle) est au-dessus du plus petit (ex. une poutre), toute
+// camera positionnee au-dessus le masque quel que soit l'azimut. Regarder
+// par en dessous permet de trouver un angle reellement degage.
+const CLASH_ELEVATION_CANDIDATES_DEG = [30, 15, -15, -30];
+
+function pickBestClashView(clash, center, nearbyAabbs) {
+  const [idA, idB] = clash.entityIds;
+  const aabbA = viewer.scene.getAABB([idA]);
+  const aabbB = viewer.scene.getAABB([idB]);
+  const diagonalA = Math.hypot(aabbA[3] - aabbA[0], aabbA[4] - aabbA[1], aabbA[5] - aabbA[2]);
+  const diagonalB = Math.hypot(aabbB[3] - aabbB[0], aabbB[4] - aabbB[1], aabbB[5] - aabbB[2]);
+  // Cadrage garanti sur le PLUS PETIT des 2 elements ("je veux voir le plus
+  // petit element en entier").
+  const smallerAabb = diagonalA <= diagonalB ? aabbA : aabbB;
+  const largerAabb = diagonalA <= diagonalB ? aabbB : aabbA;
+  const smallerCentroid = [
+    (smallerAabb[0] + smallerAabb[3]) / 2,
+    (smallerAabb[1] + smallerAabb[4]) / 2,
+    (smallerAabb[2] + smallerAabb[5]) / 2
+  ];
+  const targets = [
+    center,
+    [(aabbA[0] + aabbA[3]) / 2, (aabbA[1] + aabbA[4]) / 2, (aabbA[2] + aabbA[5]) / 2],
+    [(aabbB[0] + aabbB[3]) / 2, (aabbB[1] + aabbB[4]) / 2, (aabbB[2] + aabbB[5]) / 2]
+  ];
+
+  let best = null;
+  for (const elevationDeg of CLASH_ELEVATION_CANDIDATES_DEG) {
+    const elevRad = elevationDeg * Math.PI / 180;
+    for (let i = 0; i < CLASH_ANGLE_CANDIDATES; i++) {
+      const azRad = ((360 / CLASH_ANGLE_CANDIDATES) * i) * Math.PI / 180;
+      const dirUnit = [
+        Math.cos(elevRad) * Math.sin(azRad),
+        Math.sin(elevRad),
+        Math.cos(elevRad) * Math.cos(azRad)
+      ];
+      const dist = requiredDistanceForAabb(smallerAabb, center, dirUnit);
+      const eye = [
+        center[0] + dirUnit[0] * dist,
+        center[1] + dirUnit[1] * dist,
+        center[2] + dirUnit[2] * dist
+      ];
+      let count = 0;
+      // Camera embarquee dans l'un des 2 elements du clash eux-memes
+      // (corrige un signalement avec capture d'ecran : l'algo choisissait
+      // parfois un angle ou la camera se retrouvait a l'interieur de la
+      // dalle, ecran rempli de rouge, l'autre element jamais visible).
+      // idA/idB etaient exclus des "nearbyAabbs" testes (ce sont les
+      // elements colores eux-memes, pas des occultants), donc rien ne
+      // penalisait ce cas. Penalite lourde plutot qu'un filtre : garde
+      // toujours un meilleur candidat meme dans un cas extreme.
+      if (aabbNearPoint(aabbA, eye, 0) || aabbNearPoint(aabbB, eye, 0)) count += 1000;
+      // Le plus GRAND des 2 elements cache le plus petit (corrige un
+      // signalement avec l'exemple concret d'un clash ou l'element rouge,
+      // plus grand, se retrouvait devant le vert, plus petit, qui
+      // disparaissait derriere). idA/idB sont exclus des "nearbyAabbs"
+      // testes plus bas (ce sont les 2 elements colores eux-memes, pas des
+      // occultants au sens gris/transparence), donc rien ne penalisait un
+      // angle ou le grand masque le petit. Test dedie : segment de la
+      // camera vers le centre du plus petit element, contre l'AABB du plus
+      // grand.
+      const dirToSmaller = [smallerCentroid[0] - eye[0], smallerCentroid[1] - eye[1], smallerCentroid[2] - eye[2]];
+      if (segmentIntersectsAabb(eye, dirToSmaller, largerAabb)) count += 500;
+      for (const target of targets) {
+        const dir = [target[0] - eye[0], target[1] - eye[1], target[2] - eye[2]];
+        for (const aabb of nearbyAabbs) {
+          if (segmentIntersectsAabb(eye, dir, aabb)) count++;
+        }
+      }
+      if (!best || count < best.count) {
+        best = { eye, count };
+      }
+    }
+  }
+  return best.eye;
+}
+
+// Cadrage occlusion-aware (portee depuis IES le 16/09, remplace l'ancienne
+// distance fixe de 2,2m + angle manuel "clash.angle") : plutot qu'une vue
+// generique identique pour tous les clashs (trop large sur un petit
+// element, trop serree sur un grand, avec un angle choisi au hasard qui
+// pouvait cacher l'un des 2 elements derriere l'autre), calcule la distance
+// et l'angle qui montrent exactement ce qui est necessaire aux 2 elements
+// en conflit, sans espace vide excessif autour.
 function flyToClash(clash) {
   const center = clashCenter(clash);
-  // Distance fixe et courte (unites du modele = metres) plutot qu'un calcul
-  // base sur la taille des elements : un poteau/une poutre peut etre long,
-  // mais on veut un plan rapproche sur le point de croisement, pas sur
-  // l'element entier.
-  const dist = 2.2;
-  const rad = (clash.angle || 0) * Math.PI / 180;
+  // Elements locaux candidats a l'occlusion : ne teste l'occlusion que sur
+  // ce qui peut vraiment se trouver pres du clash, jamais le modele entier.
+  // Rayon de recherche large (x3) car chaque angle candidat peut demander
+  // plus de recul que cette estimation initiale (element long mal aligne
+  // avec le premier angle teste, cf requiredDistanceForAabb).
+  const searchRadius = clashFrameDistance(clash) * 3;
+  const [idA, idB] = clash.entityIds;
+  const nearbyIds = viewer.scene.objectIds.filter((id) => id !== idA && id !== idB);
+  const nearbyAabbs = nearbyIds
+    .map((id) => viewer.scene.getAABB([id]))
+    .filter((aabb) => aabbNearPoint(aabb, center, searchRadius));
 
-  const eye = [
-    center[0] + Math.sin(rad) * dist,
-    center[1] + dist * 0.3,
-    center[2] + Math.cos(rad) * dist
-  ];
+  const eye = pickBestClashView(clash, center, nearbyAabbs);
 
   viewer.cameraFlight.flyTo({ eye, look: center, up: [0, 1, 0], duration: 1.2 });
 }
