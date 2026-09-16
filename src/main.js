@@ -2059,9 +2059,22 @@ IfcAPI.SetWasmPath("/wasm/");
 IfcAPI.Init().then(() => {
   const ifcLoader = new WebIFCLoaderPlugin(viewer, { WebIFC, IfcAPI });
   const xktLoader = new XKTLoaderPlugin(viewer);
-  let loadedCount = 0;
 
-  MAQUETTES.forEach((maquette) => {
+  // Chargement sequentiel (porte depuis IES le 16/09, meme correctif que le
+  // crash Safari observe en 4G sur Qiddiya) : un lot a la fois plutot que
+  // tous en parallele (ancien MAQUETTES.forEach + loadedCount). Evite le pic
+  // de bande passante/memoire des gros fichiers XKT telecharges+parses
+  // simultanement, et affiche chaque lot des qu'il est pret au lieu qu'ils
+  // arrivent presque tous en meme temps.
+  function loadNextMaquette(index) {
+    if (index >= MAQUETTES.length) {
+      loadingOverlay.classList.add("hidden");
+      viewer.cameraFlight.flyTo(DEFAULT_CAMERA_STATE);
+      initialCameraState = DEFAULT_CAMERA_STATE;
+      return;
+    }
+
+    const maquette = MAQUETTES[index];
     const model = maquette.format === "xkt"
       ? xktLoader.load({ id: maquette.id, src: maquette.src, edges: true })
       : ifcLoader.load({ id: maquette.id, src: maquette.src, excludeTypes: ["IfcSpace"], edges: true });
@@ -2077,23 +2090,22 @@ IfcAPI.Init().then(() => {
       (maquetteCountEls.get(maquette.id) || []).forEach((el) => { el.textContent = countText; });
 
       // Rappelee a chaque chargement (pas seulement celui de la CEA, source
-      // des niveaux) : les 3 maquettes chargent en parallele, l'ordre reel
-      // d'arrivee n'est pas garanti. renderNiveaux() sort tout de suite si
-      // la CEA n'est pas encore prete, et se re-declenche correctement des
-      // qu'elle l'est, meme si une autre maquette a fini avant.
+      // des niveaux) : l'ordre d'arrivee suit desormais l'ordre de
+      // MAQUETTES, mais renderNiveaux() sort tout de suite si la CEA n'est
+      // pas encore prete, et se re-declenche correctement des qu'elle l'est.
       renderNiveaux();
-
-      loadedCount++;
-      if (loadedCount === MAQUETTES.length) {
-        loadingOverlay.classList.add("hidden");
-        viewer.cameraFlight.flyTo(DEFAULT_CAMERA_STATE);
-        initialCameraState = DEFAULT_CAMERA_STATE;
-      }
+      loadNextMaquette(index + 1);
     });
 
+    // Chaine stoppee sur erreur (comme avant : loadedCount n'atteignait
+    // jamais MAQUETTES.length, l'overlay restait bloque en erreur) : les
+    // lots suivants ne se chargent pas, plutot que de continuer sur un etat
+    // partiellement rate sans le signaler clairement.
     model.on("error", (msg) => {
       loadingOverlay.classList.add("error");
       loadingOverlay.textContent = "Erreur de chargement (" + maquette.label + ") : " + msg;
     });
-  });
+  }
+
+  loadNextMaquette(0);
 });
