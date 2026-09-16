@@ -120,7 +120,6 @@ const discussionsBackBtn = document.getElementById("discussionsBackBtn");
 const threadSnapshotPane = document.getElementById("threadSnapshotPane");
 const threadViewerPane = document.getElementById("threadViewerPane");
 const threadToggleBtns = Array.from(document.querySelectorAll("#threadVisualToggle .thread-toggle-btn"));
-const discussionsFilterBtns = Array.from(document.querySelectorAll("#discussionsTypeFilter .thread-toggle-btn"));
 const newDiscussionBtn = document.getElementById("newDiscussionBtn");
 const newDiscussionModalOverlay = document.getElementById("newDiscussionModalOverlay");
 const newDiscussionClose = document.getElementById("newDiscussionClose");
@@ -1354,16 +1353,15 @@ function threadType(thread) {
   return CLASHES.includes(thread) ? "collision" : "discussion";
 }
 
-let discussionsTypeFilterValue = "tout";
-
 function renderDiscussionsPage() {
-  // Les collisions (detection automatique IfcClash, aucun auteur/tag humain
-  // sur les entrees reelles) passent toujours, contrairement aux fils de
-  // discussion classiques qui restent filtres sur "mes fils" (cree par moi
-  // ou j'y suis tagge).
-  const threads = [...CLASHES, ...DISCUSSIONS]
-    .filter((t) => threadType(t) === "collision" || t.auteur === CURRENT_USER || (t.tagged || []).includes(CURRENT_USER))
-    .filter((t) => discussionsTypeFilterValue === "tout" || threadType(t) === discussionsTypeFilterValue);
+  // Clashs retires de cette liste (portee depuis IES le 16/09, demande
+  // explicite de Gilles) : seules les vraies discussions y apparaissent,
+  // CLASHES volontairement absent de la concatenation ci-dessous (restent
+  // consultables via l'onglet Collision). Filtre Tout/Collision/Discussion
+  // retire au meme moment (plus d'utilite sans les clashs ici).
+  // "mes fils" (cree par moi ou j'y suis tagge) reste le seul filtre.
+  const threads = [...DISCUSSIONS]
+    .filter((t) => threadType(t) === "collision" || t.auteur === CURRENT_USER || (t.tagged || []).includes(CURRENT_USER));
 
   discussionsThreadsList.innerHTML = "";
   discussionsThreadsEmpty.hidden = threads.length > 0;
@@ -1534,14 +1532,6 @@ function openThreadDetail(thread, returnView) {
     history.replaceState(null, "", "#discussions/" + thread.id);
   }
 }
-
-discussionsFilterBtns.forEach((btn) => {
-  btn.addEventListener("click", () => {
-    discussionsFilterBtns.forEach((b) => b.classList.toggle("active", b === btn));
-    discussionsTypeFilterValue = btn.dataset.filter;
-    renderDiscussionsPage();
-  });
-});
 
 discussionsBackBtn.addEventListener("click", () => {
   discussionsDetailPane.hidden = true;

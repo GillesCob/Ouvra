@@ -1135,7 +1135,6 @@ html, body {
 #discussionsListPane[hidden] { display: none; }
 #discussionsListPane h2 { margin: 0 0 4px; font-size: 16px; }
 #discussionsFilterNote { margin-bottom: 10px; }
-#discussionsTypeFilter { display: flex; gap: 6px; margin-bottom: 16px; }
 
 .thread-item {
   display: flex;
