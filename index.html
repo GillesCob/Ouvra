@@ -121,6 +121,20 @@
             <button id="coupeInvertBtn" title="Inverser le côté coupé" hidden>Inverser la coupe</button>
             <button id="coupeToggleVisibilityBtn" title="Afficher ou masquer le rectangle/poignées du plan de coupe" hidden>Masquer le plan de coupe</button>
           </div>
+
+          <!-- Vitesse de navigation tactile (portee depuis IES le 16/09) :
+               mobile uniquement (cf media query), reglage manuel de la
+               sensibilite pan/rotation/zoom au doigt, moins reactive par
+               defaut sur mobile que le comportement natif xeokit (concu
+               pour souris). Valeur en % du reglage par defaut du SDK,
+               applique dans main.js (viewer.cameraControl). -->
+          <div id="cameraSpeedControl">
+            <button type="button" id="cameraSpeedToggle" aria-label="Régler la vitesse de navigation tactile" title="Vitesse tactile">Vitesse</button>
+            <div id="cameraSpeedPanel" hidden>
+              <input type="range" id="cameraSpeedSlider" aria-label="Vitesse de navigation tactile" min="10" max="100" step="5" value="30">
+              <span id="cameraSpeedValue">30 %</span>
+            </div>
+          </div>
         </div>
 
         <!-- Hors de #viewerWrap expres (05/09) : ce conteneur est deplace tel

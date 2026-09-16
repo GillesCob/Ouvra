@@ -210,6 +210,52 @@ html, body {
 #viewerToolbar button:hover, #coupeToolbar button:hover { border-color: var(--accent); }
 #viewerToolbar button.active, #coupeToolbar button.active { border-color: var(--accent); color: var(--accent); }
 
+/* Vitesse de navigation tactile (portee depuis IES le 16/09) : mobile
+   uniquement, cache par defaut sur desktop (regle de base) ou la souris n'a
+   pas ce probleme. Bas-gauche, seul coin libre (toolbar en haut-droite,
+   coupe et infos en bas-droite). Replie en un simple bouton par defaut : le
+   slider ne s'affiche qu'au clic sur ce bouton, #cameraSpeedPanel[hidden]
+   geree en JS comme les autres tiroirs de l'app. */
+#cameraSpeedControl {
+  display: none;
+  position: absolute;
+  left: 16px;
+  bottom: 16px;
+  align-items: center;
+  gap: 8px;
+  z-index: 4;
+}
+#cameraSpeedToggle {
+  flex-shrink: 0;
+  padding: 7px 12px;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 12.5px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+#cameraSpeedToggle:hover, #cameraSpeedToggle.active { border-color: var(--accent); color: var(--accent); }
+#cameraSpeedPanel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 160px;
+  padding: 7px 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 11px;
+  color: var(--muted);
+}
+#cameraSpeedPanel[hidden] { display: none; }
+#cameraSpeedSlider { width: 70px; }
+#cameraSpeedValue { flex-shrink: 0; min-width: 32px; text-align: right; }
+@media (max-width: 768px) {
+  #cameraSpeedControl { display: flex; }
+}
+
 .side-panel {
   flex: 0 0 300px;
   border-left: 1px solid var(--border);

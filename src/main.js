@@ -14,6 +14,11 @@ const coupeToolbar = document.getElementById("coupeToolbar");
 const coupeBtn = document.getElementById("coupeBtn");
 const coupeToggleVisibilityBtn = document.getElementById("coupeToggleVisibilityBtn");
 const coupeInvertBtn = document.getElementById("coupeInvertBtn");
+const cameraSpeedControl = document.getElementById("cameraSpeedControl");
+const cameraSpeedToggle = document.getElementById("cameraSpeedToggle");
+const cameraSpeedPanel = document.getElementById("cameraSpeedPanel");
+const cameraSpeedSlider = document.getElementById("cameraSpeedSlider");
+const cameraSpeedValue = document.getElementById("cameraSpeedValue");
 const ficheDocs = document.getElementById("ficheDocs");
 const ficheSheet = document.getElementById("ficheSheet");
 const ficheSheetClose = document.getElementById("ficheSheetClose");
@@ -602,6 +607,67 @@ const viewer = new Viewer({
 window.viewer = viewer;
 
 viewer.scene.canvas.backgroundColor = [0.051, 0.055, 0.063];
+
+// Vitesse de navigation tactile (portee depuis IES le 16/09) : reglages par
+// defaut du SDK (dragRotationRate/touchPanRate/touchDollyRate) concus pour
+// la souris, un mouvement au doigt sur mobile envoie la camera beaucoup
+// trop loin. Slider #cameraSpeedControl (mobile uniquement, cf CSS) en % de
+// ces valeurs par defaut, persiste en localStorage. Depart a 30% sur mobile
+// (premiere visite, pas encore de preference enregistree) ; desktop reste a
+// 100% (slider invisible, jamais modifie) puisque la souris n'a pas ce
+// probleme.
+const CAMERA_TOUCH_DEFAULTS = { dragRotationRate: 360.0, touchPanRate: 1.0, touchDollyRate: 0.2 };
+function applyCameraTouchSpeed(percent) {
+  const factor = percent / 100;
+  viewer.cameraControl.dragRotationRate = CAMERA_TOUCH_DEFAULTS.dragRotationRate * factor;
+  viewer.cameraControl.touchPanRate = CAMERA_TOUCH_DEFAULTS.touchPanRate * factor;
+  viewer.cameraControl.touchDollyRate = CAMERA_TOUCH_DEFAULTS.touchDollyRate * factor;
+}
+let savedCameraSpeed = null;
+try {
+  savedCameraSpeed = localStorage.getItem("chantier-camera-touch-speed");
+} catch (e) {
+  // localStorage indisponible, pas bloquant.
+}
+const initialCameraSpeed = savedCameraSpeed
+  ? parseInt(savedCameraSpeed, 10)
+  : (window.matchMedia("(max-width: 768px)").matches ? 30 : 100);
+cameraSpeedSlider.value = String(initialCameraSpeed);
+cameraSpeedValue.textContent = initialCameraSpeed + " %";
+applyCameraTouchSpeed(initialCameraSpeed);
+cameraSpeedSlider.addEventListener("input", () => {
+  const value = parseInt(cameraSpeedSlider.value, 10);
+  applyCameraTouchSpeed(value);
+  cameraSpeedValue.textContent = value + " %";
+  try {
+    localStorage.setItem("chantier-camera-touch-speed", String(value));
+  } catch (e) {
+    // localStorage indisponible, pas bloquant.
+  }
+});
+
+// Replie par defaut : seul le bouton "Vitesse" reste visible tant qu'on n'a
+// pas clique dessus, meme reflexe que les autres tiroirs de l'app (backdrop
+// en moins, pas necessaire pour un petit panneau qui ne masque pas le reste
+// du contenu).
+cameraSpeedToggle.addEventListener("click", () => {
+  const willOpen = cameraSpeedPanel.hidden;
+  cameraSpeedPanel.hidden = !willOpen;
+  cameraSpeedToggle.classList.toggle("active", willOpen);
+});
+
+// "pointerdown" plutot que "click" (bug deja corrige cote IES avant ce
+// portage, cf commit 71a9cc2) : CameraControl de xeokit appelle
+// event.preventDefault() sur "touchstart" du canvas
+// (TouchPanRotateAndDollyHandler), ce qui supprime le clic synthetique que
+// le navigateur genere normalement apres un tap. Un listener "click" ne se
+// declencherait donc jamais en touchant la maquette pour fermer ce panneau.
+document.addEventListener("pointerdown", (e) => {
+  if (cameraSpeedPanel.hidden) return;
+  if (cameraSpeedControl.contains(e.target)) return;
+  cameraSpeedPanel.hidden = true;
+  cameraSpeedToggle.classList.remove("active");
+});
 
 const sectionPlanes = new SectionPlanesPlugin(viewer);
 
