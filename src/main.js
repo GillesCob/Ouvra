@@ -38,6 +38,12 @@ const downloadModalOverlay = document.getElementById("downloadModalOverlay");
 const downloadModalOk = document.getElementById("downloadModalOk");
 const navLinks = Array.from(document.querySelectorAll(".nav-link"));
 const navbarLinksEl = document.getElementById("navbarLinks");
+const personaSelect = document.getElementById("personaSelect");
+const activateProfilesBtn = document.getElementById("activateProfilesBtn");
+const profilsActivateBtn = document.getElementById("profilsActivateBtn");
+const personaBanner = document.getElementById("personaBanner");
+const personaIntroContent = document.getElementById("personaIntroContent");
+const personaIntroContinueBtn = document.getElementById("personaIntroContinueBtn");
 const navbarToggle = document.getElementById("navbarToggle");
 const presentationSectionsList = document.getElementById("presentationSectionsList");
 const presentationContent = document.getElementById("presentationContent");
@@ -446,14 +452,25 @@ function activateView(viewName) {
     viewViewer.insertBefore(viewerWrap, infoPanel);
     window.dispatchEvent(new Event("resize"));
     recenterTarget = null;
-    newDiscussionBtn.hidden = false;
-    coupeBtn.hidden = false;
-    coupeToolbar.hidden = false;
+    // Externe sans compte : consultation seule, jamais d'action d'edition
+    // meme en revenant sur Viewer via la navbar (pas seulement via le
+    // selecteur de profil, cf applyPersona).
+    const isExterne = personaSelect.value === "externe";
+    newDiscussionBtn.hidden = isExterne;
+    coupeBtn.hidden = isExterne;
+    coupeToolbar.hidden = isExterne;
   }
-  try {
-    localStorage.setItem("chantier-active-view", viewName);
-  } catch (e) {
-    // localStorage indisponible (navigation privee...), pas bloquant.
+  // "persona-intro" jamais persiste : c'est un ecran intermediaire dont le
+  // contenu n'est reconstruit qu'au clic sur le selecteur de profil (cf
+  // buildPersonaIntroContent). Le persister ferait revenir sur un ecran vide
+  // au rechargement de page ; on garde alors la derniere vue interactive
+  // reelle deja enregistree.
+  if (viewName !== "persona-intro") {
+    try {
+      localStorage.setItem("chantier-active-view", viewName);
+    } catch (e) {
+      // localStorage indisponible (navigation privee...), pas bloquant.
+    }
   }
 
   // replaceState plutot que location.hash= pour ne pas empiler une entree
@@ -574,6 +591,238 @@ if (validViews.includes(hashView)) {
 if (savedView !== "landing") {
   activateView(savedView);
 }
+
+// Profils fictifs (portes depuis IES le 16/09) : simule le fait que
+// l'appli s'adapte au metier/a l'entreprise, en changeant simplement quels
+// onglets sont accessibles et vers quelle vue on atterrit par defaut. Pas
+// de vraie auth/role dans ce POC : chaque profil reste juste un filtre
+// d'affichage sur les nav-links existants (data-persona, liste separee par
+// espace, cf index.html).
+const PERSONA_DEFAULT_VIEW = {
+  "presentation-globale": "landing",
+  "bim-manager": "viewer",
+  synthese: "discussions",
+  be: "discussions",
+  projeteur: "viewer",
+  externe: "viewer"
+};
+
+// Activer les profils (porte depuis IES le 16/09) : le dropdown
+// #personaSelect ne s'affiche en navbar qu'une fois "active" via l'ecran
+// d'explication (view-profils-intro, cf profilsActivateBtn plus bas). Avant
+// activation, seul le bouton #activateProfilesBtn est visible. Persiste
+// comme le reste (chantier-profiles-activated) pour ne pas redemander
+// l'activation a chaque rechargement.
+let profilesActivated = false;
+try {
+  profilesActivated = localStorage.getItem("chantier-profiles-activated") === "1";
+} catch (e) {
+  // localStorage indisponible, on reste desactive par defaut.
+}
+
+function updateProfilesActivationUI() {
+  activateProfilesBtn.hidden = profilesActivated;
+  personaSelect.hidden = !profilesActivated;
+}
+
+function applyPersona(persona, forceNav) {
+  updateProfilesActivationUI();
+
+  navLinks.forEach((link) => {
+    const personaAllowed = (link.dataset.persona || "").split(" ").includes(persona);
+    link.hidden = !personaAllowed;
+  });
+  personaBanner.hidden = persona !== "externe";
+  try {
+    localStorage.setItem("chantier-persona", persona);
+  } catch (e) {
+    // localStorage indisponible, pas bloquant.
+  }
+
+  const currentView = document.querySelector(".view:not([hidden])");
+  const currentViewName = currentView ? currentView.id.replace("view-", "") : null;
+  const currentViewAllowed = navLinks.some((l) => l.dataset.view === currentViewName && !l.hidden);
+  if (forceNav || !currentViewAllowed) {
+    activateView(PERSONA_DEFAULT_VIEW[persona]);
+  }
+
+  // Externe sans compte : consultation seule, aucune action d'edition
+  // (coupe, nouvelle discussion) meme sur l'onglet Viewer. Applique apres
+  // activateView() : sa branche "viewer" reaffiche ces boutons par defaut.
+  if (persona === "externe") {
+    coupeBtn.hidden = true;
+    coupeToolbar.hidden = true;
+    newDiscussionBtn.hidden = true;
+  }
+}
+
+// Ecran de presentation persona (porte depuis IES le 16/09) : affiche
+// systematiquement au changement de profil via le selecteur, avant
+// d'atterrir sur la vue interactive par defaut (PERSONA_DEFAULT_VIEW). But :
+// comprendre en un coup d'oeil qui a acces a cette vision de l'app, a quoi,
+// avec quelles fonctionnalites, sans avoir a explorer. Ne concerne pas
+// "presentation-globale" (a deja sa propre page #view-presentation).
+// Contenu redige a la main (qui/fonctionnalites/approfondissement/lien),
+// mais la liste des onglets accessibles n'est JAMAIS recopiee ici : elle
+// est recalculee dynamiquement depuis navLinks a chaque appel, pour ne
+// jamais diverger du vrai gating de applyPersona.
+//
+// Ecart assume par rapport a IES (16/09) : IES porte aussi une page
+// "Réunion de synthèse" et un onglet "Todo" (mecanisme d'instruction
+// Bureau d'etudes -> Projeteur), avec un bouton "+ Ajouter à la réunion de
+// synthèse" reserve au profil Responsable Synthese. Ouvra n'a pas ces
+// pages/donnees (specifiques au projet client d'IES) : seul le mecanisme de
+// profils lui-meme et le filtrage generique Collision/Discussions par
+// profil sont portes ici. Le profil Projeteur reste donc volontairement
+// restreint au seul onglet Viewer (pas de Todo dediee a lui proposer).
+const PERSONA_INTRO_CONTENT = {
+  "bim-manager": {
+    label: "BIM Manager",
+    qui: "Pilote la coordination transverse du projet, interface entre les corps de métier.",
+    fonctionnalites: [
+      { titre: "Maquette 3D complète", desc: "Explorer librement la maquette 3D complète du projet." },
+      { titre: "Collisions et discussions", desc: "Suivre toutes les collisions détectées et tous les fils de discussion." }
+    ],
+    approfondissement: "Avec le Responsable Synthèse, c'est le seul profil qui garde Collision/Discussions toujours visibles, pour pouvoir arbitrer sur l'ensemble du projet.",
+    lien: "Coordonne tous les autres profils autour d'une même maquette : c'est lui qui garantit que chaque métier retrouve une information fiable et à jour sur l'avancement réel du projet."
+  },
+  synthese: {
+    label: "Responsable Synthèse",
+    qui: "Anime le suivi de la coordination, fait le lien entre les points remontés et les décisions actées.",
+    fonctionnalites: [
+      { titre: "Suivi des fils", desc: "Suivi de l'état de tous les fils de discussion et collisions." }
+    ],
+    approfondissement: "Garde Collision/Discussions visibles au même titre que le BIM Manager, pour prioriser en amont ce qui doit être arbitré.",
+    lien: "Fait remonter, dans un cadre commun, ce que chaque métier identifie sur la maquette, pour transformer des remarques éparses en décisions actées et partagées par tous les acteurs du projet."
+  },
+  be: {
+    label: "Bureau d'études",
+    qui: "Instruit techniquement les points remontés, jusqu'à leur résolution sur la maquette.",
+    fonctionnalites: [
+      { titre: "Ouvrir un fil", desc: "Ouvrir n'importe quel fil (collision ou discussion classique) et y répondre." }
+    ],
+    approfondissement: "Accède aux mêmes onglets Collision/Discussions que le BIM Manager et le Responsable Synthèse, pour instruire directement les points qui le concernent.",
+    lien: "Traduit un point soulevé collectivement sur la maquette en réponse technique concrète, sans perdre le lien avec la discussion d'origine."
+  },
+  projeteur: {
+    label: "Projeteur",
+    qui: "Modélisateur qui corrige ou complète la maquette suite aux échanges remontés par le Bureau d'études.",
+    fonctionnalites: [
+      { titre: "Navigation dédiée", desc: "Naviguer et explorer la maquette 3D." }
+    ],
+    approfondissement: "Profil volontairement restreint au Viewer dans cette démonstration : pas d'accès à Collision/Discussions, pour rester concentré sur la modélisation.",
+    lien: "Intervient directement sur la maquette à partir des retours reçus, avec le même point de référence commun que les autres acteurs."
+  },
+  externe: {
+    label: "Externe sans compte",
+    qui: "Intervenant occasionnel (artisan, client...) sans compte, en consultation seule.",
+    fonctionnalites: [
+      { titre: "Navigation et consultation", desc: "Naviguer et consulter la maquette 3D." },
+      { titre: "Aucune édition", desc: "Aucune action d'édition possible (ni coupe, ni nouvelle discussion)." }
+    ],
+    approfondissement: "Pensé pour un lien transmis ponctuellement à quelqu'un qui n'a pas à apprendre l'outil, juste à regarder.",
+    lien: "Même sans compte ni droit d'édition, garde le même point d'entrée que tous les autres acteurs : la maquette, comme référence commune du projet."
+  }
+};
+
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// Construit et injecte le contenu de l'ecran de presentation pour un
+// persona donne. La liste des onglets accessibles est lue depuis navLinks
+// APRES le filtrage applique par applyPersona (link.hidden), jamais en dur.
+function buildPersonaIntroContent(persona) {
+  const data = PERSONA_INTRO_CONTENT[persona];
+  if (!data) return;
+
+  const accessibleTabs = navLinks
+    .filter((l) => !l.hidden)
+    .map((l) => `<li>${escapeHtml(l.textContent.trim())}</li>`)
+    .join("");
+
+  personaIntroContent.innerHTML = `
+    <p class="landing-part-eyebrow">Profil sélectionné</p>
+    <h2 id="personaIntroTitle">${escapeHtml(data.label)}</h2>
+    <p id="personaIntroWho">${escapeHtml(data.qui)}</p>
+
+    <div class="landing-part">
+      <p class="landing-part-eyebrow">À quoi ce profil a accès</p>
+      <ul class="info-list">${accessibleTabs}</ul>
+    </div>
+
+    <div class="landing-part">
+      <p class="landing-part-eyebrow">Fonctionnalités</p>
+      <div class="landing-part-grid">
+        ${data.fonctionnalites.map((f) => `
+          <div class="landing-part-card">
+            <h3>${escapeHtml(f.titre)}</h3>
+            <p>${escapeHtml(f.desc)}</p>
+          </div>
+        `).join("")}
+      </div>
+    </div>
+
+    <div class="landing-part">
+      <p class="landing-part-eyebrow">Ce qui distingue ce profil</p>
+      <p class="landing-part-lead">${escapeHtml(data.approfondissement)}</p>
+    </div>
+
+    <div class="landing-part">
+      <p class="landing-part-eyebrow">Son rôle autour de la maquette commune</p>
+      <p class="landing-part-lead">${escapeHtml(data.lien)}</p>
+    </div>
+  `;
+}
+
+personaIntroContinueBtn.addEventListener("click", () => {
+  activateView(PERSONA_DEFAULT_VIEW[personaSelect.value]);
+});
+
+let initialPersona = "presentation-globale";
+try {
+  initialPersona = localStorage.getItem("chantier-persona") || "presentation-globale";
+} catch (e) {
+  // localStorage indisponible, on reste sur "presentation-globale" par defaut.
+}
+personaSelect.value = initialPersona;
+applyPersona(initialPersona, false);
+
+// Activer les profils : plus de selecteur direct dans la navbar, ce bouton
+// mene vers l'ecran d'explication (view-profils-intro).
+activateProfilesBtn.addEventListener("click", () => activateView("profils-intro"));
+
+// Confirmation sur l'ecran d'explication : bascule definitivement (persiste)
+// le bouton pour le vrai #personaSelect en haut a droite de la navbar, puis
+// revient sur la vue par defaut du profil courant (presentation-globale par
+// defaut tant qu'aucun profil n'a ete choisi).
+profilsActivateBtn.addEventListener("click", () => {
+  profilesActivated = true;
+  try {
+    localStorage.setItem("chantier-profiles-activated", "1");
+  } catch (e) {
+    // localStorage indisponible, pas bloquant.
+  }
+  updateProfilesActivationUI();
+  activateView(PERSONA_DEFAULT_VIEW[personaSelect.value]);
+});
+
+personaSelect.addEventListener("change", () => {
+  const persona = personaSelect.value;
+  // Comportement navbar/vue par defaut inchange (gating des onglets, etc.).
+  applyPersona(persona, true);
+  // Ecran de presentation systematique sur un vrai changement de profil
+  // metier (pas "presentation-globale", qui a deja sa page Presentation et
+  // atterrit normalement sur "landing") : remplace la navigation directe
+  // faite juste au-dessus par applyPersona, l'utilisateur y accede via le
+  // bouton "Continuer" (cf personaIntroContinueBtn).
+  if (persona !== "presentation-globale") {
+    buildPersonaIntroContent(persona);
+    activateView("persona-intro");
+  }
+});
 
 // Donnees simulees : ce POC ne branche aucune GED reelle (cf CDC, un doc reste
 // un pointeur vers la GED du chantier, jamais une copie). Cles alignees sur les

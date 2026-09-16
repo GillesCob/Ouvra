@@ -20,12 +20,22 @@
       <button type="button" id="navbarBrand"><img src="/images/ouvra-icon.png" alt="" id="navbarBrandIcon">OUVRA</button>
       <button type="button" id="navbarToggle" aria-label="Ouvrir le menu">☰</button>
       <nav id="navbarLinks">
-        <button type="button" class="nav-link" data-view="presentation">Présentation</button>
-        <button type="button" class="nav-link" data-view="viewer">Viewer</button>
-        <button type="button" class="nav-link" data-view="collision">Collision</button>
-        <button type="button" class="nav-link" data-view="discussions">Discussions</button>
+        <button type="button" class="nav-link" data-view="presentation" data-persona="presentation-globale">Présentation</button>
+        <button type="button" class="nav-link" data-view="viewer" data-persona="presentation-globale bim-manager synthese be projeteur externe">Viewer</button>
+        <button type="button" class="nav-link" data-view="collision" data-persona="presentation-globale bim-manager synthese be">Collision</button>
+        <button type="button" class="nav-link" data-view="discussions" data-persona="presentation-globale bim-manager synthese be">Discussions</button>
       </nav>
+      <button type="button" id="activateProfilesBtn">Activer les profils</button>
+      <select id="personaSelect" aria-label="Changer de profil" hidden>
+        <option value="presentation-globale">Présentation outil global</option>
+        <option value="bim-manager">BIM Manager</option>
+        <option value="synthese">Responsable Synthèse</option>
+        <option value="be">Bureau d'études</option>
+        <option value="projeteur">Projeteur</option>
+        <option value="externe">Externe sans compte</option>
+      </select>
     </header>
+    <div id="personaBanner" hidden>Vue externe, sans connexion : consultation seule, aucune action d'édition.</div>
 
     <div id="appBody">
       <div id="view-landing" class="view">
@@ -256,6 +266,46 @@
               <div id="threadViewerPane" hidden></div>
             </div>
           </div>
+        </div>
+      </div>
+
+      <!-- Ecran de presentation persona (porte depuis IES le 16/09) : affiche
+           systematiquement a chaque changement de profil via le selecteur
+           (jamais au chargement de page), avant d'atterrir sur la vue
+           interactive par defaut du profil. Contenu de #personaIntroContent
+           construit dynamiquement en JS (buildPersonaIntroContent dans
+           main.js), jamais en dur ici : la liste des onglets accessibles doit
+           toujours refleter le vrai filtrage de applyPersona. -->
+      <div id="view-persona-intro" class="view" hidden>
+        <div id="personaIntroWrap">
+          <div id="personaIntroContent"></div>
+          <button type="button" id="personaIntroContinueBtn" class="landing-part-btn">Continuer</button>
+        </div>
+      </div>
+
+      <!-- Activer les profils (porte depuis IES le 16/09) : ecran d'explication
+           avant le vrai selecteur de profil, plutot que de montrer directement
+           les profils dans la navbar. Le #personaSelect deplace ici
+           (comportement/JS inchange, cf applyPersona/change listener dans
+           main.js), accessible via le bouton #activateProfilesBtn de la navbar. -->
+      <div id="view-profils-intro" class="view" hidden>
+        <div id="profilsIntroWrap">
+          <p class="landing-part-eyebrow">Fonctionnalité en réflexion</p>
+          <h2>Activer les profils</h2>
+          <p class="landing-part-lead">Ce qui relie un BIM Manager, un Bureau d'études, un Projeteur ou un Responsable Synthèse, c'est le projet : tous interviennent, à des moments différents et avec des besoins différents, autour d'un même élément commun, la maquette. Plutôt qu'un unique écran généraliste pour tout le monde, l'outil adapte l'expérience à chaque métier tout en gardant la maquette comme point de référence partagé.</p>
+          <p class="landing-part-lead">Concrètement, ce mécanisme permet de prévisualiser différentes visions de ce à quoi pourrait ressembler l'application selon le métier ou le lot d'un intervenant sur le chantier (BIM Manager, Bureau d'études, Projeteur, Responsable Synthèse, intervenant externe sans compte...). Chaque profil n'a pas accès aux mêmes onglets ni aux mêmes actions.</p>
+          <p class="landing-part-lead">À chaque changement de profil, une présentation succincte s'affiche d'abord pour rappeler qui est cet acteur, à quoi il a accès, ce qui le distingue des autres et son rôle autour de la maquette commune, avant d'atterrir sur sa vue par défaut.</p>
+
+          <div class="profils-disclaimer">
+            <p><strong>Fonctionnalité en cours de réflexion.</strong> Ce ne sont pour l'instant que des idées de profils et de répartition des accès, pas des décisions figées. Elles devront être construites en étroite collaboration avec vous, pour que les fonctionnalités mises en place répondent réellement à des besoins identifiés sur un projet concret.</p>
+          </div>
+
+          <div class="landing-part">
+            <p class="landing-part-eyebrow">Comment changer de profil</p>
+            <p class="landing-part-lead">Une fois activés, les profils sont accessibles à tout moment via le menu déroulant qui apparaît en haut à droite de la navbar, à la place de ce bouton.</p>
+          </div>
+
+          <button type="button" id="profilsActivateBtn" class="landing-part-btn">Activer les profils</button>
         </div>
       </div>
     </div>
