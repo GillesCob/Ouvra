@@ -97,6 +97,7 @@ const discussionsThreadsEmpty = document.getElementById("discussionsThreadsEmpty
 const discussionsListPane = document.getElementById("discussionsListPane");
 const discussionsDetailPane = document.getElementById("discussionsDetailPane");
 const collisionDiscussionTitle = document.getElementById("collisionDiscussionTitle");
+const collisionDiscussionToggle = document.getElementById("collisionDiscussionToggle");
 const discussionsBackBtn = document.getElementById("discussionsBackBtn");
 const threadSnapshotPane = document.getElementById("threadSnapshotPane");
 const threadViewerPane = document.getElementById("threadViewerPane");
@@ -1522,6 +1523,16 @@ function activateClash(clash) {
 // un clic affiche le titre complet, un reclic retronque.
 collisionDiscussionTitle.addEventListener("click", () => {
   collisionDiscussionTitle.classList.toggle("expanded");
+});
+
+// Reduire la discussion (portee depuis IES le 16/09, Collision et
+// Discussions partagent #collisionDiscussion) : ne reste que le bandeau
+// titre visible, pour laisser plus de place a la maquette 3D. Etat non
+// reinitialise entre 2 clashs/fils (persiste tant que la page n'est pas
+// rechargee) : parcourir plusieurs clashs avec le panneau reduit ne doit
+// pas le rouvrir a chaque clic.
+collisionDiscussionToggle.addEventListener("click", () => {
+  collisionDiscussion.classList.toggle("collapsed");
 });
 
 discussionReplyForm.addEventListener("submit", (e) => {

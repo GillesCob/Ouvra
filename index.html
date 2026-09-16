@@ -180,7 +180,10 @@
               <button type="button" id="collisionInfoPanelToggle" aria-label="Afficher les maquettes et collisions">☰ Infos</button>
             </div>
             <div id="collisionDiscussion" hidden>
-              <h3 id="collisionDiscussionTitle" title="Cliquer pour voir le titre complet">Discussion</h3>
+              <div id="collisionDiscussionHead">
+                <h3 id="collisionDiscussionTitle" title="Cliquer pour voir le titre complet">Discussion</h3>
+                <button type="button" id="collisionDiscussionToggle" aria-label="Réduire la discussion" title="Réduire/agrandir la discussion">▾</button>
+              </div>
               <ul id="discussionMessages"></ul>
               <form id="discussionReplyForm" hidden>
                 <textarea id="discussionReplyInput" placeholder="Répondre..." rows="2"></textarea>
