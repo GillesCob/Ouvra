@@ -38,6 +38,7 @@ const downloadModalOverlay = document.getElementById("downloadModalOverlay");
 const downloadModalOk = document.getElementById("downloadModalOk");
 const navLinks = Array.from(document.querySelectorAll(".nav-link"));
 const navbarLinksEl = document.getElementById("navbarLinks");
+const navbarEl = document.getElementById("navbar");
 const personaSelect = document.getElementById("personaSelect");
 const activateProfilesBtn = document.getElementById("activateProfilesBtn");
 const profilsActivateBtn = document.getElementById("profilsActivateBtn");
@@ -823,6 +824,33 @@ personaSelect.addEventListener("change", () => {
     activateView("persona-intro");
   }
 });
+
+// Profils dans le hamburger mobile (porte depuis IES le 16/09) :
+// #activateProfilesBtn/#personaSelect se battaient avec le bouton hamburger
+// dans le header sur petit ecran. Deplaces dans le tiroir #navbarLinks, a la
+// suite des onglets, uniquement sur mobile : purement une reparentation DOM
+// au changement de largeur, les listeners restent attaches aux memes
+// noeuds, rien a reconnecter. Desktop retrouve exactement son emplacement
+// d'origine dans #navbar (inchange).
+const navbarMobileQuery = window.matchMedia("(max-width: 768px)");
+function applyNavbarResponsiveLayout(isMobile) {
+  if (isMobile) {
+    navbarLinksEl.appendChild(activateProfilesBtn);
+    navbarLinksEl.appendChild(personaSelect);
+  } else {
+    navbarEl.appendChild(activateProfilesBtn);
+    navbarEl.appendChild(personaSelect);
+  }
+}
+applyNavbarResponsiveLayout(navbarMobileQuery.matches);
+navbarMobileQuery.addEventListener("change", (e) => applyNavbarResponsiveLayout(e.matches));
+
+// Choisir un profil (bouton d'activation ou select une fois active) referme
+// le tiroir mobile, meme reflexe que les nav-link : les 2 vivent desormais
+// dedans sur mobile, sans ca le tiroir resterait ouvert par-dessus la vue
+// qui vient de s'afficher.
+activateProfilesBtn.addEventListener("click", () => navbarLinksEl.classList.remove("open"));
+personaSelect.addEventListener("change", () => navbarLinksEl.classList.remove("open"));
 
 // Donnees simulees : ce POC ne branche aucune GED reelle (cf CDC, un doc reste
 // un pointeur vers la GED du chantier, jamais une copie). Cles alignees sur les

@@ -146,6 +146,25 @@ html, body {
   }
   #navbarLinks.open { display: flex; }
   .nav-link { width: 100%; text-align: left; padding: 10px 12px; }
+
+  /* Profils (portes depuis IES le 16/09) : #activateProfilesBtn/
+     #personaSelect sont deplaces ici en JS (cf applyNavbarResponsiveLayout
+     dans main.js), a la suite des onglets plutot que coinces dans le header
+     a cote du hamburger. Meme largeur/alignement que .nav-link, separateur
+     visuel pour marquer que ce ne sont pas des onglets comme les autres. */
+  #navbarLinks #activateProfilesBtn,
+  #navbarLinks #personaSelect {
+    width: 100%;
+    box-sizing: border-box;
+    text-align: left;
+    padding: 10px 12px;
+    margin-top: 4px;
+    margin-left: 0;
+    border: none;
+    border-top: 1px solid var(--border);
+    border-radius: 0;
+    background: none;
+  }
 }
 
 #appBody {
