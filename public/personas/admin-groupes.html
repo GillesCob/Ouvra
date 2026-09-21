@@ -120,31 +120,20 @@
       <div class="tab-panel" data-tab-panel="maquettes">
         <button class="new-group-btn">+ Importer une maquette</button>
 
-        <button class="maquette-row maquette-row-global" data-maquette="global-demo" data-project="demo">
+        <button class="maquette-row maquette-row-global" data-maquette="global-demo">
           <span class="maquette-name">Projet Global</span>
         </button>
-        <button class="maquette-row active" data-maquette="structure" data-project="demo">
+        <button class="maquette-row active" data-maquette="structure">
           <span class="maquette-name">Maquette STR</span>
           <span class="maquette-lot">Structure</span>
         </button>
-        <button class="maquette-row" data-maquette="toiture" data-project="demo">
+        <button class="maquette-row" data-maquette="toiture">
           <span class="maquette-name">Maquette TOITURE</span>
           <span class="maquette-lot">Charpente métallique</span>
         </button>
-        <button class="maquette-row" data-maquette="cea" data-project="demo">
+        <button class="maquette-row" data-maquette="cea">
           <span class="maquette-name">Maquette CEA</span>
           <span class="maquette-lot">Architecture</span>
-        </button>
-        <button class="maquette-row maquette-row-global" data-maquette="global-hospital" data-project="hospital-xkt">
-          <span class="maquette-name">Vue d'ensemble (toutes les maquettes)</span>
-        </button>
-        <button class="maquette-row" data-maquette="hospital-archi" data-project="hospital-xkt">
-          <span class="maquette-name">Architecture</span>
-          <span class="maquette-lot">Architecture</span>
-        </button>
-        <button class="maquette-row" data-maquette="hospital-meca" data-project="hospital-xkt">
-          <span class="maquette-name">Mechanical (CVC)</span>
-          <span class="maquette-lot">CVC</span>
         </button>
       </div>
     </div>
@@ -338,7 +327,7 @@
 
       <div class="detail-group" data-tab-panel="maquettes">
 
-        <div class="maquette-detail" data-maquette-detail="structure" data-project="demo">
+        <div class="maquette-detail" data-maquette-detail="structure">
           <div class="detail-head">
             <h1 class="detail-title" data-name-target="structure">Maquette STR</h1>
             <div class="detail-actions">
@@ -354,7 +343,7 @@
           <p class="detail-sub">2,6 Mo (IFC, servi tel quel dans le Viewer) → 2,5 Mo (XKT, aperçu ci-dessous uniquement)</p>
         </div>
 
-        <div class="maquette-detail" data-maquette-detail="toiture" data-project="demo" hidden>
+        <div class="maquette-detail" data-maquette-detail="toiture" hidden>
           <div class="detail-head">
             <h1 class="detail-title" data-name-target="toiture">Maquette TOITURE</h1>
             <div class="detail-actions">
@@ -370,12 +359,12 @@
           <p class="detail-sub">260 Ko (IFC, servi tel quel dans le Viewer) → 224 Ko (XKT, aperçu ci-dessous uniquement)</p>
         </div>
 
-        <div class="maquette-detail" data-maquette-detail="global-demo" data-project="demo" hidden>
+        <div class="maquette-detail" data-maquette-detail="global-demo" hidden>
           <h1 class="detail-title">Projet Global</h1>
           <p class="detail-sub">Telle que la charge le Viewer pour tous les acteurs du projet.</p>
         </div>
 
-        <div class="maquette-detail" data-maquette-detail="cea" data-project="demo" hidden>
+        <div class="maquette-detail" data-maquette-detail="cea" hidden>
           <div class="detail-head">
             <h1 class="detail-title" data-name-target="cea">Maquette CEA</h1>
             <div class="detail-actions">
@@ -389,43 +378,6 @@
 
           <p class="section-title">Poids</p>
           <p class="detail-sub">27 Mo (IFC) → 8,6 Mo (XKT)</p>
-        </div>
-
-        <div class="maquette-detail" data-maquette-detail="global-hospital" data-project="hospital-xkt" hidden>
-          <h1 class="detail-title">Vue d'ensemble</h1>
-          <p class="detail-sub">Telle que la charge le Viewer pour tous les acteurs du projet.</p>
-        </div>
-
-        <div class="maquette-detail" data-maquette-detail="hospital-archi" data-project="hospital-xkt" hidden>
-          <div class="detail-head">
-            <h1 class="detail-title" data-name-target="hospital-archi">Architecture</h1>
-            <div class="detail-actions">
-              <button class="ghost-btn" data-rename="hospital-archi">Renommer</button>
-            </div>
-          </div>
-          <p class="detail-sub">Nom initial : architecture.xkt · Lot Architecture</p>
-
-          <p class="section-title">Statut</p>
-          <span class="status-chip green">Convertie XKT</span>
-
-          <p class="section-title">Poids</p>
-          <p class="detail-sub">81 Mo (IFC) → 26 Mo (XKT)</p>
-        </div>
-
-        <div class="maquette-detail" data-maquette-detail="hospital-meca" data-project="hospital-xkt" hidden>
-          <div class="detail-head">
-            <h1 class="detail-title" data-name-target="hospital-meca">Mechanical (CVC)</h1>
-            <div class="detail-actions">
-              <button class="ghost-btn" data-rename="hospital-meca">Renommer</button>
-            </div>
-          </div>
-          <p class="detail-sub">Nom initial : mechanical.xkt · Lot CVC</p>
-
-          <p class="section-title">Statut</p>
-          <span class="status-chip green">Convertie XKT</span>
-
-          <p class="section-title">Poids</p>
-          <p class="detail-sub">73 Mo (IFC) → 20 Mo (XKT)</p>
         </div>
 
         <!-- Apercu 3D partage (14/09) : un seul viewer xeokit reutilise pour
@@ -454,12 +406,11 @@
     import { Viewer, XKTLoaderPlugin } from "https://cdn.jsdelivr.net/npm/@xeokit/xeokit-sdk@2.6.114/dist/xeokit-sdk.es.js";
 
     // Apercu 3D (14/09) : un seul viewer xeokit partage pour toutes les
-    // maquettes + les 2 "Vue d'ensemble" (un par projet), contenu recharge a
-    // chaque selection plutot qu'une instance par ligne (un seul contexte
-    // WebGL en plus de celui de l'app principale, pas 6). Toutes les sources
-    // sont deja en .xkt (conversion faite le 14/09 pour Structure/Toiture,
-    // deja XKT pour CEA et WestRiverSide), donc XKTLoaderPlugin seul suffit,
-    // pas besoin de web-ifc ici.
+    // maquettes + la "Vue d'ensemble", contenu recharge a chaque selection
+    // plutot qu'une instance par ligne (un seul contexte WebGL en plus de
+    // celui de l'app principale). Toutes les sources sont deja en .xkt
+    // (conversion faite le 14/09 pour Structure/Toiture, deja XKT pour CEA),
+    // donc XKTLoaderPlugin seul suffit, pas besoin de web-ifc ici.
     // Meme ratio largeur/hauteur que le vrai canvas du Viewer (14/09,
     // precision demandee : la version reduite ici doit rester
     // proportionnellement identique, pas juste "large" au hasard, pour que
@@ -493,15 +444,12 @@
       structure: ["/models/Projet_structure.xkt"],
       toiture: ["/models/Toit_Metal_2.xkt"],
       cea: ["/models/Maquette_CEA.xkt"],
-      "hospital-archi": ["/models/hospital/architecture.xkt"],
-      "hospital-meca": ["/models/hospital/mechanical.xkt"],
-      "global-demo": ["/models/Projet_structure.xkt", "/models/Toit_Metal_2.xkt", "/models/Maquette_CEA.xkt"],
-      "global-hospital": ["/models/hospital/architecture.xkt", "/models/hospital/mechanical.xkt"]
+      "global-demo": ["/models/Projet_structure.xkt", "/models/Toit_Metal_2.xkt", "/models/Maquette_CEA.xkt"]
     };
-    // Seules les 2 entrees "Vue d'ensemble" peuvent definir la vue de depart :
-    // c'est cette vue combinee, jamais une maquette isolee, que charge
-    // reellement loadProject() dans l'app principale pour tous les profils.
-    var GLOBAL_PROJECT_KEYS = { "global-demo": "demo", "global-hospital": "hospital-xkt" };
+    // Seule l'entree "Vue d'ensemble" peut definir la vue de depart : c'est
+    // cette vue combinee, jamais une maquette isolee, que charge reellement
+    // loadMaquettes() dans l'app principale pour tous les profils.
+    var GLOBAL_PROJECT_KEYS = { "global-demo": "demo" };
     // Projet de chaque entree (maquette isolee ou vue d'ensemble), pour
     // recuperer la bonne vue de depart enregistree meme sur une maquette
     // individuelle (14/09, demande explicite : un lot doit s'ouvrir sur le
@@ -511,10 +459,7 @@
       structure: "demo",
       toiture: "demo",
       cea: "demo",
-      "hospital-archi": "hospital-xkt",
-      "hospital-meca": "hospital-xkt",
-      "global-demo": "demo",
-      "global-hospital": "hospital-xkt"
+      "global-demo": "demo"
     };
     var DEFAULT_CAMERA_STORAGE_PREFIX = "chantier-default-camera-";
     // Point de vue propre a UNE maquette individuelle (14/09, demande
@@ -639,14 +584,12 @@
     // l'etat de l'app (chantier-persona, chantier-active-view...), pas de
     // backend reel a ce stade.
     // Noms par defaut alignes sur les labels reellement utilises dans le
-    // Viewer (PROJECTS dans src/main.js), pas sur le nom de fichier : le nom
-    // affiche doit etre celui deja connu des utilisateurs de l'app.
+    // Viewer (MAQUETTE_DEFS dans src/main.js), pas sur le nom de fichier :
+    // le nom affiche doit etre celui deja connu des utilisateurs de l'app.
     var MAQUETTE_DEFAULT_NAMES = {
       structure: "Maquette STR",
       toiture: "Maquette TOITURE",
-      cea: "Maquette CEA",
-      "hospital-archi": "Architecture",
-      "hospital-meca": "Mechanical (CVC)"
+      cea: "Maquette CEA"
     };
     var MAQUETTE_NAME_STORAGE_KEY = "admin-maquette-display-names";
     var maquetteDisplayNames = {};
@@ -705,31 +648,9 @@
       });
     });
 
-    // Ne montrer que les maquettes du projet actuellement charge dans l'app
-    // (Demo POC / WestRiverSide), passe en query string par adminFrame.src
-    // (cf navLinks click handler dans main.js). Sans parametre (ouverture
-    // directe du fichier hors iframe), tout reste visible par defaut.
-    var currentProject = new URLSearchParams(window.location.search).get("project");
-    if (currentProject) {
-      var firstVisibleRow = null;
-      maquetteRows.forEach(function (row) {
-        var visible = row.dataset.project === currentProject;
-        row.hidden = !visible;
-        if (visible && !firstVisibleRow) firstVisibleRow = row;
-      });
-      maquetteDetails.forEach(function (d) {
-        if (d.dataset.project !== currentProject) d.hidden = true;
-      });
-      if (firstVisibleRow && !firstVisibleRow.classList.contains("active")) {
-        firstVisibleRow.click();
-      } else if (firstVisibleRow) {
-        loadMiniViewer(firstVisibleRow.dataset.maquette);
-      }
-    } else {
-      // Ouverture directe du fichier hors iframe (pas de query string) :
-      // initialise l'apercu sur la ligne active par defaut (structure).
-      loadMiniViewer("structure");
-    }
+    // Ouvra ne gere qu'un seul projet : initialise l'apercu sur la ligne
+    // active par defaut (structure).
+    loadMiniViewer("structure");
 
     var tabBtns = Array.prototype.slice.call(document.querySelectorAll(".tab-btn"));
     var tabPanels = Array.prototype.slice.call(document.querySelectorAll("[data-tab-panel]"));

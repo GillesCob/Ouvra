@@ -27,10 +27,6 @@
         <button type="button" class="nav-link" data-view="projeteur" data-persona="projeteur">Todo</button>
         <button type="button" class="nav-link" data-view="admin" data-persona="bim-manager">Admin</button>
       </nav>
-      <select id="projectSelect" aria-label="Changer de projet/maquette" title="Changer de projet/maquette">
-        <option value="demo">Démo POC</option>
-        <option value="hospital-xkt">WestRiverSide Hospital</option>
-      </select>
       <button type="button" id="activateProfilesBtn">Activer les profils</button>
       <select id="personaSelect" aria-label="Changer de profil" hidden>
         <option value="presentation-globale">Présentation outil global</option>
@@ -295,7 +291,7 @@
            principale, meme origine), meme mecanisme que les autres vues
            persona (iframe statique). -->
       <div id="view-admin" class="view" hidden>
-        <iframe id="adminFrame" title="Administration des droits"></iframe>
+        <iframe id="adminFrame" src="/personas/admin-groupes.html" title="Administration des droits"></iframe>
       </div>
 
       <!-- Ecran de presentation persona (porte depuis IES le 16/09) : affiche

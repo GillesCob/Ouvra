@@ -70,25 +70,10 @@ html, body {
    fictifs (BIM Manager, Responsable Synthese, Bureau d'etudes, Projeteur,
    Externe sans compte) pour demontrer que l'appli s'adapte au metier,
    plutot qu'un select natif custom-stylise a la main (pas prioritaire pour
-   ce POC). margin-left:auto porte par #projectSelect (1er controle du
-   groupe, cf HTML et plus bas), pas repete ici. */
+   ce POC). margin-left:auto ici (1er controle du groupe droit de la
+   navbar, avec #activateProfilesBtn ci-dessous : un seul des deux est
+   visible a la fois) pousse le groupe a l'extremite droite du header. */
 #personaSelect {
-  font-family: inherit;
-  font-size: 12.5px;
-  font-weight: 600;
-  background: var(--bg);
-  color: var(--text);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 5px 8px;
-  cursor: pointer;
-}
-
-/* Selecteur de projet/maquette (porte depuis IES le 16/09) : dans la
-   navbar, avant les controles de profil. margin-left:auto ici (1er
-   controle du groupe droit de la navbar, cf HTML) pousse tout le groupe
-   (projet + profils) a l'extremite droite du header. */
-#projectSelect {
   margin-left: auto;
   font-family: inherit;
   font-size: 12.5px;
@@ -103,8 +88,10 @@ html, body {
 
 /* Bouton "Activer les profils" : remplace le selecteur direct dans la
    navbar. Le vrai #personaSelect vit desormais dans #view-profils-intro
-   tant qu'il n'est pas active. */
+   tant qu'il n'est pas active. margin-left:auto : cf #personaSelect
+   ci-dessus, un seul des deux est visible a la fois. */
 #activateProfilesBtn {
+  margin-left: auto;
   font-family: inherit;
   font-size: 12.5px;
   font-weight: 600;
@@ -178,19 +165,6 @@ html, body {
     border-top: 1px solid var(--border);
     border-radius: 0;
     background: none;
-  }
-
-  /* #projectSelect (porte depuis IES le 16/09) : une fois les profils
-     sortis du header, il reste seul avec la marque et le hamburger sur un
-     ecran etroit. Retreci + tronque plutot que de continuer a pousser/
-     masquer le hamburger. */
-  #projectSelect {
-    max-width: 130px;
-    font-size: 11px;
-    padding: 5px 6px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
 }
 

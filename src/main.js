@@ -8,7 +8,6 @@ const maquettesList = document.getElementById("maquettesList");
 const fichePlaceholder = document.getElementById("fichePlaceholder");
 const ficheContent = document.getElementById("ficheContent");
 const recenterBtn = document.getElementById("recenterBtn");
-const projectSelect = document.getElementById("projectSelect");
 const niveauxResetBtn = document.getElementById("niveauxResetBtn");
 const maquettesResetBtn = document.getElementById("maquettesResetBtn");
 const coupeToolbar = document.getElementById("coupeToolbar");
@@ -449,17 +448,6 @@ const DEFAULT_CAMERA_STATE = {
   up: [0.09263274774816085, 0.971702521543951, -0.21728640930751625]
 };
 
-// Vue de depart trouvee a la main par Gilles cote IES (cf log camera
-// console) pour la maquette WestRiverSide Hospital, reprise telle quelle
-// puisque ce sont les memes fichiers XKT (porte le 16/09). Meme mecanisme
-// que DEFAULT_CAMERA_STATE : reprise par "Recentrer" via initialCameraState,
-// posee au chargement du projet dans loadProject().
-const HOSPITAL_CAMERA_STATE = {
-  eye: [-2.7967908715118392, 213.746590826589, -18.16663837590921],
-  look: [16.417593652723575, 190.59284595235331, -48.73506981454827],
-  up: [0.28727404199819645, 0.8417831004071789, -0.45702826680949976]
-};
-
 function activateView(viewName) {
   navLinks.forEach((l) => l.classList.toggle("active", l.dataset.view === viewName));
   document.querySelectorAll(".view").forEach((view) => {
@@ -536,14 +524,6 @@ navLinks.forEach((link) => {
       applyVisibility();
       viewer.cameraFlight.flyTo(initialCameraState || DEFAULT_CAMERA_STATE);
     }
-    // Admin (porte depuis IES le 16/09) : la liste des maquettes ne doit
-    // montrer que celles du projet actuellement charge, jamais les 2
-    // melangees. Le mockup est un iframe statique, donc le projet lui est
-    // passe en query string ; src reaffecte a chaque clic pour refleter le
-    // projet courant.
-    if (link.dataset.view === "admin") {
-      adminFrame.src = "/personas/admin-groupes.html?project=" + encodeURIComponent(projectSelect.value);
-    }
     navbarLinksEl.classList.remove("open");
   });
 });
@@ -615,27 +595,13 @@ if (validViews.includes(hashView)) {
 }
 if (savedView !== "landing") {
   activateView(savedView);
-  // adminFrame.src n'est normalement fixe que dans le handler de clic des
-  // nav-links (cf plus haut) : une restauration directe au rechargement
-  // (pas de clic) le laissait vide, page blanche dans l'onglet Admin apres
-  // F5 (porte depuis IES le 16/09).
-  if (savedView === "admin") {
-    adminFrame.src = "/personas/admin-groupes.html?project=" + encodeURIComponent(projectSelect.value);
-  }
 }
 
-// Cles de projet (portees depuis IES le 16/09, declarees ici plutot qu'a
-// cote de PROJECTS plus bas dans le fichier : applyPersona() ci-dessous les
-// utilise des l'appel initial, avant que la declaration de PROJECTS ne
-// s'execute). DEMO_PROJECT_KEY reste l'option par defaut/premiere du
-// selecteur. Projet hopital (WestRiverSide Hospital, jeu de test public,
-// memes fichiers XKT que cote IES) : demontre la bascule entre plusieurs
-// projets, sans donnees de collision/discussion coherentes dessus, d'ou
-// HOSPITAL_VISIBLE_VIEWS qui masque Collision/Discussions/profils sur ce
-// projet uniquement (le projet demo garde son comportement normal).
+// Cle de projet (Ouvra ne gere qu'une seule maquette, celle en prod) :
+// utilisee pour scoper la vue de depart enregistrable depuis Admin dans
+// localStorage (cf getDefaultCameraState plus bas), meme convention que
+// cote Admin (admin-groupes.html, GLOBAL_PROJECT_KEYS).
 const DEMO_PROJECT_KEY = "demo";
-const HOSPITAL_PROJECT_KEY = "hospital-xkt";
-const HOSPITAL_VISIBLE_VIEWS = ["presentation", "viewer"];
 
 // Profils fictifs (portes depuis IES le 16/09) : simule le fait que
 // l'appli s'adapte au metier/a l'entreprise, en changeant simplement quels
@@ -666,33 +632,18 @@ try {
 }
 
 function updateProfilesActivationUI() {
-  // Projet hopital (porte depuis IES le 16/09) : jeu de test public sans
-  // donnees personas dessus, le concept de profil n'a pas de sens ici. Le
-  // selecteur de profil lui-meme reste masque, quel que soit l'etat
-  // d'activation par ailleurs (retrouve tel quel en revenant sur le projet
-  // demo).
-  const isHospitalProject = projectSelect.value === HOSPITAL_PROJECT_KEY;
-  activateProfilesBtn.hidden = isHospitalProject || profilesActivated;
-  personaSelect.hidden = isHospitalProject || !profilesActivated;
+  activateProfilesBtn.hidden = profilesActivated;
+  personaSelect.hidden = !profilesActivated;
 }
 
 function applyPersona(persona, forceNav) {
-  const isHospitalProject = projectSelect.value === HOSPITAL_PROJECT_KEY;
   updateProfilesActivationUI();
 
   navLinks.forEach((link) => {
-    // Projet hopital (porte depuis IES le 16/09) : plus aucun filtrage par
-    // profil, juste Presentation + Viewer visibles dans la navbar (demande
-    // explicite de Gilles, cote IES comme ici : jeu de test sans donnees
-    // personas dessus).
-    if (isHospitalProject) {
-      link.hidden = !HOSPITAL_VISIBLE_VIEWS.includes(link.dataset.view);
-      return;
-    }
     const personaAllowed = (link.dataset.persona || "").split(" ").includes(persona);
     link.hidden = !personaAllowed;
   });
-  personaBanner.hidden = isHospitalProject || persona !== "externe";
+  personaBanner.hidden = persona !== "externe";
   try {
     localStorage.setItem("chantier-persona", persona);
   } catch (e) {
@@ -703,15 +654,13 @@ function applyPersona(persona, forceNav) {
   const currentViewName = currentView ? currentView.id.replace("view-", "") : null;
   const currentViewAllowed = navLinks.some((l) => l.dataset.view === currentViewName && !l.hidden);
   if (forceNav || !currentViewAllowed) {
-    activateView(isHospitalProject ? "viewer" : PERSONA_DEFAULT_VIEW[persona]);
+    activateView(PERSONA_DEFAULT_VIEW[persona]);
   }
 
   // Externe sans compte : consultation seule, aucune action d'edition
   // (coupe, nouvelle discussion) meme sur l'onglet Viewer. Applique apres
   // activateView() : sa branche "viewer" reaffiche ces boutons par defaut.
-  // Non applicable sur le projet hopital (pas de profil actif, cf
-  // ci-dessus).
-  if (persona === "externe" && !isHospitalProject) {
+  if (persona === "externe") {
     coupeBtn.hidden = true;
     coupeToolbar.hidden = true;
     newDiscussionBtn.hidden = true;
@@ -1034,25 +983,17 @@ recenterBtn.addEventListener("click", () => {
 // filtrage par niveau ci-dessous). applyVisibility() est le seul endroit qui
 // pousse ces intentions (shown + niveau.checked) vers la scene xeokit.
 //
-// Selecteur de projet/maquette (porte depuis IES le 16/09, cf #projectSelect,
-// DEMO_PROJECT_KEY/HOSPITAL_PROJECT_KEY declares plus haut) : PROJECTS liste
-// les maquettes de chaque projet selectionnable, MAQUETTES reste la
-// reference stable (const, mutee en place par loadProject() a chaque
-// changement) que tout le reste du fichier capture par closure.
-const PROJECTS = {
-  [DEMO_PROJECT_KEY]: [
-    { id: "archi", src: "/models/Projet_structure.ifc", label: "Maquette STR", color: "#c9d1d9", shown: true },
-    { id: "toit", src: "/models/Toit_Metal_2.ifc", label: "Maquette TOITURE", color: "#e8935c", colorize: [0.91, 0.58, 0.36], shown: true },
-    // Test de conversion IFC -> XKT (cf CDC section 4, item Maquettes) : Projet_Archi.ifc
-    // (27 Mo) converti via @xeokit/xeokit-convert en Maquette_CEA.xkt (8.6 Mo), pour
-    // comparer le temps de chargement au rechargement face aux 2 IFC bruts ci-dessus.
-    { id: "cea", src: "/models/Maquette_CEA.xkt", label: "Maquette CEA", color: "#a371f7", format: "xkt", shown: true }
-  ],
-  [HOSPITAL_PROJECT_KEY]: [
-    { id: "hosp-arch", src: "/models/hospital/architecture.xkt", label: "Architecture", color: "#c9d1d9", format: "xkt", shown: true },
-    { id: "hosp-mep", src: "/models/hospital/mechanical.xkt", label: "Mechanical (CVC)", color: "#e8935c", colorize: [0.91, 0.58, 0.36], format: "xkt", shown: true }
-  ]
-};
+// Maquette unique d'Ouvra (celle actuellement en prod). MAQUETTES reste la
+// reference stable (const, peuplee en place par loadMaquettes() plus bas)
+// que tout le reste du fichier capture par closure.
+const MAQUETTE_DEFS = [
+  { id: "archi", src: "/models/Projet_structure.ifc", label: "Maquette STR", color: "#c9d1d9", shown: true },
+  { id: "toit", src: "/models/Toit_Metal_2.ifc", label: "Maquette TOITURE", color: "#e8935c", colorize: [0.91, 0.58, 0.36], shown: true },
+  // Test de conversion IFC -> XKT (cf CDC section 4, item Maquettes) : Projet_Archi.ifc
+  // (27 Mo) converti via @xeokit/xeokit-convert en Maquette_CEA.xkt (8.6 Mo), pour
+  // comparer le temps de chargement au rechargement face aux 2 IFC bruts ci-dessus.
+  { id: "cea", src: "/models/Maquette_CEA.xkt", label: "Maquette CEA", color: "#a371f7", format: "xkt", shown: true }
+];
 
 const MAQUETTES = [];
 
@@ -2426,61 +2367,7 @@ function applyVisibility() {
       viewer.scene.setObjectsVisible(ids, shown);
     });
   });
-
-  // Garde-corps IfcRailing mal positionnes a la source IFC du projet hopital
-  // (cf HOSPITAL_MISPLACED_RAILING_IDS plus bas, diagnostic IES du 11/09,
-  // porte le 16/09 avec les memes fichiers XKT) : toujours masques quand la
-  // maquette "hosp-arch" est chargee, quel que soit l'etat des niveaux/
-  // checkbox. Reapplique ici, a la fin, a chaque recalcul (et non en dehors
-  // de cette fonction, seul point qui pousse de la visibilite vers xeokit)
-  // pour ne jamais se faire ecraser par un toggle de niveau qui les
-  // remettrait visibles.
-  if (shownById.has("hosp-arch")) {
-    viewer.scene.setObjectsVisible(HOSPITAL_MISPLACED_RAILING_IDS, false);
-  }
 }
-
-// Garde-corps (IfcRailing) du projet hopital dont la chaine IfcLocalPlacement
-// est corrompue directement a la source (offset local quasiment oppose a
-// l'offset de leur placement parent, diagnostic IES du 11/09, pas un bug du
-// pipeline d'import de ce projet). Ils atterrissent pres de l'origine du
-// monde IFC au lieu de leur etage. Fichier source = jeu de test public
-// (WestRiverSide Hospital) : contournement visuel plutot que reparation de
-// l'IFC ou reconversion. Liste figee (memes GUID que cote IES, memes
-// fichiers XKT) : GUID = element.GlobalId, elements dont le centre de bbox
-// tombe hors de l'enveloppe du batiment.
-const HOSPITAL_MISPLACED_RAILING_IDS = [
-  "1NU4DBqZr9TveX2NFh7PrI",
-  "2e$FV4Y9f6NPrJ7KOfe14U",
-  "3NoPuFwSP2$ukR3bjeYMMS",
-  "37lZNn4SHFawe$5ITwJJpq",
-  "1zhleAQ4z7IhcfPaY8GgGb",
-  "2ZoIlszeb7y8t1_FxE$e8y",
-  "0OLDFHvsT2fvWuPyaWakuD",
-  "0mPx06yCT81Oir7rgqE8a2",
-  "21BheI$eX15OQoWN2f7nBq",
-  "1JtlWVxEHF7AtnVhy0$7Xe",
-  "38$O$vZ5r3$h_KGQTTsXE5",
-  "0FQP_M_L9CUOuIiAy668HI",
-  "0DJSIqdVP289oPRnBHeG5C",
-  "2WetIfYwT3igEiGFFiPlO9",
-  "0yWW_91e9BzgCnPQ6U_Vy2",
-  "3Z2iznH717FxB09x2OQu1S",
-  "0bWHqDYhP9l9bZwXFgwD6F",
-  "0cvnr162r2qRGfCroKgvqN",
-  "2Cd4x0qfzCaubEd0IqNKaH",
-  "1iTlCtoG5BNRuGHj1YUyKK",
-  "1Ib3Rs4fn1Ufu1Vad7Ar6F",
-  "2rxO7f4zbBJ8Ji6togGdpG",
-  "1vFhikqQ163Pzjkl699cjh",
-  "2ebwD8q_r6DeLBBZ8NlCRr",
-  "3Aqo$pSrb7YwrcNdiiJdK0",
-  "2M$9CiIFv8_fHn8uoZNXCJ",
-  "0mRctqW7P5IwSZkA2Fi9OV",
-  "3sXCbf4XTByQhehgTY2Son",
-  "3LgX6wz1L7pRQ1ad9wkmz6",
-  "0Yy5HEbTj9jQzJM_Clf3Z_"
-];
 
 // Correspondance manuelle par NOM de niveau propre a chaque maquette (plus
 // fiable que toute geometrie, cf le 05/09 : les altitudes ne se recoupaient
@@ -2506,88 +2393,35 @@ function findStoreyObjectIds(maquetteId, storeyName) {
   return metaObject ? viewer.metaScene.getObjectIDsInSubtree(metaObject.id) : [];
 }
 
-// Decouverte generique des niveaux (portee depuis IES le 16/09, projets
-// autres que la demo) : vrais IfcBuildingStorey de chaque maquette chargee,
-// regroupes par nom exact. Contrairement a NIVEAU_MAPPING (demo, mapping
-// fige a la main), aucune correspondance geree si 2 maquettes du meme
-// projet nomment leurs etages differemment : chaque nom distinct devient sa
-// propre ligne. "Level 2 Ceiling" regroupe avec "Level 2" : Revit cree
-// souvent un etage de reference distinct pour heberger les plafonds/plenum
-// d'un niveau, pas un vrai niveau separe du point de vue de l'usager.
-function canonicalStoreyName(name) {
-  return name
-    .replace(/\s+Ceiling$/i, "")
-    // "Level 7A" rejoint "Level 7" : suffixe lettre apres un niveau
-    // numerote, variante/mezzanine du meme niveau plutot qu'un vrai niveau
-    // distinct du point de vue de l'usager.
-    .replace(/^(Level\s+\d+)[A-Z]$/i, "$1");
-}
-
-function buildGenericNiveaux(previousChecked) {
-  const loadedMaquettes = MAQUETTES.filter((m) => viewer.metaScene.metaModels[m.id]);
-  if (loadedMaquettes.length === 0) return null;
-
-  const storeysByName = new Map();
-  loadedMaquettes.forEach((maquette) => {
-    Object.values(viewer.metaScene.metaObjectsByType["IfcBuildingStorey"] || {})
-      .filter((mo) => mo.metaModels.some((m) => m.id === maquette.id))
-      .forEach((mo) => {
-        const ids = viewer.metaScene.getObjectIDsInSubtree(mo.id);
-        if (ids.length === 0) return;
-        const key = canonicalStoreyName(mo.name);
-        if (!storeysByName.has(key)) storeysByName.set(key, {});
-        const bucket = storeysByName.get(key);
-        bucket[maquette.id] = (bucket[maquette.id] || []).concat(ids);
-      });
-  });
-
-  return Array.from(storeysByName.entries())
-    .sort((a, b) => a[0].localeCompare(b[0], "fr", { numeric: true }))
-    .map(([name, objectsByMaquette]) => ({
-      name,
-      checked: previousChecked.has(name) ? previousChecked.get(name) : true,
-      checkboxEl: null,
-      objectsByMaquette
-    }));
-}
-
 function renderNiveaux() {
+  if (!viewer.metaScene.metaModels["cea"]) return;
+
   // Le rendu peut se re-declencher a chaque maquette qui termine son
   // chargement (elles arrivent dans un ordre pas garanti) : on repart de zero
   // a chaque fois, mais en conservant l'etat coche choisi par l'utilisateur
   // entre-temps, plutot que de le reinitialiser silencieusement.
   const previousChecked = new Map(niveauxState.map((n) => [n.name, n.checked]));
 
-  let niveaux;
-  if (projectSelect.value === DEMO_PROJECT_KEY) {
-    if (!viewer.metaScene.metaModels["cea"]) return;
-    niveaux = NIVEAU_MAPPING.map((entry) => {
-      const objectsByMaquette = {};
-      const ceaIds = findStoreyObjectIds("cea", entry.cea);
-      if (ceaIds.length > 0) objectsByMaquette.cea = ceaIds;
-      const archiIds = findStoreyObjectIds("archi", entry.archi);
-      if (archiIds.length > 0) objectsByMaquette.archi = archiIds;
-      if (entry.label === "R+3") {
-        const toitMetaModel = viewer.metaScene.metaModels["toit"];
-        if (toitMetaModel && toitMetaModel.rootMetaObject) {
-          const toitIds = viewer.metaScene.getObjectIDsInSubtree(toitMetaModel.rootMetaObject.id);
-          if (toitIds.length > 0) objectsByMaquette.toit = toitIds;
-        }
+  const niveaux = NIVEAU_MAPPING.map((entry) => {
+    const objectsByMaquette = {};
+    const ceaIds = findStoreyObjectIds("cea", entry.cea);
+    if (ceaIds.length > 0) objectsByMaquette.cea = ceaIds;
+    const archiIds = findStoreyObjectIds("archi", entry.archi);
+    if (archiIds.length > 0) objectsByMaquette.archi = archiIds;
+    if (entry.label === "R+3") {
+      const toitMetaModel = viewer.metaScene.metaModels["toit"];
+      if (toitMetaModel && toitMetaModel.rootMetaObject) {
+        const toitIds = viewer.metaScene.getObjectIDsInSubtree(toitMetaModel.rootMetaObject.id);
+        if (toitIds.length > 0) objectsByMaquette.toit = toitIds;
       }
-      return {
-        name: entry.label,
-        checked: previousChecked.has(entry.label) ? previousChecked.get(entry.label) : true,
-        checkboxEl: null,
-        objectsByMaquette
-      };
-    });
-  } else {
-    // Projet hopital (porte depuis IES le 16/09) : pas de NIVEAU_MAPPING
-    // fige a la main (specifique aux noms d'etages de la demo), decouverte
-    // generique des vrais IfcBuildingStorey a la place.
-    niveaux = buildGenericNiveaux(previousChecked);
-    if (niveaux === null) return;
-  }
+    }
+    return {
+      name: entry.label,
+      checked: previousChecked.has(entry.label) ? previousChecked.get(entry.label) : true,
+      checkboxEl: null,
+      objectsByMaquette
+    };
+  });
 
   niveauxList.innerHTML = "";
   niveauxState.length = 0;
@@ -2964,33 +2798,28 @@ let xktLoader = null;
 // Vue de depart definissable par le BIM Manager (porte depuis IES le 16/09,
 // cf ecran Admin > Maquettes > "Vue d'ensemble") : ecrit dans le meme
 // localStorage que l'app (meme origine, l'ecran Admin tourne dans un iframe
-// sur ce domaine), cle scopee par projet pour ne jamais melanger les 2
-// projets. Fallback sur DEFAULT_CAMERA_STATE/HOSPITAL_CAMERA_STATE (valeurs
+// sur ce domaine), cle scopee par DEMO_PROJECT_KEY (meme convention que cote
+// Admin, admin-groupes.html). Fallback sur DEFAULT_CAMERA_STATE (valeurs
 // trouvees a la main via le log camera console) si rien n'a ete enregistre.
-function getDefaultCameraState(projectKey) {
+function getDefaultCameraState() {
   try {
-    const stored = localStorage.getItem("chantier-default-camera-" + projectKey);
+    const stored = localStorage.getItem("chantier-default-camera-" + DEMO_PROJECT_KEY);
     if (stored) return JSON.parse(stored);
   } catch (e) {
     // localStorage indisponible ou valeur corrompue, on retombe sur le defaut.
   }
-  if (projectKey === HOSPITAL_PROJECT_KEY) return HOSPITAL_CAMERA_STATE;
-  if (projectKey === DEMO_PROJECT_KEY) return DEFAULT_CAMERA_STATE;
-  return null;
+  return DEFAULT_CAMERA_STATE;
 }
 
 // Renommage d'une maquette depuis Admin > Maquettes (porte depuis IES le
-// 16/09) : ids differents cote Admin (structure/toiture/cea/hospital-archi/
-// hospital-meca) et cote PROJECTS ci-dessus (archi/toit/cea/hosp-arch/
-// hosp-mep), d'ou cette table de correspondance plutot qu'un id partage
-// (aurait force a toucher tout le reste du code qui depend deja des ids
-// PROJECTS existants).
+// 16/09) : ids differents cote Admin (structure/toiture/cea) et cote
+// MAQUETTE_DEFS ci-dessus (archi/toit/cea), d'ou cette table de
+// correspondance plutot qu'un id partage (aurait force a toucher tout le
+// reste du code qui depend deja des ids MAQUETTE_DEFS existants).
 const ADMIN_MAQUETTE_ID_MAP = {
   archi: "structure",
   toit: "toiture",
-  cea: "cea",
-  "hosp-arch": "hospital-archi",
-  "hosp-mep": "hospital-meca"
+  cea: "cea"
 };
 
 function getAdminDisplayLabel(maquetteId, fallbackLabel) {
@@ -3005,26 +2834,21 @@ function getAdminDisplayLabel(maquetteId, fallbackLabel) {
   return fallbackLabel;
 }
 
-// Selecteur de projet/maquette (porte depuis IES le 16/09) : remplace
-// l'ancien chargement statique de MAQUETTES par un chargement pilote par
-// #projectSelect. MAQUETTES reste la reference stable (const, mutee en
-// place) capturee par closure dans tout le reste du fichier.
-function loadProject(projectKey) {
+// Chargement de la maquette unique d'Ouvra. MAQUETTES reste la reference
+// stable (const, peuplee en place) capturee par closure dans tout le reste
+// du fichier.
+function loadMaquettes() {
   MAQUETTES.forEach((maquette) => {
     if (maquette.model) maquette.model.destroy();
   });
   MAQUETTES.length = 0;
-  PROJECTS[projectKey].forEach((m) => {
+  MAQUETTE_DEFS.forEach((m) => {
     const maquette = Object.assign({}, m);
     maquette.label = getAdminDisplayLabel(maquette.id, maquette.label);
     MAQUETTES.push(maquette);
   });
 
   niveauxState.length = 0;
-  // renderNiveaux() sort tot si la maquette source des niveaux n'est pas
-  // (encore) chargee : vide la liste a la main ici pour ne pas laisser les
-  // niveaux de l'ancien projet affiches (ex. bascule vers l'hopital, qui
-  // n'a pas de maquette "cea").
   niveauxList.innerHTML = "";
   renderNiveaux();
   renderMaquetteRows(maquettesList, MAQUETTES);
@@ -3042,7 +2866,7 @@ function loadProject(projectKey) {
   function loadNextMaquette(index) {
     if (index >= MAQUETTES.length) {
       loadingOverlay.classList.add("hidden");
-      initialCameraState = getDefaultCameraState(projectKey);
+      initialCameraState = getDefaultCameraState();
       if (initialCameraState) {
         viewer.cameraFlight.flyTo(initialCameraState);
       } else {
@@ -3094,16 +2918,7 @@ function loadProject(projectKey) {
 IfcAPI.Init().then(() => {
   ifcLoader = new WebIFCLoaderPlugin(viewer, { WebIFC, IfcAPI });
   xktLoader = new XKTLoaderPlugin(viewer);
-  loadProject(projectSelect.value);
-});
-
-// Bascule de projet (porte depuis IES le 16/09) : applyPersona() rejoue le
-// gating navbar/profils juste apres, le projet hopital masquant tous les
-// profils (cf HOSPITAL_VISIBLE_VIEWS dans applyPersona).
-projectSelect.addEventListener("change", () => {
-  if (!ifcLoader) return;
-  loadProject(projectSelect.value);
-  applyPersona(personaSelect.value, false);
+  loadMaquettes();
 });
 
 // Renommage en direct (porte depuis IES le 16/09) : l'ecran Admin tourne
