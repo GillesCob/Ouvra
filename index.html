@@ -159,6 +159,10 @@
         <button type="button" id="infoPanelToggle" aria-label="Afficher les niveaux, maquettes et infos">☰ Infos</button>
         <div id="infoPanelBackdrop" hidden></div>
         <aside id="infoPanel" class="side-panel">
+          <!-- Ordinateur uniquement (01/10) : reduit le panneau a une fine
+               bande pour laisser plus de place a la maquette. Masque sur
+               mobile, ou le panneau est deja un tiroir (cf #infoPanelToggle). -->
+          <button type="button" id="infoPanelCollapse" aria-controls="infoPanel" aria-expanded="true" aria-label="Réduire le panneau" title="Réduire le panneau">›</button>
           <details class="info-section" id="section-niveaux" open>
             <summary class="info-section-title">
               <span>Niveaux</span>

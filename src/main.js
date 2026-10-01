@@ -590,6 +590,25 @@ function closeInfoPanelDrawer() {
 }
 infoPanelBackdrop.addEventListener("click", closeInfoPanelDrawer);
 
+// Ordinateur uniquement (bouton masque sur mobile, cf style.css) : reduit le
+// panneau a une fine bande. Le canvas est redimensionne une fois la
+// transition de largeur terminee, meme mecanisme que les autres changements
+// de mise en page (evenement resize).
+const infoPanelCollapse = document.getElementById("infoPanelCollapse");
+infoPanelCollapse.addEventListener("click", () => {
+  const collapsed = infoPanel.classList.toggle("collapsed");
+  infoPanelCollapse.textContent = collapsed ? "‹" : "›";
+  infoPanelCollapse.setAttribute("aria-expanded", String(!collapsed));
+  const label = collapsed ? "Afficher le panneau" : "Réduire le panneau";
+  infoPanelCollapse.setAttribute("aria-label", label);
+  infoPanelCollapse.title = label;
+});
+infoPanel.addEventListener("transitionend", (e) => {
+  if (e.target === infoPanel && e.propertyName === "flex-basis") {
+    window.dispatchEvent(new Event("resize"));
+  }
+});
+
 // Capture avant qu'activateView() ne le reecrive (replaceState) : necessaire
 // plus bas pour retrouver un fil precis (#discussions/<id>) au chargement.
 const initialHash = location.hash;

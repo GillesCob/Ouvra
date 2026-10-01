@@ -363,6 +363,29 @@ html, body {
 #infoPanelToggle { display: none; }
 #infoPanelBackdrop { display: none; }
 
+/* Panneau du Viewer reductible (01/10, ordinateur uniquement) : une fine
+   bande avec le seul bouton de bascule, la maquette recupere la largeur. */
+#infoPanel { position: relative; transition: flex-basis 0.2s ease; }
+#infoPanelCollapse {
+  align-self: flex-start;
+  margin: 8px 0 0 8px;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  flex: none;
+}
+@media (min-width: 769px) {
+  #infoPanel.collapsed { flex-basis: 44px; }
+  #infoPanel.collapsed > :not(#infoPanelCollapse) { display: none; }
+}
+
 /* Mobile (05/09) : le panneau Niveaux/Maquettes/Info selection partage sinon
    la largeur avec le canvas (300px fixes), qui doit au contraire prendre
    toute la page. Meme principe que le tiroir "Sections" de la Presentation :
@@ -404,6 +427,7 @@ html, body {
     transition: transform 0.2s ease;
   }
   #infoPanel.open { transform: translateX(0); }
+  #infoPanelCollapse { display: none; }
 }
 
 #ficheSheet { display: none; }
