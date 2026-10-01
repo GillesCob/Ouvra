@@ -594,14 +594,35 @@ infoPanelBackdrop.addEventListener("click", closeInfoPanelDrawer);
 // panneau a une fine bande. Le canvas est redimensionne une fois la
 // transition de largeur terminee, meme mecanisme que les autres changements
 // de mise en page (evenement resize).
+// Etat memorise comme le reste de l'appli (localStorage, prefixe chantier-).
 const infoPanelCollapse = document.getElementById("infoPanelCollapse");
-infoPanelCollapse.addEventListener("click", () => {
-  const collapsed = infoPanel.classList.toggle("collapsed");
+const INFO_PANEL_COLLAPSED_KEY = "chantier-info-panel-collapsed";
+function setInfoPanelCollapsed(collapsed) {
+  infoPanel.classList.toggle("collapsed", collapsed);
   infoPanelCollapse.textContent = collapsed ? "‹" : "›";
   infoPanelCollapse.setAttribute("aria-expanded", String(!collapsed));
   const label = collapsed ? "Afficher le panneau" : "Réduire le panneau";
   infoPanelCollapse.setAttribute("aria-label", label);
   infoPanelCollapse.title = label;
+}
+try {
+  if (localStorage.getItem(INFO_PANEL_COLLAPSED_KEY) === "1") {
+    setInfoPanelCollapsed(true);
+    // Applique avant le premier rendu, sans transition : pas de transitionend,
+    // le canvas est donc redimensionne ici directement.
+    window.dispatchEvent(new Event("resize"));
+  }
+} catch (e) {
+  // localStorage indisponible : panneau ouvert par defaut.
+}
+infoPanelCollapse.addEventListener("click", () => {
+  const collapsed = !infoPanel.classList.contains("collapsed");
+  setInfoPanelCollapsed(collapsed);
+  try {
+    localStorage.setItem(INFO_PANEL_COLLAPSED_KEY, collapsed ? "1" : "0");
+  } catch (e) {
+    // localStorage indisponible : l'etat ne survit pas au rechargement.
+  }
 });
 infoPanel.addEventListener("transitionend", (e) => {
   if (e.target === infoPanel && e.propertyName === "flex-basis") {
