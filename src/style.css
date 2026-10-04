@@ -305,14 +305,13 @@ html, body {
 #viewerToolbar button:hover, #coupeToolbar button:hover { border-color: var(--accent); }
 #viewerToolbar button.active, #coupeToolbar button.active { border-color: var(--accent); color: var(--accent); }
 
-/* Vitesse de navigation tactile (portee depuis IES le 16/09) : mobile
-   uniquement, cache par defaut sur desktop (regle de base) ou la souris n'a
-   pas ce probleme. Bas-gauche, seul coin libre (toolbar en haut-droite,
-   coupe et infos en bas-droite). Replie en un simple bouton par defaut : le
-   slider ne s'affiche qu'au clic sur ce bouton, #cameraSpeedPanel[hidden]
-   geree en JS comme les autres tiroirs de l'app. */
+/* Vitesse de navigation (portee depuis IES le 16/09, etendue a l'ordinateur) :
+   visible a toutes les tailles d'ecran. Bas-gauche, seul coin libre (toolbar
+   en haut-droite, coupe et infos en bas-droite). Replie en un simple bouton
+   par defaut : le slider ne s'affiche qu'au clic sur ce bouton,
+   #cameraSpeedPanel[hidden] geree en JS comme les autres tiroirs de l'app. */
 #cameraSpeedControl {
-  display: none;
+  display: flex;
   position: absolute;
   left: 16px;
   bottom: 16px;
@@ -347,9 +346,6 @@ html, body {
 #cameraSpeedPanel[hidden] { display: none; }
 #cameraSpeedSlider { width: 70px; }
 #cameraSpeedValue { flex-shrink: 0; min-width: 32px; text-align: right; }
-@media (max-width: 768px) {
-  #cameraSpeedControl { display: flex; }
-}
 
 .side-panel {
   flex: 0 0 300px;

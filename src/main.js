@@ -991,18 +991,21 @@ window.viewer = viewer;
 
 viewer.scene.canvas.backgroundColor = [0.051, 0.055, 0.063];
 
-// Vitesse de navigation tactile (portee depuis IES le 16/09) : reglages par
-// defaut du SDK (dragRotationRate/touchPanRate/touchDollyRate) concus pour
-// la souris, un mouvement au doigt sur mobile envoie la camera beaucoup
-// trop loin. Slider #cameraSpeedControl (mobile uniquement, cf CSS) en % de
-// ces valeurs par defaut, persiste en localStorage. Depart a 30% sur mobile
-// (premiere visite, pas encore de preference enregistree) ; desktop reste a
-// 100% (slider invisible, jamais modifie) puisque la souris n'a pas ce
-// probleme.
-const CAMERA_TOUCH_DEFAULTS = { dragRotationRate: 360.0, touchPanRate: 1.0, touchDollyRate: 0.2 };
+// Vitesse de navigation (portee depuis IES le 16/09, etendue a la souris) :
+// reglages par defaut du SDK (dragRotationRate/mouseWheelDollyRate/
+// touchPanRate/touchDollyRate), trop reactifs pour un debutant (souris) et
+// qui envoient la camera beaucoup trop loin au doigt sur mobile. Slider
+// #cameraSpeedControl (tous ecrans) en % de ces valeurs par defaut (10 a
+// 200 %, au dela de 100 % pour accelerer sur une grande maquette), persiste
+// en localStorage. Depart a 30% sur mobile (premiere visite, pas encore de
+// preference enregistree) ; 100% sur ordinateur (comportement inchange tant
+// que le slider n'est pas touche). Cle de stockage conservee telle quelle
+// (preferences deja enregistrees).
+const CAMERA_TOUCH_DEFAULTS = { dragRotationRate: 360.0, mouseWheelDollyRate: 100.0, touchPanRate: 1.0, touchDollyRate: 0.2 };
 function applyCameraTouchSpeed(percent) {
   const factor = percent / 100;
   viewer.cameraControl.dragRotationRate = CAMERA_TOUCH_DEFAULTS.dragRotationRate * factor;
+  viewer.cameraControl.mouseWheelDollyRate = CAMERA_TOUCH_DEFAULTS.mouseWheelDollyRate * factor;
   viewer.cameraControl.touchPanRate = CAMERA_TOUCH_DEFAULTS.touchPanRate * factor;
   viewer.cameraControl.touchDollyRate = CAMERA_TOUCH_DEFAULTS.touchDollyRate * factor;
 }
