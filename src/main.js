@@ -1016,7 +1016,7 @@ try {
   // localStorage indisponible, pas bloquant.
 }
 const initialCameraSpeed = savedCameraSpeed
-  ? parseInt(savedCameraSpeed, 10)
+  ? Math.min(100, parseInt(savedCameraSpeed, 10))
   : (window.matchMedia("(max-width: 768px)").matches ? 30 : 100);
 cameraSpeedSlider.value = String(initialCameraSpeed);
 cameraSpeedValue.textContent = initialCameraSpeed + " %";
