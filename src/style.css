@@ -1,9 +1,15 @@
 :root {
-  --bg: #000000;
-  --surface: #141414;
-  --border: #2a2a2a;
+  /* Ambiance vert sourd (19/10), entre le vert foret (--bg #141c17,
+     --surface #1d2820, --border #2e3d33, juge trop vert) et l'anthracite
+     (--bg #1a1b1a, --surface #242625, --border #373a38, pas assez vert).
+     Un cran plus vert le 19/10 (--bg #181d1a, --surface #222824, --border
+     #323b35, --muted #9aa39c). Anciennes valeurs, noir pur : --bg #000000, --surface #141414, --border
+     #2a2a2a, --muted #8a8a8a. */
+  --bg: #161c18;
+  --surface: #1f2822;
+  --border: #303c34;
   --text: #e4e1da;
-  --muted: #8a8a8a;
+  --muted: #9aa59d;
   --accent: #5c7a5f;
 }
 
@@ -116,18 +122,6 @@ html, body {
   cursor: pointer;
 }
 #activateProfilesBtn:hover { border-color: var(--accent); color: var(--accent); }
-
-#personaBanner {
-  flex-shrink: 0;
-  padding: 7px 18px;
-  background: rgba(92, 122, 95, 0.12);
-  border-bottom: 1px solid var(--border);
-  color: var(--accent);
-  font-size: 12.5px;
-  font-weight: 600;
-  text-align: center;
-}
-#personaBanner[hidden] { display: none; }
 
 #navbarToggle {
   display: none;
@@ -258,7 +252,7 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(13, 17, 23, 0.6);
+  background: rgba(22, 28, 24, 0.6);
 }
 #loadingOverlay.hidden { display: none; }
 
@@ -273,7 +267,7 @@ html, body {
 @keyframes spin { to { transform: rotate(360deg); } }
 
 #loadingOverlay.error {
-  background: rgba(13, 17, 23, 0.85);
+  background: rgba(22, 28, 24, 0.85);
   color: #f85149;
   font-size: 13px;
   padding: 16px;
@@ -614,6 +608,20 @@ html, body {
 }
 .maquette-name:hover { color: var(--accent); }
 .maquette-count { color: var(--muted); font-size: 11.5px; }
+
+/* Badge de version d'une maquette (valeurs de demonstration) et sa bulle */
+.ver-badge {
+  flex-shrink: 0; padding: 1px 7px; font-size: 11px; font-weight: 700; line-height: 1.5; cursor: pointer;
+  color: var(--muted); background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+}
+.ver-badge:hover, .ver-badge:focus-visible { color: var(--text); border-color: var(--accent); }
+#versionTip {
+  position: fixed; z-index: 100000; width: max-content; max-width: 210px; pointer-events: none;
+  padding: 6px 9px; font-size: 11.5px; line-height: 1.35; color: var(--muted);
+  background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+}
+#versionTip strong { display: block; color: var(--text); font-weight: 700; }
+#versionTip[hidden] { display: none; }
 
 .info-empty {
   color: var(--muted);
@@ -1283,7 +1291,7 @@ html, body {
   display: flex;
   gap: 6px;
 }
-#threadVisualToggle .thread-toggle-btn { background: rgba(13, 17, 23, 0.75); }
+#threadVisualToggle .thread-toggle-btn { background: rgba(22, 28, 24, 0.75); }
 #threadVisualToggle .thread-toggle-btn.active { background: var(--surface); }
 .thread-toggle-btn {
   padding: 5px 12px;
@@ -1684,3 +1692,299 @@ html, body {
 #landingFooter .footer-linkedin { display: flex; align-items: center; gap: 6px; color: var(--muted); text-decoration: none; transition: color .15s ease; }
 #landingFooter .footer-linkedin:hover { color: var(--text); }
 #landingFooter .footer-linkedin svg { width: 18px; height: 18px; }
+
+/* ============================================================================
+   NOUVELLE PAGE D'ACCUEIL (19/10) : #view-accueil, issue du mockup vault
+   ouvra-v2-accueil.html. Bloc ajoute en fin de fichier, STRICTEMENT limite a
+   #view-accueil (aucune regle globale, aucune regle existante modifiee).
+   Classes prefixees "acc-" pour ne jamais heurter celles de l'app. L'app est
+   sombre uniquement : l'accueil garde son theme clair propre, via des
+   variables declarees sur #view-accueil (theme sombre du mockup non repris).
+   ============================================================================ */
+#view-accueil {
+  --bg: #fbf7f0;
+  --surface: #ffffff;
+  --band: #eef2e8;
+  --border: #ded8cb;
+  --ink: #1f2b24;
+  --muted: #4d5a50;
+  --brand: #4b6050;
+  --brand-hover: #3d4f41;
+  --on-brand: #ffffff;
+  --accent: #e8935c;
+  --accent-hover: #f08a4b;
+  --on-accent: #1f2b24;
+  --contact-bg: #1f3a2c;
+  --contact-text: #fbf7f0;
+  --contact-muted: #d6e0d4;
+  --focus: #1f6f6b;
+  --img-blend: multiply;
+  --img-radius: 0;
+  --shadow: 0 6px 24px rgba(63, 52, 30, 0.09);
+  --btn-shadow: 0 8px 22px rgba(232, 147, 92, 0.45);
+  color-scheme: light;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: var(--bg);
+  color: var(--ink);
+  font: 1rem/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
+}
+#view-accueil *, #view-accueil *::before, #view-accueil *::after { box-sizing: border-box; }
+#view-accueil .acc-page { flex: none; width: 100%; overflow-x: hidden; }
+#view-accueil img { max-width: 100%; display: block; }
+#view-accueil a { color: inherit; }
+#view-accueil :focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; border-radius: 6px; }
+
+#view-accueil h1, #view-accueil h2, #view-accueil h3, #view-accueil .acc-btn, #view-accueil .acc-step-num {
+  font-family: ui-rounded, "SF Pro Rounded", "Arial Rounded MT Bold", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+}
+
+#view-accueil .acc-wrap { width: 100%; max-width: 1120px; margin: 0 auto; padding-left: 16px; padding-right: 16px; }
+
+/* En-tête */
+#view-accueil .acc-top .acc-wrap { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-top: 8px; padding-bottom: 0; }
+#view-accueil .acc-logo { width: clamp(112px, 32vw, 136px); height: auto; }
+#view-accueil .acc-top-link {
+  display: inline-flex; align-items: center; min-height: 44px; padding: 8px 16px;
+  border-radius: 999px; border: 2px solid var(--border); font-weight: 600; text-decoration: none;
+}
+#view-accueil .acc-top-link:hover { border-color: var(--brand); }
+
+/* Hero : mobile en colonne, image courte sous le bouton */
+#view-accueil .acc-hero-text { max-width: 760px; margin: 0 auto; padding: 8px 16px 0; text-align: center; }
+#view-accueil h1 { margin: 0 0 10px; font-size: clamp(1.75rem, 7.4vw, 3.2rem); line-height: 1.1; font-weight: 800; letter-spacing: -0.015em; }
+#view-accueil .acc-lead { margin: 0 auto; font-size: 1.0625rem; line-height: 1.5; max-width: 52ch; color: var(--muted); }
+#view-accueil .acc-cta { margin-top: 16px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+#view-accueil .acc-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 56px;
+  padding: 14px 28px; border-radius: 999px; border: 0; font-size: 1.125rem; font-weight: 800;
+  text-decoration: none; cursor: pointer; transition: transform 0.15s ease, background-color 0.15s ease;
+}
+#view-accueil .acc-btn-main { background: var(--accent); color: var(--on-accent); box-shadow: var(--btn-shadow); width: 100%; max-width: 360px; }
+#view-accueil .acc-btn-main:hover { background: var(--accent-hover); transform: translateY(-1px); }
+#view-accueil .acc-btn-main svg { width: 22px; height: 22px; flex: none; }
+#view-accueil .acc-reassure { margin: 0; font-size: 1rem; color: var(--muted); max-width: 40ch; }
+
+#view-accueil .acc-hero-img { margin: 4px auto 0; max-width: 1360px; overflow: hidden; border-radius: var(--img-radius); }
+/* Le blanc bleuté de l'image prend la couleur du fond (multiply). */
+#view-accueil .acc-hero-img img {
+  width: 100%; height: clamp(170px, 32vh, 300px); object-fit: cover; object-position: 50% 50%;
+  mix-blend-mode: var(--img-blend);
+}
+@supports (height: 1svh) { #view-accueil .acc-hero-img img { height: clamp(170px, 32svh, 300px); } }
+
+/* Sections */
+#view-accueil section { padding: 40px 0 0; }
+#view-accueil h2 { margin: 0 0 12px; font-size: clamp(1.5rem, 5.6vw, 2.25rem); line-height: 1.15; font-weight: 800; letter-spacing: -0.01em; }
+#view-accueil .acc-section-lead { margin: 0 0 20px; color: var(--muted); max-width: 60ch; font-size: 1.0625rem; }
+
+/* C'est quoi une maquette numérique */
+#view-accueil .acc-what { margin-top: 16px; padding: 28px 0; background: var(--band); }
+#view-accueil .acc-what .acc-wrap { max-width: 860px; }
+#view-accueil .acc-what h2 { font-size: clamp(1.35rem, 5vw, 1.9rem); }
+#view-accueil .acc-what p { margin: 0; font-size: 1.125rem; max-width: 62ch; }
+
+/* Comment ça marche */
+#view-accueil .acc-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 16px; }
+#view-accueil .acc-steps li {
+  display: grid; grid-template-columns: 48px 1fr; gap: 16px; align-items: start;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 16px 20px; box-shadow: var(--shadow);
+}
+#view-accueil .acc-step-num {
+  width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center;
+  font-size: 1.375rem; font-weight: 800; background: var(--brand); color: var(--on-brand);
+}
+#view-accueil .acc-steps h3 { margin: 2px 0 6px; font-size: 1.25rem; line-height: 1.25; }
+#view-accueil .acc-steps p { margin: 0; color: var(--muted); }
+
+/* Les trois pages (cartes : <button> dans l'app, remis a plat) */
+#view-accueil .acc-cards { list-style: none; margin: 0; padding: 0; display: grid; gap: 16px; }
+#view-accueil .acc-card {
+  display: flex; flex-direction: column; gap: 10px; height: 100%; min-height: 44px; width: 100%;
+  background: var(--surface); color: var(--ink); border: 1px solid var(--border); border-top: 6px solid var(--brand);
+  border-radius: 20px; padding: 20px; text-align: left; font: inherit; cursor: pointer; box-shadow: var(--shadow);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+#view-accueil .acc-card:hover { transform: translateY(-3px); }
+#view-accueil .acc-ico { width: 52px; height: 52px; border-radius: 14px; display: grid; place-items: center; background: var(--brand); color: var(--on-brand); }
+#view-accueil .acc-ico svg { width: 30px; height: 30px; }
+#view-accueil .acc-card h3 { margin: 4px 0 0; font-size: 1.3rem; }
+#view-accueil .acc-card p { margin: 0; color: var(--muted); }
+#view-accueil .acc-badge { align-self: flex-start; margin-top: auto; padding: 4px 12px; border-radius: 999px; font-size: 0.9rem; font-weight: 700; border: 2px solid var(--border); color: var(--ink); }
+#view-accueil .acc-badge-ok { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+
+/* Contact */
+#view-accueil .acc-contact { margin-top: 40px; padding: 0; }
+#view-accueil .acc-contact-box {
+  background: var(--contact-bg); color: var(--contact-text); border-radius: 28px; padding: 28px 20px;
+  display: grid; gap: 20px; align-items: center;
+}
+#view-accueil .acc-contact-box h2 { margin: 0; color: var(--contact-text); }
+#view-accueil .acc-contact-box p { margin: 0; color: var(--contact-muted); font-size: 1.0625rem; max-width: 56ch; }
+#view-accueil .acc-btn-contact { background: var(--accent); color: var(--on-accent); width: 100%; max-width: 320px; box-shadow: 0 8px 22px rgba(232, 147, 92, 0.3); }
+#view-accueil .acc-btn-contact:hover { background: var(--accent-hover); transform: translateY(-1px); }
+
+/* Pied de page */
+#view-accueil .acc-bottom { margin-top: 36px; padding: 24px 0 32px; border-top: 1px solid var(--border); font-size: 0.95rem; color: var(--muted); }
+#view-accueil .acc-bottom p { margin: 0 0 8px; max-width: 70ch; }
+#view-accueil .acc-bottom a { color: var(--ink); font-weight: 700; display: inline-flex; align-items: center; min-height: 44px; }
+
+/* Apparition douce : active seulement si le JS a pose .acc-js sur la vue */
+#view-accueil.acc-js .acc-reveal { opacity: 0; transform: translateY(18px); transition: opacity 0.6s ease, transform 0.6s ease; }
+#view-accueil.acc-js .acc-reveal.in { opacity: 1; transform: none; }
+
+@media (min-width: 720px) {
+  #view-accueil .acc-wrap { padding-left: 32px; padding-right: 32px; }
+  #view-accueil .acc-steps { grid-template-columns: repeat(3, 1fr); }
+  #view-accueil .acc-steps li { grid-template-columns: 1fr; }
+  #view-accueil .acc-cards { grid-template-columns: repeat(3, 1fr); }
+  #view-accueil .acc-contact-box { grid-template-columns: 1.4fr 1fr; padding: 44px; gap: 32px; }
+  #view-accueil .acc-contact-box .acc-side { justify-self: end; }
+  #view-accueil section { padding-top: 56px; }
+  #view-accueil .acc-what { margin-top: 32px; padding: 40px 0; }
+  #view-accueil .acc-hero-img img { height: clamp(220px, 34vh, 340px); }
+}
+
+/* Laptop : hero en deux colonnes, tient dans la hauteur de l'écran */
+@media (min-width: 900px) {
+  #view-accueil .acc-logo { width: 170px; }
+  #view-accueil .acc-hero {
+    max-width: 1120px; margin: 0 auto; padding: 0 32px;
+    display: grid; grid-template-columns: 0.95fr 1.05fr; gap: 32px; align-items: center;
+    min-height: calc(100vh - 190px);
+  }
+  #view-accueil .acc-hero-text { margin: 0; padding: 0; text-align: left; max-width: none; }
+  #view-accueil .acc-lead { margin: 0; }
+  #view-accueil .acc-cta { align-items: flex-start; margin-top: 24px; }
+  #view-accueil .acc-hero-img { margin: 0; }
+  #view-accueil .acc-hero-img img { height: auto; aspect-ratio: 4 / 3; max-height: calc(100vh - 210px); }
+  @supports (height: 1svh) {
+    #view-accueil .acc-hero { min-height: calc(100svh - 190px); }
+    #view-accueil .acc-hero-img img { height: auto; max-height: calc(100svh - 210px); }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #view-accueil { scroll-behavior: auto; }
+  #view-accueil.acc-js .acc-reveal { opacity: 1; transform: none; transition: none; }
+  #view-accueil .acc-btn, #view-accueil .acc-card { transition: none; }
+  #view-accueil .acc-btn-main:hover, #view-accueil .acc-card:hover, #view-accueil .acc-btn-contact:hover { transform: none; }
+}
+
+/* Sur l'accueil : navbar de l'app et bannière "Intéressé ?" masquées (l'accueil
+   a son propre en-tête et son bloc contact). Classe posée sur body par
+   activateView, retirée en quittant l'accueil. */
+body.acc-actif #navbar,
+body.acc-actif #ctaBanner { display: none; }
+body.acc-actif #appBody { height: 100%; }
+
+
+/* ============================================================================
+   Drawer du Viewer en deux onglets + carte Info selection independante
+   (19/10, option B, mockup ouvra-v2-viewer-onglets). Bloc ajoute en fin de
+   fichier : aucune regle anterieure modifiee. Ne cible que #infoPanel (drawer
+   du Viewer) et #ficheCard ; #collisionInfoPanel n'est pas touche.
+   ============================================================================ */
+#infoPanel .tabs { display: flex; flex: none; border-bottom: 1px solid var(--border); padding: 0 8px; gap: 2px; }
+#infoPanel .tab {
+  flex: 1; background: none; border: none; border-bottom: 2px solid transparent; color: var(--muted);
+  font: inherit; font-size: 12.5px; font-weight: 700; padding: 10px 6px 8px; cursor: pointer;
+}
+#infoPanel .tab:hover { color: var(--text); }
+#infoPanel .tab[aria-selected="true"] { color: var(--text); border-bottom-color: var(--accent); }
+#infoPanel .tab:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: 4px; }
+#infoPanel .tabpanel { flex: 1; min-height: 0; overflow-y: auto; padding: 12px 14px; border-bottom: none; }
+#infoPanel .tabpanel[hidden], #infoPanel #section-fiche[hidden] { display: none; }
+#infoPanel .tabpanel > summary { display: none; }
+#infoPanel .panel-head { display: flex; justify-content: flex-end; margin: 0 0 6px; }
+@media (max-width: 768px) {
+  #infoPanel .tab { min-height: 44px; }
+  #infoPanel .reset-btn { min-height: 44px; padding: 2px 8px; }
+}
+
+#ficheCard { display: none; }
+@media (min-width: 769px) {
+  #ficheCard.open {
+    display: flex; flex-direction: column; position: absolute; left: 16px; bottom: 64px; width: 320px;
+    max-width: calc(100% - 32px); max-height: 50%; z-index: 5; box-sizing: border-box;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.4); padding: 12px 14px 14px;
+  }
+}
+#ficheCardHeader {
+  display: flex; align-items: center; justify-content: space-between; flex: none; margin-bottom: 6px;
+  font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted);
+}
+#ficheCardClose { background: none; border: none; color: var(--muted); font-size: 16px; line-height: 1; cursor: pointer; padding: 2px 4px; }
+#ficheCardClose:hover { color: var(--text); }
+#ficheCardBody { overflow-y: auto; min-height: 0; }
+
+/* Liste Maquettes : nom puis nombre d'elements en dessous (19/10) */
+.maquette-item .maquette-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.maquette-item .maquette-text .maquette-name { flex: none; }
+.maquette-item .maquette-text .maquette-count { display: block; }
+
+/* Ecran de chargement : logo Ouvra qui tourne (19/10). L'ancien .spinner reste
+   defini plus haut, non utilise. */
+.loading-logo {
+  width: 64px;
+  height: 64px;
+  animation: ouvra-logo-spin 1.4s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+@keyframes ouvra-logo-spin { to { transform: rotate(360deg); } }
+@keyframes ouvra-logo-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+@media (prefers-reduced-motion: reduce) {
+  .loading-logo { animation: ouvra-logo-pulse 1.8s ease-in-out infinite; }
+}
+
+/* Indicateur de chargement integre a xeokit (couronne de points orange,
+   .sk-fading-circle, injecte par la bibliotheque) : masque, remplace par le
+   logo Ouvra de #loadingOverlay (19/10). */
+.sk-fading-circle { display: none !important; }
+
+/* Ecran de chargement, logo Ouvra anime (19/10) : le "O" ouvert tourne par deux
+   arcs en sens inverses, la porte verte s'ouvre et se ferme. Remplace la
+   simple rotation de .loading-logo (regles conservees, non utilisees). */
+.loading-logo-svg { width: 72px; height: 72px; overflow: visible; }
+.loading-logo-svg .ll-arc { transform-origin: 168.95px 83.15px; }
+.loading-logo-svg .ll-arc-ext { animation: ll-tour 2s cubic-bezier(0.65, 0, 0.35, 1) infinite; }
+.loading-logo-svg .ll-arc-int { animation: ll-tour-inverse 2s cubic-bezier(0.65, 0, 0.35, 1) 0.12s infinite; }
+.loading-logo-svg .ll-porte {
+  transform-origin: 182px 82px;
+  animation: ll-ouvre 2s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+@keyframes ll-tour { to { transform: rotate(360deg); } }
+@keyframes ll-tour-inverse { to { transform: rotate(-360deg); } }
+@keyframes ll-ouvre {
+  0%, 100% { transform: scaleX(1); opacity: 1; }
+  50% { transform: scaleX(0.12); opacity: 0.55; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .loading-logo-svg .ll-arc { animation: none; }
+  .loading-logo-svg .ll-porte { animation: ll-pulse-porte 1.8s ease-in-out infinite; transform: none; }
+}
+@keyframes ll-pulse-porte { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+/* Logo de chargement, version fluide (19/10) : trois SVG empiles animes comme
+   des elements HTML (transform et opacity seulement, couche GPU). Les
+   animations de formes a l'interieur d'un SVG tournent sur le fil principal et
+   saccadent pendant le decodage des maquettes. Remplace .loading-logo-svg
+   (regles conservees, non utilisees). */
+.ll-wrap { position: relative; display: block; width: 72px; height: 72px; }
+.ll-piece { position: absolute; inset: 0; width: 100%; height: 100%; will-change: transform, opacity; }
+.ll-ext, .ll-int { transform-origin: 51.3% 50.1%; }
+.ll-ext { animation: ll-tour 2s cubic-bezier(0.65, 0, 0.35, 1) infinite; }
+.ll-int { animation: ll-tour-inverse 2s cubic-bezier(0.65, 0, 0.35, 1) 0.12s infinite; }
+.ll-porte { transform-origin: 60.3% 50%; animation: ll-ouvre 2s cubic-bezier(0.65, 0, 0.35, 1) infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .ll-ext, .ll-int { animation: none; }
+  .ll-porte { animation: ll-pulse-porte 1.8s ease-in-out infinite; }
+}
+
+/* Accueil : logo de l'auteur dans le pied de page (19/10) */
+#view-accueil .acc-auteur { display: flex; align-items: center; gap: 10px; }
+#view-accueil .acc-auteur-logo { display: block; height: 40px; width: auto; }
+#view-accueil .acc-auteur a { gap: 10px; }

@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>Ouvra · POC coordination BIM</title>
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://ouvra.gillescobigo.com/" />
@@ -17,10 +17,9 @@
   </head>
   <body>
     <header id="navbar">
-      <button type="button" id="navbarBrand"><img src="/images/ouvra-icon.png" alt="" id="navbarBrandIcon">OUVRA</button>
+      <button type="button" id="navbarBrand"><img src="/images/ouvra-icon.svg" alt="" id="navbarBrandIcon">OUVRA</button>
       <button type="button" id="navbarToggle" aria-label="Ouvrir le menu">☰</button>
       <nav id="navbarLinks">
-        <button type="button" class="nav-link" data-view="presentation" data-persona="presentation-globale">Présentation</button>
         <button type="button" class="nav-link" data-view="viewer" data-persona="presentation-globale bim-manager synthese be projeteur externe">Viewer</button>
         <button type="button" class="nav-link" data-view="collision" data-persona="presentation-globale bim-manager synthese be">Collision</button>
         <button type="button" class="nav-link" data-view="discussions" data-persona="presentation-globale bim-manager synthese be">Discussions</button>
@@ -41,14 +40,146 @@
         <option value="externe">Externe sans compte</option>
       </select>
     </header>
-    <div id="personaBanner" hidden>Vue externe, sans connexion : consultation seule, aucune action d'édition.</div>
 
     <div id="appBody">
-      <div id="view-landing" class="view">
+      <!-- Nouvelle page d'accueil (19/10), issue du mockup ouvra-v2-accueil.
+           Pas un onglet de navbar : activateView("accueil"). L'ancienne
+           landing #view-landing est conservee plus bas (MASQUE_ANCIENNE_LANDING). -->
+      <div id="view-accueil" class="view">
+        <div class="acc-page">
+          <header class="acc-top">
+            <div class="acc-wrap">
+              <a href="#accueil" id="accueilLogoLink" aria-label="Ouvra, accueil">
+                <img class="acc-logo" src="/images/ouvra-logo-clair.svg" alt="Ouvra" width="341" height="252" />
+              </a>
+              <a class="acc-top-link" href="https://gillescobigo.com/#contact" target="_blank" rel="noopener noreferrer">Me contacter</a>
+            </div>
+          </header>
+
+          <main>
+            <div class="acc-hero">
+              <div class="acc-hero-text">
+                <h1>Explorez un bâtiment en 3D, dans votre navigateur.</h1>
+                <p class="acc-lead">Tournez autour, choisissez un niveau, faites une coupe. Cliquez sur un élément pour lire ses informations.</p>
+                <div class="acc-cta">
+                  <button type="button" class="acc-btn acc-btn-main" id="accueilOpenBtn" data-go="viewer">
+                    Ouvrir la maquette
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                  </button>
+                  <p class="acc-reassure">Rien à installer, aucun compte.</p>
+                </div>
+              </div>
+              <div class="acc-hero-img">
+                <img src="/images/bim-illustration.jpg" width="1920" height="1080" decoding="async"
+                     alt="Rendu 3D d'un bâtiment de plusieurs étages dont les façades sont transparentes. À l'intérieur, la structure apparaît en rouge, les réseaux en jaune, avec des éléments verts et bleus, sur un fond blanc légèrement bleuté." />
+              </div>
+            </div>
+
+            <div class="acc-what acc-reveal">
+              <div class="acc-wrap">
+                <h2>Une maquette numérique, c'est quoi ?</h2>
+                <p>Une maquette numérique de bâtiment (le BIM) est une maquette 3D qui sert de source de vérité unique. Elle contient les éléments en volume comme les données. On peut en sortir des plans et des quantités.</p>
+              </div>
+            </div>
+
+            <section aria-labelledby="accTitreEtapes" class="acc-reveal">
+              <div class="acc-wrap">
+                <h2 id="accTitreEtapes">Comment ça marche</h2>
+                <p class="acc-section-lead">Trois gestes suffisent pour la prendre en main.</p>
+                <ol class="acc-steps">
+                  <li>
+                    <span class="acc-step-num" aria-hidden="true">1</span>
+                    <div>
+                      <h3>Ouvrez la maquette</h3>
+                      <p>Un clic sur le bouton. Elle s'ouvre dans votre navigateur, sur ordinateur comme sur téléphone.</p>
+                    </div>
+                  </li>
+                  <li>
+                    <span class="acc-step-num" aria-hidden="true">2</span>
+                    <div>
+                      <h3>Explorez le bâtiment</h3>
+                      <p>Faites glisser le doigt ou la souris pour changer d'angle. Choisissez les niveaux à voir ou faites une coupe.</p>
+                    </div>
+                  </li>
+                  <li>
+                    <span class="acc-step-num" aria-hidden="true">3</span>
+                    <div>
+                      <h3>Cliquez sur un élément</h3>
+                      <p>Un mur, une dalle, une porte. Ses informations s'affichent dans le panneau « Info sélection ».</p>
+                    </div>
+                  </li>
+                </ol>
+              </div>
+            </section>
+
+            <section aria-labelledby="accTitrePages" class="acc-reveal">
+              <div class="acc-wrap">
+                <h2 id="accTitrePages">Les trois pages du prototype</h2>
+                <p class="acc-section-lead">La maquette d'exemple est celle d'un hôpital (un jeu de test public).</p>
+                <ul class="acc-cards">
+                  <li>
+                    <button type="button" class="acc-card" data-go="viewer">
+                      <span class="acc-ico" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5 20.5 7v10L12 21.5 3.5 17V7z"/><path d="M3.5 7 12 11.5 20.5 7M12 11.5v10"/></svg>
+                      </span>
+                      <h3>Viewer</h3>
+                      <p>Explorer la maquette de l'hôpital en 3D, choisir les niveaux et faire une coupe.</p>
+                      <span class="acc-badge acc-badge-ok">Disponible</span>
+                    </button>
+                  </li>
+                  <li>
+                    <button type="button" class="acc-card" data-go="collision">
+                      <span class="acc-ico" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="11" height="11" rx="2"/><rect x="10" y="10" width="11" height="11" rx="2"/></svg>
+                      </span>
+                      <h3>Collision</h3>
+                      <p>Repérer les endroits où deux éléments se gênent. La page est là, sa liste est vide pour l'instant.</p>
+                      <span class="acc-badge">À venir</span>
+                    </button>
+                  </li>
+                  <li>
+                    <button type="button" class="acc-card" data-go="discussions">
+                      <span class="acc-ico" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H9l-5 4V5a1 1 0 0 1 1-1z"/><path d="M8 9h8M8 13h5"/></svg>
+                      </span>
+                      <h3>Discussions</h3>
+                      <p>Lancer une discussion à partir d'un point de vue de la maquette. Aucune discussion pour l'instant.</p>
+                      <span class="acc-badge">À venir</span>
+                    </button>
+                  </li>
+                </ul>
+              </div>
+            </section>
+
+            <section aria-labelledby="accTitreContact" class="acc-contact acc-reveal">
+              <div class="acc-wrap">
+                <div class="acc-contact-box">
+                  <div>
+                    <h2 id="accTitreContact">Vos besoins, vos idées</h2>
+                    <p>Vous travaillez sur un chantier, un projet ou pour une collectivité ? Dites-moi ce qui vous manque ou ce que vous changeriez. J'ai besoin de vos retours pour savoir où aller.</p>
+                  </div>
+                  <div class="acc-side">
+                    <a class="acc-btn acc-btn-contact" href="https://gillescobigo.com/#contact" target="_blank" rel="noopener noreferrer">Me contacter</a>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </main>
+
+          <footer class="acc-bottom">
+            <div class="acc-wrap">
+              <p>Après 5 ans dans le BIM, dont BIM manager sur Mareterra à Monaco, j'ai développé l'outil que j'aurais aimé avoir à l'époque.</p>
+              <p class="acc-auteur">Réalisé par <a href="https://gillescobigo.com" target="_blank" rel="noopener noreferrer"><img class="acc-auteur-logo" src="/images/logo-gc-black.png" alt="" width="40" height="40"><span>Gilles Cobigo</span></a></p>
+            </div>
+          </footer>
+        </div>
+      </div>
+
+      <div id="view-landing" class="view" hidden>
         <div id="landingHero">
           <div id="landingHeroOverlay"></div>
           <div id="landingHeroText">
-            <img src="/images/ouvra-logo.png" alt="Ouvra · Ouvrir le BIM" id="landingHeroLogo">
+            <img src="/images/ouvra-logo.svg" alt="Ouvra · Ouvrir le BIM" id="landingHeroLogo">
             <p>Après 10 ans dans le bâtiment dont 5 ans dans le BIM (coordination sur TPR2 et MRS3 à Marseille, BIM Manager sur Mareterra à Monaco), j'ai développé un premier outil pour faire gagner en efficacité les BIM Managers sur le terrain et ouvrir l'accès à la maquette à tous les acteurs du projet, en conception comme en exécution. Cette présentation en est la preuve de concept : l'idée est qu'on identifie ensemble vos besoins réels pour le développer plus loin, avec vous.</p>
           </div>
         </div>
@@ -75,7 +206,7 @@
                 <p>Une proposition des étapes envisagées pour développer réellement cette application, toutes à discuter ensemble.</p>
               </div>
             </div>
-            <button type="button" id="landingPresentationBtn" class="landing-part-btn">Accéder à la présentation</button>
+            <button type="button" id="landingPresentationBtn" class="landing-part-btn" hidden>Accéder à la présentation</button>
           </div>
 
           <hr class="landing-divider">
@@ -126,7 +257,7 @@
       <div id="view-viewer" class="view" hidden>
         <div id="viewerWrap">
           <canvas id="viewerCanvas"></canvas>
-          <div id="loadingOverlay"><div class="spinner"></div></div>
+          <div id="loadingOverlay" role="status"><img class="loading-logo" src="/images/ouvra-icon.svg" alt="Chargement en cours" width="64" height="64"></div>
           <div id="viewerToolbar">
             <button id="recenterBtn" title="Recentrer la caméra sur la maquette">Recentrer</button>
             <button id="newDiscussionBtn" title="Ouvrir une nouvelle discussion à partir de ce point de vue">Nouvelle discussion</button>
@@ -156,30 +287,49 @@
         <!-- Hors de #viewerWrap expres (05/09) : ce conteneur est deplace tel
              quel dans le DOM (Collision, fil de discussion), ce bouton ne
              doit rester visible que dans l'onglet Viewer lui-meme. -->
-        <button type="button" id="infoPanelToggle" aria-label="Afficher les niveaux, maquettes et infos">☰ Infos</button>
+        <button type="button" id="infoPanelToggle" aria-label="Afficher les calques : niveaux et maquettes">☰ Calques</button>
+        <!-- Carte "Info sélection" independante (19/10) : visible seulement
+             quand un element ou un niveau est selectionne, hors de
+             #viewerWrap expres (ce conteneur est deplace vers Collision et
+             Discussions). Ordinateur : flottante en bas a gauche de la zone
+             3D ; mobile : remplacee par #ficheSheet (cf CSS). -->
+        <div id="ficheCard" role="dialog" aria-label="Info sélection">
+          <div id="ficheCardHeader">
+            <span>Info sélection</span>
+            <button type="button" id="ficheCardClose" aria-label="Fermer et désélectionner">✕</button>
+          </div>
+          <div id="ficheCardBody">
+            <dl class="fiche-content" id="ficheCardContent"></dl>
+            <div id="ficheCardDocs"></div>
+          </div>
+        </div>
         <div id="infoPanelBackdrop" hidden></div>
         <aside id="infoPanel" class="side-panel">
           <!-- Ordinateur uniquement (01/10) : reduit le panneau a une fine
                bande pour laisser plus de place a la maquette. Masque sur
                mobile, ou le panneau est deja un tiroir (cf #infoPanelToggle). -->
           <button type="button" id="infoPanelCollapse" aria-controls="infoPanel" aria-expanded="true" aria-label="Réduire le panneau" title="Réduire le panneau">›</button>
-          <details class="info-section" id="section-niveaux" open>
-            <summary class="info-section-title">
-              <span>Niveaux</span>
-              <button type="button" id="niveauxResetBtn" class="reset-btn">Tout afficher</button>
-            </summary>
+          <!-- Deux onglets (19/10, option B) : un seul panneau visible, les
+               `<details>` d'origine servent de panneaux (leur titre est masque
+               par CSS, les boutons "Tout afficher" sont deplaces dans
+               `.panel-head`). Bascule gerée dans main.js (setupInfoTabs). -->
+          <div class="tabs" role="tablist" aria-label="Panneau du Viewer">
+            <button type="button" class="tab" role="tab" id="tab-niveaux" aria-selected="true" aria-controls="section-niveaux">Niveaux</button>
+            <button type="button" class="tab" role="tab" id="tab-maquettes" aria-selected="false" aria-controls="section-maquettes" tabindex="-1">Maquettes</button>
+          </div>
+          <details class="info-section tabpanel" role="tabpanel" aria-labelledby="tab-niveaux" id="section-niveaux" open>
+            <summary class="info-section-title"><span>Niveaux</span></summary>
+            <div class="panel-head"><button type="button" id="niveauxResetBtn" class="reset-btn">Tout afficher</button></div>
             <ul class="info-list" id="niveauxList"></ul>
           </details>
 
-          <details class="info-section" id="section-maquettes" open>
-            <summary class="info-section-title">
-              <span>Maquettes</span>
-              <button type="button" id="maquettesResetBtn" class="reset-btn">Tout afficher</button>
-            </summary>
+          <details class="info-section tabpanel" role="tabpanel" aria-labelledby="tab-maquettes" id="section-maquettes" open hidden>
+            <summary class="info-section-title"><span>Maquettes</span></summary>
+            <div class="panel-head"><button type="button" id="maquettesResetBtn" class="reset-btn">Tout afficher</button></div>
             <ul class="info-list" id="maquettesList"></ul>
           </details>
 
-          <details class="info-section" id="section-fiche" open>
+          <details class="info-section" id="section-fiche">
             <summary class="info-section-title"><span>Info sélection</span></summary>
             <p class="info-empty" id="fichePlaceholder">Cliquez sur un élément de la maquette, ou sur le nom d'un niveau.</p>
             <dl class="fiche-content" id="ficheContent" hidden></dl>
@@ -345,7 +495,7 @@
 
     <div id="ctaBanner">
       <p>Intéressé ?</p>
-      <a href="https://gillescobigo.com/contact" target="_blank" rel="noopener noreferrer">Me contacter</a>
+      <a href="https://gillescobigo.com/#contact" target="_blank" rel="noopener noreferrer">Me contacter</a>
     </div>
 
     <div id="docModalOverlay" hidden>

@@ -1,7 +1,78 @@
 import { Viewer, WebIFCLoaderPlugin, XKTLoaderPlugin, SectionPlanesPlugin, Mesh, ReadableGeometry, PhongMaterial, buildSphereGeometry } from "@xeokit/xeokit-sdk";
 import * as WebIFC from "web-ifc";
 
+// ============================================================================
+// INTERRUPTEURS DE MASQUAGE : base propre du 19/10
+// ----------------------------------------------------------------------------
+// Etat de base du 19/10 : seules 3 pages sont accessibles (Viewer, Collision,
+// Discussions), sur la seule maquette de l'hopital, sans profils. Rien n'a
+// ete supprime : code, donnees, CSS, HTML et fichiers de maquette sont
+// conserves, simplement rendus inaccessibles (attribut "hidden", garde dans le
+// JS). Pour reactiver une fonction : passer son interrupteur a false (et
+// suivre la consigne indiquee ci-dessous quand il y en a une).
+//
+// PRESENTATION_MASQUEE
+//   Page Presentation (onglet retire de la navbar, bouton de la landing
+//   masque, activateView renvoie vers le Viewer). Reactiver : false, remettre
+//   l'onglet data-view="presentation" dans la navbar (index.html) et retirer
+//   "hidden" du bouton #landingPresentationBtn de la landing.
+//
+// MASQUE_SELECTEUR_PROJET
+//   Selecteur de projet #projectSelect cache et valeur forcee sur l'hopital
+//   au demarrage : la maquette de demo (STR, TOITURE, CEA), ses 10 collisions
+//   IfcClash et ses discussions ne sont plus joignables. Reactiver : false
+//   (le selecteur reapparait, la demo recharge ses collisions et discussions).
+//
+// MASQUE_PROFILS
+//   Tout ce qui concerne les profils : bouton "Activer les profils", selecteur
+//   de persona, ecrans profils-intro et persona-intro, filtrage data-persona
+//   (persona forcee sur "presentation-globale", valeur memorisee ignoree).
+//   Reactiver : false.
+//
+// MASQUE_TODO_ADMIN
+//   Onglets Todo (Projeteur) et Admin caches ; activateView renvoie vers le
+//   Viewer pour ces vues, hash et localStorage compris. Reactiver : false
+//   (ils restent soumis au filtrage par profil, donc visibles seulement si
+//   MASQUE_PROFILS est aussi a false).
+//
+// MASQUE_ANCIENNE_LANDING
+//   Ancienne landing #view-landing (hero, parties 1 et 2, bouton "Acceder a
+//   la demo") masquee au profit de la nouvelle page d'accueil #view-accueil
+//   (issue du mockup ouvra-v2-accueil, 19/10). Toute demande d'activer la vue
+//   "landing" (bouton OUVRA, hash #landing, valeur memorisee) redirige vers
+//   "accueil". Tant que l'interrupteur est a true, la valeur memorisee
+//   "chantier-active-view" n'est plus lue au chargement : l'arrivee est
+//   toujours l'accueil (sauf hash valide). Reactiver l'ancienne landing :
+//   false (l'arrivee par defaut reste alors "accueil" tant que le code de
+//   savedView n'est pas rebascule sur "landing").
+// - MASQUE_MAQUETTES_LOURDES : Alarme incendie, Plomberie et Sprinklers de
+//   l'hopital (19/10) ne sont ni chargees ni listees : leurs ~23 500 petits
+//   objets (tuyaux, raccords, capteurs) rendent la navigation saccadee et
+//   lente. Les fichiers restent dans public/models/hospital/ et dans
+//   PROJECTS. Les reactiver : false (l'idee suivante est un chargement a la
+//   demande, a la case cochee).
+// - MASQUE_FICHE_DANS_DRAWER : l'ancienne section "Info selection" du drawer
+//   (#section-fiche, ids ficheContent/ficheDocs/fichePlaceholder) est masquee
+//   (attribut hidden) : l'info de selection s'affiche dans la carte
+//   independante #ficheCard (ordinateur) ou la feuille du bas #ficheSheet
+//   (mobile), qui n'existent visuellement que pendant une selection. Le
+//   code et les elements restent, la section continue d'etre alimentee.
+//   Reactiver l'ancienne section : false.
+// ============================================================================
+const MASQUE_FICHE_DANS_DRAWER = true;
+const PRESENTATION_MASQUEE = true;
+const MASQUE_SELECTEUR_PROJET = true;
+const MASQUE_PROFILS = true;
+const MASQUE_TODO_ADMIN = true;
+const MASQUE_ANCIENNE_LANDING = true;
+const MASQUE_MAQUETTES_LOURDES = true;
+const MAQUETTES_LOURDES_IDS = ["hosp-alarm", "hosp-plomb", "hosp-spr"];
+
 const loadingOverlay = document.getElementById("loadingOverlay");
+// Ecran de chargement : le logo Ouvra en rotation simple (19/10, remplace l'ancien
+// spinner a points). Remis a chaque chargement, car l'overlay est vide en cas
+// d'erreur (texte d'erreur a la place du logo).
+const LOADING_LOGO_HTML = '<img class="loading-logo" src="/images/ouvra-icon.svg" alt="Chargement en cours" width="64" height="64">';
 const viewerCanvas = document.getElementById("viewerCanvas");
 const niveauxList = document.getElementById("niveauxList");
 const maquettesList = document.getElementById("maquettesList");
@@ -44,7 +115,6 @@ const adminFrame = document.getElementById("adminFrame");
 const personaSelect = document.getElementById("personaSelect");
 const activateProfilesBtn = document.getElementById("activateProfilesBtn");
 const profilsActivateBtn = document.getElementById("profilsActivateBtn");
-const personaBanner = document.getElementById("personaBanner");
 const personaIntroContent = document.getElementById("personaIntroContent");
 const personaIntroContinueBtn = document.getElementById("personaIntroContinueBtn");
 const navbarToggle = document.getElementById("navbarToggle");
@@ -60,6 +130,8 @@ const landingDemoBtn = document.getElementById("landingDemoBtn");
 navbarBrand.addEventListener("click", () => {
   activateView("landing");
   document.getElementById("view-landing").scrollTop = 0;
+  const viewAccueilTop = document.getElementById("view-accueil");
+  if (viewAccueilTop) viewAccueilTop.scrollTop = 0;
 });
 landingPresentationBtn.addEventListener("click", () => {
   activateView("presentation");
@@ -460,11 +532,32 @@ const HOSPITAL_CAMERA_STATE = {
   up: [0.28727404199819645, 0.8417831004071789, -0.45702826680949976]
 };
 
+// Page Presentation masquee (19/10) : l'interrupteur PRESENTATION_MASQUEE est
+// desormais dans le bloc d'interrupteurs en tete de fichier.
+
+// Vues rendues inaccessibles par les interrupteurs MASQUE_* du bloc de tete :
+// renvoient vers le Viewer, quelle que soit l'origine (hash, localStorage,
+// bouton).
+function redirectMaskedView(viewName) {
+  if (MASQUE_TODO_ADMIN && (viewName === "projeteur" || viewName === "admin")) return "viewer";
+  if (MASQUE_PROFILS && (viewName === "profils-intro" || viewName === "persona-intro")) return "viewer";
+  return viewName;
+}
+
 function activateView(viewName) {
+  if (PRESENTATION_MASQUEE && viewName === "presentation") viewName = "viewer";
+  if (MASQUE_ANCIENNE_LANDING && viewName === "landing") viewName = "accueil";
+  viewName = redirectMaskedView(viewName);
+  // Accueil : navbar et bandeau CTA de l'app masques par CSS (body.acc-actif).
+  document.body.classList.toggle("acc-actif", viewName === "accueil");
   navLinks.forEach((l) => l.classList.toggle("active", l.dataset.view === viewName));
   document.querySelectorAll(".view").forEach((view) => {
     view.hidden = view.id !== "view-" + viewName;
   });
+  if (viewName !== "viewer") {
+    closeFicheCard();
+    closeFicheSheet();
+  }
   if (viewName === "viewer") {
     viewViewer.insertBefore(viewerWrap, infoPanel);
     window.dispatchEvent(new Event("resize"));
@@ -541,7 +634,7 @@ navLinks.forEach((link) => {
     // melangees. Le mockup est un iframe statique, donc le projet lui est
     // passe en query string ; src reaffecte a chaque clic pour refleter le
     // projet courant.
-    if (link.dataset.view === "admin") {
+    if (link.dataset.view === "admin" && !MASQUE_TODO_ADMIN) {
       adminFrame.src = "/personas/admin-groupes.html?project=" + encodeURIComponent(projectSelect.value);
     }
     navbarLinksEl.classList.remove("open");
@@ -605,16 +698,12 @@ function setInfoPanelCollapsed(collapsed) {
   infoPanelCollapse.setAttribute("aria-label", label);
   infoPanelCollapse.title = label;
 }
-try {
-  if (localStorage.getItem(INFO_PANEL_COLLAPSED_KEY) === "1") {
-    setInfoPanelCollapsed(true);
-    // Applique avant le premier rendu, sans transition : pas de transitionend,
-    // le canvas est donc redimensionne ici directement.
-    window.dispatchEvent(new Event("resize"));
-  }
-} catch (e) {
-  // localStorage indisponible : panneau ouvert par defaut.
-}
+// Replie a chaque arrivee sur le Viewer (19/10, demande de Gilles) : la
+// valeur memorisee n'est plus lue au chargement (elle reste ecrite au clic
+// ci-dessous). Applique avant le premier rendu, sans transition : pas de
+// transitionend, le canvas est donc redimensionne ici directement.
+setInfoPanelCollapsed(true);
+window.dispatchEvent(new Event("resize"));
 infoPanelCollapse.addEventListener("click", () => {
   const collapsed = !infoPanel.classList.contains("collapsed");
   setInfoPanelCollapsed(collapsed);
@@ -630,6 +719,86 @@ infoPanel.addEventListener("transitionend", (e) => {
   }
 });
 
+// Masque l'ancienne section "Info selection" du drawer (cf interrupteur).
+const sectionFicheDrawer = document.getElementById("section-fiche");
+if (MASQUE_FICHE_DANS_DRAWER && sectionFicheDrawer) sectionFicheDrawer.hidden = true;
+
+// Carte Info selection : le bouton fermer desélectionne (ferme aussi la
+// feuille mobile via clearFiche).
+const ficheCardCloseBtn = document.getElementById("ficheCardClose");
+if (ficheCardCloseBtn) {
+  ficheCardCloseBtn.addEventListener("click", () => deselectEntity());
+}
+
+// Onglets du drawer du Viewer (Niveaux / Maquettes), motif WAI-ARIA tabs :
+// un seul panneau visible, fleches gauche/droite entre onglets.
+const infoTabs = Array.from(document.querySelectorAll('#infoPanel [role="tab"]'));
+function selectInfoTab(tab) {
+  infoTabs.forEach((t) => {
+    const on = t === tab;
+    t.setAttribute("aria-selected", String(on));
+    t.tabIndex = on ? 0 : -1;
+    const panel = document.getElementById(t.getAttribute("aria-controls"));
+    if (panel) panel.hidden = !on;
+  });
+}
+infoTabs.forEach((tab, i) => {
+  tab.addEventListener("click", () => selectInfoTab(tab));
+  tab.addEventListener("keydown", (e) => {
+    const step = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
+    if (!step) return;
+    const next = infoTabs[(i + step + infoTabs.length) % infoTabs.length];
+    selectInfoTab(next);
+    next.focus();
+    e.preventDefault();
+  });
+});
+
+// Page d'accueil (#view-accueil) : boutons/cartes [data-go] vers une vue de
+// l'app, logo vers le haut de l'accueil, revelation douce au scroll. Chaque
+// element est garde (null) : rien ne plante s'il n'est pas dans le DOM.
+const viewAccueil = document.getElementById("view-accueil");
+if (viewAccueil) {
+  viewAccueil.querySelectorAll("[data-go]").forEach((el) => {
+    el.addEventListener("click", () => {
+      const target = el.dataset.go;
+      // Passe par le clic sur l'onglet de navbar correspondant : meme remise
+      // a zero (camera, niveaux, detail ouvert) que depuis la navbar.
+      const navLink = navLinks.find((l) => l.dataset.view === target);
+      if (navLink) navLink.click();
+      else activateView(target);
+    });
+  });
+  const accueilLogoLink = document.getElementById("accueilLogoLink");
+  if (accueilLogoLink) {
+    accueilLogoLink.addEventListener("click", (e) => {
+      e.preventDefault();
+      activateView("accueil");
+      viewAccueil.scrollTop = 0;
+    });
+  }
+  // Revelation au scroll : root = la vue elle-meme (c'est elle qui defile).
+  // Tant que la vue est masquee (display none), rien n'intersecte : les
+  // elements ne sont reveles qu'une fois l'accueil visible.
+  const reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const revealItems = viewAccueil.querySelectorAll(".acc-reveal");
+  if (!reduceMotion && "IntersectionObserver" in window && revealItems.length) {
+    viewAccueil.classList.add("acc-js");
+    const accueilObserver = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("in");
+            accueilObserver.unobserve(entry.target);
+          }
+        });
+      },
+      { root: viewAccueil, threshold: 0.12 }
+    );
+    revealItems.forEach((el) => accueilObserver.observe(el));
+  }
+}
+
 // Capture avant qu'activateView() ne le reecrive (replaceState) : necessaire
 // plus bas pour retrouver un fil precis (#discussions/<id>) au chargement.
 const initialHash = location.hash;
@@ -641,25 +810,27 @@ const initialHash = location.hash;
 const hashView = initialHash.replace("#", "").split("/")[0];
 // "landing" n'est pas un nav-link (accessible via le bouton OUVRA),
 // ajoute a la liste des vues valides pour le hash/localStorage quand meme.
-const validViews = navLinks.map((l) => l.dataset.view).concat(["landing"]);
+const validViews = navLinks.map((l) => l.dataset.view).concat(["landing", "accueil"]);
 
-let savedView = "landing";
+// Arrivee par defaut : la nouvelle page d'accueil.
+let savedView = "accueil";
 if (validViews.includes(hashView)) {
   savedView = hashView;
-} else {
+} else if (!MASQUE_ANCIENNE_LANDING) {
   try {
-    savedView = localStorage.getItem("chantier-active-view") || "landing";
+    const storedView = localStorage.getItem("chantier-active-view");
+    if (validViews.includes(storedView)) savedView = storedView;
   } catch (e) {
-    // localStorage indisponible, on reste sur "landing" par defaut.
+    // localStorage indisponible, on reste sur "viewer" par defaut.
   }
 }
+activateView(savedView);
 if (savedView !== "landing") {
-  activateView(savedView);
   // adminFrame.src n'est normalement fixe que dans le handler de clic des
   // nav-links (cf plus haut) : une restauration directe au rechargement
   // (pas de clic) le laissait vide, page blanche dans l'onglet Admin apres
   // F5 (porte depuis IES le 16/09).
-  if (savedView === "admin") {
+  if (savedView === "admin" && !MASQUE_TODO_ADMIN) {
     adminFrame.src = "/personas/admin-groupes.html?project=" + encodeURIComponent(projectSelect.value);
   }
 }
@@ -675,7 +846,17 @@ if (savedView !== "landing") {
 // projet uniquement (le projet demo garde son comportement normal).
 const DEMO_PROJECT_KEY = "demo";
 const HOSPITAL_PROJECT_KEY = "hospital-xkt";
-const HOSPITAL_VISIBLE_VIEWS = ["presentation", "viewer"];
+// 19/10 : l'hopital devient le projet unique et expose aussi Collision et
+// Discussions, qui fonctionnent sans donnees dessus (listes vides, cf
+// applyProjectData). Ancienne valeur : ["presentation", "viewer"].
+const HOSPITAL_VISIBLE_VIEWS = ["presentation", "viewer", "collision", "discussions"];
+
+// Projet hopital force au demarrage quand le selecteur est masque (aucune
+// valeur memorisee n'est relue : l'hopital s'impose a chaque chargement).
+if (MASQUE_SELECTEUR_PROJET) {
+  projectSelect.hidden = true;
+  projectSelect.value = HOSPITAL_PROJECT_KEY;
+}
 
 // Profils fictifs (portes depuis IES le 16/09) : simule le fait que
 // l'appli s'adapte au metier/a l'entreprise, en changeant simplement quels
@@ -684,7 +865,7 @@ const HOSPITAL_VISIBLE_VIEWS = ["presentation", "viewer"];
 // d'affichage sur les nav-links existants (data-persona, liste separee par
 // espace, cf index.html).
 const PERSONA_DEFAULT_VIEW = {
-  "presentation-globale": "landing",
+  "presentation-globale": "viewer",
   "bim-manager": "viewer",
   synthese: "discussions",
   be: "discussions",
@@ -714,6 +895,11 @@ function updateProfilesActivationUI() {
   const isHospitalProject = projectSelect.value === HOSPITAL_PROJECT_KEY;
   activateProfilesBtn.hidden = isHospitalProject || profilesActivated;
   personaSelect.hidden = isHospitalProject || !profilesActivated;
+  // Profils masques (19/10) : ni bouton d'activation ni selecteur de profil.
+  if (MASQUE_PROFILS) {
+    activateProfilesBtn.hidden = true;
+    personaSelect.hidden = true;
+  }
 }
 
 function applyPersona(persona, forceNav) {
@@ -721,6 +907,11 @@ function applyPersona(persona, forceNav) {
   updateProfilesActivationUI();
 
   navLinks.forEach((link) => {
+    // Onglets Todo et Admin masques (19/10), quel que soit le profil/projet.
+    if (MASQUE_TODO_ADMIN && (link.dataset.view === "projeteur" || link.dataset.view === "admin")) {
+      link.hidden = true;
+      return;
+    }
     // Projet hopital (porte depuis IES le 16/09) : plus aucun filtrage par
     // profil, juste Presentation + Viewer visibles dans la navbar (demande
     // explicite de Gilles, cote IES comme ici : jeu de test sans donnees
@@ -732,7 +923,6 @@ function applyPersona(persona, forceNav) {
     const personaAllowed = (link.dataset.persona || "").split(" ").includes(persona);
     link.hidden = !personaAllowed;
   });
-  personaBanner.hidden = isHospitalProject || persona !== "externe";
   try {
     localStorage.setItem("chantier-persona", persona);
   } catch (e) {
@@ -894,6 +1084,9 @@ try {
 } catch (e) {
   // localStorage indisponible, on reste sur "presentation-globale" par defaut.
 }
+// Profils masques (19/10) : la valeur memorisee est ignoree, filtrage par
+// profil neutre (onglets Viewer, Collision, Discussions).
+if (MASQUE_PROFILS) initialPersona = "presentation-globale";
 personaSelect.value = initialPersona;
 applyPersona(initialPersona, false);
 
@@ -989,7 +1182,10 @@ const viewer = new Viewer({
 // exposee ici pour pouvoir inspecter/piloter la camera manuellement.
 window.viewer = viewer;
 
-viewer.scene.canvas.backgroundColor = [0.051, 0.055, 0.063];
+// Fond de la 3D, ambiance vert sourd (19/10, un cran plus vert) ; precedents : [0.067, 0.082, 0.074], anthracite [0.075, 0.08, 0.078],
+// vert foret [0.059, 0.086, 0.071],
+// d'origine [0.051, 0.055, 0.063].
+viewer.scene.canvas.backgroundColor = [0.063, 0.084, 0.072];
 
 // Vitesse de navigation (portee depuis IES le 16/09, etendue a la souris) :
 // reglages par defaut du SDK (dragRotationRate/mouseWheelDollyRate/
@@ -1093,8 +1289,17 @@ const PROJECTS = {
   ],
   [HOSPITAL_PROJECT_KEY]: [
     { id: "hosp-arch", src: "/models/hospital/architecture.xkt", label: "Architecture", color: "#c9d1d9", format: "xkt", shown: true },
-    { id: "hosp-mep", src: "/models/hospital/mechanical.xkt", label: "Mechanical (CVC)", color: "#e8935c", colorize: [0.91, 0.58, 0.36], format: "xkt", shown: true }
-  ]
+    { id: "hosp-mep", src: "/models/hospital/mechanical.xkt", label: "Mechanical (CVC)", color: "#e8935c", colorize: [0.91, 0.58, 0.36], format: "xkt", shown: true },
+    // Disciplines ajoutees le 19/10 (jeu de test West Riverside, Autodesk,
+    // depot public xeokit-bim-viewer). XKT d'une version de format plus
+    // ancienne (V2) : geometrie seule, metadonnees dans le JSON associe
+    // (metaSrc -> metaModelSrc du XKTLoaderPlugin).
+    { id: "hosp-struct", src: "/models/hospital/structure.xkt", metaSrc: "/models/hospital/structure.json", label: "Structure", color: "#58a6ff", colorize: [0.35, 0.65, 1], format: "xkt", shown: true },
+    { id: "hosp-elec", src: "/models/hospital/electrical.xkt", metaSrc: "/models/hospital/electrical.json", label: "Électricité", color: "#e3b341", colorize: [0.89, 0.70, 0.25], format: "xkt", shown: true },
+    { id: "hosp-alarm", src: "/models/hospital/fireAlarms.xkt", metaSrc: "/models/hospital/fireAlarms.json", label: "Alarme incendie", color: "#f85149", colorize: [0.97, 0.32, 0.29], format: "xkt", shown: true },
+    { id: "hosp-plomb", src: "/models/hospital/plumbing.xkt", metaSrc: "/models/hospital/plumbing.json", label: "Plomberie", color: "#3fb950", colorize: [0.25, 0.73, 0.31], format: "xkt", shown: true },
+    { id: "hosp-spr", src: "/models/hospital/sprinklers.xkt", metaSrc: "/models/hospital/sprinklers.json", label: "Sprinklers", color: "#39c5cf", colorize: [0.22, 0.77, 0.81], format: "xkt", shown: true }
+  ].filter((m) => !(MASQUE_MAQUETTES_LOURDES && MAQUETTES_LOURDES_IDS.includes(m.id)))
 };
 
 const MAQUETTES = [];
@@ -1112,11 +1317,11 @@ const MAQUETTES = [];
 // statut "nouveau" et auteur "Detection automatique" par defaut car
 // IfcClash ne produit ni triage humain ni conversation, uniquement de la
 // geometrie.
-const DETECTIONS = [
+const DEMO_DETECTIONS = [
   { id: "structure-toiture", modeles: ["archi", "toit"], label: "Structure ↔ Toiture métallique" }
 ];
 
-const CLASHES = [
+const DEMO_CLASHES = [
   {
     id: "clash-1",
     detectionId: "structure-toiture",
@@ -1283,7 +1488,7 @@ const CURRENT_USER = "Vous";
 // "maquettes" fige quelles maquettes etaient actives au moment simule de la
 // creation du fil (Maquette CEA n'existant pas encore a cette epoque
 // fictive, elle est toujours masquee ici).
-const DISCUSSIONS = [
+const DEMO_DISCUSSIONS = [
   {
     id: "disc-1",
     zone: "Niveau 1, entrée principale",
@@ -1384,6 +1589,29 @@ const DISCUSSIONS = [
     discussion: [{ auteur: "Vous (Bureau d'études)", texte: "Instruction issue du fil « Voile béton BA16 ↔ Poutrelle IPE80 (#2449) » : à traiter." }]
   }
 ];
+
+// Donnees actives (19/10) : DEMO_DETECTIONS/DEMO_CLASHES/DEMO_DISCUSSIONS
+// ci-dessus sont les donnees du seul projet de demo (ids de maquettes archi,
+// toit, cea). Les tableaux DETECTIONS/CLASHES/DISCUSSIONS utilises partout
+// dans le fichier sont les tableaux de travail du projet courant : remplis
+// avec les donnees de demo (memes objets, donc les reponses postees restent
+// partagees) uniquement sur le projet de demo, vides sur les autres projets
+// (hopital : Collision et Discussions fonctionnent sans donnees).
+const DETECTIONS = [];
+const CLASHES = [];
+const DISCUSSIONS = [];
+
+function applyProjectData(projectKey) {
+  DETECTIONS.length = 0;
+  CLASHES.length = 0;
+  DISCUSSIONS.length = 0;
+  if (projectKey === DEMO_PROJECT_KEY) {
+    DETECTIONS.push(...DEMO_DETECTIONS);
+    CLASHES.push(...DEMO_CLASHES);
+    DISCUSSIONS.push(...DEMO_DISCUSSIONS);
+  }
+}
+applyProjectData(projectSelect.value);
 
 // Pas de vrai annuaire de contacts pour ce POC : liste fixe des personnes
 // deja utilisees dans les fils simules.
@@ -2402,6 +2630,76 @@ renderDetections();
 
 const maquetteCountEls = new Map();
 
+// Versions de demonstration, saisies a la main (19/10) : pas encore de source
+// reelle (le futur depot dans l'Admin les renseignera). Une maquette absente
+// de cette table n'affiche pas de badge.
+const MAQUETTE_VERSIONS = {
+  archi: { lot: "Lot Structure", version: 3, date: "12/10/2026" },
+  toit: { lot: "Lot Toiture", version: 2, date: "05/10/2026" },
+  cea: { lot: "Lot Architecture", version: 1, date: "21/09/2026" },
+  "hosp-arch": { lot: "Lot Architecture", version: 2, date: "12/10/2026" },
+  "hosp-mep": { lot: "Lot CVC", version: 1, date: "05/10/2026" },
+  "hosp-struct": { lot: "Lot Structure", version: 3, date: "12/10/2026" },
+  "hosp-elec": { lot: "Lot Électricité", version: 1, date: "28/09/2026" },
+  "hosp-alarm": { lot: "Lot Sécurité incendie", version: 1, date: "28/09/2026" },
+  "hosp-plomb": { lot: "Lot Plomberie", version: 2, date: "05/10/2026" },
+  "hosp-spr": { lot: "Lot Sprinklers", version: 1, date: "05/10/2026" }
+};
+
+// Une seule bulle, rattachee a <body> et positionnee en "fixed" : elle passe
+// ainsi au-dessus de tout et n'est jamais rognee par le panneau lateral ni
+// masquee par la section Niveaux.
+const versionTip = document.createElement("div");
+versionTip.id = "versionTip";
+versionTip.setAttribute("role", "tooltip");
+versionTip.hidden = true;
+document.body.appendChild(versionTip);
+let versionTipOwner = null;
+
+function showVersionTip(badge, info) {
+  versionTip.textContent = "";
+  const lot = document.createElement("strong");
+  lot.textContent = info.lot;
+  versionTip.append(lot, "Version " + info.version + " · mise à jour le " + info.date);
+  versionTip.hidden = false;
+  versionTipOwner = badge;
+  const r = badge.getBoundingClientRect();
+  const t = versionTip.getBoundingClientRect();
+  const margin = 8;
+  let left = r.right - t.width;
+  left = Math.max(margin, Math.min(left, window.innerWidth - t.width - margin));
+  let top = r.top - t.height - 6;
+  if (top < margin) top = r.bottom + 6;
+  versionTip.style.left = left + "px";
+  versionTip.style.top = top + "px";
+}
+
+function hideVersionTip() {
+  versionTip.hidden = true;
+  versionTipOwner = null;
+}
+
+function createVersionBadge(info) {
+  const badge = document.createElement("button");
+  badge.type = "button";
+  badge.className = "ver-badge";
+  badge.textContent = "V" + info.version;
+  badge.setAttribute("aria-label", "Version " + info.version + " de la maquette, voir le détail");
+  badge.addEventListener("mouseenter", () => showVersionTip(badge, info));
+  badge.addEventListener("mouseleave", hideVersionTip);
+  badge.addEventListener("focus", () => showVersionTip(badge, info));
+  badge.addEventListener("blur", hideVersionTip);
+  badge.addEventListener("click", () => {
+    if (versionTipOwner === badge && !versionTip.hidden) hideVersionTip();
+    else showVersionTip(badge, info);
+  });
+  return badge;
+}
+
+document.addEventListener("pointerdown", (e) => {
+  if (!e.target.closest(".ver-badge")) hideVersionTip();
+});
+
 function renderMaquetteRows(targetList, maquettesSubset) {
   targetList.innerHTML = "";
   maquettesSubset.forEach((maquette) => {
@@ -2434,7 +2732,14 @@ function renderMaquetteRows(targetList, maquettesSubset) {
     count.className = "maquette-count";
     count.textContent = maquette.model ? maquette.model.numEntities.toLocaleString("fr-FR") + " éléments" : "…";
 
-    li.append(checkbox, swatch, name, count);
+    // Nom puis nombre d'elements en dessous (meme gabarit pour toutes les
+    // maquettes), le badge de version a droite.
+    const text = document.createElement("span");
+    text.className = "maquette-text";
+    text.append(name, count);
+
+    li.append(checkbox, swatch, text);
+    if (MAQUETTE_VERSIONS[maquette.id]) li.append(createVersionBadge(MAQUETTE_VERSIONS[maquette.id]));
     targetList.appendChild(li);
 
     if (!maquetteCountEls.has(maquette.id)) maquetteCountEls.set(maquette.id, []);
@@ -2560,6 +2865,9 @@ function findStoreyObjectIds(maquetteId, storeyName) {
 function canonicalStoreyName(name) {
   return name
     .replace(/\s+Ceiling$/i, "")
+    // "Level 2 TOS" (Top Of Steel, etage de reference du modele Structure)
+    // rejoint "Level 2" : meme logique que Ceiling.
+    .replace(/\s+TOS$/i, "")
     // "Level 7A" rejoint "Level 7" : suffixe lettre apres un niveau
     // numerote, variante/mezzanine du meme niveau plutot qu'un vrai niveau
     // distinct du point de vue de l'usager.
@@ -2770,7 +3078,33 @@ function renderFicheInto(contentEl, docsEl, rows, docs) {
   }
 }
 
+// Carte "Info selection" independante (ordinateur) : n'existe visuellement
+// que pendant une selection dans la vue Viewer. Elements recherches a la
+// demande et gardes (null) : aucune dependance a l'ordre de declaration.
+function closeFicheCard() {
+  const card = document.getElementById("ficheCard");
+  if (card) card.classList.remove("open");
+}
+
 function showSelection(rows, docs) {
+  // Carte independante / feuille du bas : seulement si la vue Viewer est
+  // affichee (le meme code sert la selection de Collision, qui a sa fiche).
+  const card = document.getElementById("ficheCard");
+  const cardContent = document.getElementById("ficheCardContent");
+  const cardDocs = document.getElementById("ficheCardDocs");
+  if (!viewViewer.hidden) {
+    if (isMobileViewport()) {
+      renderFicheInto(ficheSheetContent, ficheSheetDocs, rows, docs);
+      openFicheSheet();
+    } else if (card && cardContent && cardDocs) {
+      renderFicheInto(cardContent, cardDocs, rows, docs);
+      card.classList.add("open");
+    }
+  }
+
+  // "Info selection" est repliee par defaut : elle s'ouvre au clic sur un
+  // element ou un niveau. Ne deplie jamais le panneau lui-meme.
+  document.getElementById("section-fiche").open = true;
   renderFicheInto(ficheContent, ficheDocs, rows, docs);
   fichePlaceholder.hidden = true;
   ficheContent.hidden = false;
@@ -2831,6 +3165,9 @@ function showFiche(entity) {
 }
 
 function clearFiche() {
+  // "Info selection" n'est ouverte que lorsqu'un element est selectionne :
+  // on la referme des qu'il n'y a plus de selection.
+  document.getElementById("section-fiche").open = false;
   fichePlaceholder.hidden = false;
   ficheContent.hidden = true;
   ficheContent.innerHTML = "";
@@ -2840,6 +3177,7 @@ function clearFiche() {
   collisionFicheContent.innerHTML = "";
   collisionFicheDocs.innerHTML = "";
   closeFicheSheet();
+  closeFicheCard();
 }
 
 let selectedEntity = null;
@@ -3074,7 +3412,7 @@ function loadProject(projectKey) {
   renderMaquetteRows(collisionMaquettesList, MAQUETTES);
 
   loadingOverlay.classList.remove("hidden", "error");
-  loadingOverlay.textContent = "";
+  loadingOverlay.innerHTML = LOADING_LOGO_HTML;
 
   // Chargement sequentiel (porte depuis IES le 16/09, meme correctif que le
   // crash Safari observe en 4G sur Qiddiya) : un lot a la fois plutot que
@@ -3100,7 +3438,7 @@ function loadProject(projectKey) {
 
     const maquette = MAQUETTES[index];
     const model = maquette.format === "xkt"
-      ? xktLoader.load({ id: maquette.id, src: maquette.src, edges: true })
+      ? xktLoader.load(Object.assign({ id: maquette.id, src: maquette.src, edges: true }, maquette.metaSrc ? { metaModelSrc: maquette.metaSrc } : {}))
       : ifcLoader.load({ id: maquette.id, src: maquette.src, excludeTypes: ["IfcSpace"], edges: true });
 
     maquette.model = model;
@@ -3145,6 +3483,10 @@ IfcAPI.Init().then(() => {
 // profils (cf HOSPITAL_VISIBLE_VIEWS dans applyPersona).
 projectSelect.addEventListener("change", () => {
   if (!ifcLoader) return;
+  applyProjectData(projectSelect.value);
+  renderDetections();
+  renderDiscussionsPage();
+  renderProjeteurList();
   loadProject(projectSelect.value);
   applyPersona(personaSelect.value, false);
 });
