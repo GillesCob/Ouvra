@@ -1,5 +1,6 @@
-import { Viewer, WebIFCLoaderPlugin, XKTLoaderPlugin, SectionPlanesPlugin, Mesh, ReadableGeometry, PhongMaterial, buildSphereGeometry } from "@xeokit/xeokit-sdk";
+import { Viewer, AnnotationsPlugin, WebIFCLoaderPlugin, XKTLoaderPlugin, SectionPlanesPlugin, Mesh, ReadableGeometry, PhongMaterial, buildSphereGeometry } from "@xeokit/xeokit-sdk";
 import * as WebIFC from "web-ifc";
+import { HOSPITAL_DETECTIONS, HOSPITAL_CLASHES } from "./clashesHospital.js";
 
 // ============================================================================
 // INTERRUPTEURS DE MASQUAGE : base propre du 19/10
@@ -58,14 +59,185 @@ import * as WebIFC from "web-ifc";
 //   (mobile), qui n'existent visuellement que pendant une selection. Le
 //   code et les elements restent, la section continue d'etre alimentee.
 //   Reactiver l'ancienne section : false.
+// - MASQUE_FICHE_COLLISION_DANS_DRAWER (19/10) : meme principe pour la page
+//   Collision. La section "Info selection" du drawer de collision
+//   (#section-collision-fiche, ids collisionFicheContent/collisionFicheDocs/
+//   collisionFichePlaceholder) est masquee (hidden) : la fiche s'affiche dans
+//   la carte independante #collisionFicheCard (ordinateur, bas a gauche de
+//   la zone 3D) ou la feuille du bas #ficheSheet (mobile). La section reste
+//   dans le DOM et continue d'etre alimentee. Reactiver : false.
+// - COLLISIONS_HOPITAL_ECHANTILLON (19/10) : la page Collision de l'hopital
+//   affiche un echantillon de 15 collisions reelles Architecture/Mecanique
+//   choisies a la main dans les 3 504 d'un run IfcClash (src/clashesHospital.js
+//   : criteres de choix, source et GlobalId documentes). Avec une seule paire
+//   de maquettes, la page s'ouvre directement sur la liste (pas de vue
+//   "Interactions entre maquettes", pas de bouton retour). Couper : false
+//   (pages Collision vide comme avant, vue recapitulative inchangee).
+// - MASQUE_LISTE_MAQUETTES_COLLISION (19/10) : la liste des maquettes du
+//   drawer de la page Collision (#section-collision-maquettes, ul
+//   #collisionMaquettesList) est masquee (hidden) : trop de place pour 2
+//   maquettes. Sa fonction (masquer/afficher chaque maquette de la paire) est
+//   assuree par 2 boutons a bascule en haut a gauche de la 3D
+//   (#collisionMaquetteToggles). La liste reste dans le DOM et alimentee.
+//   Reactiver la liste : false (les boutons restent).
+// - COLLISION_REVELATION (19/10, ajout, portee depuis IES) : page Collision,
+//   a la selection d'une collision les elements qui masquent le point de
+//   collision (Architecture, plus Structure si affichee) passent a 35 %
+//   d'opacite ; des 2 elements colores le plus petit est a 85 %, le plus grand
+//   a 35 %. false = comportement d'avant (aucune transparence). Sans effet
+//   (redondant) quand COLLISION_ISOLATION est true.
+// - COLLISION_ISOLATION (19/10, ajout) : page Collision, tant qu'une collision
+//   est selectionnee, tous les autres objets des maquettes affichees (paire,
+//   plus le Contexte s'il est allume) passent en fantome via le X-ray natif de
+//   xeokit (materiau xrayMaterial regle pendant l'isolation seulement, valeurs
+//   d'origine restaurees a la sortie) et non cliquables ; les 2 elements du
+//   conflit restent pleins, colores, cliquables. Le conflit reste lisible sous
+//   tout angle. false = comportement d'avant (revelation par opacite).
+// - COLLISION_CONTEXTE (19/10, ajout) : bouton a bascule "Contexte" a cote des
+//   boutons Architecture / Mecanique. Allume : les maquettes hors paire
+//   (Structure, Electricite) sont affichees en fantome (opacite
+//   COLLISION_CONTEXTE_OPACITY) et non cliquables. false = pas de bouton, les
+//   maquettes hors paire restent masquees comme avant.
+// - COLLISION_CONTEXTE_NIVEAUX (19/10, ajout) : remplace le bouton "Contexte"
+//   par un selecteur segmente a 3 niveaux (Isole / Proche / Etage), actif
+//   seulement avec COLLISION_ISOLATION. Isole = isolation seule, Structure et
+//   Electricite masquees. Proche (defaut, retenu pour la session) : en plus,
+//   les elements du meme etage que le conflit situes a moins de
+//   COLLISION_CONTEXTE_RAYON metres du point de collision passent a
+//   COLLISION_CONTEXTE_NIVEAU_OPACITE avec leurs vraies couleurs, non
+//   cliquables ; Structure et Electricite sont affichees. Etage : tout l'etage
+//   du conflit (nom canonique, toutes maquettes) au meme traitement. Le reste
+//   reste en fantome xray. Index id -> etage construit une fois par maquette
+//   (chaine IfcBuildingStorey), aucune boite lue hors etage. false = ancien
+//   bouton Contexte tout ou rien.
+// - COLLISION_PASTILLES (19/10, ajout) : page Collision, une pastille ronde
+//   numerotee (meme numero que la liste) accrochee au point de chaque
+//   collision, toujours visible a travers la geometrie (non occultable),
+//   coloree par statut, cliquable (= clic sur la ligne de la liste). Ajoutee
+//   aux spheres translucides, qui restent. false = comportement d'avant.
+// - COLLISION_BULLES_SURIMPRESSION (19/10, ajout) : page Collision, un disque
+//   jaune translucide cercle par collision, dessine sur un canvas 2D par-dessus
+//   la vue 3D a la position projetee du point de collision : jamais masque par
+//   la geometrie. Meme rayon monde (COLLISION_BULLE_RAYON, metres) pour toutes,
+//   converti en pixels selon la distance camera (borne par MIN_PX / MAX_PX).
+//   La collision selectionnee recoit un anneau exterieur, sans changer la
+//   taille. Quand actif, les spheres 3D prennent le meme rayon (actif ou non)
+//   et deviennent plus discretes. false = comportement d'avant.
 // ============================================================================
+const COLLISION_BULLES_SURIMPRESSION = true;
+const COLLISION_BULLE_RAYON = 0.25;
+const COLLISION_BULLE_MIN_PX = 10;
+const COLLISION_BULLE_MAX_PX = 160;
+const COLLISION_PASTILLES = false;
+// MASQUE_OEIL_COLLISION (19/10) : retire l'oeil a gauche de chaque ligne de la
+// liste des collisions (il masquait/affichait la bulle 3D de cette collision).
+// false = l'oeil revient.
+const MASQUE_OEIL_COLLISION = true;
+// COLLISION_LISTE_SIMPLE (19/10) : chaque ligne de la liste des collisions ne
+// montre que le numero, les identifiants des 2 elements, le niveau et le statut
+// (le nom complet reste en infobulle et dans la fiche). false = lignes d'avant.
+const COLLISION_LISTE_SIMPLE = true;
+// COLLISION_LISTE_CARTE (19/10) : carte a deux lignes (pastille du numero, types
+// en francais, identifiants et niveau, point de statut). Necessite
+// COLLISION_LISTE_SIMPLE. false = la ligne simple (numero et identifiants).
+const COLLISION_LISTE_CARTE = true;
+// COLLISION_PRIORITES (19/10) : priorite (Urgente / Haute / Normale / Basse)
+// separee du statut. Liste groupee par urgence, liseré de la carte = priorite,
+// selecteurs Priorite et Statut dans la zone de commentaires, historique
+// ("User 1 a change ...") melange aux messages, etat garde dans localStorage
+// (cle "ouvra-collisions-etat", propre au navigateur, non partage ; pour
+// reinitialiser, supprimer cette cle). false = comportement d'avant.
+const COLLISION_PRIORITES = true;
+// COLLISION_BANDEAU (19/10) : zone de commentaires de la page Collision (hopital)
+// en bandeau d'une ligne (chevron, titre court "n° 5 · Cloison ↔ Tuyau · Niveau 4",
+// selecteurs Priorite et Statut a droite) et chronologie unique (commentaires et
+// changements melanges, plus recent en bas, filtre Tout / Commentaires /
+// Modifications). Necessite COLLISION_PRIORITES. Discussions inchange.
+// false = comportement d'avant.
+const COLLISION_BANDEAU = true;
+// COLLISION_ECHANGES_GRAND (19/10) : bouton "agrandir" dans le bandeau de la page
+// Collision (collisions de l'hopital). La zone d'echange couvre toute la zone de la 3D
+// (en superposition, liste des collisions de droite toujours utilisable ; mobile :
+// plein ecran). Fermeture : meme bouton, Echap, ou sortie de la page Collision.
+// Necessite COLLISION_BANDEAU. false = comportement d'avant.
+const COLLISION_ECHANGES_GRAND = true;
+// COLLISION_POINT_VERIFIE (19/10) : le point de collision IfcClash converti n'est
+// retenu que s'il tombe dans les boites englobantes des 2 elements (tolerance
+// 1,5 m) ; sinon, centre du chevauchement des 2 boites. false = comportement
+// d'avant (point IFC converti sans verification).
+const COLLISION_POINT_VERIFIE = true;
+const COLLISION_POINT_TOLERANCE = 1.5;
+// COLLISION_CADRAGE_VOLUME (19/10) : nouvelle regle de cadrage du vol vers une
+// collision (page Collision uniquement). Exigence : le VOLUME de la collision
+// (boite de chevauchement des boites englobantes des 2 elements, repli : +-1 m
+// autour de la bulle) entierement visible, a 2 m minimum de la bulle jaune.
+// Chaque etendue du volume est plafonnee a COLLISION_CADRAGE_VOLUME_MAX m, la
+// fenetre plafonnee etant centree sur la bulle : une longue gaine ne fait plus
+// reculer la camera. Le plus petit element n'a plus a etre 100 % dans le
+// cadre. false = comportement d'avant (ancien code conserve).
+const COLLISION_CADRAGE_VOLUME = true;
+const COLLISION_CADRAGE_VOLUME_MAX = 6;
+const COLLISION_CADRAGE_DISTANCE_MIN = 2;
+const COLLISION_REVELATION = true;
+const COLLISION_ISOLATION = false; // coupe le 19/10 (gel de la page) ; remettre a true pour retester
+const COLLISION_ISOLATION_FILL_ALPHA = 0.06;
+// Opacite des 2 elements en conflit au niveau de contexte "Isole" (1 = opaque).
+const COLLISION_ELEMENT_ISOLE_OPACITE = 0.3;
+// Arêtes du fantome coupees (0) le 19/10 : ~74 000 objets avec arêtes gelaient le navigateur (avant : 0.25).
+const COLLISION_ISOLATION_EDGE_ALPHA = 0;
+const COLLISION_ISOLATION_COLOR = [0.8, 0.8, 0.8];
+const COLLISION_CONTEXTE = true;
+// COLLISION_ECHANGES_GRAND : etat de l'agrandissement. Declare ICI (haut du
+// fichier) car activateView() s'execute au demarrage, avant le bloc plus bas :
+// une declaration tardive (let) provoquait une erreur et bloquait toute l'app.
+// COLLISION_ISOLATION_ETAGE (19/10) : l'isolation ne met en fantome QUE les objets de
+// l'etage de la collision ; le reste de l'hopital est ecarte du rendu (etat
+// "culled" de xeokit, independant de la visibilite). ~74 000 objets en fantome
+// gelaient le navigateur. false = tout l'hopital en fantome comme avant.
+const COLLISION_ISOLATION_ETAGE = true;
+// COLLISION_CADRAGE_ETAGE (19/10) : la recherche des elements voisins du cadrage
+// de camera ne parcourt que l'etage de la collision (boites en cache) au lieu
+// de toute la scene. false = comportement d'avant (gel observe).
+const COLLISION_CADRAGE_ETAGE = true;
+// COLLISION_TRANSITION_VERROUILLEE (19/10) : pendant le vol de camera vers une
+// collision, on ne peut pas en selectionner une autre (liste et bulles), et le
+// calcul lourd de l'isolation n'est fait qu'APRES l'arret de la camera (l'animation
+// tourne ainsi sur une scene legere). false = comportement d'avant.
+const COLLISION_TRANSITION_VERROUILLEE = false; // coupe le 19/10 (boutons bloques)
+let collisionTransitionEnCours = false;
+let collisionTransitionTimer = null;
+let collisionCulledIds = [];
+let echangesGrandOuvert = false;
+let echangesGrandEtaitReplie = false;
+let echangesGrandBtn = null;
+const COLLISION_CONTEXTE_OPACITY = 0.2;
+const COLLISION_CONTEXTE_NIVEAUX = true;
+const COLLISION_CONTEXTE_RAYON = 8;
+const COLLISION_CONTEXTE_NIVEAU_OPACITE = 0.3;
+const CLASH_REVEAL_OPACITY = 0.35;
+const CLASH_ELEMENT_OPACITY = 0.85;
+// Etat de la transparence de la page Collision, declare ici (et non pres des
+// fonctions) car activateView le lit des le chargement initial.
+let collisionContexteOn = false;
+let collisionActiveClash = null;
+let collisionOpacityTouched = [];
+let collisionIsolationIds = [];
+let collisionIsolationSavedMaterial = null;
+let collisionSubsetMaquettes = [];
+let collisionContexteBtn = null;
+let collisionContexteNiveau = "isole"; // niveau par defaut a l'arrivee (19/10, demande de Gilles) ; avant : "proche"
+let collisionNiveauBtns = [];
+let collisionContextePickIds = [];
 const MASQUE_FICHE_DANS_DRAWER = true;
+const MASQUE_LISTE_MAQUETTES_COLLISION = true;
+const MASQUE_FICHE_COLLISION_DANS_DRAWER = true;
 const PRESENTATION_MASQUEE = true;
 const MASQUE_SELECTEUR_PROJET = true;
 const MASQUE_PROFILS = true;
 const MASQUE_TODO_ADMIN = true;
 const MASQUE_ANCIENNE_LANDING = true;
 const MASQUE_MAQUETTES_LOURDES = true;
+const COLLISIONS_HOPITAL_ECHANTILLON = true;
 const MAQUETTES_LOURDES_IDS = ["hosp-alarm", "hosp-plomb", "hosp-spr"];
 
 const loadingOverlay = document.getElementById("loadingOverlay");
@@ -171,6 +343,9 @@ const discussionMessages = document.getElementById("discussionMessages");
 const detectionsList = document.getElementById("detectionsList");
 const detectionsEmpty = document.getElementById("detectionsEmpty");
 const collisionMaquettesList = document.getElementById("collisionMaquettesList");
+const collisionMaquetteToggles = document.getElementById("collisionMaquetteToggles");
+const sectionCollisionMaquettes = document.getElementById("section-collision-maquettes");
+if (MASQUE_LISTE_MAQUETTES_COLLISION && sectionCollisionMaquettes) sectionCollisionMaquettes.hidden = true;
 const collisionsList = document.getElementById("collisionsList");
 const collisionBackBtn = document.getElementById("collisionBackBtn");
 const collisionInfoPanelToggle = document.getElementById("collisionInfoPanelToggle");
@@ -545,9 +720,14 @@ function redirectMaskedView(viewName) {
 }
 
 function activateView(viewName) {
+  if (viewName !== "collision") fermerEchangesGrand(false);
   if (PRESENTATION_MASQUEE && viewName === "presentation") viewName = "viewer";
   if (MASQUE_ANCIENNE_LANDING && viewName === "landing") viewName = "accueil";
   viewName = redirectMaskedView(viewName);
+  // Quitter la page Collision : plus aucune transparence ni fantome.
+  if (viewName !== "collision" && (collisionContexteOn || collisionActiveClash || collisionOpacityTouched.length > 0)) {
+    resetCollisionOpacityState();
+  }
   // Accueil : navbar et bandeau CTA de l'app masques par CSS (body.acc-actif).
   document.body.classList.toggle("acc-actif", viewName === "accueil");
   navLinks.forEach((l) => l.classList.toggle("active", l.dataset.view === viewName));
@@ -594,6 +774,7 @@ function activateView(viewName) {
 
 navLinks.forEach((link) => {
   link.addEventListener("click", () => {
+    fermerEchangesGrand(false);
     // Repart d'un etat sain si on quitte directement (sans passer par un
     // bouton retour) une detection ou un fil qui masquait certaines
     // maquettes (ex. Maquette CEA hors sujet). "restoreAllModelsVisible"
@@ -618,6 +799,7 @@ navLinks.forEach((link) => {
       discussionsListPane.hidden = false;
     }
     activateView(link.dataset.view);
+    if (link.dataset.view === "collision") openSoleDetectionIfAlone();
     // Revenir sur Viewer doit repartir d'un etat "neutre" et previsible :
     // equivalent a cliquer "Recentrer" (camera) et "Tout afficher" (niveaux,
     // les maquettes le sont deja via restoreAllModelsVisible ci-dessus).
@@ -722,6 +904,14 @@ infoPanel.addEventListener("transitionend", (e) => {
 // Masque l'ancienne section "Info selection" du drawer (cf interrupteur).
 const sectionFicheDrawer = document.getElementById("section-fiche");
 if (MASQUE_FICHE_DANS_DRAWER && sectionFicheDrawer) sectionFicheDrawer.hidden = true;
+
+// Idem pour la page Collision (cf interrupteur).
+const sectionFicheCollisionDrawer = document.getElementById("section-collision-fiche");
+if (MASQUE_FICHE_COLLISION_DANS_DRAWER && sectionFicheCollisionDrawer) sectionFicheCollisionDrawer.hidden = true;
+const collisionFicheCardCloseBtn = document.getElementById("collisionFicheCardClose");
+if (collisionFicheCardCloseBtn) {
+  collisionFicheCardCloseBtn.addEventListener("click", () => deselectEntity());
+}
 
 // Carte Info selection : le bouton fermer desélectionne (ferme aussi la
 // feuille mobile via clearFiche).
@@ -1476,6 +1666,71 @@ const DEMO_CLASHES = [
 ];
 
 const STATUT_LABELS = { nouveau: "Nouveau", confirme: "Confirmé", ecarte: "Écarté" };
+if (COLLISION_PRIORITES) STATUT_LABELS.resolu = "Résolu";
+
+// ---- COLLISION_PRIORITES : priorites, historique, persistance ----
+const PRIORITE_ORDRE = ["urgente", "haute", "normale", "basse"];
+const PRIORITE_LABELS = { urgente: "Urgente", haute: "Haute", normale: "Normale", basse: "Basse" };
+const PRIORITE_DEFAUT = "normale";
+const CLASH_UTILISATEUR_HISTORIQUE = "User 1";
+const COLLISIONS_ETAT_CLE = "ouvra-collisions-etat";
+
+function clashPriorite(clash) {
+  return PRIORITE_ORDRE.includes(clash.priorite) ? clash.priorite : PRIORITE_DEFAUT;
+}
+
+function isHospitalClash(thread) {
+  return COLLISION_PRIORITES && HOSPITAL_CLASHES.includes(thread);
+}
+
+// Lecture/ecriture tolerantes : localStorage peut etre absent ou refuser.
+function lireEtatCollisions() {
+  try {
+    const raw = window.localStorage.getItem(COLLISIONS_ETAT_CLE);
+    const obj = raw ? JSON.parse(raw) : null;
+    return obj && typeof obj === "object" ? obj : {};
+  } catch (e) {
+    return {};
+  }
+}
+
+function sauverEtatCollisions() {
+  try {
+    const etat = {};
+    HOSPITAL_CLASHES.forEach((c) => {
+      etat[c.id] = { priorite: clashPriorite(c), statut: c.statut, historique: c.historique || [] };
+    });
+    window.localStorage.setItem(COLLISIONS_ETAT_CLE, JSON.stringify(etat));
+  } catch (e) {
+    /* pas de persistance : l'app continue sans */
+  }
+}
+
+// Recouvre les valeurs d'origine de l'hopital par l'etat sauvegarde.
+function restaurerEtatCollisions() {
+  if (!COLLISION_PRIORITES) return;
+  const etat = lireEtatCollisions();
+  HOSPITAL_CLASHES.forEach((c) => {
+    const e = etat[c.id];
+    if (!e || typeof e !== "object") return;
+    if (PRIORITE_ORDRE.includes(e.priorite)) c.priorite = e.priorite;
+    if (typeof e.statut === "string" && STATUT_LABELS[e.statut]) c.statut = e.statut;
+    if (Array.isArray(e.historique)) c.historique = e.historique.filter((h) => h && typeof h === "object");
+  });
+}
+restaurerEtatCollisions();
+
+// currentDiscussionThread est declare plus bas (let) : lecture protegee.
+function filActifSur() {
+  try { return currentDiscussionThread; } catch (e) { return null; }
+}
+
+function formatHistoriqueDate(iso) {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  const p = (n) => String(n).padStart(2, "0");
+  return p(d.getDate()) + "/" + p(d.getMonth() + 1) + " " + p(d.getHours()) + ":" + p(d.getMinutes());
+}
 
 // Utilisateur courant simule (pas de vraie auth dans ce POC, cf MOC-chantier.md).
 const CURRENT_USER = "Vous";
@@ -1609,6 +1864,12 @@ function applyProjectData(projectKey) {
     DETECTIONS.push(...DEMO_DETECTIONS);
     CLASHES.push(...DEMO_CLASHES);
     DISCUSSIONS.push(...DEMO_DISCUSSIONS);
+  } else if (COLLISIONS_HOPITAL_ECHANTILLON && projectKey === HOSPITAL_PROJECT_KEY) {
+    // Echantillon hopital : detections et clashs seulement. DISCUSSIONS reste
+    // vide, et les clashs n'y sont jamais ajoutes (renderDiscussionsPage ne
+    // lit que DISCUSSIONS), donc la page Discussions n'est pas affectee.
+    DETECTIONS.push(...HOSPITAL_DETECTIONS);
+    CLASHES.push(...HOSPITAL_CLASHES);
   }
 }
 applyProjectData(projectSelect.value);
@@ -1795,6 +2056,8 @@ function openThreadDetail(thread, returnView) {
   // deplace ici avant d'etre rempli, au cas ou il etait reste dans
   // #collisionLeft depuis la derniere detection consultee.
   discussionsDetailPane.appendChild(collisionDiscussion);
+  // Dans un fil de Discussions, la zone de commentaires est le contenu principal : toujours depliee.
+  collisionDiscussion.classList.remove("collapsed");
   showThreadDiscussion(thread);
 
   // Hash specifique au fil (#discussions/<id>) pour qu'un rechargement de
@@ -1890,6 +2153,7 @@ function restoreViewerState(snapshot) {
 // boutons "retour" des detections/fils, jamais depuis un point du script qui
 // s'execute avant que MAQUETTES ne soit initialisee plus bas.
 function restoreAllModelsVisible() {
+  if (collisionContexteOn || collisionActiveClash || collisionOpacityTouched.length > 0) resetCollisionOpacityState();
   MAQUETTES.forEach((m) => { m.shown = true; });
   applyVisibility();
   renderMaquetteRows(maquettesList, MAQUETTES);
@@ -1991,12 +2255,29 @@ function renderDetections() {
   });
 }
 
+// Une seule paire de maquettes (donc une seule detection) : la vue
+// recapitulative n'a rien a recapituler, la page Collision s'ouvre
+// directement sur la liste. Avec plusieurs detections, rien ne change
+// (vue recapitulative + bouton "← Interactions").
+function openSoleDetectionIfAlone() {
+  if (DETECTIONS.length === 1 && collisionDetail.hidden) openDetection(DETECTIONS[0]);
+}
+
 function openDetection(detection) {
   collisionRecap.hidden = true;
   collisionDetail.hidden = false;
+  collisionBackBtn.hidden = DETECTIONS.length < 2;
+  fermerEchangesGrand(false);
 
   collisionViewerSlot.appendChild(viewerWrap);
   collisionLeft.appendChild(collisionDiscussion);
+  // Zone de commentaires reduite par defaut a l'entree dans la page Collision
+  // (19/10, demande de Gilles) : seul le bandeau titre est visible, le bouton
+  // existant la deplie ; l'etat n'est pas reinitialise entre deux collisions.
+  collisionDiscussion.classList.add("collapsed");
+  setCollisionPanelCollapsed(false);
+  // A l'entree dans la page Collision, le contexte repart sur "Isole".
+  collisionContexteNiveau = "isole";
   // Meme logique que dans un fil de discussion : ici on ne fait que
   // consulter une collision, pas de "Nouvelle discussion" ni de coupe.
   newDiscussionBtn.hidden = true;
@@ -2007,16 +2288,22 @@ function openDetection(detection) {
   // toujours visible) : sur mobile, arriver ici doit montrer tout de suite
   // la liste des collisions a selectionner, pas un canvas vide avec un
   // bouton "Infos" a chercher.
-  collisionInfoPanel.classList.add("open");
-  collisionInfoPanelBackdrop.hidden = false;
+  // Mobile (<= 768 px) : tiroir ferme par defaut pour ne pas masquer la 3D
+  // (decision du 19/10). Ordinateur : le panneau est un volet fixe, toujours ouvert.
+  const collisionMobile = window.matchMedia("(max-width: 768px)").matches;
+  collisionInfoPanel.classList.toggle("open", !collisionMobile);
+  collisionInfoPanelBackdrop.hidden = true;
 
   // Ne montre que les maquettes de cette detection (ex. Maquette CEA hors
   // sujet d'une comparaison structure/toiture, masquee ici) : avant le rendu
   // des cases a cocher, pour qu'elles refletent l'etat a jour des l'entree.
   const subset = MAQUETTES.filter((m) => detection.modeles.includes(m.id));
+  // Nouvelle detection : fantome du contexte et transparence repartent de zero.
+  if (collisionContexteOn || collisionActiveClash || collisionOpacityTouched.length > 0) resetCollisionOpacityState();
   MAQUETTES.forEach((m) => { m.shown = detection.modeles.includes(m.id); });
   applyVisibility();
   renderMaquetteRows(collisionMaquettesList, subset);
+  renderCollisionMaquetteToggles(subset);
 
   const detectionClashes = CLASHES.filter((c) => c.detectionId === detection.id);
   renderCollisionsList(detectionClashes);
@@ -2029,6 +2316,103 @@ function openDetection(detection) {
   discussionReplyForm.hidden = true;
   currentDiscussionThread = null;
   recenterTarget = null;
+}
+
+// Boutons a bascule de la page Collision (19/10) : meme effet que la case de
+// la liste (maquette.shown + applyVisibility). Etat relu a chaque
+// applyVisibility() (refreshCollisionMaquetteToggles), donc synchrone avec la liste.
+const COLLISION_TOGGLE_LABELS = { "hosp-arch": "Architecture", "hosp-mep": "Mécanique" };
+let collisionToggleEntries = [];
+function renderCollisionMaquetteToggles(subset) {
+  if (!collisionMaquetteToggles) return;
+  collisionMaquetteToggles.innerHTML = "";
+  collisionToggleEntries = subset.map((maquette) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "collision-maquette-toggle";
+    const dot = document.createElement("span");
+    dot.className = "collision-maquette-toggle-dot";
+    dot.style.background = maquette.color;
+    const text = document.createElement("span");
+    text.textContent = COLLISION_TOGGLE_LABELS[maquette.id] || maquette.label;
+    btn.append(dot, text);
+    btn.addEventListener("click", () => {
+      maquette.shown = !maquette.shown;
+      applyVisibility();
+      renderMaquetteRows(collisionMaquettesList, subset);
+    });
+    collisionMaquetteToggles.appendChild(btn);
+    return { maquette, btn };
+  });
+
+  // Bouton "Contexte" : maquettes chargees hors paire (Structure, Electricite).
+  collisionGhostMaquettes = (COLLISION_CONTEXTE || COLLISION_CONTEXTE_NIVEAUX) ? MAQUETTES.filter((m) => !subset.includes(m)) : [];
+  collisionSubsetMaquettes = subset;
+  collisionContexteBtn = null;
+  collisionNiveauBtns = [];
+  if (collisionNiveauxActive() && collisionGhostMaquettes.length > 0) {
+    const group = document.createElement("div");
+    group.className = "collision-niveau-group";
+    group.setAttribute("role", "group");
+    group.setAttribute("aria-label", "Contexte autour du conflit");
+    [["isole", "Isolé"], ["proche", "Proche"], ["etage", "Étage"]].forEach(([key, label]) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "collision-niveau-btn";
+      btn.textContent = label;
+      btn.addEventListener("click", () => setCollisionContexteNiveau(key));
+      group.appendChild(btn);
+      collisionNiveauBtns.push({ key, btn });
+    });
+    collisionMaquetteToggles.appendChild(group);
+  } else if (collisionGhostMaquettes.length > 0) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "collision-maquette-toggle collision-contexte-toggle";
+    btn.textContent = "Contexte";
+    btn.addEventListener("click", () => {
+      setCollisionContexte(!collisionContexteOn);
+    });
+    collisionMaquetteToggles.appendChild(btn);
+    collisionContexteBtn = btn;
+  }
+  refreshCollisionMaquetteToggles();
+}
+function refreshCollisionMaquetteToggles() {
+  collisionToggleEntries.forEach(({ maquette, btn }) => {
+    btn.setAttribute("aria-pressed", String(maquette.shown));
+    btn.classList.toggle("off", !maquette.shown);
+  });
+  collisionNiveauBtns.forEach(({ key, btn }) => {
+    btn.setAttribute("aria-pressed", String(key === collisionContexteNiveau));
+  });
+  if (collisionContexteBtn) {
+    collisionContexteBtn.setAttribute("aria-pressed", String(collisionContexteOn));
+    collisionContexteBtn.classList.toggle("off", !collisionContexteOn);
+  }
+}
+
+// Type d'element en francais, deduit du nom Revit (liste des collisions,
+// 19/10). Repli : premier segment du nom avant ":".
+const COLLISION_TYPES_FR = [
+  [/Curtain Wall/i, "Mur-rideau"],
+  [/Basic Wall.*Partition/i, "Cloison"],
+  [/Basic Wall|Wall/i, "Mur"],
+  [/Ceiling/i, "Faux plafond"],
+  [/Duct/i, "Gaine"],
+  [/Pipe/i, "Tuyau"],
+  [/Diffuser/i, "Diffuseur"],
+  [/Grill/i, "Grille"],
+  [/MedGas/i, "Prise gaz médicaux"],
+  [/VAV/i, "Caisson VAV"],
+  [/Takeoff/i, "Piquage"],
+  [/Valve/i, "Vanne"],
+  [/Solar Panel/i, "Panneau solaire"],
+  [/Cooling Tower/i, "Tour de refroidissement"]
+];
+function collisionTypeFr(name) {
+  const hit = COLLISION_TYPES_FR.find(([re]) => re.test(name));
+  return hit ? hit[1] : name.split(":")[0].trim();
 }
 
 function buildCollisionItem(clash) {
@@ -2052,6 +2436,7 @@ function buildCollisionItem(clash) {
     toggle.title = markerShown ? "Masquer cette zone dans la maquette" : "Afficher cette zone dans la maquette";
     const marker = clashMarkers.get(clash.id);
     if (marker) marker.visible = markerShown;
+    setClashPastilleShown(clash.id, markerShown);
   });
 
   const btn = document.createElement("button");
@@ -2059,6 +2444,12 @@ function buildCollisionItem(clash) {
   btn.className = "collision-item";
   btn.dataset.clashId = clash.id;
   btn.addEventListener("click", () => activateClash(clash));
+
+  // Numero stable (position dans la liste complete, independante du groupe
+  // "Ecartes") pour que Gilles puisse donner des retours par collision (19/10).
+  const numero = document.createElement("span");
+  numero.className = "collision-numero";
+  numero.textContent = "n° " + (CLASHES.indexOf(clash) + 1);
 
   const zone = document.createElement("span");
   zone.className = "collision-zone";
@@ -2073,18 +2464,118 @@ function buildCollisionItem(clash) {
   disciplines.textContent = clash.disciplineA + " / " + clash.disciplineB;
   meta.append(badge, disciplines);
 
-  btn.append(zone, meta);
-  li.append(toggle, btn);
+  // Liste simplifiee : "#id element A ↔ #id element B" et le niveau ; le nom
+  // complet reste en infobulle (title) et dans la fiche Info selection.
+  let carteMode = false;
+  if (COLLISION_LISTE_SIMPLE) {
+    const ids = (clash.zone.match(/\(#(\d+)\)/g) || []).map((m) => m.slice(1, -1));
+    const levelMatch = clash.zone.match(/·\s*([^·]+)$/);
+    if (ids.length === 2) {
+      zone.textContent = ids[0] + " ↔ " + ids[1];
+      btn.title = clash.zone;
+      meta.textContent = "";
+      const levelEl = document.createElement("span");
+      levelEl.textContent = levelMatch ? levelMatch[1].trim() : "";
+      meta.append(badge);
+      if (levelEl.textContent) meta.append(levelEl);
+      if (COLLISION_LISTE_CARTE) {
+        // Carte a deux lignes (19/10) : pastille du numero, types en francais,
+        // identifiants et niveau, point de statut ; liseré de couleur a gauche.
+        const [partA, partB] = clash.zone.split(" ↔ ");
+        const typeA = collisionTypeFr(partA || "");
+        const typeB = collisionTypeFr((partB || "").split("·")[0]);
+        const niveau = (levelMatch ? levelMatch[1].trim() : "").replace(/^Level\s*/i, "Niveau ");
+
+        const badgeNum = document.createElement("span");
+        badgeNum.className = "collision-num-badge";
+        badgeNum.textContent = String(CLASHES.indexOf(clash) + 1);
+        badgeNum.setAttribute("aria-hidden", "true");
+
+        const types = document.createElement("span");
+        types.className = "collision-types";
+        types.textContent = typeA + " ↔ " + typeB;
+        const sub = document.createElement("span");
+        sub.className = "collision-sub";
+        sub.textContent = ids[0] + " ↔ " + ids[1] + (niveau ? " · " + niveau : "");
+        const text = document.createElement("span");
+        text.className = "collision-card-text";
+        text.append(types, sub);
+
+        const dot = document.createElement("span");
+        dot.className = "collision-statut-dot " + clash.statut;
+        dot.title = STATUT_LABELS[clash.statut] || clash.statut;
+        const dotLabel = document.createElement("span");
+        dotLabel.className = "collision-statut-label";
+        dotLabel.textContent = STATUT_LABELS[clash.statut] || clash.statut;
+        const statut = document.createElement("span");
+        statut.className = "collision-statut";
+        statut.append(dot, dotLabel);
+
+        btn.classList.add("collision-item-carte", clash.statut);
+        btn.setAttribute("aria-label", "Collision n° " + (CLASHES.indexOf(clash) + 1) + " : " + typeA + " et " + typeB + ", " + (STATUT_LABELS[clash.statut] || clash.statut));
+        btn.textContent = "";
+        btn.append(badgeNum, text, statut);
+        carteMode = true;
+      }
+    }
+  }
+
+  if (COLLISION_PRIORITES && carteMode) {
+    // Liseré = priorite (le point de statut a droite garde la couleur du statut).
+    const prio = clashPriorite(clash);
+    btn.classList.add("prio-" + prio);
+    btn.setAttribute("aria-label", btn.getAttribute("aria-label") + ", priorité " + PRIORITE_LABELS[prio].toLowerCase());
+  }
+
+  if (!carteMode) btn.append(numero, zone, meta);
+  if (MASQUE_OEIL_COLLISION) li.append(btn);
+  else li.append(toggle, btn);
   return li;
 }
 
 function renderCollisionsList(clashes) {
+  // Re-rendu apres un changement : garde le defilement et l'etat ouvert des Ecartes.
+  const scrollSaves = [];
+  if (COLLISION_PRIORITES) {
+    for (let el = collisionsList; el; el = el.parentElement) {
+      if (el.scrollTop > 0) scrollSaves.push([el, el.scrollTop]);
+    }
+  }
+  const ecartesOuverts = COLLISION_PRIORITES && !!collisionsList.querySelector("details.collision-ecartes[open]");
   collisionsList.innerHTML = "";
+
+  // Titre de la liste (19/10) : la paire de maquettes et le nombre de
+  // collisions, a la place du menu de choix de paire (une seule paire).
+  const collisionListTitle = document.getElementById("collisionListTitle");
+  if (collisionListTitle) {
+    const detection = clashes.length ? DETECTIONS.find((d) => d.id === clashes[0].detectionId) : null;
+    if (detection) {
+      collisionListTitle.textContent = detection.label + " · " + clashes.length + (clashes.length > 1 ? " collisions" : " collision");
+      collisionListTitle.hidden = false;
+    } else {
+      collisionListTitle.hidden = true;
+    }
+  }
 
   const actives = clashes.filter((c) => c.statut !== "ecarte");
   const ecartes = clashes.filter((c) => c.statut === "ecarte");
 
-  actives.forEach((clash) => collisionsList.appendChild(buildCollisionItem(clash)));
+  if (COLLISION_PRIORITES) {
+    PRIORITE_ORDRE.forEach((niveau) => {
+      const groupe = actives.filter((c) => clashPriorite(c) === niveau);
+      if (groupe.length === 0) return;
+      const head = document.createElement("li");
+      head.className = "collision-groupe-titre prio-" + niveau;
+      const dot = document.createElement("span");
+      dot.className = "collision-groupe-dot";
+      dot.setAttribute("aria-hidden", "true");
+      head.append(dot, document.createTextNode(PRIORITE_LABELS[niveau] + " (" + groupe.length + ")"));
+      collisionsList.appendChild(head);
+      groupe.forEach((clash) => collisionsList.appendChild(buildCollisionItem(clash)));
+    });
+  } else {
+    actives.forEach((clash) => collisionsList.appendChild(buildCollisionItem(clash)));
+  }
 
   if (ecartes.length > 0) {
     const wrapperLi = document.createElement("li");
@@ -2103,6 +2594,17 @@ function renderCollisionsList(clashes) {
 
     wrapperLi.appendChild(details);
     collisionsList.appendChild(wrapperLi);
+    if (COLLISION_PRIORITES && (ecartesOuverts || ecartes.includes(filActifSur()))) details.open = true;
+  }
+
+  if (COLLISION_PRIORITES) {
+    const fil = filActifSur();
+    if (fil && clashes.includes(fil)) {
+      collisionsList.querySelectorAll(".collision-item").forEach((el) => {
+        el.classList.toggle("active", el.dataset.clashId === fil.id);
+      });
+    }
+    scrollSaves.forEach(([el, top]) => { el.scrollTop = top; });
   }
 }
 
@@ -2129,7 +2631,12 @@ function clashCenter(clash) {
   // dans clash.ifcPoint), converti dans le repere du viewer : le vrai point
   // de contact geometrique, quelle que soit la forme/longueur des 2
   // elements, contrairement a une approximation par boite englobante.
-  if (clash.ifcPoint) return ifcPointToViewer(clash.ifcPoint);
+  if (clash.ifcPoint) {
+    const converted = ifcPointToViewer(clash.ifcPoint);
+    if (!COLLISION_POINT_VERIFIE) return converted;
+    const checked = verifiedClashPoint(clash, converted);
+    return checked;
+  }
   // Repli si jamais un clash n'a pas de point IfcClash precalcule.
   const [aabbA, aabbB] = clash.entityIds.map((id) => viewer.scene.getAABB([id]));
   return [0, 1, 2].map((axis) => {
@@ -2137,6 +2644,47 @@ function clashCenter(clash) {
     const max = Math.min(aabbA[axis + 3], aabbB[axis + 3]);
     return (min + max) / 2;
   });
+}
+
+// Verification du point de collision (19/10, retour de Gilles : sur l'hopital,
+// la camera et la bulle de plusieurs collisions (n° 2, 3, 5, 9) etaient a un
+// autre endroit que les 2 elements en conflit). Le point IFC converti doit
+// tomber dans les boites englobantes des 2 elements (tolerance) ; sinon on
+// prend le centre de leur chevauchement (ou, sans chevauchement, le milieu de
+// leurs deux centres). Resultat mis en cache par collision une fois les 2
+// elements charges ; avant leur chargement, le point converti est renvoye tel
+// quel (non mis en cache).
+const verifiedClashPoints = new Map();
+function aabbValid(aabb) {
+  return aabb && aabb.length === 6 && aabb.every((v) => Number.isFinite(v)) && aabb[0] <= aabb[3];
+}
+function pointInAabb(p, aabb, tol) {
+  return [0, 1, 2].every((axis) => p[axis] >= aabb[axis] - tol && p[axis] <= aabb[axis + 3] + tol);
+}
+function verifiedClashPoint(clash, converted) {
+  if (verifiedClashPoints.has(clash.id)) return verifiedClashPoints.get(clash.id);
+  const loaded = clash.entityIds.every((id) => viewer.scene.objects[id]);
+  if (!loaded) return converted;
+  const [aabbA, aabbB] = clash.entityIds.map((id) => viewer.scene.getAABB([id]));
+  if (!aabbValid(aabbA) || !aabbValid(aabbB)) return converted;
+  let result = converted;
+  if (!(pointInAabb(converted, aabbA, COLLISION_POINT_TOLERANCE) && pointInAabb(converted, aabbB, COLLISION_POINT_TOLERANCE))) {
+    const overlap = [0, 1, 2].map((axis) => {
+      const min = Math.max(aabbA[axis], aabbB[axis]);
+      const max = Math.min(aabbA[axis + 3], aabbB[axis + 3]);
+      return [min, max];
+    });
+    if (overlap.every(([min, max]) => min <= max)) {
+      result = overlap.map(([min, max]) => (min + max) / 2);
+    } else {
+      result = [0, 1, 2].map((axis) => (aabbA[axis] + aabbA[axis + 3] + aabbB[axis] + aabbB[axis + 3]) / 4);
+    }
+    const dx = result[0] - converted[0], dy = result[1] - converted[1], dz = result[2] - converted[2];
+    console.info("[collision] point IFC hors des elements, corrige : collision n° " + (CLASHES.indexOf(clash) + 1) +
+      ", ecart " + Math.hypot(dx, dy, dz).toFixed(1) + " m");
+  }
+  verifiedClashPoints.set(clash.id, result);
+  return result;
 }
 
 // Distance de cadrage (portee depuis IES le 16/09, corrige un signalement de
@@ -2268,7 +2816,35 @@ const CLASH_ANGLE_CANDIDATES = 12;
 // par en dessous permet de trouver un angle reellement degage.
 const CLASH_ELEVATION_CANDIDATES_DEG = [30, 15, -15, -30];
 
-function pickBestClashView(clash, center, nearbyAabbs) {
+// Volume de cadrage d'une collision (COLLISION_CADRAGE_VOLUME) : chevauchement
+// des AABB des 2 elements (repli +-1 m autour de la bulle), puis fenetre
+// plafonnee a COLLISION_CADRAGE_VOLUME_MAX centree sur la bulle. Renvoie la
+// boite de cadrage et les dimensions brutes (avant plafond) pour la trace.
+function clashCadrageVolume(clash, center) {
+  const [idA, idB] = clash.entityIds;
+  const aabbA = viewer.scene.getAABB([idA]);
+  const aabbB = viewer.scene.getAABB([idB]);
+  let raw = null;
+  if (aabbValid(aabbA) && aabbValid(aabbB)) {
+    const candidate = [0, 1, 2].map((axis) => [
+      Math.max(aabbA[axis], aabbB[axis]),
+      Math.min(aabbA[axis + 3], aabbB[axis + 3])
+    ]);
+    if (candidate.every(([min, max]) => Number.isFinite(min) && Number.isFinite(max) && min <= max)) {
+      raw = candidate.map(([min, max]) => max - min);
+    }
+  }
+  if (!raw) raw = [2, 2, 2];
+  const half = raw.map((size) => Math.min(size, COLLISION_CADRAGE_VOLUME_MAX) / 2);
+  const capped = raw.some((size) => size > COLLISION_CADRAGE_VOLUME_MAX);
+  const box = [
+    center[0] - half[0], center[1] - half[1], center[2] - half[2],
+    center[0] + half[0], center[1] + half[1], center[2] + half[2]
+  ];
+  return { box, raw, capped };
+}
+
+function pickBestClashView(clash, center, nearbyAabbs, volume = null) {
   const [idA, idB] = clash.entityIds;
   const aabbA = viewer.scene.getAABB([idA]);
   const aabbB = viewer.scene.getAABB([idB]);
@@ -2299,7 +2875,11 @@ function pickBestClashView(clash, center, nearbyAabbs) {
         Math.sin(elevRad),
         Math.cos(elevRad) * Math.cos(azRad)
       ];
-      const dist = requiredDistanceForAabb(smallerAabb, center, dirUnit);
+      // Ancien cadrage (smallerAabb entier) conserve si COLLISION_CADRAGE_VOLUME
+      // est false ou hors page Collision ; sinon volume de collision plafonne.
+      const dist = volume
+        ? Math.max(COLLISION_CADRAGE_DISTANCE_MIN, requiredDistanceForAabb(volume.box, center, dirUnit))
+        : requiredDistanceForAabb(smallerAabb, center, dirUnit);
       const eye = [
         center[0] + dirUnit[0] * dist,
         center[1] + dirUnit[1] * dist,
@@ -2347,23 +2927,48 @@ function pickBestClashView(clash, center, nearbyAabbs) {
 // pouvait cacher l'un des 2 elements derriere l'autre), calcule la distance
 // et l'angle qui montrent exactement ce qui est necessaire aux 2 elements
 // en conflit, sans espace vide excessif autour.
-function flyToClash(clash) {
+// 2e parametre : true uniquement depuis la page Collision (selectClash). Les
+// appels de Discussions (goToThreadView) gardent l'ancien cadrage.
+function flyToClash(clash, cadrageVolume = false, onDone = undefined) {
   const center = clashCenter(clash);
+  const volume = (COLLISION_CADRAGE_VOLUME && cadrageVolume && center.every(Number.isFinite))
+    ? clashCadrageVolume(clash, center)
+    : null;
   // Elements locaux candidats a l'occlusion : ne teste l'occlusion que sur
   // ce qui peut vraiment se trouver pres du clash, jamais le modele entier.
   // Rayon de recherche large (x3) car chaque angle candidat peut demander
   // plus de recul que cette estimation initiale (element long mal aligne
   // avec le premier angle teste, cf requiredDistanceForAabb).
-  const searchRadius = clashFrameDistance(clash) * 3;
+  // Mode volume : la distance maximale possible est bornee par le plafond
+  // (fenetre de 6 m), rayon de recherche borne en consequence.
+  const searchRadius = volume ? 14 : clashFrameDistance(clash) * 3;
   const [idA, idB] = clash.entityIds;
-  const nearbyIds = viewer.scene.objectIds.filter((id) => id !== idA && id !== idB);
-  const nearbyAabbs = nearbyIds
-    .map((id) => viewer.scene.getAABB([id]))
-    .filter((aabb) => aabbNearPoint(aabb, center, searchRadius));
+  // 19/10 : avant, getAABB([id]) etait appele pour TOUS les objets de la scene
+  // (80 000+ sur l'hopital) a chaque selection, ce qui gelait le navigateur.
+  // Desormais : candidats = objets du meme etage (index id -> etage) et boites
+  // englobantes en cache (collisionAabbOf) ; repli sur toute la scene seulement
+  // si l'etage est introuvable.
+  const tFly = performance.now();
+  const loadedMaquettes = MAQUETTES.filter((m) => m.model);
+  const levelSet = COLLISION_CADRAGE_ETAGE ? collisionSameLevelSet(clash, loadedMaquettes) : null;
+  const candidateIds = levelSet ? Array.from(levelSet) : viewer.scene.objectIds;
+  const nearbyAabbs = [];
+  candidateIds.forEach((id) => {
+    if (id === idA || id === idB) return;
+    const aabb = levelSet ? collisionAabbOf(id) : viewer.scene.getAABB([id]);
+    if (aabb && aabbNearPoint(aabb, center, searchRadius)) nearbyAabbs.push(aabb);
+  });
+  console.info("[collision] recherche des voisins : " + candidateIds.length + " candidats, " + nearbyAabbs.length + " retenus, " + Math.round(performance.now() - tFly) + " ms");
 
-  const eye = pickBestClashView(clash, center, nearbyAabbs);
+  const eye = pickBestClashView(clash, center, nearbyAabbs, volume);
+  if (volume) {
+    const dist = Math.hypot(eye[0] - center[0], eye[1] - center[1], eye[2] - center[2]);
+    console.info("[collision] cadrage n° " + (CLASHES.indexOf(clash) + 1) + " : volume " +
+      volume.raw.map((v) => v.toFixed(1)).join("x") + " m (plafonne : " + (volume.capped ? "oui" : "non") +
+      "), distance " + dist.toFixed(1) + " m");
+  }
 
-  viewer.cameraFlight.flyTo({ eye, look: center, up: [0, 1, 0], duration: 1.2 });
+  viewer.cameraFlight.flyTo({ eye, look: center, up: [0, 1, 0], duration: 1.2 }, onDone);
 }
 
 // Marqueurs 3D (spheres colorees) aux points de croisement des clashs de la
@@ -2378,10 +2983,13 @@ const CLASH_MARKER_COLORS = {
   confirme: [0.973, 0.318, 0.286], // #f85149
   ecarte: [0.44, 0.47, 0.5] // gris, cf var(--muted)
 };
-const CLASH_MARKER_RADIUS = 0.18;
-const CLASH_MARKER_RADIUS_ACTIVE = 0.32;
-const CLASH_MARKER_OPACITY = 0.2;
-const CLASH_MARKER_OPACITY_ACTIVE = 0.55;
+// Interrupteur COLLISION_BULLES_SURIMPRESSION : meme rayon pour toutes les
+// spheres 3D et opacite plus discrete (le disque surimprime porte la visibilite).
+// Anciennes valeurs si false : 0.18 / 0.32 / 0.2 / 0.55.
+const CLASH_MARKER_RADIUS = COLLISION_BULLES_SURIMPRESSION ? COLLISION_BULLE_RAYON : 0.18;
+const CLASH_MARKER_RADIUS_ACTIVE = COLLISION_BULLES_SURIMPRESSION ? COLLISION_BULLE_RAYON : 0.32;
+const CLASH_MARKER_OPACITY = COLLISION_BULLES_SURIMPRESSION ? 0.1 : 0.2;
+const CLASH_MARKER_OPACITY_ACTIVE = COLLISION_BULLES_SURIMPRESSION ? 0.25 : 0.55;
 
 let clashMarkerGeometry = null;
 let clashMarkerMaterial = null;
@@ -2400,6 +3008,165 @@ function clearClashMarkers() {
   clashMarkers.forEach((mesh) => mesh.destroy());
   clashMarkers.clear();
   activeClashMarkerId = null;
+  clearClashPastilles();
+  clearClashBulles();
+}
+
+// Bulles surimprimees (COLLISION_BULLES_SURIMPRESSION) : canvas 2D par-dessus
+// le canvas xeokit, pointer-events: none (aucun clic capte). Rayon en pixels =
+// R * projMatrix[5] * (hauteurPx / 2) / w_clip (w_clip = distance en
+// perspective, 1 en orthographique), borne entre MIN_PX et MAX_PX.
+let clashBullesCanvas = null;
+let clashBullesList = [];
+let clashBullesActiveId = null;
+let clashBullesRaf = 0;
+let clashBullesBound = false;
+
+function clearClashBulles() {
+  clashBullesList = [];
+  clashBullesActiveId = null;
+  if (clashBullesRaf) cancelAnimationFrame(clashBullesRaf);
+  clashBullesRaf = 0;
+  if (!clashBullesCanvas) return;
+  const ctx = clashBullesCanvas.getContext("2d");
+  if (ctx) ctx.clearRect(0, 0, clashBullesCanvas.width, clashBullesCanvas.height);
+  clashBullesCanvas.hidden = true;
+}
+
+function scheduleClashBulles() {
+  if (!COLLISION_BULLES_SURIMPRESSION || clashBullesList.length === 0 || clashBullesRaf) return;
+  clashBullesRaf = requestAnimationFrame(() => {
+    clashBullesRaf = 0;
+    drawClashBulles();
+  });
+}
+
+function drawClashBulles() {
+  if (!clashBullesCanvas || clashBullesList.length === 0) return;
+  const glCanvas = viewer.scene.canvas && viewer.scene.canvas.canvas;
+  if (!glCanvas) return;
+  const w = glCanvas.clientWidth;
+  const h = glCanvas.clientHeight;
+  if (w === 0 || h === 0) return;
+  const dpr = window.devicePixelRatio || 1;
+  const pw = Math.round(w * dpr);
+  const ph = Math.round(h * dpr);
+  if (clashBullesCanvas.width !== pw || clashBullesCanvas.height !== ph) {
+    clashBullesCanvas.width = pw;
+    clashBullesCanvas.height = ph;
+  }
+  clashBullesCanvas.style.left = glCanvas.offsetLeft + "px";
+  clashBullesCanvas.style.top = glCanvas.offsetTop + "px";
+  clashBullesCanvas.style.width = w + "px";
+  clashBullesCanvas.style.height = h + "px";
+  const ctx = clashBullesCanvas.getContext("2d");
+  if (!ctx) return;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+  const cam = viewer.camera;
+  const v = cam.viewMatrix;
+  const m = cam.projMatrix;
+  clashBullesList.forEach(({ id, center }) => {
+    const [x, y, z] = center;
+    const ex = v[0] * x + v[4] * y + v[8] * z + v[12];
+    const ey = v[1] * x + v[5] * y + v[9] * z + v[13];
+    const ez = v[2] * x + v[6] * y + v[10] * z + v[14];
+    // Derriere la camera (ou sur son plan) : rien.
+    if (ez >= 0) return;
+    const cx = m[0] * ex + m[4] * ey + m[8] * ez + m[12];
+    const cy = m[1] * ex + m[5] * ey + m[9] * ez + m[13];
+    const cw = m[3] * ex + m[7] * ey + m[11] * ez + m[15];
+    if (!(cw > 0)) return;
+    const px = (cx / cw * 0.5 + 0.5) * w;
+    const py = (1 - (cy / cw * 0.5 + 0.5)) * h;
+    const raw = COLLISION_BULLE_RAYON * m[5] * (h / 2) / cw;
+    const r = Math.min(COLLISION_BULLE_MAX_PX, Math.max(COLLISION_BULLE_MIN_PX, raw));
+    if (px < -r - 8 || px > w + r + 8 || py < -r - 8 || py > h + r + 8) return;
+    if (id === clashBullesActiveId) {
+      ctx.beginPath();
+      ctx.arc(px, py, r + 6, 0, Math.PI * 2);
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.95)";
+      ctx.stroke();
+    }
+    ctx.beginPath();
+    ctx.arc(px, py, r, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(255, 200, 40, 0.35)";
+    ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = "rgba(255, 210, 60, 0.95)";
+    ctx.stroke();
+  });
+}
+
+function renderClashBulles(clashes) {
+  if (!COLLISION_BULLES_SURIMPRESSION) return;
+  if (!clashBullesCanvas) {
+    clashBullesCanvas = document.createElement("canvas");
+    clashBullesCanvas.className = "clash-bulles";
+    clashBullesCanvas.setAttribute("aria-hidden", "true");
+    viewerWrap.appendChild(clashBullesCanvas);
+  }
+  if (!clashBullesBound) {
+    clashBullesBound = true;
+    viewer.camera.on("matrix", scheduleClashBulles);
+    viewer.camera.on("projMatrix", scheduleClashBulles);
+    if (typeof ResizeObserver !== "undefined") new ResizeObserver(scheduleClashBulles).observe(viewerWrap);
+    window.addEventListener("resize", scheduleClashBulles);
+  }
+  clashBullesCanvas.hidden = false;
+  clashBullesList = clashes.map((clash) => ({ id: clash.id, center: clashCenter(clash) }));
+  scheduleClashBulles();
+}
+
+// Pastilles numerotees (COLLISION_PASTILLES) : AnnotationsPlugin de xeokit,
+// marqueurs HTML non occultables. Le conteneur ne capte aucun clic
+// (pointer-events: none), seules les pastilles les captent.
+let clashPastillesPlugin = null;
+let clashPastillesContainer = null;
+const clashPastilles = new Map(); // clash.id -> { annotation, el }
+
+function clearClashPastilles() {
+  if (clashPastillesPlugin) clashPastillesPlugin.clear();
+  clashPastilles.clear();
+}
+
+function setClashPastilleShown(clashId, shown) {
+  const entry = clashPastilles.get(clashId);
+  if (entry) entry.annotation.setMarkerShown(shown);
+}
+
+function highlightClashPastille(clashId) {
+  clashPastilles.forEach((entry, id) => entry.el.classList.toggle("active", id === clashId));
+}
+
+function renderClashPastilles(clashes) {
+  if (!COLLISION_PASTILLES) return;
+  if (!clashPastillesPlugin) {
+    clashPastillesContainer = document.createElement("div");
+    clashPastillesContainer.className = "clash-pastilles";
+    viewerWrap.appendChild(clashPastillesContainer);
+    clashPastillesContainer.addEventListener("click", (e) => {
+      const el = e.target.closest(".clash-pastille");
+      const clash = el && CLASHES.find((c) => c.id === el.dataset.clashId);
+      if (clash) activateClash(clash);
+    });
+    clashPastillesPlugin = new AnnotationsPlugin(viewer, { container: clashPastillesContainer });
+  }
+  clearClashPastilles();
+  clashes.forEach((clash) => {
+    const numero = CLASHES.indexOf(clash) + 1;
+    const annotation = clashPastillesPlugin.createAnnotation({
+      id: "clash-pastille-" + clash.id,
+      worldPos: clashCenter(clash),
+      occludable: false,
+      markerShown: true,
+      labelShown: false,
+      markerHTML: '<button type="button" class="clash-pastille ' + clash.statut + '" data-clash-id="' + clash.id + '" aria-label="Collision n° ' + numero + '">' + numero + '</button>'
+    });
+    const el = clashPastillesContainer.querySelector('[data-clash-id="' + clash.id + '"]');
+    clashPastilles.set(clash.id, { annotation, el });
+  });
 }
 
 function renderClashMarkers(clashes) {
@@ -2419,6 +3186,8 @@ function renderClashMarkers(clashes) {
     });
     clashMarkers.set(clash.id, mesh);
   });
+  renderClashPastilles(clashes);
+  renderClashBulles(clashes);
 }
 
 // Grossit le marqueur du clash actuellement selectionne pour le reperer
@@ -2435,6 +3204,9 @@ function highlightClashMarker(clash) {
     current.opacity = CLASH_MARKER_OPACITY_ACTIVE;
   }
   activeClashMarkerId = clash.id;
+  highlightClashPastille(clash.id);
+  clashBullesActiveId = clash.id;
+  scheduleClashBulles();
 }
 
 // Colore les 2 vrais elements en collision (rouge/vert) uniquement quand on
@@ -2447,23 +3219,406 @@ const CLASH_ELEMENT_COLOR_A = [1, 0.2, 0.2];
 const CLASH_ELEMENT_COLOR_B = [0.25, 1, 0.3];
 let colorizedClashEntityIds = [];
 
-function clearClashElementColors() {
+function clearClashElementColors(sansRecalcul) {
+  // Transparence de la collision rendue (le fantome du contexte, lui, reste).
+  // sansRecalcul (19/10) : utilise par highlightClashElements, qui recalcule
+  // juste apres ; evite de remettre puis de remettre en fantome ~74 000 objets
+  // a chaque changement de collision (gel observe par Gilles).
+  if (collisionActiveClash || collisionOpacityTouched.length > 0) {
+    collisionActiveClash = null;
+    if (!sansRecalcul) applyCollisionOpacities();
+  }
   if (colorizedClashEntityIds.length === 0) return;
   viewer.scene.setObjectsColorized(colorizedClashEntityIds, null);
   colorizedClashEntityIds = [];
 }
 
 function highlightClashElements(clash) {
-  clearClashElementColors();
+  clearClashElementColors(true);
   const [idA, idB] = clash.entityIds;
   viewer.scene.setObjectsColorized([idA], CLASH_ELEMENT_COLOR_A);
   viewer.scene.setObjectsColorized([idB], CLASH_ELEMENT_COLOR_B);
   colorizedClashEntityIds = [idA, idB];
+  collisionActiveClash = clash;
+  // Pendant le vol de camera, le calcul lourd est differe (voir finirTransitionCollision).
+  if (!(COLLISION_TRANSITION_VERROUILLEE && collisionTransitionEnCours)) applyCollisionOpacities();
+}
+
+// ----------------------------------------------------------------------------
+// Transparence de la page Collision (19/10) : revelation des elements
+// masquants (COLLISION_REVELATION) + fantome du contexte (COLLISION_CONTEXTE).
+// Source unique d'opacite : applyCollisionOpacities() remet TOUT ce qu'elle a
+// touche a 1, puis recalcule la cible de chaque objet (la plus basse gagne).
+// Rien d'autre dans l'app ne force l'opacite (applyVisibility ne touche que
+// la visibilite, la coupe passe par un plan de coupe).
+// Echelle hopital (74 000 objets) : candidats masquants = Architecture
+// seulement (plus Structure si affichee), jamais la mecanique (59 000) ;
+// boites englobantes lues paresseusement et mises en cache.
+// ----------------------------------------------------------------------------
+const collisionAabbCache = new Map();
+const collisionEntityIdsCache = new Map();
+let collisionGhostMaquettes = [];
+
+function collisionAabbOf(id) {
+  let aabb = collisionAabbCache.get(id);
+  if (!aabb) {
+    const entity = viewer.scene.objects[id];
+    if (!entity) return null;
+    aabb = entity.aabb;
+    collisionAabbCache.set(id, aabb);
+  }
+  return aabb;
+}
+
+function collisionEntityIds(maquetteId) {
+  let ids = collisionEntityIdsCache.get(maquetteId);
+  if (!ids) {
+    const maquette = MAQUETTES.find((m) => m.id === maquetteId);
+    if (!maquette || !maquette.model) return [];
+    ids = maquette.model.entityList.map((e) => e.id);
+    collisionEntityIdsCache.set(maquetteId, ids);
+  }
+  return ids;
+}
+
+function collisionMaskingIds(clash) {
+  const [idA, idB] = clash.entityIds;
+  const point = clashCenter(clash);
+  const radius = clashFrameDistance(clash);
+  const candidateMaquettes = ["hosp-arch"];
+  const struct = MAQUETTES.find((m) => m.id === "hosp-struct");
+  if (struct && struct.shown) candidateMaquettes.push("hosp-struct");
+  const masking = [];
+  candidateMaquettes.forEach((maquetteId) => {
+    collisionEntityIds(maquetteId).forEach((id) => {
+      if (id === idA || id === idB) return;
+      const entity = viewer.scene.objects[id];
+      if (!entity || !entity.visible) return;
+      const aabb = collisionAabbOf(id);
+      if (aabb && aabbNearPoint(aabb, point, radius)) masking.push(id);
+    });
+  });
+  return masking;
+}
+
+function resetCollisionOpacities() {
+  if (collisionOpacityTouched.length === 0) return;
+  viewer.scene.setObjectsOpacity(collisionOpacityTouched, 1);
+  collisionOpacityTouched = [];
+}
+
+function applyCollisionOpacities() {
+  const t0 = performance.now();
+  resetCollisionOpacities();
+  syncCollisionNiveauxGhosts();
+  const target = new Map();
+  const put = (ids, opacity) => ids.forEach((id) => {
+    const current = target.get(id);
+    if (current === undefined || opacity < current) target.set(id, opacity);
+  });
+  const isolating = COLLISION_ISOLATION && !!collisionActiveClash;
+  // En isolation, le contexte passe en X-ray (pas d'opacite 0,2 en plus).
+  if (COLLISION_CONTEXTE && collisionContexteOn && !isolating) {
+    collisionGhostMaquettes.forEach((m) => put(collisionEntityIds(m.id), COLLISION_CONTEXTE_OPACITY));
+  }
+  if (COLLISION_REVELATION && !COLLISION_ISOLATION && collisionActiveClash) {
+    const [idA, idB] = collisionActiveClash.entityIds;
+    const { smaller, larger } = smallerLargerEntityIds(idA, idB);
+    put([smaller], CLASH_ELEMENT_OPACITY);
+    put([larger], CLASH_REVEAL_OPACITY);
+    put(collisionMaskingIds(collisionActiveClash), CLASH_REVEAL_OPACITY);
+  }
+  const byOpacity = new Map();
+  target.forEach((opacity, id) => {
+    if (!byOpacity.has(opacity)) byOpacity.set(opacity, []);
+    byOpacity.get(opacity).push(id);
+  });
+  byOpacity.forEach((ids, opacity) => viewer.scene.setObjectsOpacity(ids, opacity));
+  collisionOpacityTouched = Array.from(target.keys());
+  applyCollisionIsolation();
+  console.info("[collision] isolation appliquee en " + Math.round(performance.now() - t0) + " ms, " + collisionIsolationIds.length + " objets en fantome");
+}
+
+// Mode isolation : tout sauf les 2 elements du conflit en X-ray, non
+// cliquable. Appels groupes xeokit (un seul tableau d'ids). Appelee en fin de
+// applyCollisionOpacities, donc a chaque selection, deselection, bascule du
+// Contexte, sortie de page et changement de detection ; restaure d'abord tout
+// ce qu'elle avait touche, puis reapplique si une collision est selectionnee.
+function releaseCollisionIsolation() {
+  if (collisionCulledIds.length > 0) {
+    viewer.scene.setObjectsCulled(collisionCulledIds, false);
+    collisionCulledIds = [];
+  }
+  if (collisionIsolationIds.length > 0) {
+    const scene = viewer.scene;
+    scene.setObjectsXRayed(collisionIsolationIds, false);
+    scene.setObjectsPickable(collisionIsolationIds, true);
+    // Le Contexte allume garde ses maquettes non cliquables.
+    if (collisionContexteOn && !collisionNiveauxActive()) {
+      collisionGhostMaquettes.forEach((m) => scene.setObjectsPickable(collisionEntityIds(m.id), false));
+    }
+    collisionIsolationIds = [];
+  }
+  if (collisionContextePickIds.length > 0) {
+    viewer.scene.setObjectsPickable(collisionContextePickIds, true);
+    collisionContextePickIds = [];
+  }
+  if (collisionIsolationSavedMaterial) {
+    const material = viewer.scene.xrayMaterial;
+    const saved = collisionIsolationSavedMaterial;
+    material.fillAlpha = saved.fillAlpha;
+    material.edgeAlpha = saved.edgeAlpha;
+    material.fillColor = saved.fillColor;
+    material.edgeColor = saved.edgeColor;
+    collisionIsolationSavedMaterial = null;
+  }
+}
+
+function applyCollisionIsolation() {
+  if (!COLLISION_ISOLATION) return;
+  const tIso0 = performance.now();
+  const phases = [];
+  const marque = (nom) => phases.push(nom + " " + Math.round(performance.now() - tIso0));
+  releaseCollisionIsolation();
+  marque("liberation");
+  if (!collisionActiveClash) return;
+  const scene = viewer.scene;
+  const material = scene.xrayMaterial;
+  collisionIsolationSavedMaterial = {
+    fillAlpha: material.fillAlpha,
+    edgeAlpha: material.edgeAlpha,
+    fillColor: Array.from(material.fillColor),
+    edgeColor: Array.from(material.edgeColor)
+  };
+  material.fillAlpha = COLLISION_ISOLATION_FILL_ALPHA;
+  material.edgeAlpha = COLLISION_ISOLATION_EDGE_ALPHA;
+  material.fillColor = COLLISION_ISOLATION_COLOR;
+  material.edgeColor = COLLISION_ISOLATION_COLOR;
+  const maquettes = collisionSubsetMaquettes.slice();
+  if (collisionContexteOn) maquettes.push(...collisionGhostMaquettes);
+  const [idA, idB] = collisionActiveClash.entityIds;
+  const ids = [];
+  maquettes.forEach((m) => collisionEntityIds(m.id).forEach((id) => {
+    if (id !== idA && id !== idB) ids.push(id);
+  }));
+  marque("ids " + ids.length);
+  let ctxIds = [];
+  if (collisionNiveauxActive() && collisionContexteNiveau !== "isole") {
+    ctxIds = collisionNiveauContextIds(collisionActiveClash, maquettes);
+  }
+  marque("contexte " + ctxIds.length);
+  if (ctxIds.length > 0) {
+    // Contexte proche / etage : vraies couleurs a 30 %, ni xray ni cliquable.
+    const ctxSet = new Set(ctxIds);
+    ids.splice(0, ids.length, ...ids.filter((id) => !ctxSet.has(id)));
+    scene.setObjectsOpacity(ctxIds, COLLISION_CONTEXTE_NIVEAU_OPACITE);
+    scene.setObjectsPickable(ctxIds, false);
+    collisionOpacityTouched = collisionOpacityTouched.concat(ctxIds);
+    collisionContextePickIds = ctxIds;
+  }
+  if (COLLISION_ISOLATION_ETAGE) {
+    const levelSet = collisionSameLevelSet(collisionActiveClash, maquettes);
+    if (levelSet) {
+      const near = [];
+      const far = [];
+      ids.forEach((id) => (levelSet.has(id) ? near : far).push(id));
+      marque("etage " + near.length + " proches / " + far.length + " ecartes");
+      if (far.length > 0) {
+        scene.setObjectsCulled(far, true);
+        collisionCulledIds = far;
+      }
+      marque("ecartes");
+      ids.splice(0, ids.length, ...near);
+    }
+  }
+  scene.setObjectsXRayed(ids, true);
+  marque("xray " + ids.length);
+  scene.setObjectsPickable(ids, false);
+  marque("pickable");
+  scene.setObjectsXRayed([idA, idB], false);
+  scene.setObjectsPickable([idA, idB], true);
+  // Niveau "Isole" (19/10, demande de Gilles) : legere transparence sur les 2
+  // elements en conflit, pour voir ce qui se trouve derriere eux. Restauree a 1
+  // par la restauration des opacites (collisionOpacityTouched).
+  if (collisionNiveauxActive() && collisionContexteNiveau === "isole") {
+    const applyIsoleOpacity = () => {
+      [idA, idB].forEach((id) => {
+        const entity = scene.objects[id];
+        if (entity) entity.opacity = COLLISION_ELEMENT_ISOLE_OPACITE;
+      });
+    };
+    applyIsoleOpacity();
+    collisionOpacityTouched = collisionOpacityTouched.concat([idA, idB]);
+    // Reapplique a l'image suivante (au cas ou un autre appel remettrait
+    // l'opacite a 1 juste apres la selection) et trace l'opacite reelle des 2
+    // elements pour verification (retour de Gilles : transparence invisible).
+    const clashAtCall = collisionActiveClash;
+    requestAnimationFrame(() => {
+      if (collisionActiveClash !== clashAtCall || collisionContexteNiveau !== "isole") return;
+      applyIsoleOpacity();
+      console.info("[collision] opacite en Isole : element A " + (scene.objects[idA] ? scene.objects[idA].opacity : "introuvable") +
+        ", element B " + (scene.objects[idB] ? scene.objects[idB].opacity : "introuvable"));
+    });
+  }
+  collisionIsolationIds = ids;
+  console.info("[collision] phases de l'isolation (ms cumules) : " + phases.join(" | "));
+}
+
+// ----------------------------------------------------------------------------
+// Selecteur de contexte a 3 niveaux (COLLISION_CONTEXTE_NIVEAUX).
+// ----------------------------------------------------------------------------
+function collisionNiveauxActive() {
+  return COLLISION_CONTEXTE_NIVEAUX && COLLISION_ISOLATION;
+}
+
+// Index id -> etage canonique, construit une fois par maquette (sous-arbre de
+// chaque IfcBuildingStorey, comme buildGenericNiveaux), jamais avant que les
+// metadonnees de la maquette soient chargees. levelIds : etage -> ids (entites
+// existantes seulement).
+const collisionLevelIndexCache = new Map();
+function collisionLevelIndexOf(maquetteId) {
+  let index = collisionLevelIndexCache.get(maquetteId);
+  if (index) return index;
+  if (!viewer.metaScene.metaModels[maquetteId]) return null;
+  index = { idToLevel: new Map(), levelIds: new Map() };
+  Object.values(viewer.metaScene.metaObjectsByType["IfcBuildingStorey"] || {})
+    .filter((mo) => mo.metaModels.some((m) => m.id === maquetteId))
+    .forEach((mo) => {
+      const level = canonicalStoreyName(mo.name);
+      if (!index.levelIds.has(level)) index.levelIds.set(level, []);
+      const bucket = index.levelIds.get(level);
+      viewer.metaScene.getObjectIDsInSubtree(mo.id).forEach((id) => {
+        if (!viewer.scene.objects[id] || index.idToLevel.has(id)) return;
+        index.idToLevel.set(id, level);
+        bucket.push(id);
+      });
+    });
+  collisionLevelIndexCache.set(maquetteId, index);
+  return index;
+}
+
+// Candidats du contexte : meme etage que le conflit, maquettes affichees,
+// conflit exclu ; en "proche", filtre AABB (cache) dans le rayon autour du
+// point de collision. Niveau du conflit introuvable : liste vide (isolation seule).
+// Ensemble des ids de l'etage du conflit, toutes maquettes confondues (null si
+// l'etage est introuvable : l'isolation retombe alors sur tout l'hopital).
+function collisionSameLevelSet(clash, maquettes) {
+  const [idA, idB] = clash.entityIds;
+  const indexes = maquettes.map((m) => collisionLevelIndexOf(m.id)).filter((index) => index);
+  let level = null;
+  for (const index of indexes) {
+    level = index.idToLevel.get(idA) || index.idToLevel.get(idB) || null;
+    if (level) break;
+  }
+  if (!level) return null;
+  const set = new Set();
+  indexes.forEach((index) => (index.levelIds.get(level) || []).forEach((id) => set.add(id)));
+  return set;
+}
+
+function collisionNiveauContextIds(clash, maquettes) {
+  const [idA, idB] = clash.entityIds;
+  const indexes = maquettes.map((m) => ({ m, index: collisionLevelIndexOf(m.id) })).filter((e) => e.index);
+  let level = null;
+  for (const { index } of indexes) {
+    level = index.idToLevel.get(idA) || index.idToLevel.get(idB) || null;
+    if (level) break;
+  }
+  if (!level) {
+    console.warn("[collision] etage du conflit introuvable, isolation seule");
+    return [];
+  }
+  const point = clashCenter(clash);
+  const result = [];
+  let total = 0;
+  indexes.forEach(({ m, index }) => {
+    if (!m.shown) return;
+    const levelIds = index.levelIds.get(level) || [];
+    total += levelIds.length;
+    levelIds.forEach((id) => {
+      if (id === idA || id === idB) return;
+      if (collisionContexteNiveau === "proche") {
+        const aabb = collisionAabbOf(id);
+        if (!aabb || !aabbNearPoint(aabb, point, COLLISION_CONTEXTE_RAYON)) return;
+      }
+      result.push(id);
+    });
+  });
+  console.info("[collision] contexte " + collisionContexteNiveau + " (" + level + ") : " + result.length + " objets sur " + total + " de l'etage");
+  return result;
+}
+
+// Affiche Structure / Electricite quand un conflit est selectionne et que le
+// niveau n'est pas "isole" ; les remasque sinon (deselection, sortie de page).
+function syncCollisionNiveauxGhosts() {
+  if (!collisionNiveauxActive() || collisionGhostMaquettes.length === 0) return;
+  const desired = !!collisionActiveClash && collisionContexteNiveau !== "isole";
+  if (desired === collisionContexteOn) return;
+  collisionContexteOn = desired;
+  collisionGhostMaquettes.forEach((m) => {
+    m.shown = desired;
+    if (!desired) viewer.scene.setObjectsPickable(collisionEntityIds(m.id), true);
+  });
+  applyVisibility();
+}
+
+function setCollisionContexteNiveau(key) {
+  collisionContexteNiveau = key;
+  refreshCollisionMaquetteToggles();
+  if (collisionActiveClash) applyCollisionOpacities();
+}
+
+// Plus petit / plus grand des 2 elements (portee depuis IES), par diagonale
+// de boite englobante.
+function smallerLargerEntityIds(idA, idB) {
+  const aabbA = viewer.scene.getAABB([idA]);
+  const aabbB = viewer.scene.getAABB([idB]);
+  const diagonalA = Math.hypot(aabbA[3] - aabbA[0], aabbA[4] - aabbA[1], aabbA[5] - aabbA[2]);
+  const diagonalB = Math.hypot(aabbB[3] - aabbB[0], aabbB[4] - aabbB[1], aabbB[5] - aabbB[2]);
+  return diagonalA <= diagonalB ? { smaller: idA, larger: idB } : { smaller: idB, larger: idA };
+}
+
+// Bouton Contexte : affiche/masque les maquettes hors paire en fantome, non
+// cliquables tant qu'elles sont en fantome (setObjectsPickable).
+function setCollisionContexte(on) {
+  collisionContexteOn = on;
+  collisionGhostMaquettes.forEach((m) => {
+    m.shown = on;
+    viewer.scene.setObjectsPickable(collisionEntityIds(m.id), !on);
+  });
+  applyVisibility();
+  applyCollisionOpacities();
+}
+
+// Retour a l'etat normal, appelee a chaque sortie de la page Collision
+// (activateView, restoreAllModelsVisible) et a l'ouverture d'une detection :
+// opacite 1, pickable true, maquettes hors paire a nouveau masquees.
+function resetCollisionOpacityState() {
+  const wasOn = collisionContexteOn;
+  collisionContexteOn = false;
+  collisionActiveClash = null;
+  if (wasOn) {
+    collisionGhostMaquettes.forEach((m) => {
+      m.shown = false;
+      viewer.scene.setObjectsPickable(collisionEntityIds(m.id), true);
+    });
+    applyVisibility();
+  }
+  applyCollisionOpacities();
 }
 
 let currentDiscussionThread = null;
+// COLLISION_ECHANGES_GRAND : etat declare en tete de fichier (voir plus haut), car activateView s'execute au demarrage.
 
 function renderDiscussionMessages(thread) {
+  if (COLLISION_BANDEAU && isHospitalClash(thread) && collisionLeft.contains(collisionDiscussion)) {
+    renderChronologieCollision(thread);
+    return;
+  }
+  if (isHospitalClash(thread)) {
+    renderDiscussionMessagesAvecJournal(thread);
+    return;
+  }
   discussionMessages.innerHTML = "";
   // Plus recents en haut, plus anciens en bas (le tableau reste lui en
   // ordre chronologique, seul l'affichage est inverse) : le dernier
@@ -2482,6 +3637,323 @@ function renderDiscussionMessages(thread) {
   });
 }
 
+// COLLISION_PRIORITES : commentaires + journal des changements (priorite,
+// statut), melanges chronologiquement (plus recent en haut). Les messages sans
+// date (anciens) passent avant les entrees datees.
+let journalNoteOuverte = null;
+function fermerJournalNote() {
+  if (!journalNoteOuverte) return;
+  journalNoteOuverte.note.hidden = true;
+  journalNoteOuverte.btn.setAttribute("aria-expanded", "false");
+  journalNoteOuverte = null;
+}
+document.addEventListener("click", (e) => {
+  if (journalNoteOuverte && !journalNoteOuverte.li.contains(e.target)) fermerJournalNote();
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") fermerJournalNote();
+});
+
+function renderDiscussionMessagesAvecJournal(thread) {
+  journalNoteOuverte = null;
+  discussionMessages.innerHTML = "";
+  const temps = (x) => { const t = Date.parse(x.quand); return isNaN(t) ? 0 : t; };
+  const items = thread.discussion.map((m) => ({ type: "message", data: m, t: temps(m) }))
+    .concat((thread.historique || []).map((h) => ({ type: "journal", data: h, t: temps(h) })));
+  // Tri stable : a date egale, l'ordre d'insertion est conserve.
+  items.map((it, i) => ({ it, i })).sort((a, b) => a.it.t - b.it.t || a.i - b.i).map((x) => x.it).reverse().forEach((item) => {
+    const li = document.createElement("li");
+    if (item.type === "message") {
+      li.className = "discussion-message";
+      const auteur = document.createElement("div");
+      auteur.className = "discussion-auteur";
+      auteur.textContent = item.data.auteur;
+      const texte = document.createElement("div");
+      texte.className = "discussion-texte";
+      texte.textContent = item.data.texte;
+      li.append(auteur, texte);
+    } else {
+      const h = item.data;
+      li.className = "discussion-journal";
+      const icone = document.createElement("span");
+      icone.className = "discussion-journal-icone";
+      icone.setAttribute("aria-hidden", "true");
+      icone.textContent = "↻";
+      const qui = document.createElement("button");
+      qui.type = "button";
+      qui.className = "discussion-journal-qui";
+      qui.textContent = h.qui || CLASH_UTILISATEUR_HISTORIQUE;
+      qui.setAttribute("aria-expanded", "false");
+      const note = document.createElement("span");
+      note.className = "discussion-journal-note";
+      note.hidden = true;
+      note.setAttribute("role", "status");
+      note.textContent = "Nom de l'utilisateur quand les comptes seront en place";
+      qui.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const wasOpen = journalNoteOuverte && journalNoteOuverte.btn === qui;
+        fermerJournalNote();
+        if (wasOpen) return;
+        note.hidden = false;
+        qui.setAttribute("aria-expanded", "true");
+        journalNoteOuverte = { li, btn: qui, note };
+      });
+      const labels = h.champ === "priorité" ? PRIORITE_LABELS : STATUT_LABELS;
+      const texte = document.createElement("span");
+      texte.textContent = " a changé " + (h.champ === "priorité" ? "la priorité" : "le statut") + " de " + (labels[h.de] || h.de) + " à " + (labels[h.vers] || h.vers);
+      const quand = document.createElement("span");
+      quand.className = "discussion-journal-quand";
+      const d = formatHistoriqueDate(h.quand);
+      quand.textContent = d ? " · " + d : "";
+      li.append(icone, qui, texte, quand, note);
+    }
+    discussionMessages.appendChild(li);
+  });
+}
+
+// COLLISION_BANDEAU : titre court, chronologie unique et filtre.
+let collisionFiltre = "tout";
+let collisionFiltreEl = null;
+let collisionIdsEl = null;
+const FILTRES_CHRONOLOGIE = [["tout", "Tout"], ["commentaires", "Commentaires"], ["modifications", "Modifications"]];
+
+function ensureBandeauElements() {
+  if (!collisionFiltreEl) {
+    const bar = document.createElement("div");
+    bar.id = "collisionFiltre";
+    bar.setAttribute("role", "group");
+    bar.setAttribute("aria-label", "Filtrer les échanges");
+    FILTRES_CHRONOLOGIE.forEach(([cle, libelle]) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.dataset.filtre = cle;
+      b.textContent = libelle;
+      b.setAttribute("aria-pressed", String(cle === collisionFiltre));
+      b.addEventListener("click", () => {
+        collisionFiltre = cle;
+        bar.querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", String(x.dataset.filtre === cle)));
+        if (currentDiscussionThread) renderDiscussionMessages(currentDiscussionThread);
+      });
+      bar.appendChild(b);
+    });
+    discussionMessages.parentNode.insertBefore(bar, discussionMessages);
+    collisionFiltreEl = bar;
+  }
+  if (!collisionIdsEl) {
+    const ids = document.createElement("div");
+    ids.id = "collisionDiscussionIds";
+    const head = document.getElementById("collisionDiscussionHead");
+    if (head) head.parentNode.insertBefore(ids, head.nextSibling);
+    collisionIdsEl = ids;
+  }
+}
+
+// Titre court "n° 5 · Cloison ↔ Tuyau · Niveau 4" (le nom Revit reste en infobulle).
+function titreCourtCollision(clash) {
+  const [partA, partB] = clash.zone.split(" ↔ ");
+  const levelMatch = clash.zone.match(/·\s*([^·]+)$/);
+  const niveau = (levelMatch ? levelMatch[1].trim() : "").replace(/^Level\s*/i, "Niveau ");
+  const types = collisionTypeFr(partA || "") + " ↔ " + collisionTypeFr((partB || "").split("·")[0]);
+  return "n° " + (CLASHES.indexOf(clash) + 1) + " · " + types + (niveau ? " · " + niveau : "");
+}
+
+function majBandeauCollision(thread) {
+  const actif = COLLISION_BANDEAU && isHospitalClash(thread) && collisionLeft.contains(collisionDiscussion);
+  ensureBandeauElements();
+  collisionDiscussion.classList.toggle("cb", actif);
+  if (!actif) {
+    fermerEchangesGrand(false);
+    collisionDiscussionTitle.title = "Cliquer pour voir le titre complet";
+    if (collisionIdsEl) collisionIdsEl.textContent = "";
+    return;
+  }
+  collisionDiscussionTitle.textContent = titreCourtCollision(thread);
+  collisionDiscussionTitle.title = thread.zone;
+  const ids = (thread.zone.match(/\(#(\d+)\)/g) || []).map((m) => m.slice(1, -1));
+  collisionIdsEl.textContent = ids.join(" ↔ ");
+}
+
+function defilerChronologieBas() {
+  requestAnimationFrame(() => { discussionMessages.scrollTop = discussionMessages.scrollHeight; });
+}
+
+function initiales(nom) {
+  const mots = String(nom || "").trim().split(/\s+/).filter(Boolean);
+  if (!mots.length) return "?";
+  if (mots.length === 1) return mots[0].charAt(0).toUpperCase();
+  return (mots[0].charAt(0) + mots[mots.length - 1].charAt(0)).toUpperCase();
+}
+
+function puceValeur(champ, valeur, labels) {
+  const span = document.createElement("span");
+  span.className = "tl-valeur";
+  const dot = document.createElement("span");
+  dot.className = "tl-dot";
+  dot.dataset.champ = champ === "priorité" ? "prio" : "statut";
+  dot.dataset.v = valeur;
+  dot.setAttribute("aria-hidden", "true");
+  span.append(dot, document.createTextNode(labels[valeur] || valeur));
+  return span;
+}
+
+function renderChronologieCollision(thread) {
+  journalNoteOuverte = null;
+  discussionMessages.innerHTML = "";
+  const temps = (x) => { const t = Date.parse(x.quand); return isNaN(t) ? 0 : t; };
+  let items = thread.discussion.map((m) => ({ type: "message", data: m, t: temps(m) }))
+    .concat((thread.historique || []).map((h) => ({ type: "journal", data: h, t: temps(h) })));
+  if (collisionFiltre === "commentaires") items = items.filter((i) => i.type === "message");
+  if (collisionFiltre === "modifications") items = items.filter((i) => i.type === "journal");
+  items = items.map((it, i) => ({ it, i })).sort((a, b) => a.it.t - b.it.t || a.i - b.i).map((x) => x.it);
+  if (!items.length) {
+    const vide = document.createElement("li");
+    vide.className = "tl-vide";
+    vide.textContent = "Aucun échange pour l'instant.";
+    discussionMessages.appendChild(vide);
+    return;
+  }
+  items.forEach((item) => {
+    const li = document.createElement("li");
+    const estMessage = item.type === "message";
+    li.className = "tl-item " + (estMessage ? "tl-commentaire" : "tl-modif");
+    const nom = estMessage && item.data.auteur !== "Vous" ? item.data.auteur : (estMessage ? CLASH_UTILISATEUR_HISTORIQUE : (item.data.qui || CLASH_UTILISATEUR_HISTORIQUE));
+    const entete = document.createElement("div");
+    entete.className = "tl-entete";
+    const avatar = document.createElement("span");
+    avatar.className = "tl-avatar";
+    avatar.setAttribute("aria-hidden", "true");
+    avatar.textContent = initiales(nom);
+    const qui = document.createElement("button");
+    qui.type = "button";
+    qui.className = "tl-qui";
+    qui.textContent = nom;
+    qui.setAttribute("aria-expanded", "false");
+    const note = document.createElement("span");
+    note.className = "discussion-journal-note";
+    note.hidden = true;
+    note.setAttribute("role", "status");
+    note.textContent = "Nom de l'utilisateur quand les comptes seront en place";
+    qui.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const wasOpen = journalNoteOuverte && journalNoteOuverte.btn === qui;
+      fermerJournalNote();
+      if (wasOpen) return;
+      note.hidden = false;
+      qui.setAttribute("aria-expanded", "true");
+      journalNoteOuverte = { li, btn: qui, note };
+    });
+    const quand = document.createElement("span");
+    quand.className = "tl-quand";
+    quand.textContent = formatHistoriqueDate(item.data.quand);
+    entete.append(avatar, qui, quand);
+    const corps = document.createElement("div");
+    corps.className = "tl-corps";
+    if (estMessage) {
+      corps.textContent = item.data.texte;
+    } else {
+      const h = item.data;
+      const labels = h.champ === "priorité" ? PRIORITE_LABELS : STATUT_LABELS;
+      const lib = document.createElement("span");
+      lib.className = "tl-champ";
+      lib.textContent = h.champ === "priorité" ? "Priorité" : "Statut";
+      const fleche = document.createElement("span");
+      fleche.className = "tl-fleche";
+      fleche.setAttribute("aria-hidden", "true");
+      fleche.textContent = "→";
+      corps.classList.add("tl-puce");
+      corps.append(lib, puceValeur(h.champ, h.de, labels), fleche, puceValeur(h.champ, h.vers, labels));
+    }
+    li.append(entete, corps, note);
+    discussionMessages.appendChild(li);
+  });
+  defilerChronologieBas();
+}
+
+// COLLISION_PRIORITES : selecteurs Priorite et Statut au-dessus des messages.
+let collisionControles = null;
+function ensureCollisionControles() {
+  if (collisionControles) return collisionControles;
+  const wrap = document.createElement("div");
+  wrap.id = "collisionControles";
+  wrap.hidden = true;
+  const mk = (id, libelle, labels, champ) => {
+    const field = document.createElement("div");
+    field.className = "collision-controle";
+    const lab = document.createElement("label");
+    lab.htmlFor = id;
+    lab.textContent = libelle;
+    const sel = document.createElement("select");
+    sel.id = id;
+    Object.keys(labels).forEach((k) => {
+      const o = document.createElement("option");
+      o.value = k;
+      o.textContent = labels[k];
+      sel.appendChild(o);
+    });
+    // Pastille de couleur de la valeur choisie (data-valeur sur .collision-select-wrap).
+    const selectWrap = document.createElement("span");
+    selectWrap.className = "collision-select-wrap";
+    selectWrap.dataset.champ = champ === "priorité" ? "prio" : "statut";
+    const dot = document.createElement("span");
+    dot.className = "collision-select-dot";
+    dot.setAttribute("aria-hidden", "true");
+    selectWrap.append(dot, sel);
+    sel.addEventListener("change", () => {
+      selectWrap.dataset.valeur = sel.value;
+      changerChampCollision(champ, sel.value);
+    });
+    field.append(lab, selectWrap);
+    return { field, sel, selectWrap };
+  };
+  const statutsProposes = { nouveau: STATUT_LABELS.nouveau, confirme: STATUT_LABELS.confirme, ecarte: STATUT_LABELS.ecarte, resolu: STATUT_LABELS.resolu };
+  const p = mk("collisionPrioriteSelect", "Priorité", PRIORITE_LABELS, "priorité");
+  const st = mk("collisionStatutSelect", "Statut", statutsProposes, "statut");
+  wrap.append(p.field, st.field);
+  discussionMessages.parentNode.insertBefore(wrap, discussionMessages);
+  if (COLLISION_BANDEAU) {
+    // Dans le bandeau, a droite du titre : pas d'etiquette visible, aria-label et infobulle.
+    const head = document.getElementById("collisionDiscussionHead");
+    if (head) {
+      head.appendChild(wrap);
+      wrap.addEventListener("click", (e) => e.stopPropagation());
+      [[p.sel, "Priorité"], [st.sel, "Statut"]].forEach(([sel, nom]) => {
+        sel.setAttribute("aria-label", nom);
+        sel.title = nom;
+      });
+    }
+  }
+  collisionControles = { wrap, prio: p.sel, statut: st.sel };
+  return collisionControles;
+}
+
+function majCollisionControles(thread) {
+  if (!COLLISION_PRIORITES) return;
+  const c = ensureCollisionControles();
+  const visible = isHospitalClash(thread);
+  c.wrap.hidden = !visible;
+  if (!visible) return;
+  c.prio.value = clashPriorite(thread);
+  c.statut.value = thread.statut;
+  c.prio.parentNode.dataset.valeur = c.prio.value;
+  c.statut.parentNode.dataset.valeur = c.statut.value;
+}
+
+function changerChampCollision(champ, vers) {
+  const clash = currentDiscussionThread;
+  if (!isHospitalClash(clash)) return;
+  const cle = champ === "priorité" ? "priorite" : "statut";
+  const de = cle === "priorite" ? clashPriorite(clash) : clash.statut;
+  if (de === vers) return;
+  clash[cle] = vers;
+  if (!Array.isArray(clash.historique)) clash.historique = [];
+  clash.historique.push({ qui: CLASH_UTILISATEUR_HISTORIQUE, quand: new Date().toISOString(), champ, de, vers });
+  sauverEtatCollisions();
+  renderCollisionsList(CLASHES.filter((c) => c.detectionId === clash.detectionId));
+  renderDiscussionMessages(clash);
+  discussionReplyForm.hidden = !isThreadOpen(clash);
+  majCollisionControles(clash);
+}
+
 function isThreadOpen(thread) {
   return threadType(thread) === "collision" ? thread.statut !== "ecarte" : thread.open;
 }
@@ -2492,6 +3964,7 @@ function isThreadOpen(thread) {
 // principe que #viewerWrap deplace entre Viewer/Collision/fil).
 function showThreadDiscussion(thread) {
   currentDiscussionThread = thread;
+  majCollisionControles(thread);
   const isOpen = isThreadOpen(thread);
 
   // Titre du fil a la place du generique "Discussion" (Collision et
@@ -2500,8 +3973,9 @@ function showThreadDiscussion(thread) {
   // nouveau fil pour ne pas garder un vieux deplie.
   collisionDiscussionTitle.textContent = thread.zone;
   collisionDiscussionTitle.classList.remove("expanded");
+  majBandeauCollision(thread);
 
-  if (thread.discussion.length === 0 && !isOpen) {
+  if (thread.discussion.length === 0 && !isOpen && !isHospitalClash(thread)) {
     collisionDiscussion.hidden = true;
     return;
   }
@@ -2523,17 +3997,38 @@ function showThreadDiscussion(thread) {
   createInstructionBtn.hidden = personaSelect.value !== "be" || !!thread.isInstruction;
 }
 
+function debuterTransitionCollision() {
+  collisionTransitionEnCours = true;
+  collisionsList.classList.add("en-transition");
+  clearTimeout(collisionTransitionTimer);
+  // Securite : si le vol est interrompu (camera deplacee a la main), on deverrouille quand meme.
+  collisionTransitionTimer = setTimeout(finirTransitionCollision, 3000);
+}
+function finirTransitionCollision() {
+  if (!collisionTransitionEnCours) return;
+  collisionTransitionEnCours = false;
+  clearTimeout(collisionTransitionTimer);
+  collisionsList.classList.remove("en-transition");
+  // Calcul lourd differe : isolation / contexte appliques une fois la camera arretee.
+  if (collisionActiveClash) applyCollisionOpacities();
+}
+
 function selectClash(clash) {
-  flyToClash(clash);
+  if (COLLISION_TRANSITION_VERROUILLEE) debuterTransitionCollision();
+  flyToClash(clash, true, COLLISION_TRANSITION_VERROUILLEE ? finirTransitionCollision : undefined);
   highlightClashMarker(clash);
+  // Une nouvelle collision remplace la selection precedente (carte fermee).
+  deselectEntity();
   highlightClashElements(clash);
-  recenterTarget = () => flyToClash(clash);
+  recenterTarget = () => flyToClash(clash, true);
   showThreadDiscussion(clash);
 }
 
 // Point d'entree commun pour selectionner un clash, que ce soit via la
 // ligne de la liste ou un clic direct sur sa bulle 3D dans le viewer.
 function activateClash(clash) {
+  // Verrou pendant le vol de camera : le clic est ignore tant que la camera n'est pas arretee.
+  if (COLLISION_TRANSITION_VERROUILLEE && collisionTransitionEnCours) return;
   collisionsList.querySelectorAll(".collision-item").forEach((el) => {
     el.classList.toggle("active", el.dataset.clashId === clash.id);
   });
@@ -2544,6 +4039,16 @@ function activateClash(clash) {
 // Titre tronque (CSS) si trop long pour la largeur du panneau discussion :
 // un clic affiche le titre complet, un reclic retronque.
 collisionDiscussionTitle.addEventListener("click", () => {
+  // Page Collision (19/10, demande de Gilles) : un clic sur le titre complet de la
+  // collision ouvre ou ferme la zone de commentaires (en plus d'afficher le
+  // titre en entier). Dans Discussions, la zone n'est jamais reduite : le clic
+  // ne fait que deplier le titre.
+  if (collisionLeft.contains(collisionDiscussion)) {
+    const willOpen = collisionDiscussion.classList.contains("collapsed");
+    collisionDiscussion.classList.toggle("collapsed", !willOpen);
+    collisionDiscussionTitle.classList.toggle("expanded", willOpen);
+    return;
+  }
   collisionDiscussionTitle.classList.toggle("expanded");
 });
 
@@ -2553,16 +4058,107 @@ collisionDiscussionTitle.addEventListener("click", () => {
 // reinitialise entre 2 clashs/fils (persiste tant que la page n'est pas
 // rechargee) : parcourir plusieurs clashs avec le panneau reduit ne doit
 // pas le rouvrir a chaque clic.
+// Liste des collisions reductible sur ordinateur (19/10, demande de Gilles),
+// comme le panneau du Viewer : une fine bande avec le bouton de bascule, la 3D
+// recupere la largeur. Ouvert a chaque entree dans la page Collision (non
+// memorise) ; bouton masque sur mobile (tiroir existant).
+const collisionInfoPanelCollapse = document.getElementById("collisionInfoPanelCollapse");
+function setCollisionPanelCollapsed(collapsed) {
+  if (!collisionInfoPanelCollapse) return;
+  collisionInfoPanel.classList.toggle("collapsed", collapsed);
+  collisionInfoPanelCollapse.textContent = collapsed ? "‹" : "›";
+  collisionInfoPanelCollapse.setAttribute("aria-expanded", String(!collapsed));
+  const label = collapsed ? "Afficher la liste des collisions" : "Réduire la liste des collisions";
+  collisionInfoPanelCollapse.setAttribute("aria-label", label);
+  collisionInfoPanelCollapse.title = label;
+}
+if (collisionInfoPanelCollapse) {
+  collisionInfoPanelCollapse.addEventListener("click", () => {
+    setCollisionPanelCollapsed(!collisionInfoPanel.classList.contains("collapsed"));
+    window.dispatchEvent(new Event("resize"));
+  });
+  collisionInfoPanel.addEventListener("transitionend", (e) => {
+    if (e.target === collisionInfoPanel) window.dispatchEvent(new Event("resize"));
+  });
+}
+
 collisionDiscussionToggle.addEventListener("click", () => {
   collisionDiscussion.classList.toggle("collapsed");
 });
+
+// COLLISION_BANDEAU : a l'ouverture de la zone, la chronologie descend sur le plus recent.
+collisionDiscussionTitle.addEventListener("click", defilerChronologieBas);
+collisionDiscussionToggle.addEventListener("click", defilerChronologieBas);
+
+// COLLISION_ECHANGES_GRAND : agrandir la zone d'echange sur toute la zone de la 3D.
+// N'agit que sur des classes de #collisionDiscussion : aucun etat 3D, aucun deplacement de viewerWrap.
+function ouvrirEchangesGrand() {
+  if (!echangesGrandBtn || echangesGrandOuvert || !collisionDiscussion.classList.contains("cb")) return;
+  echangesGrandOuvert = true;
+  echangesGrandEtaitReplie = collisionDiscussion.classList.contains("collapsed");
+  collisionDiscussion.classList.remove("collapsed");
+  collisionDiscussion.classList.add("cb-grand");
+  echangesGrandBtn.setAttribute("aria-pressed", "true");
+  echangesGrandBtn.setAttribute("aria-label", "Réduire les échanges");
+  echangesGrandBtn.title = "Réduire les échanges";
+  closeCollisionInfoPanelDrawer();
+  discussionMessages.setAttribute("tabindex", "-1");
+  discussionMessages.focus({ preventScroll: true });
+  defilerChronologieBas();
+}
+
+function fermerEchangesGrand(rendreFocus) {
+  if (!echangesGrandOuvert) return;
+  echangesGrandOuvert = false;
+  collisionDiscussion.classList.remove("cb-grand");
+  collisionDiscussion.classList.toggle("collapsed", echangesGrandEtaitReplie);
+  discussionMessages.removeAttribute("tabindex");
+  if (echangesGrandBtn) {
+    echangesGrandBtn.setAttribute("aria-pressed", "false");
+    echangesGrandBtn.setAttribute("aria-label", "Agrandir les échanges");
+    echangesGrandBtn.title = "Agrandir les échanges";
+    if (rendreFocus) echangesGrandBtn.focus();
+  }
+}
+
+(function initEchangesGrand() {
+  if (!COLLISION_ECHANGES_GRAND || !COLLISION_BANDEAU) return;
+  const head = document.getElementById("collisionDiscussionHead");
+  if (!head) return;
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.id = "collisionGrandBtn";
+  btn.setAttribute("aria-pressed", "false");
+  btn.setAttribute("aria-label", "Agrandir les échanges");
+  btn.title = "Agrandir les échanges";
+  btn.innerHTML =
+    '<svg class="gb-agrandir" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false"><path d="M9.5 2H14v4.5M14 2L8.5 7.5M6.5 14H2V9.5M2 14l5.5-5.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+    '<svg class="gb-reduire" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false"><path d="M14 6.5H9.5V2M9.5 6.5L15 1M2 9.5h4.5V14M6.5 9.5L1 15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+    '<svg class="gb-fermer" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false"><path d="M3 3l10 10M13 3L3 13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (echangesGrandOuvert) fermerEchangesGrand(true);
+    else ouvrirEchangesGrand();
+  });
+  head.appendChild(btn);
+  echangesGrandBtn = btn;
+  // En mode agrandi, un clic sur le titre ou le chevron ne replie pas la zone.
+  head.addEventListener("click", (e) => {
+    if (echangesGrandOuvert && !btn.contains(e.target) && !e.target.closest("#collisionControles")) e.stopImmediatePropagation();
+  }, true);
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape" || !echangesGrandOuvert) return;
+    if (e.target instanceof HTMLSelectElement) return;
+    fermerEchangesGrand(true);
+  });
+})();
 
 discussionReplyForm.addEventListener("submit", (e) => {
   e.preventDefault();
   const texte = discussionReplyInput.value.trim();
   if (!texte || !currentDiscussionThread) return;
 
-  currentDiscussionThread.discussion.push({ auteur: "Vous", texte });
+  currentDiscussionThread.discussion.push(COLLISION_PRIORITES ? { auteur: "Vous", texte, quand: new Date().toISOString() } : { auteur: "Vous", texte });
   renderDiscussionMessages(currentDiscussionThread);
   discussionReplyInput.value = "";
 });
@@ -2601,6 +4197,7 @@ createInstructionBtn.addEventListener("click", () => {
 });
 
 function goBackToDetections() {
+  fermerEchangesGrand(false);
   collisionDetail.hidden = true;
   collisionRecap.hidden = false;
   viewViewer.insertBefore(viewerWrap, infoPanel);
@@ -2786,6 +4383,8 @@ function applyVisibility() {
   if (shownById.has("hosp-arch")) {
     viewer.scene.setObjectsVisible(HOSPITAL_MISPLACED_RAILING_IDS, false);
   }
+
+  refreshCollisionMaquetteToggles();
 }
 
 // Garde-corps (IfcRailing) du projet hopital dont la chaine IfcLocalPlacement
@@ -3084,6 +4683,8 @@ function renderFicheInto(contentEl, docsEl, rows, docs) {
 function closeFicheCard() {
   const card = document.getElementById("ficheCard");
   if (card) card.classList.remove("open");
+  const collisionCard = document.getElementById("collisionFicheCard");
+  if (collisionCard) collisionCard.classList.remove("open");
 }
 
 function showSelection(rows, docs) {
@@ -3154,6 +4755,19 @@ function showFiche(entity) {
   renderFicheInto(collisionFicheContent, collisionFicheDocs, rows, docs);
   collisionFichePlaceholder.hidden = true;
   collisionFicheContent.hidden = false;
+
+  // Carte independante de la page Collision (ordinateur) : seulement si la
+  // page Collision est affichee avec une detection ouverte (showFiche sert
+  // aussi Viewer et Discussions). Mobile : feuille du bas ci-dessous.
+  const collisionCard = document.getElementById("collisionFicheCard");
+  const collisionCardContent = document.getElementById("collisionFicheCardContent");
+  const collisionCardDocs = document.getElementById("collisionFicheCardDocs");
+  const viewCollisionEl = document.getElementById("view-collision");
+  if (viewCollisionEl && !viewCollisionEl.hidden && !collisionDetail.hidden && !isMobileViewport()
+      && collisionCard && collisionCardContent && collisionCardDocs) {
+    renderFicheInto(collisionCardContent, collisionCardDocs, rows, docs);
+    collisionCard.classList.add("open");
+  }
 
   // Mobile : evite d'obliger a ouvrir le tiroir "☰ Infos" en entier juste
   // pour voir la fiche d'un element tape, une modale discrete en bas
@@ -3423,6 +5037,12 @@ function loadProject(projectKey) {
   function loadNextMaquette(index) {
     if (index >= MAQUETTES.length) {
       loadingOverlay.classList.add("hidden");
+      // Arrivee directe sur #collision : la detection unique s'ouvre une fois
+      // les maquettes chargees.
+      if (!document.getElementById("view-collision").hidden) {
+        if (collisionDetail.hidden) openSoleDetectionIfAlone();
+        else if (DETECTIONS.length === 1) renderClashMarkers(CLASHES.filter((c) => c.detectionId === DETECTIONS[0].id));
+      }
       initialCameraState = getDefaultCameraState(projectKey);
       if (initialCameraState) {
         viewer.cameraFlight.flyTo(initialCameraState);
@@ -3476,6 +5096,11 @@ IfcAPI.Init().then(() => {
   ifcLoader = new WebIFCLoaderPlugin(viewer, { WebIFC, IfcAPI });
   xktLoader = new XKTLoaderPlugin(viewer);
   loadProject(projectSelect.value);
+  // Arrivee directe (rechargement) sur #collision : la liste des collisions
+  // s'affiche tout de suite, sans attendre la fin du chargement des maquettes
+  // (sinon la page de choix de la paire reste visible pendant le chargement).
+  // Les bulles sont recreees a la fin du chargement (point de collision verifie).
+  if (!document.getElementById("view-collision").hidden) openSoleDetectionIfAlone();
 });
 
 // Bascule de projet (porte depuis IES le 16/09) : applyPersona() rejoue le

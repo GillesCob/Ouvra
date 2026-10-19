@@ -1988,3 +1988,418 @@ body.acc-actif #appBody { height: 100%; }
 #view-accueil .acc-auteur { display: flex; align-items: center; gap: 10px; }
 #view-accueil .acc-auteur-logo { display: block; height: 40px; width: auto; }
 #view-accueil .acc-auteur a { gap: 10px; }
+
+/* ============================================================================
+   Carte Info selection independante de la page Collision (19/10). Bloc ajoute
+   en fin de fichier : memes regles que #ficheCard (Viewer), dupliquees pour
+   #collisionFicheCard, aucune regle anterieure modifiee. Positionnee dans
+   #collisionViewerSlot (position: relative), en bas a gauche de la zone 3D.
+   ============================================================================ */
+#collisionFicheCard { display: none; }
+@media (min-width: 769px) {
+  #collisionFicheCard.open {
+    display: flex; flex-direction: column; position: absolute; left: 16px; bottom: 64px; width: 320px;
+    max-width: calc(100% - 32px); max-height: 50%; z-index: 5; box-sizing: border-box;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.4); padding: 12px 14px 14px;
+  }
+}
+#collisionFicheCardHeader {
+  display: flex; align-items: center; justify-content: space-between; flex: none; margin-bottom: 6px;
+  font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted);
+}
+#collisionFicheCardClose { background: none; border: none; color: var(--muted); font-size: 16px; line-height: 1; cursor: pointer; padding: 2px 4px; }
+#collisionFicheCardClose:hover { color: var(--text); }
+#collisionFicheCardBody { overflow-y: auto; min-height: 0; }
+#view-collision #section-collision-fiche[hidden] { display: none; }
+
+/* ============================================================================
+   Boutons a bascule des maquettes de la page Collision (19/10). Bloc ajoute en
+   fin de fichier, aucune regle anterieure modifiee. Haut gauche de la zone 3D
+   (#collisionViewerSlot, position: relative) : la barre d'outils est en haut
+   a droite, la carte d'info en bas a gauche (bottom 64px), la vitesse en bas.
+   ============================================================================ */
+#collisionMaquetteToggles {
+  position: absolute; top: 16px; left: 16px; z-index: 5; display: flex; gap: 8px;
+  max-width: calc(100% - 140px); flex-wrap: wrap;
+}
+.collision-maquette-toggle {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 14px;
+  background: var(--surface); color: var(--text); border: 1px solid var(--accent);
+  border-radius: 8px; font-size: 13px; cursor: pointer; white-space: nowrap;
+}
+.collision-maquette-toggle-dot { width: 12px; height: 12px; border-radius: 50%; flex: none; }
+.collision-maquette-toggle:hover { border-color: var(--text); }
+.collision-maquette-toggle:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+.collision-maquette-toggle.off { border-color: var(--border); color: var(--muted); text-decoration: line-through; }
+.collision-maquette-toggle.off .collision-maquette-toggle-dot { opacity: 0.35; }
+#view-collision #section-collision-maquettes[hidden] { display: none; }
+
+/* Collision : la liste des collisions occupe toute la hauteur du drawer (19/10).
+   Les sections Maquettes et Info selection sont masquees ; son flex d'origine
+   (0.8, prevu pour 3 sections) laissait un vide en bas. */
+#view-collision #section-collision-liste { flex: 1 1 0; min-height: 0; }
+
+/* Collision : bouton a bascule "Contexte" (19/10). Meme style que les boutons
+   Architecture / Mecanique (.collision-maquette-toggle, 44 px) ; seule la
+   pastille d'etat est ajoutee, en gris (maquettes de contexte en fantome). */
+.collision-contexte-toggle::before {
+  content: ""; width: 12px; height: 12px; border-radius: 50%; flex: none;
+  border: 2px dashed var(--muted);
+}
+
+/* Liste Collision : numero de chaque collision (19/10) */
+.collision-item .collision-numero {
+  display: block;
+  margin-bottom: 2px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--accent);
+}
+
+/* Collision : pastilles numerotees accrochees aux points de collision (19/10, COLLISION_PASTILLES) */
+.clash-pastilles { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.clash-pastille {
+  position: relative; pointer-events: auto; box-sizing: border-box;
+  width: 30px; height: 30px; margin: -3px 0 0 -3px; padding: 0; border-radius: 50%;
+  border: 2px solid #fff; color: #111; font: 700 13px/1 system-ui, sans-serif;
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+}
+.clash-pastille::after { content: ""; position: absolute; inset: -7px; border-radius: 50%; }
+.clash-pastille.nouveau { background: #f0883e; }
+.clash-pastille.confirme { background: #f85149; color: #fff; }
+.clash-pastille.ecarte { background: #8b949e; }
+.clash-pastille.active {
+  width: 38px; height: 38px; margin: -7px 0 0 -7px; font-size: 15px;
+  border: 3px solid #fff; box-shadow: 0 0 0 3px var(--accent, #58a6ff), 0 2px 6px rgba(0, 0, 0, 0.7);
+}
+
+/* Collision : pastilles moins envahissantes (19/10, retour de Gilles « illisible »).
+   Au repos : un simple point de couleur (14 px) sans numero ; le numero apparait
+   au survol, au focus et sur la collision selectionnee. Le centre du point
+   reste sur le point de collision (marge = 12px - moitie de la taille). Zone
+   de tap etendue a 44 px par ::after. */
+.clash-pastille:not(.active) {
+  width: 14px; height: 14px; margin: 5px 0 0 5px; font-size: 0; color: transparent;
+  border-width: 2px; transition: width 0.12s, height 0.12s, margin 0.12s, font-size 0.12s;
+}
+.clash-pastille:not(.active)::after { inset: -15px; }
+.clash-pastille:not(.active):hover,
+.clash-pastille:not(.active):focus-visible {
+  width: 30px; height: 30px; margin: -3px 0 0 -3px; font-size: 13px;
+  color: #111; z-index: 2;
+}
+.clash-pastille.confirme:not(.active):hover,
+.clash-pastille.confirme:not(.active):focus-visible { color: #fff; }
+@media (prefers-reduced-motion: reduce) {
+  .clash-pastille:not(.active) { transition: none; }
+}
+
+/* Collision : selecteur de contexte a 3 niveaux Isole / Proche / Etage (19/10, COLLISION_CONTEXTE_NIVEAUX).
+   Meme coin et meme hauteur (44 px) que les boutons Architecture / Mecanique. */
+.collision-niveau-group {
+  display: inline-flex; flex: none; border: 1px solid var(--accent); border-radius: 8px;
+  overflow: hidden; background: var(--surface);
+}
+.collision-niveau-btn {
+  min-height: 44px; min-width: 44px; padding: 0 12px; background: var(--surface); color: var(--text);
+  border: 0; border-left: 1px solid var(--accent); font-size: 13px; cursor: pointer; white-space: nowrap;
+}
+.collision-niveau-btn:first-child { border-left: 0; }
+.collision-niveau-btn[aria-pressed="true"] { background: var(--text); color: var(--surface); }
+.collision-niveau-btn:focus-visible { outline: 2px solid var(--text); outline-offset: -4px; }
+
+/* Liste Collision : titre (paire de maquettes et nombre de collisions), 19/10 */
+.collision-list-title {
+  margin: 0;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--muted);
+  border-bottom: 1px solid var(--border);
+}
+
+/* Collision : bulles jaunes surimprimees (19/10, COLLISION_BULLES_SURIMPRESSION), jamais masquees par la geometrie, aucun clic capte */
+.clash-bulles { position: absolute; left: 0; top: 0; pointer-events: none; z-index: 2; }
+.clash-bulles[hidden] { display: none; }
+
+/* Liste Collision : carte a deux lignes (19/10, COLLISION_LISTE_CARTE).
+   Pastille du numero, types en francais, identifiants et niveau, point de
+   statut, liseré de couleur a gauche. */
+.collision-item.collision-item-carte {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  column-gap: 10px;
+  padding: 10px 10px 10px 12px;
+  border-left: 3px solid var(--border);
+  border-radius: 8px;
+}
+.collision-item-carte.nouveau { border-left-color: #f0883e; }
+.collision-item-carte.confirme { border-left-color: #f85149; }
+.collision-item-carte.ecarte { border-left-color: #8b949e; }
+.collision-item-carte:hover { background: var(--surface); }
+.collision-item-carte.active { background: var(--surface); border: 1px solid var(--accent); border-left: 3px solid var(--accent); }
+.collision-num-badge {
+  display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%;
+  background: var(--bg); border: 1px solid var(--border); color: var(--text);
+  font-size: 12px; font-weight: 700;
+}
+.collision-item-carte.active .collision-num-badge { background: var(--accent); border-color: var(--accent); color: #fff; }
+.collision-card-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.collision-types { font-size: 13px; font-weight: 700; color: var(--text); line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.collision-sub { font-size: 11px; color: var(--muted); line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.collision-statut { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; color: var(--muted); }
+.collision-statut-dot { width: 10px; height: 10px; border-radius: 50%; background: #8b949e; flex: 0 0 auto; }
+.collision-statut-dot.nouveau { background: #f0883e; }
+.collision-statut-dot.confirme { background: #f85149; }
+.collision-statut-dot.ecarte { background: #8b949e; }
+.collision-statut-label { display: none; }
+
+/* ==========================================================================
+   Priorites des collisions (19/10, COLLISION_PRIORITES) : groupes par urgence,
+   liseré de la carte = priorite, selecteurs Priorite/Statut et journal des
+   changements dans la zone de commentaires.
+   ========================================================================== */
+.collision-groupe-titre {
+  display: flex; align-items: center; gap: 8px;
+  margin: 10px 0 2px; padding: 0 4px;
+  font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
+  color: var(--muted); list-style: none;
+}
+.collision-groupe-titre:first-child { margin-top: 2px; }
+.collision-groupe-dot { width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto; background: #8b949e; }
+.collision-groupe-titre.prio-urgente .collision-groupe-dot { background: #f85149; }
+.collision-groupe-titre.prio-haute .collision-groupe-dot { background: #f0883e; }
+.collision-groupe-titre.prio-normale .collision-groupe-dot { background: #6e8bb5; }
+.collision-groupe-titre.prio-basse .collision-groupe-dot { background: #b4bcc6; }
+.collision-item-carte.prio-urgente:not(.active) { border-left-color: #f85149; }
+.collision-item-carte.prio-haute:not(.active) { border-left-color: #f0883e; }
+.collision-item-carte.prio-normale:not(.active) { border-left-color: #6e8bb5; }
+.collision-item-carte.prio-basse:not(.active) { border-left-color: #b4bcc6; }
+.collision-statut-dot.resolu { background: #3fb950; }
+.status-badge.resolu { color: #3fb950; background: rgba(63, 185, 80, 0.15); }
+
+#collisionControles { flex-shrink: 0; display: flex; gap: 8px; margin: 0 0 8px; }
+#collisionControles[hidden] { display: none; }
+#collisionDiscussion.collapsed #collisionControles { display: none; }
+.collision-controle { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.collision-controle label { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.collision-controle select {
+  width: 100%; min-height: 44px; padding: 0 8px; box-sizing: border-box;
+  background: var(--bg); color: var(--text); border: 1px solid var(--border);
+  border-radius: 6px; font-size: 14px;
+}
+@media (min-width: 769px) { .collision-controle select { min-height: 32px; font-size: 13px; } }
+
+.discussion-journal {
+  position: relative; font-size: 11.5px; color: var(--muted);
+  padding: 2px 0 2px 8px; border-left: 2px solid var(--border); overflow-wrap: anywhere;
+}
+.discussion-journal-icone { margin-right: 4px; }
+.discussion-journal-qui {
+  background: none; border: none; padding: 0; margin: 0; font: inherit; font-weight: 700;
+  color: var(--text); text-decoration: underline dotted; cursor: pointer;
+}
+.discussion-journal-quand { white-space: nowrap; }
+.discussion-journal-note {
+  display: block; margin-top: 3px; padding: 4px 8px; border-radius: 6px;
+  background: var(--bg); border: 1px solid var(--border); color: var(--text);
+}
+.discussion-journal-note[hidden] { display: none; }
+
+/* Liste Collision, design affine (19/10) : plus fin et plus compact, sans
+   encadre ni pastille lourde. Numero discret, types sur une ligne, filet de
+   priorite de 2 px, survol et selection doux, en-tetes de groupe en petites
+   capitales. Surcharge les regles de la carte ci-dessus (meme selecteurs). */
+#collisionsList > li.collision-item-row { padding: 0; margin: 0; gap: 0; }
+.collision-item.collision-item-carte {
+  column-gap: 8px; padding: 6px 8px 6px 9px; border-left-width: 2px; border-radius: 4px; background: transparent;
+}
+.collision-item-carte:hover { background: rgba(255, 255, 255, 0.04); }
+.collision-item-carte.active {
+  background: rgba(92, 122, 95, 0.2); border: none; border-left: 2px solid var(--accent);
+}
+.collision-num-badge {
+  width: auto; height: auto; min-width: 20px; border: none; border-radius: 0; background: none;
+  font-size: 11px; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; text-align: right;
+}
+.collision-item-carte.active .collision-num-badge { background: none; color: var(--text); }
+.collision-types { font-size: 12.5px; font-weight: 600; letter-spacing: 0.005em; }
+.collision-sub { font-size: 10.5px; opacity: 0.85; }
+.collision-statut-dot { width: 7px; height: 7px; }
+.collision-groupe-titre { margin: 12px 0 2px; padding: 0 9px; gap: 6px; font-size: 10px; letter-spacing: 0.08em; }
+.collision-groupe-dot { width: 6px; height: 6px; }
+.collision-list-title { padding: 6px 9px; font-size: 11px; font-weight: 600; }
+
+/* Selecteurs Priorite et Statut, design affine (19/10) : etiquette en petites
+   capitales, champ sobre sans fond avec fin contour, pastille de couleur de la
+   valeur, chevron fin. Remplace l'aspect natif massif. */
+#collisionControles { gap: 8px; margin: 0 0 8px; }
+.collision-controle { gap: 4px; }
+.collision-controle label { font-size: 10px; font-weight: 600; letter-spacing: 0.08em; }
+.collision-select-wrap { position: relative; display: block; }
+.collision-select-dot {
+  position: absolute; left: 10px; top: 50%; width: 7px; height: 7px; margin-top: -3.5px;
+  border-radius: 50%; background: #8b949e; pointer-events: none;
+}
+.collision-select-wrap[data-champ="prio"][data-valeur="urgente"] .collision-select-dot { background: #f85149; }
+.collision-select-wrap[data-champ="prio"][data-valeur="haute"] .collision-select-dot { background: #f0883e; }
+.collision-select-wrap[data-champ="prio"][data-valeur="normale"] .collision-select-dot { background: #6e8bb5; }
+.collision-select-wrap[data-champ="prio"][data-valeur="basse"] .collision-select-dot { background: #b4bcc6; }
+.collision-select-wrap[data-champ="statut"][data-valeur="nouveau"] .collision-select-dot { background: #f0883e; }
+.collision-select-wrap[data-champ="statut"][data-valeur="confirme"] .collision-select-dot { background: #f85149; }
+.collision-select-wrap[data-champ="statut"][data-valeur="ecarte"] .collision-select-dot { background: #8b949e; }
+.collision-select-wrap[data-champ="statut"][data-valeur="resolu"] .collision-select-dot { background: #3fb950; }
+.collision-controle select {
+  appearance: none; -webkit-appearance: none; width: 100%; box-sizing: border-box;
+  min-height: 44px; padding: 0 26px 0 24px; border: 1px solid var(--border); border-radius: 6px;
+  background: transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%239aa59d' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 9px center / 10px 6px;
+  color: var(--text); font-size: 12.5px; font-weight: 600; cursor: pointer;
+}
+.collision-controle select:hover { border-color: var(--muted); }
+.collision-controle select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.collision-controle select option { background: var(--surface); color: var(--text); }
+@media (min-width: 769px) { .collision-controle select { min-height: 30px; font-size: 12.5px; } }
+
+/* COLLISION_BANDEAU (19/10) : zone de commentaires de la page Collision en
+   bandeau d'une ligne + chronologie unique. Tout est scope sous .cb (classe
+   posee seulement pour une collision de l'hopital dans la page Collision) :
+   Discussions n'est pas touche. */
+#collisionDiscussionIds, #collisionFiltre { display: none; }
+#collisionDiscussion.cb {
+  height: 40%; min-height: 220px; max-height: 380px; padding: 0 12px 8px;
+}
+#collisionDiscussion.cb.collapsed { height: auto; min-height: 0; max-height: none; padding-bottom: 0; }
+#collisionDiscussion.cb #collisionDiscussionHead { min-height: 36px; margin: 0; gap: 6px; }
+#collisionDiscussion.cb #collisionDiscussionToggle { order: -1; }
+#collisionDiscussion.cb h3 {
+  text-transform: none; letter-spacing: 0; font-size: 13px; font-weight: 600; color: var(--text);
+}
+#collisionDiscussion.cb h3.expanded { white-space: nowrap; }
+#collisionDiscussion.cb #collisionControles,
+#collisionDiscussion.cb.collapsed #collisionControles { display: flex; flex: 0 0 auto; margin: 0; gap: 6px; }
+#collisionDiscussion.cb #collisionControles[hidden] { display: none; }
+#collisionDiscussion.cb .collision-controle { flex: 0 0 auto; }
+#collisionDiscussion.cb .collision-controle label { display: none; }
+#collisionDiscussion.cb .collision-controle select { width: auto; min-height: 44px; font-size: 12.5px; }
+@media (min-width: 769px) {
+  #collisionDiscussion.cb .collision-controle select { min-height: 28px; }
+}
+@media (max-width: 768px) {
+  #collisionDiscussion.cb #collisionDiscussionHead { min-height: 44px; }
+  #collisionDiscussion.cb #collisionDiscussionToggle { min-width: 44px; min-height: 44px; }
+  #collisionDiscussion.cb .collision-controle select { padding-right: 20px; max-width: 108px; }
+}
+#collisionDiscussion.cb #collisionDiscussionIds {
+  display: block; flex-shrink: 0; font-size: 10.5px; color: var(--muted); margin: 0 0 4px 26px;
+  font-variant-numeric: tabular-nums;
+}
+#collisionDiscussion.cb.collapsed #collisionDiscussionIds,
+#collisionDiscussion.cb.collapsed #collisionFiltre { display: none; }
+#collisionDiscussion.cb #collisionFiltre { display: flex; flex-shrink: 0; gap: 0; margin: 0 0 6px; }
+#collisionFiltre button {
+  flex: 1 1 0; min-height: 28px; padding: 0 8px; background: transparent; color: var(--muted);
+  border: 1px solid var(--border); font: inherit; font-size: 11.5px; font-weight: 600; cursor: pointer;
+}
+#collisionFiltre button:first-child { border-radius: 6px 0 0 6px; }
+#collisionFiltre button:last-child { border-radius: 0 6px 6px 0; }
+#collisionFiltre button + button { border-left: none; }
+#collisionFiltre button[aria-pressed="true"] { background: rgba(92, 122, 95, 0.25); color: var(--text); }
+@media (max-width: 768px) { #collisionFiltre button { min-height: 44px; } }
+#collisionDiscussion.cb #discussionMessages { gap: 10px; }
+.tl-item { font-size: 12.5px; overflow-wrap: anywhere; }
+.tl-entete { display: flex; align-items: center; gap: 6px; }
+.tl-avatar {
+  flex: 0 0 auto; width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center;
+  justify-content: center; background: rgba(92, 122, 95, 0.3); color: var(--text); font-size: 9px; font-weight: 700;
+}
+.tl-qui {
+  background: none; border: none; padding: 0; margin: 0; font: inherit; font-weight: 700; color: var(--text);
+  text-decoration: underline dotted; cursor: pointer;
+}
+.tl-quand { margin-left: auto; font-size: 11px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.tl-corps { margin: 2px 0 0 26px; color: var(--text); }
+.tl-puce { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; color: var(--muted); font-size: 12px; }
+.tl-champ { font-weight: 600; margin-right: 2px; }
+.tl-valeur { display: inline-flex; align-items: center; gap: 4px; color: var(--text); }
+.tl-dot { width: 7px; height: 7px; border-radius: 50%; background: #8b949e; }
+.tl-dot[data-champ="prio"][data-v="urgente"] { background: #f85149; }
+.tl-dot[data-champ="prio"][data-v="haute"] { background: #f0883e; }
+.tl-dot[data-champ="prio"][data-v="normale"] { background: #6e8bb5; }
+.tl-dot[data-champ="prio"][data-v="basse"] { background: #b4bcc6; }
+.tl-dot[data-champ="statut"][data-v="nouveau"] { background: #f0883e; }
+.tl-dot[data-champ="statut"][data-v="confirme"] { background: #f85149; }
+.tl-dot[data-champ="statut"][data-v="ecarte"] { background: #8b949e; }
+.tl-dot[data-champ="statut"][data-v="resolu"] { background: #3fb950; }
+.tl-vide { font-size: 12px; color: var(--muted); }
+#collisionDiscussion.cb #discussionReplyForm { margin-top: 6px; }
+#collisionDiscussion.cb #discussionReplyInput { height: 32px; min-height: 0; overflow: hidden; padding: 6px 8px; }
+@media (max-width: 768px) {
+  #collisionDiscussion.cb #discussionReplyInput { height: 44px; }
+  #collisionDiscussion.cb #discussionReplyForm button { min-height: 44px; }
+}
+
+/* Chronologie : marge a droite pour que les dates ne passent pas sous la barre
+   de defilement (19/10). */
+#collisionDiscussion.cb #discussionMessages { padding-right: 14px; scrollbar-gutter: stable; }
+
+/* COLLISION_ECHANGES_GRAND (19/10) : zone d'echange agrandie sur toute la zone de la 3D
+   (#collisionLeft), liste des collisions de droite laissee libre. Mobile : plein ecran. */
+#collisionGrandBtn { display: none; }
+#collisionDiscussion.cb #collisionGrandBtn {
+  display: inline-flex; align-items: center; justify-content: center; order: 3; flex: 0 0 auto;
+  min-width: 44px; min-height: 44px; padding: 0; background: none; border: none; color: var(--muted); cursor: pointer;
+}
+@media (min-width: 769px) { #collisionDiscussion.cb #collisionGrandBtn { min-width: 28px; min-height: 28px; } }
+#collisionGrandBtn:hover { color: var(--text); }
+#collisionGrandBtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; border-radius: 4px; }
+#collisionGrandBtn .gb-reduire, #collisionGrandBtn .gb-fermer { display: none; }
+#collisionGrandBtn[aria-pressed="true"] .gb-agrandir { display: none; }
+#collisionGrandBtn[aria-pressed="true"] .gb-reduire { display: block; }
+@media (max-width: 768px) {
+  #collisionGrandBtn[aria-pressed="true"] .gb-reduire { display: none; }
+  #collisionGrandBtn[aria-pressed="true"] .gb-fermer { display: block; }
+}
+#collisionLeft:has(> #collisionDiscussion.cb-grand) { position: relative; }
+#collisionDiscussion.cb.cb-grand {
+  position: absolute; inset: 0; z-index: 20; height: auto; min-height: 0; max-height: none; padding: 0 16px 12px;
+}
+#collisionDiscussion.cb.cb-grand #collisionFiltre,
+#collisionDiscussion.cb.cb-grand #discussionMessages,
+#collisionDiscussion.cb.cb-grand #discussionReplyForm {
+  width: 100%; max-width: 720px; margin-left: auto; margin-right: auto; box-sizing: border-box;
+}
+#collisionDiscussion.cb.cb-grand #collisionDiscussionIds { margin-left: 26px; }
+#collisionDiscussion.cb.cb-grand #discussionMessages { font-size: 13.5px; }
+#collisionDiscussion.cb.cb-grand #discussionReplyForm { margin-top: 10px; }
+#collisionDiscussion.cb.cb-grand #collisionDiscussionToggle { opacity: 0.4; pointer-events: none; }
+
+/* Liste des collisions reductible sur ordinateur (19/10), comme le panneau du
+   Viewer : fine bande avec le seul bouton de bascule. Masque sur mobile. */
+#collisionInfoPanel { position: relative; transition: flex-basis 0.2s ease; }
+#collisionInfoPanelCollapse {
+  align-self: flex-start; margin: 8px 0 0 8px; width: 28px; height: 28px; padding: 0; flex: none;
+  background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 6px;
+  font-size: 16px; line-height: 1; cursor: pointer;
+}
+#collisionInfoPanelCollapse:hover { border-color: var(--muted); }
+@media (min-width: 769px) {
+  #collisionInfoPanel.collapsed { flex-basis: 44px; }
+  #collisionInfoPanel.collapsed > :not(#collisionInfoPanelCollapse) { display: none; }
+}
+@media (max-width: 768px) { #collisionInfoPanelCollapse { display: none; } }
+
+/* Drawer de la liste des collisions : pas d'animation de largeur (19/10). La 3D
+   de la page Collision est lourde (isolation, fantomes) : une animation la
+   redessinerait a chaque image et gelerait l'interface. Un seul redimensionnement. */
+#collisionInfoPanel { transition: none; }
+
+/* Liste des collisions : verrou pendant le vol de camera (19/10). La ligne
+   active reste nette, les autres sont attenuees et inertes. */
+#collisionsList.en-transition { pointer-events: none; }
+#collisionsList.en-transition .collision-item:not(.active) { opacity: 0.55; }
+#collisionsList.en-transition .collision-item.active { cursor: progress; }

@@ -361,7 +361,22 @@
           <div id="collisionLeft">
             <button type="button" id="collisionBackBtn" class="reset-btn">← Interactions</button>
             <div id="collisionViewerSlot">
-              <button type="button" id="collisionInfoPanelToggle" aria-label="Afficher les maquettes et collisions">☰ Infos</button>
+              <button type="button" id="collisionInfoPanelToggle" aria-label="Afficher les collisions">☰ Collisions</button>
+              <!-- Boutons a bascule des 2 maquettes de la paire en collision (19/10), remplis en JS. -->
+              <div id="collisionMaquetteToggles" role="group" aria-label="Maquettes affichées"></div>
+              <!-- Carte "Info sélection" independante de la page Collision
+                   (19/10) : meme gabarit que #ficheCard du Viewer, visible
+                   seulement pendant une selection. Mobile : #ficheSheet. -->
+              <div id="collisionFicheCard" role="dialog" aria-label="Info sélection">
+                <div id="collisionFicheCardHeader">
+                  <span>Info sélection</span>
+                  <button type="button" id="collisionFicheCardClose" aria-label="Fermer et désélectionner">✕</button>
+                </div>
+                <div id="collisionFicheCardBody">
+                  <dl class="fiche-content" id="collisionFicheCardContent"></dl>
+                  <div id="collisionFicheCardDocs"></div>
+                </div>
+              </div>
             </div>
             <div id="collisionDiscussion" hidden>
               <div id="collisionDiscussionHead">
@@ -380,6 +395,7 @@
 
           <div id="collisionInfoPanelBackdrop" hidden></div>
           <aside id="collisionInfoPanel" class="side-panel">
+            <button type="button" id="collisionInfoPanelCollapse" aria-controls="collisionInfoPanel" aria-expanded="true" aria-label="Réduire la liste des collisions" title="Réduire la liste des collisions">›</button>
             <details class="info-section" id="section-collision-maquettes" open>
               <summary class="info-section-title"><span>Maquettes</span></summary>
               <ul class="info-list" id="collisionMaquettesList"></ul>
@@ -387,6 +403,7 @@
 
             <details class="info-section" id="section-collision-liste" open>
               <summary class="info-section-title"><span>Collisions</span></summary>
+              <p class="collision-list-title" id="collisionListTitle" hidden></p>
               <ul class="info-list" id="collisionsList"></ul>
             </details>
 
