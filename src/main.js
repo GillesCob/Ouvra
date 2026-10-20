@@ -2017,6 +2017,33 @@ const DETECTIONS = [];
 const CLASHES = [];
 const DISCUSSIONS = [];
 
+// Conversation de demonstration sur l'hopital (20/10, demande de Gilles) : pour juger tout de suite le rendu du panneau
+// de discussion. Noms de KNOWN_PEOPLE, textes et heures inventes. Retirer ce bloc et sa ligne dans applyProjectData
+// pour repartir d'une liste vide.
+const HOPITAL_DISCUSSIONS_DEMO = [
+  {
+    id: "disc-demo-hopital-1",
+    zone: "Garde-corps du palier du niveau 2 : décalage avec le plan",
+    auteur: CURRENT_USER,
+    tagged: ["Julie Martin (BE Structure)", "Karim Haddad (Charpente)", "Léa Fontaine (BE Architecture)"],
+    open: true,
+    assignedTo: "Bureau d'études",
+    camera: {
+      eye: HOSPITAL_CAMERA_STATE.eye.slice(),
+      look: HOSPITAL_CAMERA_STATE.look.slice(),
+      up: HOSPITAL_CAMERA_STATE.up.slice()
+    },
+    discussion: [
+      { auteur: CURRENT_USER, quand: "2026-10-19T16:40:00", texte: "J'ai repéré un décalage d'environ 20 cm entre le garde-corps du palier du niveau 2 et le plan de structure. À vérifier avant la validation de la synthèse." },
+      { auteur: "Julie Martin (BE Structure)", quand: "2026-10-19T17:12:00", texte: "Je regarde la maquette de structure demain matin et je reviens vers vous." },
+      { auteur: "Léa Fontaine (BE Architecture)", quand: "2026-10-20T09:05:00", texte: "Côté architecture, la cote du plan est bien celle indiquée sur le plan d'exécution. Le décalage semble venir de la maquette de structure." },
+      { auteur: "Karim Haddad (Charpente)", quand: "2026-10-20T09:48:00", texte: "Je confirme : l'appui de la charpente est à 20 cm du nu fini. Je peux décaler le garde-corps si le BE valide la cote." },
+      { auteur: "Julie Martin (BE Structure)", quand: "2026-10-20T10:30:00", texte: "Cote confirmée côté structure, c'est bien l'architecture qui a raison. Karim, tu peux décaler ton appui de 20 cm vers l'intérieur ? Je mets à jour la maquette de structure dans la foulée, nouvelle version demain." },
+      { auteur: CURRENT_USER, quand: "2026-10-20T11:02:00", texte: "Merci à tous. Je crée une instruction pour le projeteur et je referme le fil dès que la nouvelle version de la maquette est déposée." }
+    ]
+  }
+];
+
 function applyProjectData(projectKey) {
   DETECTIONS.length = 0;
   CLASHES.length = 0;
@@ -2026,9 +2053,9 @@ function applyProjectData(projectKey) {
     CLASHES.push(...DEMO_CLASHES);
     DISCUSSIONS.push(...DEMO_DISCUSSIONS);
   } else if (COLLISIONS_HOPITAL_ECHANTILLON && projectKey === HOSPITAL_PROJECT_KEY) {
-    // Echantillon hopital : detections et clashs seulement. DISCUSSIONS reste
-    // vide, et les clashs n'y sont jamais ajoutes (renderDiscussionsPage ne
-    // lit que DISCUSSIONS), donc la page Discussions n'est pas affectee.
+    // Echantillon hopital : detections et clashs, plus la conversation de demonstration (HOPITAL_DISCUSSIONS_DEMO).
+    // Les clashs ne sont jamais ajoutes a DISCUSSIONS (renderDiscussionsPage ne lit que DISCUSSIONS).
+    DISCUSSIONS.push(...HOPITAL_DISCUSSIONS_DEMO);
     DETECTIONS.push(...HOSPITAL_DETECTIONS);
     CLASHES.push(...HOSPITAL_CLASHES.filter((c) => !(HOPITAL_MAQUETTES_LEGERES && HOPITAL_CLASHES_ABSENTS_LEGERES.has(c.id))));
   }
@@ -2203,6 +2230,138 @@ let currentThread = null;
 // ouvert depuis renderProjeteurList.
 let discussionsReturnView = "discussions";
 
+// ---- Panneau de la discussion (20/10) ----
+const filTitre = document.getElementById("filTitre");
+const filEtat = document.getElementById("filEtat");
+const filAuteurDate = document.getElementById("filAuteurDate");
+const filTags = document.getElementById("filTags");
+const filActions = document.getElementById("filActions");
+const filPris = document.getElementById("filPris");
+const filInstructionBtn = document.getElementById("filInstructionBtn");
+const filMessages = document.getElementById("filMessages");
+const filReponse = document.getElementById("filReponse");
+const filReponseInput = document.getElementById("filReponseInput");
+const filPleinBtn = document.getElementById("filPleinBtn");
+const discussionsDetailContent = document.getElementById("discussionsDetailContent");
+
+// "Julie Martin (BE Structure)" : le nom seul pour l'affichage, le titre complet reste en infobulle.
+const nomCourt = (nom) => nom.replace(/\s*\(.*\)\s*/, "").trim() || nom;
+function initialesNom(nom) {
+  const mots = nomCourt(nom).split(/\s+/).filter(Boolean);
+  return ((mots[0] || "?")[0] + (mots.length > 1 ? mots[mots.length - 1][0] : "")).toUpperCase();
+}
+// Date et heure seulement pour les messages qui en ont (les fils de demonstration n'en ont pas).
+function formaterQuand(iso) {
+  const t = Date.parse(iso);
+  if (isNaN(t)) return "";
+  const d = new Date(t);
+  return d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" }) + ", " + d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+}
+
+function renderFilMessages(thread) {
+  filMessages.innerHTML = "";
+  thread.discussion.forEach((msg) => {
+    const li = document.createElement("li");
+    li.className = "fil-message";
+    const avatar = document.createElement("span");
+    avatar.className = "fil-avatar" + (msg.auteur.indexOf("Vous") === 0 ? " moi" : "");
+    avatar.textContent = initialesNom(msg.auteur);
+    const corps = document.createElement("div");
+    corps.className = "fil-message-corps";
+    const entete = document.createElement("div");
+    entete.className = "fil-message-entete";
+    const auteur = document.createElement("span");
+    auteur.className = "fil-auteur";
+    auteur.textContent = msg.auteur;
+    entete.appendChild(auteur);
+    const quand = msg.quand ? formaterQuand(msg.quand) : "";
+    if (quand) {
+      const heure = document.createElement("span");
+      heure.className = "fil-heure";
+      heure.textContent = quand;
+      entete.appendChild(heure);
+    }
+    const texte = document.createElement("div");
+    texte.className = "fil-texte";
+    texte.textContent = msg.texte;
+    corps.append(entete, texte);
+    li.append(avatar, corps);
+    filMessages.appendChild(li);
+  });
+  // Plus ancien en haut, plus recent en bas : on arrive sur le dernier message.
+  requestAnimationFrame(() => { filMessages.scrollTop = filMessages.scrollHeight; });
+}
+
+function renderFilPanel(thread) {
+  filTitre.textContent = thread.zone;
+  const ouvert = isThreadOpen(thread);
+  filEtat.textContent = ouvert ? "Ouverte" : "Fermée";
+  filEtat.classList.toggle("ferme", !ouvert);
+  const debut = thread.discussion[0] && thread.discussion[0].quand ? formaterQuand(thread.discussion[0].quand) : "";
+  filAuteurDate.textContent = "par " + thread.auteur + (debut ? " · " + debut : "");
+
+  filTags.innerHTML = "";
+  const tagues = thread.tagged || [];
+  filTags.hidden = tagues.length === 0;
+  if (tagues.length) {
+    const libelle = document.createElement("span");
+    libelle.className = "fil-tags-label";
+    libelle.textContent = "Tagués";
+    filTags.appendChild(libelle);
+    tagues.forEach((nom) => {
+      const pastille = document.createElement("span");
+      pastille.className = "fil-pastille";
+      pastille.title = nom;
+      const ini = document.createElement("i");
+      ini.textContent = initialesNom(nom);
+      pastille.append(ini, document.createTextNode(nomCourt(nom)));
+      filTags.appendChild(pastille);
+    });
+  }
+
+  filPris.hidden = !thread.assignedTo;
+  if (thread.assignedTo) filPris.textContent = "Pris en charge par " + thread.assignedTo;
+  // Meme regle que l'ancien bouton : reserve au Bureau d'etudes, jamais depuis une instruction.
+  filInstructionBtn.hidden = personaSelect.value !== "be" || !!thread.isInstruction;
+  filActions.hidden = filPris.hidden && filInstructionBtn.hidden;
+
+  filReponse.hidden = !ouvert;
+  filReponseInput.value = "";
+  renderFilMessages(thread);
+}
+
+filReponse.addEventListener("submit", (e) => {
+  e.preventDefault();
+  const texte = filReponseInput.value.trim();
+  if (!texte || !currentDiscussionThread) return;
+  currentDiscussionThread.discussion.push({ auteur: "Vous", texte, quand: new Date().toISOString() });
+  filReponseInput.value = "";
+  renderFilMessages(currentDiscussionThread);
+});
+filReponseInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+    e.preventDefault();
+    filReponse.requestSubmit();
+  }
+});
+
+// Pleine page : la conversation sur toute la largeur, la maquette devient une photo figee a gauche du titre (meme
+// 3D rapetissee, non manipulable, au point de vue enregistre). Retour : clic sur la photo, "Reduire" ou Echap.
+function filPleinPage(actif) {
+  if (discussionsDetailPane.classList.contains("plein") === actif) return;
+  discussionsDetailPane.classList.toggle("plein", actif);
+  // La photo montre la 3D, jamais l'image "Avant" de remplacement.
+  if (actif && currentThread && !threadSnapshotPane.hidden) setThreadVisualMode("apres", currentThread);
+  requestAnimationFrame(() => window.dispatchEvent(new Event("resize")));
+}
+filPleinBtn.addEventListener("click", () => filPleinPage(!discussionsDetailPane.classList.contains("plein")));
+discussionsDetailContent.addEventListener("click", () => {
+  if (discussionsDetailPane.classList.contains("plein")) filPleinPage(false);
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && !discussionsDetailPane.hidden && discussionsDetailPane.classList.contains("plein")) filPleinPage(false);
+});
+
 function openThreadDetail(thread, returnView) {
   discussionsReturnView = returnView || "discussions";
   // discussionsDetailPane vit dans view-discussions : la basculer visible
@@ -2211,15 +2370,25 @@ function openThreadDetail(thread, returnView) {
   discussionsListPane.hidden = true;
   discussionsDetailPane.hidden = false;
   currentThread = thread;
+  filPleinPage(false);
   setThreadVisualMode("apres", thread);
 
-  // Bloc discussion partage avec Collision (cf showThreadDiscussion) :
-  // deplace ici avant d'etre rempli, au cas ou il etait reste dans
-  // #collisionLeft depuis la derniere detection consultee.
-  discussionsDetailPane.appendChild(collisionDiscussion);
-  // Dans un fil de Discussions, la zone de commentaires est le contenu principal : toujours depliee.
-  collisionDiscussion.classList.remove("collapsed");
-  showThreadDiscussion(thread);
+  if (isHospitalClash(thread)) {
+    // Une collision de l'hopital ouverte par son lien direct : ancien bloc partage avec Collision (journal des
+    // changements, priorite, statut).
+    discussionsDetailPane.classList.remove("fil-actif");
+    discussionsDetailPane.appendChild(collisionDiscussion);
+    // Dans un fil de Discussions, la zone de commentaires est le contenu principal : toujours depliee.
+    collisionDiscussion.classList.remove("collapsed");
+    showThreadDiscussion(thread);
+  } else {
+    // Panneau a droite de la 3D (20/10) ; le bandeau partage reste a sa place dans Collision.
+    discussionsDetailPane.classList.add("fil-actif");
+    if (discussionsDetailPane.contains(collisionDiscussion)) collisionLeft.appendChild(collisionDiscussion);
+    currentDiscussionThread = thread;
+    renderFilPanel(thread);
+  }
+  window.dispatchEvent(new Event("resize"));
 
   // Hash specifique au fil (#discussions/<id>) pour qu'un rechargement de
   // page reste sur ce fil precis, pas juste sur l'onglet Discussions.
@@ -2340,6 +2509,8 @@ newDiscussionBtn.addEventListener("click", () => {
   pendingSnapshot = captureViewerState();
   newDiscussionForm.reset();
   newDiscussionModalOverlay.hidden = false;
+  // Curseur directement dans "Sujet" (20/10) : appele dans le geste du clic pour que le clavier s'ouvre aussi sur iPhone.
+  newDiscussionZone.focus();
 });
 
 function closeNewDiscussionModal() {
@@ -2367,7 +2538,7 @@ newDiscussionForm.addEventListener("submit", (e) => {
     niveaux: pendingSnapshot.niveaux,
     maquettes: pendingSnapshot.maquettes,
     coupe: pendingSnapshot.coupe,
-    discussion: [{ auteur: CURRENT_USER, texte: newDiscussionComment.value.trim() }]
+    discussion: [{ auteur: CURRENT_USER, texte: newDiscussionComment.value.trim(), quand: new Date().toISOString() }]
   };
   DISCUSSIONS.push(thread);
 
@@ -4486,7 +4657,7 @@ discussionReplyForm.addEventListener("submit", (e) => {
 // Projeteur au fil existant (qui reste multi-metiers). Le fil source garde
 // une trace (assignedTo) pour que le Responsable Synthese sache que c'est
 // desormais gere par le BE, sans avoir a suivre le fil dedie lui-meme.
-createInstructionBtn.addEventListener("click", () => {
+function creerInstruction() {
   if (!currentDiscussionThread) return;
   const source = currentDiscussionThread;
   const snapshot = captureViewerState();
@@ -4503,7 +4674,7 @@ createInstructionBtn.addEventListener("click", () => {
     niveaux: snapshot.niveaux,
     maquettes: snapshot.maquettes,
     coupe: snapshot.coupe,
-    discussion: [{ auteur: "Vous (Bureau d'études)", texte: "Instruction issue du fil « " + source.zone + " » : à traiter." }]
+    discussion: [{ auteur: "Vous (Bureau d'études)", texte: "Instruction issue du fil « " + source.zone + " » : à traiter.", quand: new Date().toISOString() }]
   };
   DISCUSSIONS.push(thread);
   source.assignedTo = "Bureau d'études";
@@ -4511,7 +4682,9 @@ createInstructionBtn.addEventListener("click", () => {
   renderDiscussionsPage();
   renderProjeteurList();
   openThreadDetail(thread);
-});
+}
+createInstructionBtn.addEventListener("click", creerInstruction);
+filInstructionBtn.addEventListener("click", creerInstruction);
 
 function goBackToDetections() {
   fermerEchangesGrand(false);

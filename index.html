@@ -457,6 +457,28 @@
               <div id="threadViewerPane" hidden></div>
             </div>
           </div>
+          <!-- Panneau de la discussion (20/10) : a droite de la 3D, remplace le bandeau de 200 px. Cf mockup
+               Projets/Ouvra/mockups/ouvra-discussion-panneau.html. -->
+          <aside id="filPanel" aria-label="Discussion">
+            <header class="fil-head">
+              <h3 class="fil-titre" id="filTitre"></h3>
+              <div class="fil-meta">
+                <span class="fil-etat" id="filEtat"></span>
+                <span class="fil-auteur-date" id="filAuteurDate"></span>
+                <button type="button" class="fil-plein" id="filPleinBtn" title="Afficher la conversation en pleine page"><span class="fil-plein-ouvrir">⤢ Pleine page</span><span class="fil-plein-fermer">⤡ Réduire</span></button>
+              </div>
+              <div class="fil-tags" id="filTags" hidden></div>
+              <div class="fil-actions" id="filActions" hidden>
+                <span class="fil-pris" id="filPris" hidden></span>
+                <button type="button" class="fil-instruction" id="filInstructionBtn" hidden>Créer une instruction</button>
+              </div>
+            </header>
+            <ul class="fil-messages" id="filMessages"></ul>
+            <form class="fil-reponse" id="filReponse">
+              <textarea id="filReponseInput" rows="2" placeholder="Répondre…"></textarea>
+              <button type="submit">Envoyer</button>
+            </form>
+          </aside>
         </div>
       </div>
 
