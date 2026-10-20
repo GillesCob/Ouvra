@@ -2565,3 +2565,31 @@ html.demarrage #splashLogo {
 @media (prefers-reduced-motion: reduce) {
   .logo-spin { animation: ouvra-logo-pulse 1.8s ease-in-out infinite; }
 }
+
+/* Tiroirs mobiles (20/10) : "Afficher" (Viewer) est une feuille du bas sur la moitie de la hauteur, sans voile
+   (la 3D reste visible et manipulable au-dessus) ; "Collisions" un tiroir pleine largeur depuis la droite ; chacun
+   avec une croix de fermeture. Mobile seulement. */
+.drawer-head { display: none; }
+@media (max-width: 768px) {
+  .drawer-head {
+    display: flex; align-items: center; justify-content: space-between; flex: none; min-height: 44px;
+    padding: 0 4px 0 14px; border-bottom: 1px solid var(--border); font-size: 13px; font-weight: 600; color: var(--text);
+  }
+  .drawer-close {
+    min-width: 44px; min-height: 44px; background: none; border: none; color: var(--muted);
+    font-size: 18px; line-height: 1; cursor: pointer;
+  }
+  .drawer-close:hover { color: var(--text); }
+
+  /* Viewer : feuille du bas, moitie de la hauteur, sans voile : la 3D reste visible et manipulable au-dessus. */
+  #infoPanel {
+    top: auto; left: 0; right: 0; bottom: 0; width: auto; height: 50vh; height: 50dvh;
+    border-radius: 14px 14px 0 0; border-top: 1px solid var(--border);
+    transform: translateY(100%);
+  }
+  #infoPanel.open { transform: translateY(0); }
+  #infoPanelBackdrop:not([hidden]) { background: transparent; pointer-events: none; }
+
+  /* Collision : meme glissement depuis la droite, pleine largeur. */
+  #collisionInfoPanel { left: 0; width: auto; }
+}

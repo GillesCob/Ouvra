@@ -319,6 +319,7 @@
         </div>
         <div id="infoPanelBackdrop" hidden></div>
         <aside id="infoPanel" class="side-panel">
+          <div class="drawer-head"><span>Afficher</span><button type="button" id="infoPanelClose" class="drawer-close" aria-label="Fermer">✕</button></div>
           <!-- Ordinateur uniquement (01/10) : reduit le panneau a une fine
                bande pour laisser plus de place a la maquette. Masque sur
                mobile, ou le panneau est deja un tiroir (cf #infoPanelToggle). -->
@@ -411,6 +412,7 @@
 
           <div id="collisionInfoPanelBackdrop" hidden></div>
           <aside id="collisionInfoPanel" class="side-panel">
+            <div class="drawer-head"><span>Collisions</span><button type="button" id="collisionInfoPanelClose" class="drawer-close" aria-label="Fermer">✕</button></div>
             <button type="button" id="collisionInfoPanelCollapse" aria-controls="collisionInfoPanel" aria-expanded="true" aria-label="Réduire la liste des collisions" title="Réduire la liste des collisions">›</button>
             <details class="info-section" id="section-collision-maquettes" open>
               <summary class="info-section-title"><span>Maquettes</span></summary>

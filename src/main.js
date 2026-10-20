@@ -964,6 +964,8 @@ function closeInfoPanelDrawer() {
   infoPanelBackdrop.hidden = true;
 }
 infoPanelBackdrop.addEventListener("click", closeInfoPanelDrawer);
+const infoPanelCloseBtn = document.getElementById("infoPanelClose");
+if (infoPanelCloseBtn) infoPanelCloseBtn.addEventListener("click", closeInfoPanelDrawer);
 
 // Ordinateur uniquement (bouton masque sur mobile, cf style.css) : reduit le
 // panneau a une fine bande. Le canvas est redimensionne une fois la
@@ -4500,6 +4502,8 @@ function closeCollisionInfoPanelDrawer() {
   collisionInfoPanelBackdrop.hidden = true;
 }
 collisionInfoPanelBackdrop.addEventListener("click", closeCollisionInfoPanelDrawer);
+const collisionInfoPanelCloseBtn = document.getElementById("collisionInfoPanelClose");
+if (collisionInfoPanelCloseBtn) collisionInfoPanelCloseBtn.addEventListener("click", closeCollisionInfoPanelDrawer);
 
 renderDetections();
 
