@@ -922,7 +922,9 @@ body.acc-actif #loadingOverlay { display: none; }
    Info selection retreci par rapport a la largeur par defaut de .side-panel
    (300px, partagee avec l'onglet Viewer), specifique a la page Collision
    uniquement. */
-#collisionInfoPanel { flex: 0 0 260px; }
+/* 20/10 : meme largeur que le drawer du Viewer (300 px, .side-panel), pour plus d'infos par collision et pour que le drawer ne
+   change pas de largeur d'une page a l'autre. */
+#collisionInfoPanel { flex: 0 0 300px; }
 
 /* Repartition verticale des 3 accordeons du panneau Collision (meme
    mecanisme que #section-niveaux/#section-maquettes/#section-fiche de
@@ -986,7 +988,7 @@ body.acc-actif #loadingOverlay { display: none; }
   line-height: 1;
   padding: 4px;
   cursor: pointer;
-  transition: transform 0.15s ease;
+  transition: transform 0.28s ease;
 }
 #collisionDiscussionToggle:hover { color: var(--text); }
 #collisionDiscussion.collapsed #collisionDiscussionToggle { transform: rotate(-90deg); }
@@ -1093,7 +1095,6 @@ body.acc-actif #loadingOverlay { display: none; }
   flex-shrink: 0;
 }
 
-#collisionBackBtn { align-self: flex-start; margin: 12px 14px 0; }
 
 .collision-item-row {
   display: flex;
@@ -1155,8 +1156,9 @@ body.acc-actif #loadingOverlay { display: none; }
   list-style: none;
 }
 .collision-ecartes summary::-webkit-details-marker { display: none; }
-.collision-ecartes summary::before { content: "▸ "; }
-.collision-ecartes[open] summary::before { content: "▾ "; }
+.collision-ecartes summary::before { content: "▸"; display: inline-block; margin-right: 0.4em; transition: transform 0.28s ease; }
+.collision-ecartes[open] summary::before { transform: rotate(90deg); }
+.collision-ecartes.fermeture summary::before { transform: none; }
 .collision-ecartes .info-list { margin-top: 2px; padding-left: 4px; }
 
 /* Page Discussions : liste de fils, puis detail d'un fil (maquette avant/apres
@@ -1166,7 +1168,6 @@ body.acc-actif #loadingOverlay { display: none; }
 #discussionsListPane { flex: 1; padding: 24px; overflow-y: auto; }
 #discussionsListPane[hidden] { display: none; }
 #discussionsListPane h2 { margin: 0 0 4px; font-size: 16px; }
-#discussionsFilterNote { margin-bottom: 10px; }
 
 .thread-item {
   display: flex;
@@ -1205,11 +1206,6 @@ body.acc-actif #loadingOverlay { display: none; }
    (portee depuis IES le 16/09) : le Responsable Synthese doit voir en un
    coup d'oeil qu'un fil est deja pris en charge par le BE, sans avoir a
    l'ouvrir. */
-.thread-assigned-tag {
-  font-size: 10.5px;
-  font-weight: 700;
-  color: var(--accent);
-}
 
 /* Onglet Todo (persona Projeteur, porte depuis IES le 16/09) : liste des
    instructions creees par le Bureau d'etudes (cf createInstructionBtn),
@@ -1891,20 +1887,33 @@ body.acc-actif #appBody { height: 100%; }
    fichier : aucune regle anterieure modifiee. Ne cible que #infoPanel (drawer
    du Viewer) et #ficheCard ; #collisionInfoPanel n'est pas touche.
    ============================================================================ */
-#infoPanel .tabs { display: flex; flex: none; border-bottom: 1px solid var(--border); padding: 0 8px; gap: 2px; }
+/* Bascule Niveaux / Maquettes (20/10), meme principe que le bouton Mode Dev / Mode Batiment du portfolio : controle en
+   pilule avec une pastille qui glisse sous l'onglet actif (0,3 s, position et largeur mesurees sur le bouton), et un contenu
+   qui s'efface en descendant de 8 px, change, puis revient (voir selectInfoTab dans main.js). */
+#infoPanel .tabs {
+  position: relative; display: flex; flex: none; gap: 4px; margin: 8px 10px 4px; padding: 3px;
+  border: 1px solid var(--border); border-radius: 999px;
+}
+#infoPanel .tabs-thumb {
+  position: absolute; top: 3px; bottom: 3px; left: 0; width: 0; border-radius: 999px; z-index: 0; pointer-events: none;
+  background: color-mix(in srgb, var(--accent) 24%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 60%, transparent);
+  box-sizing: border-box; transition: transform 0.3s ease, width 0.3s ease;
+}
 #infoPanel .tab {
-  flex: 1; background: none; border: none; border-bottom: 2px solid transparent; color: var(--muted);
-  font: inherit; font-size: 12.5px; font-weight: 700; padding: 10px 6px 8px; cursor: pointer;
+  position: relative; z-index: 1; flex: 1; background: none; border: none; border-radius: 999px; color: var(--muted);
+  font: inherit; font-size: 12.5px; font-weight: 700; padding: 5px 6px; cursor: pointer; transition: color 0.3s ease;
 }
 #infoPanel .tab:hover { color: var(--text); }
-#infoPanel .tab[aria-selected="true"] { color: var(--text); border-bottom-color: var(--accent); }
-#infoPanel .tab:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: 4px; }
+#infoPanel .tab[aria-selected="true"] { color: var(--text); }
+#infoPanel .tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+#infoPanel .tabpanel { transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out; }
+#infoPanel .tabpanel.tab-sortie, #infoPanel .tabpanel.tab-entree { opacity: 0; transform: translateY(8px); }
 #infoPanel .tabpanel { flex: 1; min-height: 0; overflow-y: auto; padding: 12px 14px; border-bottom: none; }
 #infoPanel .tabpanel[hidden], #infoPanel #section-fiche[hidden] { display: none; }
 #infoPanel .tabpanel > summary { display: none; }
 #infoPanel .panel-head { display: flex; justify-content: flex-end; margin: 0 0 6px; }
 @media (max-width: 768px) {
-  #infoPanel .tab { min-height: 44px; }
+  #infoPanel .tab { min-height: 38px; }
   #infoPanel .reset-btn { min-height: 44px; padding: 2px 8px; }
 }
 
@@ -2037,6 +2046,10 @@ body.acc-actif #appBody { height: 100%; }
 .collision-maquette-toggle.off { border-color: var(--border); color: var(--muted); text-decoration: line-through; }
 .collision-maquette-toggle.off .collision-maquette-toggle-dot { opacity: 0.35; }
 #view-collision #section-collision-maquettes[hidden] { display: none; }
+#view-collision #section-collision-couples[hidden], #view-collision #section-collision-liste[hidden] { display: none; }
+#section-collision-couples { flex: 1 1 0; min-height: 0; }
+.detection-item:disabled { opacity: 0.5; cursor: default; }
+.detection-item:disabled:hover { border-color: var(--border); }
 
 /* Collision : la liste des collisions occupe toute la hauteur du drawer (19/10).
    Les sections Maquettes et Info selection sont masquees ; son flex d'origine
@@ -2236,7 +2249,35 @@ body.acc-actif #appBody { height: 100%; }
 .collision-statut-dot { width: 7px; height: 7px; }
 .collision-groupe-titre { margin: 12px 0 2px; padding: 0 9px; gap: 6px; font-size: 10px; letter-spacing: 0.08em; }
 .collision-groupe-dot { width: 6px; height: 6px; }
-.collision-list-title { padding: 6px 9px; font-size: 11px; font-weight: 600; }
+/* Nom du couple de maquettes mis en valeur (20/10) : plus gros, en clair, marge haute = marge basse. */
+.collision-titre-wrap { position: relative; }
+.collision-list-title {
+  display: flex; align-items: center; gap: 6px; width: 100%; box-sizing: border-box; padding: 14px 12px;
+  background: none; border: none; border-bottom: 1px solid var(--border); font-family: inherit; text-align: left;
+  color: var(--text); cursor: pointer;
+}
+.collision-titre-textes { display: flex; flex-direction: column; gap: 3px; flex: 1 1 auto; min-width: 0; }
+#collisionListTitleText { display: block; font-size: 18px; font-weight: 700; line-height: 1.2; white-space: nowrap; overflow: hidden; }
+#collisionListTitleCount { font-size: 11.5px; font-weight: 600; color: var(--muted); }
+.collision-list-title[hidden] { display: none; }
+.collision-list-title:disabled { cursor: default; }
+.collision-list-title:not(:disabled):hover { background: rgba(255, 255, 255, 0.04); }
+.collision-titre-chevron { flex: none; color: var(--muted); font-size: 12px; transition: transform 0.15s; }
+.collision-list-title[aria-expanded="true"] .collision-titre-chevron { transform: rotate(180deg); color: var(--accent); }
+.collision-list-title:disabled .collision-titre-chevron { display: none; }
+/* Menu flottant des couples de maquettes (20/10). */
+.collision-couples-menu {
+  position: absolute; top: calc(100% + 6px); left: 8px; right: 8px; z-index: 30; margin: 0; padding: 6px; list-style: none;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+}
+.collision-couples-menu[hidden] { display: none; }
+.collision-couples-menu .detection-item { width: 100%; border-color: transparent; }
+.collision-couples-menu .detection-item.courant { border-color: var(--accent); }
+.detection-item { display: flex; align-items: center; gap: 8px; }
+.detection-pastilles { display: inline-flex; flex: none; }
+.detection-pastilles i { width: 11px; height: 11px; border-radius: 50%; border: 2px solid var(--surface); }
+.detection-pastilles i + i { margin-left: -4px; }
+.detection-label { flex: 1 1 auto; min-width: 0; text-align: left; }
 
 /* Selecteurs Priorite et Statut, design affine (19/10) : etiquette en petites
    capitales, champ sobre sans fond avec fin contour, pastille de couleur de la
@@ -2300,8 +2341,8 @@ body.acc-actif #appBody { height: 100%; }
   #collisionDiscussion.cb #collisionDiscussionHead { min-height: 44px; margin-left: -12px; }
   #collisionDiscussion.cb #collisionDiscussionToggle { min-width: 36px; min-height: 44px; padding: 4px 0; }
   #collisionDiscussion.cb h3 {
-    display: flex; flex-direction: column; justify-content: center; align-self: stretch;
-    min-width: 0; padding: 0; line-height: 1.15;
+    display: flex; flex-direction: column; justify-content: center; align-items: center; align-self: stretch;
+    min-width: 0; padding: 0; line-height: 1.15; text-align: center;
   }
   #collisionDiscussion.cb .cb-titre-lib {
     display: block; font-size: 9px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted);
@@ -2711,7 +2752,7 @@ html.demarrage #splashLogo {
 
 /* ===== Panneau de la discussion (20/10) =====
    A droite de la 3D dans le detail d'une discussion (ordinateur) ; sous la 3D sur telephone. Pleine page : la
-   conversation sur toute la largeur, la maquette en photo figee a gauche du titre. Cf mockup
+   conversation a droite sur toute la largeur, la maquette en photo figee en haut de la fiche a gauche. Cf mockup
    Projets/Ouvra/mockups/ouvra-discussion-panneau.html. */
 #filPanel { display: none; }
 #discussionsDetailPane.fil-actif { flex-direction: row; position: relative; }
@@ -2726,17 +2767,42 @@ html.demarrage #splashLogo {
 .fil-etat { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; color: var(--text); }
 .fil-etat::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #3fb950; }
 .fil-etat.ferme::before { background: #8b949e; }
-.fil-tags { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
-.fil-tags[hidden], .fil-actions[hidden] { display: none; }
-.fil-tags-label { font-size: 9px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-right: 2px; }
-.fil-pastille { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px 3px 3px; border: 1px solid var(--border); border-radius: 999px; font-size: 12px; color: var(--text); }
-.fil-pastille i, .fil-avatar {
+.fil-fiche { display: flex; flex-direction: column; gap: 14px; }
+.fil-bloc { display: flex; flex-direction: column; gap: 6px; padding-top: 10px; border-top: 1px solid var(--border); }
+.fil-bloc:first-child { border-top: none; padding-top: 0; }
+.fil-bloc[hidden] { display: none; }
+.fil-bloc-titre { display: flex; align-items: baseline; gap: 6px; font-size: 9px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.fil-bloc-titre b { font-weight: 700; color: var(--text); letter-spacing: 0; }
+/* Panneau : seulement le nombre de participants et "+ Ajouter" sur une ligne ; la liste des noms n'apparait qu'en pleine page. */
+.fil-liste { display: none; }
+#filTags { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 10px; }
+.fil-liste { list-style: none; margin: 0; padding: 0; flex-direction: column; gap: 4px; }
+.fil-liste li { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text); }
+.fil-liste small { margin-left: auto; color: var(--muted); font-size: 11px; }
+.fil-avatar {
   display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; flex: none;
   background: var(--bg); border: 1px solid var(--border); color: var(--muted); font: 700 9.5px/1 system-ui, sans-serif; font-style: normal;
 }
-.fil-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 12px; color: var(--muted); }
+.fil-pop { position: relative; display: inline-flex; align-self: flex-start; }
+.fil-pop[hidden] { display: none; }
+.fil-ajout {
+  display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; background: transparent; color: var(--text);
+  border: 1px dashed var(--border); border-radius: 999px; font-size: 12px; cursor: pointer;
+}
+.fil-ajout:hover { border-color: var(--accent); }
+.fil-menu {
+  position: absolute; top: calc(100% + 4px); left: 0; z-index: 20; min-width: 230px; margin: 0; padding: 4px; list-style: none;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+.fil-menu[hidden] { display: none; }
+.fil-menu button {
+  display: flex; align-items: center; gap: 8px; width: 100%; padding: 6px 8px; background: transparent; color: var(--text);
+  border: none; border-radius: 6px; font-size: 12px; text-align: left; cursor: pointer;
+}
+.fil-menu button:hover { background: var(--bg); }
+.fil-menu small { margin-left: auto; color: var(--muted); font-size: 11px; }
 .fil-instruction {
-  margin-left: auto; padding: 5px 10px; background: transparent; color: var(--text); border: 1px solid var(--border);
+  align-self: flex-start; padding: 5px 10px; background: transparent; color: var(--text); border: 1px solid var(--border);
   border-radius: 6px; font-size: 12px; cursor: pointer;
 }
 .fil-instruction:hover { border-color: var(--accent); }
@@ -2770,24 +2836,214 @@ html.demarrage #splashLogo {
 /* Pleine page : colonne centree, maquette en photo a gauche du titre (cadre fin, legende, rien de manipulable). */
 @media (min-width: 769px) {
   #discussionsDetailPane.plein #discussionsDetailContent {
-    position: absolute; top: 24px; left: max(18px, calc(50% - 412px)); width: 220px; height: 165px; padding: 0; flex: none; z-index: 4; cursor: pointer;
+    position: absolute; top: 24px; left: 24px; width: 340px; height: 255px; padding: 0; flex: none; z-index: 4; cursor: pointer;
   }
-  #discussionsDetailPane.plein #threadVisualWrap { margin: 0; height: 165px; flex: none; border: 1px solid var(--border); border-radius: 4px; pointer-events: none; }
-  #discussionsDetailPane.plein #discussionsDetailContent::after {
-    content: "Vue enregistrée à la création"; position: absolute; left: 0; right: 0; top: calc(100% + 6px);
-    font-size: 11px; line-height: 1.3; color: var(--muted);
-  }
+  #discussionsDetailPane.plein #threadVisualWrap { margin: 0; height: 255px; flex: none; border: 1px solid var(--border); border-radius: 4px; pointer-events: none; }
   #discussionsDetailPane.plein #threadVisualToggle, .plein #discussionsBackBtn { display: none; }
   #discussionsDetailPane.plein #viewerWrap > :not(#viewerCanvas) { display: none !important; }
-  #discussionsDetailPane.plein #filPanel { flex: 1; border-left: none; }
-  #discussionsDetailPane.plein .fil-head, .plein .fil-messages, .plein .fil-reponse { width: 100%; max-width: 860px; margin-left: auto; margin-right: auto; box-sizing: border-box; }
-  #discussionsDetailPane.plein .fil-head { padding-left: 262px; border-bottom: none; padding-top: 24px; min-height: 226px; }
-  #discussionsDetailPane.plein .fil-titre { font-size: 20px; }
-  #discussionsDetailPane.plein .fil-messages { padding-top: 18px; border-top: 1px solid var(--border); }
-  #discussionsDetailPane.plein .fil-reponse { border-top: 1px solid var(--border); }
+  /* Fiche a gauche (maquette en photo, participants), conversation a droite sur toute la largeur restante. */
+  #discussionsDetailPane.plein #filPanel {
+    flex: 1; border-left: none; display: grid; grid-template-columns: 388px minmax(0, 1fr);
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
+  }
+  #discussionsDetailPane.plein .fil-liste { display: flex; }
+  #discussionsDetailPane.plein #filTags { flex-direction: column; align-items: stretch; gap: 6px; }
+  #discussionsDetailPane.plein .fil-head { display: contents; }
+  #discussionsDetailPane.plein .fil-fiche { grid-column: 1; grid-row: 1 / 5; padding: 295px 24px 16px; border-right: 1px solid var(--border); overflow-y: auto; }
+  #discussionsDetailPane.plein .fil-titre { grid-column: 2; grid-row: 1; padding: 24px 24px 0; font-size: 20px; }
+  #discussionsDetailPane.plein .fil-meta { grid-column: 2; grid-row: 2; padding: 10px 24px 14px; }
+  #discussionsDetailPane.plein .fil-messages { grid-column: 2; grid-row: 3; padding: 18px 24px; border-top: 1px solid var(--border); }
+  #discussionsDetailPane.plein .fil-reponse { grid-column: 2; grid-row: 4; padding: 12px 24px 16px; border-top: 1px solid var(--border); }
 }
 @media (max-width: 768px) {
   .fil-plein { display: none; }
   #discussionsDetailPane.fil-actif { flex-direction: column; }
   #discussionsDetailPane.fil-actif #filPanel { flex: 0 0 55%; border-left: none; border-top: 1px solid var(--border); }
+}
+
+/* Laptop, bandeau de la collision (20/10) : contenu centre, plus haut, titre "COLLISION" + pastille de numero,
+   Priorite et Statut en gelules teintees de la couleur de leur valeur (--c), libelle a gauche de la valeur. */
+.collision-select-wrap { --c: #8b949e; }
+.collision-select-wrap[data-champ="prio"][data-valeur="urgente"], .collision-select-wrap[data-champ="statut"][data-valeur="confirme"] { --c: #f85149; }
+.collision-select-wrap[data-champ="prio"][data-valeur="haute"], .collision-select-wrap[data-champ="statut"][data-valeur="nouveau"] { --c: #f0883e; }
+.collision-select-wrap[data-champ="prio"][data-valeur="normale"] { --c: #6e8bb5; }
+.collision-select-wrap[data-champ="prio"][data-valeur="basse"] { --c: #b4bcc6; }
+.collision-select-wrap[data-champ="statut"][data-valeur="resolu"] { --c: #3fb950; }
+@media (min-width: 769px) {
+  #collisionDiscussion.cb #collisionDiscussionHead {
+    min-height: 68px; justify-content: center; gap: 18px; border-top: 1px solid var(--border);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0));
+  }
+  #collisionDiscussion.cb:not(.collapsed) #collisionDiscussionHead { min-height: 68px; }
+
+  /* Titre : petit libelle en capitales, numero dans une pastille accentuee. */
+  #collisionDiscussion.cb h3 { display: flex; align-items: center; gap: 10px; white-space: nowrap; }
+  #collisionDiscussion.cb .cb-titre-lib {
+    display: inline; margin: 0; font-size: 11px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted);
+  }
+  #collisionDiscussion.cb .cb-titre-num {
+    display: inline-flex; align-items: center; font-size: 18px; font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums;
+  }
+  #collisionDiscussion.cb .cb-titre-num::before { content: "n° "; font-weight: 600; opacity: 0.8; margin-right: 0.25em; }
+
+  /* Priorite / Statut : gelule teintee, pastille lumineuse, libelle | valeur. */
+  #collisionDiscussion.cb #collisionControles, #collisionDiscussion.cb.collapsed #collisionControles { gap: 12px; }
+  #collisionDiscussion.cb .collision-trigger {
+    min-height: 44px; padding: 0 16px 0 14px; gap: 12px; border-radius: 999px;
+    background: color-mix(in srgb, var(--c) 11%, transparent);
+    border: 1px solid color-mix(in srgb, var(--c) 42%, transparent);
+    transition: background 0.15s, border-color 0.15s;
+  }
+  #collisionDiscussion.cb .collision-trigger:hover {
+    background: color-mix(in srgb, var(--c) 20%, transparent); border-color: color-mix(in srgb, var(--c) 75%, transparent);
+  }
+  #collisionDiscussion.cb .collision-trigger[aria-expanded="true"] { border-color: var(--c); }
+  /* Une seule bulle ronde par gelule : celle du bouton, avec un halo ; celle du select masque (doublon) est cachee. */
+  #collisionDiscussion.cb .collision-select-wrap > .collision-select-dot { display: none; }
+  #collisionDiscussion.cb .collision-trigger .collision-select-dot {
+    flex: none; width: 10px; height: 10px; aspect-ratio: 1; border-radius: 50%; background: var(--c);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--c) 24%, transparent);
+  }
+  #collisionDiscussion.cb .collision-trigger-texte { flex-direction: row; align-items: center; gap: 12px; }
+  #collisionDiscussion.cb .collision-trigger-lib { font-size: 11px; letter-spacing: 0.12em; }
+  #collisionDiscussion.cb .collision-trigger-val {
+    padding-left: 12px; border-left: 1px solid color-mix(in srgb, var(--c) 40%, transparent); font-size: 15px; font-weight: 700;
+  }
+
+  /* Fleche et bouton agrandir : ronds, discrets, un fond au survol. */
+  #collisionDiscussion.cb #collisionDiscussionToggle, #collisionDiscussion.cb #collisionGrandBtn {
+    flex: 0 0 38px; width: 38px; min-width: 38px; height: 38px; min-height: 38px; border-radius: 50%;
+    border: 1px solid var(--border); background: transparent; transition: background 0.15s, border-color 0.15s;
+  }
+  #collisionDiscussion.cb #collisionDiscussionToggle:hover, #collisionDiscussion.cb #collisionGrandBtn:hover {
+    background: rgba(255, 255, 255, 0.07); border-color: var(--muted);
+  }
+}
+
+/* Sections repliables des drawers (20/10) : petite fleche a droite du titre, qui tourne a l'ouverture et a la fermeture
+   (animation de hauteur dans main.js, animerDetails). */
+.info-section > summary.info-section-title::after {
+  content: ""; flex: none; width: 10px; height: 6px; transition: transform 0.28s ease;
+  background: no-repeat center / 10px 6px
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%239aa59d' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+.info-section:not([open]) > summary.info-section-title::after, .info-section.fermeture > summary.info-section-title::after { transform: rotate(-90deg); }
+
+/* Drawer Collision (20/10) : ces sections ne se replient pas, donc ni fleche ni curseur cliquable sur leur titre. */
+#section-collision-liste > summary, #section-collision-couples > summary { cursor: default; }
+#section-collision-liste > summary.info-section-title::after, #section-collision-couples > summary.info-section-title::after { display: none; }
+
+/* Laptop, pleine page d'une collision (20/10) : meme structure que la pleine page d'une discussion. Colonne de gauche : la
+   3D en photo figee (cliquable pour revenir) avec Priorite et Statut dessous ; colonne de droite : la conversation sur toute
+   la hauteur (titre, onglets, messages, reponse). Le mobile garde la mise en page precedente. */
+@media (min-width: 769px) {
+  #collisionLeft:has(> #collisionDiscussion.cb-grand) #collisionViewerSlot {
+    position: absolute; top: 24px; left: 24px; width: 340px; height: 255px; flex: none; z-index: 25; cursor: pointer;
+    border: 1px solid var(--border); border-radius: 4px; overflow: hidden;
+  }
+  #collisionLeft:has(> #collisionDiscussion.cb-grand) #collisionViewerSlot > * { pointer-events: none; }
+  #collisionLeft:has(> #collisionDiscussion.cb-grand) #collisionViewerSlot > :not(#viewerWrap),
+  #collisionLeft:has(> #collisionDiscussion.cb-grand) #collisionViewerSlot #viewerWrap > :not(#viewerCanvas) { display: none !important; }
+
+  #collisionDiscussion.cb.cb-grand {
+    display: grid; grid-template-columns: 388px minmax(0, 1fr); grid-template-rows: auto auto minmax(0, 1fr) auto; padding: 0;
+  }
+  #collisionDiscussion.cb.cb-grand::before { content: ""; grid-column: 1; grid-row: 1 / 5; border-right: 1px solid var(--border); }
+  #collisionDiscussion.cb.cb-grand #collisionDiscussionHead { display: contents; }
+  #collisionDiscussion.cb.cb-grand #collisionDiscussionToggle { display: none; }
+  #collisionDiscussion.cb.cb-grand h3 { grid-column: 2; grid-row: 1; padding: 24px 72px 0 24px; font-size: 22px; }
+  #collisionDiscussion.cb.cb-grand #collisionGrandBtn { grid-column: 2; grid-row: 1; justify-self: end; align-self: start; margin: 20px 20px 0 0; }
+  #collisionDiscussion.cb.cb-grand #collisionControles {
+    grid-column: 1; grid-row: 1 / 5; align-self: start; flex-direction: column; align-items: stretch; gap: 12px; padding: 295px 24px 0;
+  }
+  #collisionDiscussion.cb.cb-grand .collision-controle { flex: none; width: 100%; }
+  #collisionDiscussion.cb.cb-grand #collisionFiltre { grid-column: 2; grid-row: 2; width: auto; max-width: none; margin: 0; padding: 10px 24px 14px; }
+  #collisionDiscussion.cb.cb-grand #discussionMessages { grid-column: 2; grid-row: 3; width: auto; max-width: none; margin: 0; padding: 18px 24px; border-top: 1px solid var(--border); }
+  #collisionDiscussion.cb.cb-grand #discussionReplyForm,
+  #collisionDiscussion.cb.cb-grand #messageOuvrirBtn { grid-column: 2; grid-row: 4; width: auto; max-width: none; margin: 0; padding: 12px 24px 16px; box-sizing: border-box; border-top: 1px solid var(--border); }
+  #collisionDiscussion.cb.cb-grand #threadAssignedBadge, #collisionDiscussion.cb.cb-grand #createInstructionBtn { grid-column: 2; }
+}
+
+/* Laptop, bandeau de la collision (20/10) : la fleche et "Collision n° X" forment UN seul element cliquable, une pilule qui se met
+   en surbrillance d'un bloc au survol. Ailleurs (mobile, pleine page) le groupe est neutre (display: contents). */
+.cb-titre-groupe { display: contents; }
+@media (min-width: 769px) {
+  #collisionDiscussion.cb:not(.cb-grand) .cb-titre-groupe {
+    display: inline-flex; align-items: center; flex: 0 0 auto; gap: 4px; padding: 3px 20px 3px 6px;
+    border: 1px solid var(--border); border-radius: 999px; cursor: pointer; transition: background 0.15s, border-color 0.15s;
+  }
+  #collisionDiscussion.cb:not(.cb-grand) .cb-titre-groupe:hover { background: rgba(255, 255, 255, 0.07); border-color: var(--muted); }
+  #collisionDiscussion.cb:not(.cb-grand) .cb-titre-groupe #collisionDiscussionToggle {
+    flex: 0 0 30px; width: 30px; min-width: 30px; height: 38px; min-height: 38px; border: none; border-radius: 0; background: none; order: 0;
+  }
+  #collisionDiscussion.cb:not(.cb-grand) .cb-titre-groupe:hover #collisionDiscussionToggle { color: var(--text); }
+  #collisionDiscussion.cb:not(.cb-grand) .cb-titre-groupe h3 { padding: 0; border: none; background: none; cursor: pointer; }
+  #collisionDiscussion.cb.cb-grand #collisionDiscussionHead h3 { cursor: default; padding: 24px 72px 0 24px; }
+}
+
+/* Transition de page (20/10), meme principe que le portfolio : fondu + decalage de 8 px, balayage d'accent sous la navbar. */
+#appBody { transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out; }
+#appBody.vue-sortie, #appBody.vue-entree { opacity: 0; transform: translateY(8px); }
+#navbar { position: relative; }
+#navTrait {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: var(--accent); opacity: 0; transform-origin: left; pointer-events: none;
+}
+#navTrait.balayage { animation: navTraitBalayage 0.7s ease-out; }
+@keyframes navTraitBalayage {
+  0% { transform: scaleX(0); opacity: 1; }
+  55% { transform: scaleX(1); opacity: 1; }
+  100% { transform: scaleX(1); opacity: 0; }
+}
+
+/* Collisions d'exemple (donnees fictives) : visibles dans la liste, non cliquables. */
+.collision-item.factice { cursor: default; opacity: 0.7; }
+.collision-item.factice:hover { border-color: var(--border); background: inherit; }
+
+/* ============================================================================
+   Transitions et micro-interactions (20/10) : meme langage partout (fondu, 8 px, 0,3 s). Les animations sont coupees si le
+   systeme demande moins de mouvement (voir plus bas).
+   ============================================================================ */
+/* Listes : les lignes apparaissent l'une apres l'autre (--i pose par animerEntreeListe). */
+.liste-entree > * { animation: entreeListe 0.3s ease-out both; animation-delay: calc(var(--i, 0) * 30ms); }
+@keyframes entreeListe { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+/* Bandeau de collision : il monte a la premiere selection, son contenu se renouvelle ensuite. */
+#collisionDiscussion.bandeau-entree { animation: bandeauEntree 0.35s ease-out; }
+@keyframes bandeauEntree { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }
+#collisionDiscussion.bandeau-maj > * { animation: bandeauMaj 0.3s ease-out both; }
+@keyframes bandeauMaj { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+/* Bulle de la collision selectionnee : deux ondes qui partent de la bulle. */
+.clash-pastille.active::before {
+  content: ""; position: absolute; inset: -3px; border-radius: 50%; border: 2px solid var(--accent, #58a6ff); pointer-events: none;
+  animation: pastillePulse 1.1s ease-out 2;
+}
+@keyframes pastillePulse { from { transform: scale(1); opacity: 0.9; } to { transform: scale(2.2); opacity: 0; } }
+
+/* Discussions : un nouveau message ou un nouveau participant apparait en montant ; le compteur de participants fait un petit bond ;
+   ouvrir une discussion la fait entrer par la droite. */
+.apparition { animation: apparition 0.35s ease-out; }
+@keyframes apparition { from { opacity: 0; transform: translateY(10px) scale(0.98); } to { opacity: 1; transform: none; } }
+#filTagsNb { display: inline-block; }
+#filTagsNb.pulse { animation: nbPulse 0.45s ease; }
+@keyframes nbPulse { 0% { transform: scale(1); } 40% { transform: scale(1.6); color: var(--accent); } 100% { transform: scale(1); } }
+#discussionsDetailPane.detail-entree { animation: detailEntree 0.35s ease-out; }
+@keyframes detailEntree { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: none; } }
+
+/* Micro-interactions : appui = leger enfoncement ; cartes de liste et couples = petite elevation au survol. */
+.nav-link, .reset-btn, .fil-ajout, .fil-instruction, .fil-plein, #collisionGrandBtn, .collision-maquette-toggle, .collision-trigger,
+#navbarContact, .detection-item, .thread-item {
+  transition: transform 0.12s ease, box-shadow 0.18s ease, background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+}
+.nav-link:active, .reset-btn:active, .fil-ajout:active, .fil-instruction:active, .fil-plein:active, #collisionGrandBtn:active,
+.collision-maquette-toggle:active, .collision-trigger:active, #navbarContact:active, .detection-item:not(:disabled):active, .thread-item:active {
+  transform: scale(0.97);
+}
+.thread-item:hover, .detection-item:not(:disabled):hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(0, 0, 0, 0.32); }
+.collision-item { transition: background-color 0.18s ease, border-color 0.18s ease, opacity 0.18s ease; }
+
+@media (prefers-reduced-motion: reduce) {
+  .liste-entree > *, #collisionDiscussion.bandeau-entree, #collisionDiscussion.bandeau-maj > *, .clash-pastille.active::before,
+  .apparition, #filTagsNb.pulse, #discussionsDetailPane.detail-entree { animation: none; }
+  #appBody { transition: none; }
 }

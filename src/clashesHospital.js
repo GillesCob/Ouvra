@@ -34,7 +34,10 @@
 // Aucune discussion simulee : IfcClash ne produit que de la geometrie.
 
 export const HOSPITAL_DETECTIONS = [
-  { id: "hopital-arch-mep", modeles: ["hosp-arch", "hosp-mep"], label: "Architecture ↔ Mécanique (CVC)" }
+  { id: "hopital-arch-mep", modeles: ["hosp-arch", "hosp-mep"], label: "Architecture ↔ Mécanique (CVC)" },
+  // 20/10 : second couple, avec des collisions FICTIVES (HOSPITAL_CLASHES_FACTICES) pour montrer la mise en page de la liste
+  // des couples. Rien n'est calcule : a retirer (ou remplacer par une vraie detection IfcClash) avant toute vraie demonstration.
+  { id: "hopital-struct-mep", modeles: ["hosp-struct", "hosp-mep"], label: "Structure ↔ Mécanique (CVC)", exemple: true }
 ];
 
 // Priorite (19/10, COLLISION_PRIORITES) : "urgente" | "haute" | "normale" |
@@ -300,3 +303,26 @@ export const HOSPITAL_CLASHES = [
     discussion: []
   }
 ];
+
+// Collisions FICTIVES du couple Structure / Mecanique (20/10), pour voir la mise en page d'un second jeu de collisions. Noms et
+// identifiants inventes, aucun IfcClash derriere : pas de point 3D ni d'elements (entityIds), donc non cliquables dans la liste
+// (factice: true). Meme forme de "zone" que les vraies collisions pour que la liste les affiche pareil.
+export const HOSPITAL_CLASHES_FACTICES = [
+  { id: "ex-sm-1", priorite: "urgente", statut: "confirme", zone: "Floor : Concrete 250mm (#300114) ↔ Round Duct : Taps (#912004) · Level 2" },
+  { id: "ex-sm-2", priorite: "haute", statut: "nouveau", zone: "Structural Column : Concrete-Rectangular 400x400 (#300227) ↔ Rectangular Duct : Mitered Elbows (#912318) · Level 1" },
+  { id: "ex-sm-3", priorite: "haute", statut: "nouveau", zone: "Structural Framing : Steel Beam W16x31 (#300391) ↔ Pipe Types : Standard (#912455) · Level 3" },
+  { id: "ex-sm-4", priorite: "normale", statut: "nouveau", zone: "Floor : Concrete 250mm (#300118) ↔ Pipe Types : Standard (#912601) · Level 4" },
+  { id: "ex-sm-5", priorite: "normale", statut: "confirme", zone: "Structural Framing : Steel Beam W12x26 (#300402) ↔ Round Duct : Taps (#912733) · Level 5" },
+  { id: "ex-sm-6", priorite: "normale", statut: "resolu", zone: "Structural Column : Concrete-Rectangular 400x400 (#300230) ↔ Pipe Types : Standard (#912810) · Level 2" },
+  { id: "ex-sm-7", priorite: "basse", statut: "ecarte", zone: "Floor : Concrete 250mm (#300121) ↔ Round Duct : Taps (#912944) · Level 6" }
+].map((c) => ({
+  detectionId: "hopital-struct-mep",
+  disciplineA: "Structure",
+  disciplineB: "Mécanique (CVC)",
+  severite: "À qualifier",
+  auteur: "Exemple (données fictives)",
+  tagged: [],
+  discussion: [],
+  factice: true,
+  ...c
+}));

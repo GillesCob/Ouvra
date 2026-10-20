@@ -339,6 +339,7 @@
                par CSS, les boutons "Tout afficher" sont deplaces dans
                `.panel-head`). Bascule gerée dans main.js (setupInfoTabs). -->
           <div class="tabs" role="tablist" aria-label="Panneau du Viewer">
+            <span class="tabs-thumb" aria-hidden="true"></span>
             <button type="button" class="tab" role="tab" id="tab-niveaux" aria-selected="true" aria-controls="section-niveaux">Niveaux</button>
             <button type="button" class="tab" role="tab" id="tab-maquettes" aria-selected="false" aria-controls="section-maquettes" tabindex="-1">Maquettes</button>
           </div>
@@ -369,12 +370,10 @@
         <div id="collisionRecap">
           <h2>Interactions entre maquettes</h2>
           <p class="info-empty" id="detectionsEmpty">Pas de maquettes permettant une vraie détection de collision pour l'instant : les conflits présentés ici sont simulés, posés manuellement à titre d'exemple.</p>
-          <ul class="info-list" id="detectionsList"></ul>
         </div>
 
         <div id="collisionDetail" hidden>
           <div id="collisionLeft">
-            <button type="button" id="collisionBackBtn" class="reset-btn">← Interactions</button>
             <div id="collisionViewerSlot">
               <button type="button" id="collisionInfoPanelToggle" aria-label="Afficher les collisions">☰ Collisions</button>
               <!-- Boutons a bascule des 2 maquettes de la paire en collision (19/10), remplis en JS. -->
@@ -395,8 +394,11 @@
             </div>
             <div id="collisionDiscussion" hidden>
               <div id="collisionDiscussionHead">
-                <h3 id="collisionDiscussionTitle" title="Cliquer pour voir le titre complet">Discussion</h3>
-                <button type="button" id="collisionDiscussionToggle" aria-label="Réduire la discussion" title="Réduire/agrandir la discussion">▾</button>
+                <!-- Fleche + titre : un seul element cliquable sur laptop (pilule), neutre en mise en page ailleurs (display: contents). -->
+                <div class="cb-titre-groupe">
+                  <h3 id="collisionDiscussionTitle" title="Cliquer pour voir le titre complet">Discussion</h3>
+                  <button type="button" id="collisionDiscussionToggle" aria-label="Réduire la discussion" title="Réduire/agrandir la discussion">▾</button>
+                </div>
               </div>
               <span id="threadAssignedBadge" hidden></span>
               <button type="button" id="createInstructionBtn" hidden>→ Créer une instruction pour le projeteur</button>
@@ -413,6 +415,12 @@
           <aside id="collisionInfoPanel" class="side-panel">
             <div class="drawer-head"><span>Collisions</span><button type="button" id="collisionInfoPanelClose" class="drawer-close" aria-label="Fermer">✕</button></div>
             <button type="button" id="collisionInfoPanelCollapse" aria-controls="collisionInfoPanel" aria-expanded="true" aria-label="Réduire la liste des collisions" title="Réduire la liste des collisions">›</button>
+            <!-- Couples de maquettes en collision (20/10) : affiches tant qu'aucun couple n'est choisi. -->
+            <details class="info-section" id="section-collision-couples" open hidden>
+              <summary class="info-section-title"><span>Maquettes en collision</span></summary>
+              <ul class="info-list" id="collisionCouplesList"></ul>
+            </details>
+
             <details class="info-section" id="section-collision-maquettes" open>
               <summary class="info-section-title"><span>Maquettes</span></summary>
               <ul class="info-list" id="collisionMaquettesList"></ul>
@@ -420,7 +428,13 @@
 
             <details class="info-section" id="section-collision-liste" open>
               <summary class="info-section-title"><span>Collisions</span></summary>
-              <p class="collision-list-title" id="collisionListTitle" hidden></p>
+              <!-- Titre du couple courant (20/10) : une ligne, cliquable, ouvre la liste des couples de maquettes en menu flottant. -->
+              <div class="collision-titre-wrap">
+                <button type="button" class="collision-list-title" id="collisionListTitle" aria-haspopup="true" aria-expanded="false" hidden>
+                  <span class="collision-titre-textes"><span id="collisionListTitleText"></span><span id="collisionListTitleCount"></span></span><span class="collision-titre-chevron" aria-hidden="true">▾</span>
+                </button>
+                <ul class="collision-couples-menu" id="collisionCouplesMenu" hidden></ul>
+              </div>
               <ul class="info-list" id="collisionsList"></ul>
             </details>
 
@@ -437,7 +451,6 @@
       <div id="view-discussions" class="view" hidden>
         <div id="discussionsListPane">
           <h2>Discussions</h2>
-          <p class="info-empty" id="discussionsFilterNote">Chaque utilisateur retrouve ici ses discussions en cours : celles qu'il a créées, et celles où il est tagué.</p>
           <p class="info-empty" id="discussionsThreadsEmpty" hidden>Aucun fil pour l'instant.</p>
           <ul class="info-list" id="discussionsThreadsList"></ul>
         </div>
@@ -467,10 +480,15 @@
                 <span class="fil-auteur-date" id="filAuteurDate"></span>
                 <button type="button" class="fil-plein" id="filPleinBtn" title="Afficher la conversation en pleine page"><span class="fil-plein-ouvrir">⤢ Pleine page</span><span class="fil-plein-fermer">⤡ Réduire</span></button>
               </div>
-              <div class="fil-tags" id="filTags" hidden></div>
-              <div class="fil-actions" id="filActions" hidden>
-                <span class="fil-pris" id="filPris" hidden></span>
-                <button type="button" class="fil-instruction" id="filInstructionBtn" hidden>Créer une instruction</button>
+              <div class="fil-fiche">
+                <div class="fil-bloc" id="filTags">
+                  <span class="fil-bloc-titre">Participants <b id="filTagsNb"></b></span>
+                  <ul class="fil-liste" id="filListe"></ul>
+                  <span class="fil-pop"><button type="button" class="fil-ajout" id="filAjoutBtn" aria-haspopup="true">+ Ajouter</button><ul class="fil-menu" id="filAjoutMenu" hidden></ul></span>
+                </div>
+                <div class="fil-bloc" id="filActions" hidden>
+                  <button type="button" class="fil-instruction" id="filInstructionBtn" hidden>Créer une instruction</button>
+                </div>
               </div>
             </header>
             <ul class="fil-messages" id="filMessages"></ul>
