@@ -240,6 +240,11 @@ const HOPITAL_SANS_WEBIFC = !reglageUrl("webifc", false);
 // false = aretes partout.
 const MOBILE_SANS_ARETES = !reglageUrl("aretes", false);
 const APPAREIL_MOBILE = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || window.matchMedia("(max-width: 768px)").matches;
+// Architecture et mecanique de l'hopital reconverties en XKT v12 avec buffers compresses (20/10, IFC d'origine de
+// Chantier/public/models/hospital, xeokit-convert -b) : memes objets et memes identifiants IFC, 3,9 et 3,0 Mo au lieu
+// de 26 et 20 Mo. Contenu identique (memes tailles une fois decompresse, memes nombres d'elements). Mesure sur
+// iPhone le 20/10 : aucun gain (16,5 s contre 16,7 s), desactive par defaut. ?v12=1 pour les essayer.
+const HOPITAL_V12_LEGER = reglageUrl("v12", false);
 const HOPITAL_CLASHES_ABSENTS_LEGERES = new Set(["hosp-clash-14"]);
 // COLLISION_TRANSITION_VERROUILLEE (19/10) : pendant le vol de camera vers une
 // collision, on ne peut pas en selectionner une autre (liste et bulles), et le
@@ -298,6 +303,8 @@ function reveleMaquette() {
     loadingOverlay.classList.add("hidden");
     loadingOverlay.getAnimations().forEach((a) => a.cancel());
   };
+  // Ecran masque (accueil affiche pendant le chargement) : rien a animer.
+  if (getComputedStyle(loadingOverlay).display === "none") { finir(); return; }
   const zoom = loadingOverlay.querySelector(".logo-zoom");
   const spin = loadingOverlay.querySelector(".logo-spin");
   if (!zoom || !spin || !zoom.animate || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
@@ -766,6 +773,9 @@ if (firstFlipCard) {
 // Discussions).
 let recenterTarget = null;
 let initialCameraState = null;
+// Maquettes affichees/masquees dans le Viewer (20/10) : memorisees en quittant le Viewer par la navbar,
+// reappliquees au retour (Collision et Discussions repartent d'un etat propre, pas le Viewer).
+let memoMaquettesViewer = null;
 
 // Vue par defaut figee (05/09), valeurs relevees via la console DevTools sur
 // une orientation validee par Gilles : plus fiable qu'un fit automatique sur
@@ -857,6 +867,8 @@ function activateView(viewName) {
 navLinks.forEach((link) => {
   link.addEventListener("click", () => {
     fermerEchangesGrand(false);
+    // Avant que restoreAllModelsVisible() ne remette tout visible : on retient le choix du Viewer.
+    if (!viewViewer.hidden) memoMaquettesViewer = new Map(MAQUETTES.map((m) => [m.id, m.shown]));
     // Repart d'un etat sain si on quitte directement (sans passer par un
     // bouton retour) une detection ou un fil qui masquait certaines
     // maquettes (ex. Maquette CEA hors sujet). "restoreAllModelsVisible"
@@ -886,6 +898,10 @@ navLinks.forEach((link) => {
     // equivalent a cliquer "Recentrer" (camera) et "Tout afficher" (niveaux,
     // les maquettes le sont deja via restoreAllModelsVisible ci-dessus).
     if (link.dataset.view === "viewer") {
+      if (memoMaquettesViewer) {
+        MAQUETTES.forEach((m) => { if (memoMaquettesViewer.has(m.id)) m.shown = memoMaquettesViewer.get(m.id); });
+        renderMaquetteRows(maquettesList, MAQUETTES);
+      }
       niveauxState.forEach((n) => {
         n.checked = true;
         if (n.checkboxEl) n.checkboxEl.checked = true;
@@ -1581,6 +1597,14 @@ const PROJECTS = {
   ].filter((m) => !(MASQUE_MAQUETTES_LOURDES && MAQUETTES_LOURDES_IDS.includes(m.id))).map((m) => {
     if (HOPITAL_STRUCTURE_V12 && m.id === "hosp-struct") {
       const copie = Object.assign({}, m, { src: "/models/hospital/structure-v12.xkt" });
+      delete copie.metaSrc;
+      return copie;
+    }
+    return m;
+  }).map((m) => {
+    if (!HOPITAL_V12_LEGER) return m;
+    if (m.id === "hosp-arch" || m.id === "hosp-mep") {
+      const copie = Object.assign({}, m, { src: m.id === "hosp-arch" ? "/models/hospital/v12/architecture.xkt" : "/models/hospital/v12/mechanical.xkt" });
       delete copie.metaSrc;
       return copie;
     }
@@ -3878,7 +3902,15 @@ function majBandeauCollision(thread) {
     if (collisionIdsEl) collisionIdsEl.textContent = "";
     return;
   }
-  collisionDiscussionTitle.textContent = titreCourtCollision(thread);
+  // 20/10 : deux spans, "Collision" (libelle, visible sur mobile seulement) puis le numero (n° X sur mobile).
+  collisionDiscussionTitle.textContent = "";
+  const libTitre = document.createElement("span");
+  libTitre.className = "cb-titre-lib";
+  libTitre.textContent = "Collision";
+  const numTitre = document.createElement("span");
+  numTitre.className = "cb-titre-num";
+  numTitre.textContent = titreCourtCollision(thread);
+  collisionDiscussionTitle.append(libTitre, numTitre);
   // 19/10 : plus aucun nom d'element ni de type (detailsCollision gardee, non utilisee).
   collisionDiscussionTitle.removeAttribute("title");
   collisionIdsEl.textContent = "";
@@ -4823,7 +4855,10 @@ function soloNiveau(target) {
   });
   applyVisibility();
 
-  showSelection([["Niveau", target.name]], DOCS_BY_NIVEAU[target.name] || []);
+  // 20/10 : la fiche d'un niveau ne montrait que son nom, sans interet ; elle ne s'affiche plus
+  // que si des documents sont rattaches au niveau.
+  const docs = DOCS_BY_NIVEAU[target.name] || [];
+  if (docs.length) showSelection([["Niveau", target.name]], docs);
 }
 
 maquettesResetBtn.addEventListener("click", (e) => {

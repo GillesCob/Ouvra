@@ -235,9 +235,9 @@ html, body {
 }
 
 #loadingOverlay {
-  position: absolute;
+  position: fixed;
   inset: 0;
-  z-index: 10;
+  z-index: 99980;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -257,6 +257,8 @@ html, body {
 .loading-etats li.ok .loading-etat { color: var(--accent); }
 .loading-etats .loading-etat { font-variant-numeric: tabular-nums; }
 #loadingOverlay.hidden { display: none; }
+/* Sur l'accueil, le chargement se fait en arriere-plan sans rien recouvrir (20/10). */
+body.acc-actif #loadingOverlay { display: none; }
 
 .spinner {
   width: 36px;
@@ -2290,9 +2292,23 @@ body.acc-actif #appBody { height: 100%; }
 @media (min-width: 769px) {
   #collisionDiscussion.cb .collision-controle select { min-height: 28px; }
 }
+#collisionDiscussion.cb .cb-titre-lib { display: none; }
 @media (max-width: 768px) {
-  #collisionDiscussion.cb #collisionDiscussionHead { min-height: 44px; }
-  #collisionDiscussion.cb #collisionDiscussionToggle { min-width: 44px; min-height: 44px; }
+  /* 20/10 : bandeau colle au bord gauche (marge du bloc annulee sur l'en-tete), fleche dans une
+     zone de 36 px, titre "COLLISION / n° X" a deux lignes comme Priorite et Statut. Fleche et
+     titre ouvrent/ferment la zone (zone tactile de 44 px de haut). */
+  #collisionDiscussion.cb #collisionDiscussionHead { min-height: 44px; margin-left: -12px; }
+  #collisionDiscussion.cb #collisionDiscussionToggle { min-width: 36px; min-height: 44px; padding: 4px 0; }
+  #collisionDiscussion.cb h3 {
+    display: flex; flex-direction: column; justify-content: center; align-self: stretch;
+    min-width: 0; padding: 0; line-height: 1.15;
+  }
+  #collisionDiscussion.cb .cb-titre-lib {
+    display: block; font-size: 9px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted);
+  }
+  #collisionDiscussion.cb .cb-titre-num { font-size: 12.5px; font-weight: 600; white-space: nowrap; }
+  #collisionDiscussion.cb .cb-titre-num::before { content: "n° "; }
+  #collisionDiscussion.cb .collision-trigger { padding-left: 10px; }
   #collisionDiscussion.cb .collision-controle select { padding-right: 20px; max-width: 108px; }
 }
 #collisionDiscussion.cb #collisionDiscussionIds {
