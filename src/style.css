@@ -2139,7 +2139,14 @@ body.acc-actif #appBody { height: 100%; }
 }
 
 /* Collision : bulles jaunes surimprimees (19/10, COLLISION_BULLES_SURIMPRESSION), jamais masquees par la geometrie, aucun clic capte */
+/* Bulles de collision (20/10, demande de Gilles) : SOUS les boutons de la 3D (bascules de maquettes, Recentrer, Enregistrer cet angle, Vitesse,
+   coupe), jamais par-dessus. Les cercles du canevas restent a z-index 2 ; les pastilles numerotees, dont xeokit fixe des z-index tres hauts,
+   sont enfermees dans leur propre contexte d'empilement (z-index 3). Les boutons sont a 5 ou plus. La pastille de la collision selectionnee
+   passe au-dessus des autres a l'interieur de ce contexte. */
 .clash-bulles { position: absolute; left: 0; top: 0; pointer-events: none; z-index: 2; }
+.clash-pastilles { z-index: 3; isolation: isolate; }
+#viewerToolbar, #coupeToolbar, #coupeChoixBar { z-index: 6; }
+.xeokit-annotation-marker:has(.clash-pastille.active) { z-index: 99999999 !important; }
 .clash-bulles[hidden] { display: none; }
 
 /* Liste Collision : carte a deux lignes (19/10, COLLISION_LISTE_CARTE).
@@ -2969,12 +2976,12 @@ html.demarrage #splashLogo {
 .cb-titre-groupe { display: contents; }
 @media (min-width: 769px) {
   #collisionDiscussion.cb:not(.cb-grand) .cb-titre-groupe {
-    display: inline-flex; align-items: center; flex: 0 0 auto; gap: 4px; padding: 3px 20px 3px 6px;
+    display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; gap: 10px; padding: 3px 20px;
     border: 1px solid var(--border); border-radius: 999px; cursor: pointer; transition: background 0.15s, border-color 0.15s;
   }
   #collisionDiscussion.cb:not(.cb-grand) .cb-titre-groupe:hover { background: rgba(255, 255, 255, 0.07); border-color: var(--muted); }
   #collisionDiscussion.cb:not(.cb-grand) .cb-titre-groupe #collisionDiscussionToggle {
-    flex: 0 0 30px; width: 30px; min-width: 30px; height: 38px; min-height: 38px; border: none; border-radius: 0; background: none; order: 0;
+    flex: none; width: auto; min-width: 0; height: 38px; min-height: 38px; padding: 0 2px; border: none; border-radius: 0; background: none; order: 0;
   }
   #collisionDiscussion.cb:not(.cb-grand) .cb-titre-groupe:hover #collisionDiscussionToggle { color: var(--text); }
   #collisionDiscussion.cb:not(.cb-grand) .cb-titre-groupe h3 { padding: 0; border: none; background: none; cursor: pointer; }
@@ -3046,4 +3053,97 @@ html.demarrage #splashLogo {
   .liste-entree > *, #collisionDiscussion.bandeau-entree, #collisionDiscussion.bandeau-maj > *, .clash-pastille.active::before,
   .apparition, #filTagsNb.pulse, #discussionsDetailPane.detail-entree { animation: none; }
   #appBody { transition: none; }
+}
+
+/* ============================================================================
+   Viewer <-> Collision sur laptop (20/10) : la page ne bouge pas, seul le contenu change.
+   - meme largeur de drawer (300 px) et meme zone 3D (la bordure haute du Collision est retiree) ;
+   - Recentrer reste en haut a droite dans les deux pages, "Nouvelle discussion" se place a sa gauche ;
+   - la bascule (portfolio : 0,3 s, fondu et 8 px) ne concerne que le contenu du drawer et les boutons propres a chaque page :
+     "Creer une coupe" et "Nouvelle discussion" s'effacent, les boutons de maquettes et le bandeau de collision apparaissent.
+   ============================================================================ */
+@media (min-width: 769px) {
+  #collisionViewerSlot { border-top: none; }
+  #viewerToolbar #newDiscussionBtn { order: -1; }
+
+  #appBody.contenu-seul.vue-sortie, #appBody.contenu-seul.vue-entree { opacity: 1; transform: none; }
+  #appBody.contenu-seul :is(
+    #infoPanel > :not(#infoPanelCollapse), #collisionInfoPanel > :not(#collisionInfoPanelCollapse),
+    #newDiscussionBtn, #coupeToolbar, #collisionMaquetteToggles, #collisionDiscussion
+  ) { transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out; }
+  #appBody.contenu-seul.vue-sortie :is(
+    #infoPanel > :not(#infoPanelCollapse), #collisionInfoPanel > :not(#collisionInfoPanelCollapse),
+    #newDiscussionBtn, #coupeToolbar, #collisionMaquetteToggles, #collisionDiscussion
+  ), #appBody.contenu-seul.vue-entree :is(
+    #infoPanel > :not(#infoPanelCollapse), #collisionInfoPanel > :not(#collisionInfoPanelCollapse),
+    #newDiscussionBtn, #coupeToolbar, #collisionMaquetteToggles, #collisionDiscussion
+  ) { opacity: 0; transform: translateY(8px); }
+}
+
+/* Les bulles de collision apparaissent (leger grossissement depuis leur centre) au lieu de surgir. */
+.clash-pastille { animation: pastilleApparition 0.45s ease-out both; }
+@keyframes pastilleApparition { from { opacity: 0; transform: scale(0.2); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .clash-pastille { animation: none; } }
+
+/* Angle de vue enregistre d'une collision (20/10) : a gauche de Recentrer, qui garde sa place. */
+#viewerToolbar #saveAngleBtn { order: -2; }
+#viewerToolbar #saveAngleBtn.enregistre { border-color: var(--accent); color: var(--accent); }
+
+/* Fiche de la collision en pleine page (20/10) : infos, plan du niveau et angle automatique sous Priorite / Statut. Rien de tout
+   cela n'apparait dans le bandeau. */
+#collisionControles .coll-infos, #collisionControles .coll-plan, #collisionControles #resetAngleBtn { display: none; }
+@media (min-width: 769px) {
+  #collisionDiscussion.cb.cb-grand #collisionControles {
+    align-self: stretch; box-sizing: border-box; max-height: 100%; overflow-y: auto; padding-bottom: 24px;
+  }
+  #collisionDiscussion.cb.cb-grand .coll-infos {
+    display: grid; grid-template-columns: auto 1fr; gap: 8px 14px; margin: 6px 0 0; padding-top: 14px; border-top: 1px solid var(--border);
+    font-size: 12.5px;
+  }
+  .coll-infos dt { color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding-top: 2px; }
+  .coll-infos dd { margin: 0; color: var(--text); font-weight: 600; }
+  .coll-infos dd small { display: block; margin-top: 2px; color: var(--muted); font-size: 11px; font-weight: 500; }
+  #collisionDiscussion.cb.cb-grand .coll-plan {
+    display: flex; flex-direction: column; gap: 6px; width: 100%; padding: 0; background: none; border: none; cursor: zoom-in; text-align: left;
+  }
+  .coll-plan canvas { width: 100%; height: auto; display: block; border: 1px solid var(--border); border-radius: 6px; background: #101512; min-height: 80px; }
+  .coll-plan:hover canvas { border-color: var(--accent); }
+  .coll-plan-legende { color: var(--muted); font-size: 11px; }
+  #collisionDiscussion.cb.cb-grand #resetAngleBtn:not([hidden]) {
+    display: block; width: 100%; padding: 9px 12px; background: transparent; color: var(--text); border: 1px solid var(--border);
+    border-radius: 8px; font-size: 12.5px; cursor: pointer;
+  }
+  #resetAngleBtn:hover { border-color: var(--accent); }
+}
+#collisionPlanModal {
+  position: fixed; inset: 0; z-index: 90; display: flex; align-items: center; justify-content: center; padding: 32px;
+  background: rgba(8, 12, 10, 0.88); cursor: zoom-out;
+}
+#collisionPlanModal[hidden] { display: none; }
+#collisionPlanModal img { max-width: 100%; max-height: 100%; border: 1px solid var(--border); border-radius: 8px; background: #101512; }
+
+/* Pleine page d'une collision (20/10), tout dans une page meme sur un 13 pouces, SANS elargir la colonne : photo de la maquette puis plan
+   du niveau EMPILES (16/9, colonne de 340 px), puis Priorite / Statut, infos et angle automatique. La hauteur des deux visuels
+   s'adapte a la hauteur de la fenetre pour ne jamais faire defiler. */
+@media (min-width: 769px) {
+  /* Les variables sont posees sur #collisionLeft : la photo (#collisionViewerSlot) et la fiche (#collisionDiscussion) en sont des enfants. */
+  #collisionLeft:has(> #collisionDiscussion.cb-grand) {
+    --fiche-l: 340px;
+    --vis-l: 300px;
+    --vis-h: clamp(110px, calc((100vh - 54px - 290px) / 2), 169px);
+  }
+  #collisionDiscussion.cb.cb-grand { grid-template-columns: var(--fiche-l) minmax(0, 1fr); }
+  #collisionLeft:has(> #collisionDiscussion.cb-grand) #collisionViewerSlot {
+    top: 16px; left: 20px; width: var(--vis-l); height: var(--vis-h);
+  }
+  #collisionDiscussion.cb.cb-grand #collisionControles {
+    padding-top: calc(16px + var(--vis-h) + 10px + var(--vis-h) + 20px + 12px); gap: 10px; overflow-y: visible;
+  }
+  #collisionDiscussion.cb.cb-grand .coll-plan {
+    position: absolute; top: calc(16px + var(--vis-h) + 10px); left: 20px; width: var(--vis-l); z-index: 4;
+  }
+  #collisionDiscussion.cb.cb-grand .coll-plan canvas { height: var(--vis-h); width: 100%; object-fit: contain; min-height: 0; }
+  #collisionDiscussion.cb.cb-grand .coll-plan-legende { font-size: 10.5px; line-height: 1.25; }
+  #collisionDiscussion.cb.cb-grand .coll-infos { margin-top: 2px; padding-top: 10px; gap: 6px 14px; }
+  #collisionDiscussion.cb.cb-grand h3 { padding-left: 24px; }
 }

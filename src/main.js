@@ -263,11 +263,20 @@ const COLLISION_CONTEXTE_RAYON = 8;
 const COLLISION_CONTEXTE_NIVEAU_OPACITE = 0.3;
 const CLASH_REVEAL_OPACITY = 0.35;
 const CLASH_ELEMENT_OPACITY = 0.85;
-// Revelation de la collision (20/10, choix de Gilles) : autour du point de collision, les elements d'Architecture (et de
-// Structure si affichee) a moins de 4 m restent a 35 % ; tous les autres, au-dela, passent a 5 % pour qu'aucun mur lointain
-// ne cache la collision quand on tourne autour. Calcule une seule fois a la selection, pas a chaque mouvement de camera.
-const CLASH_REVEAL_RAYON = 4;
-const CLASH_LOINTAIN_OPACITY = 0.05;
+// Collision selectionnee (20/10, regle de Gilles : les 2 elements en conflit doivent TOUJOURS etre entierement visibles) : ils restent
+// pleins (opacite 1, colores). Tous les autres elements des 2 maquettes du couple passent en "fantome" X-ray de xeokit (remplissage
+// tres leger, trait fin, non cliquables) : ils ne voilent plus rien, quel que soit l'angle, et le contexte reste visible partout (pas de
+// zone vide, rien n'est masque). Historique : 35 % d'opacite (reprise d'IES) voilaient la surface de l'element le plus grand ; 5 % puis
+// masquage a plus de 4 m ont ete essayes (le masquage laissait des zones vides en changeant de collision).
+// Tout passe par l'ecriture groupee des drapeaux de xeokit : l'opacite se reecrit objet par objet dans la carte graphique (~14 000
+// objets pour l'Architecture), ce qui saturait sa file pendant des secondes et retardait la rotation.
+// Sans Contexte : fantome calme (traits discrets, pas de remplissage) pour que le conflit se lise. Avec Contexte : un peu de remplissage
+// et des traits plus nets sur les elements autour, en plus des autres maquettes en fantome colore (COLLISION_CONTEXTE_OPACITY).
+const CLASH_FANTOME_FILL_ALPHA = 0.03;
+const CLASH_FANTOME_EDGE_ALPHA = 0.14;
+const CLASH_FANTOME_CONTEXTE_FILL_ALPHA = 0.14;
+const CLASH_FANTOME_CONTEXTE_EDGE_ALPHA = 0.24;
+const CLASH_FANTOME_COLOR = [0.82, 0.84, 0.86];
 // Etat de la transparence de la page Collision, declare ici (et non pres des
 // fonctions) car activateView le lit des le chargement initial.
 let collisionContexteOn = false;
@@ -910,6 +919,11 @@ function transitionVue(vue, changer) {
     return;
   }
   transitionVueEnCours = true;
+  // Viewer <-> Collision sur laptop : la structure de la page ne bouge pas (meme 3D, meme drawer de 300 px, Recentrer et Vitesse
+  // au meme endroit). Seul le contenu change : drawer, boutons propres a chaque page (voir .contenu-seul dans style.css).
+  const vues = ["viewer", "collision"];
+  const contenuSeul = window.matchMedia("(min-width: 769px)").matches && courant && vues.includes(courant.dataset.view) && vues.includes(vue);
+  appBodyEl.classList.toggle("contenu-seul", !!contenuSeul);
   traitNavigation.classList.remove("balayage");
   void traitNavigation.offsetWidth;
   traitNavigation.classList.add("balayage");
@@ -921,13 +935,18 @@ function transitionVue(vue, changer) {
     void appBodyEl.offsetHeight;
     appBodyEl.classList.remove("vue-entree");
     window.dispatchEvent(new Event("resize"));
-    setTimeout(() => { transitionVueEnCours = false; }, 300);
+    setTimeout(() => {
+      transitionVueEnCours = false;
+      appBodyEl.classList.remove("contenu-seul");
+    }, 300);
   }, 300);
 }
 
 navLinks.forEach((link) => {
   link.addEventListener("click", () => transitionVue(link.dataset.view, () => {
     fermerEchangesGrand(false);
+    // Etat des maquettes avant la navigation : sert au fondu vers le Viewer (changerVisibiliteAvecFondu).
+    const etatMaquettesAvantNav = new Map(MAQUETTES.map((m) => [m.id, m.shown]));
     // Avant que restoreAllModelsVisible() ne remette tout visible : on retient le choix du Viewer.
     if (!viewViewer.hidden) memoMaquettesViewer = new Map(MAQUETTES.map((m) => [m.id, m.shown]));
     // Repart d'un etat sain si on quitte directement (sans passer par un
@@ -968,8 +987,12 @@ navLinks.forEach((link) => {
         n.checked = true;
         if (n.checkboxEl) n.checkboxEl.checked = true;
       });
+      // Fondu des maquettes qui reapparaissent : on revient un instant a l'etat d'avant la navigation (meme tache JS, rien
+      // n'est peint entre les deux), puis on fond vers l'etat final ; le vol de camera attend la fin du fondu.
+      const etatFinalMaquettes = new Map(MAQUETTES.map((m) => [m.id, m.shown]));
+      MAQUETTES.forEach((m) => { if (etatMaquettesAvantNav.has(m.id)) m.shown = etatMaquettesAvantNav.get(m.id); });
       applyVisibility();
-      viewer.cameraFlight.flyTo(initialCameraState || DEFAULT_CAMERA_STATE);
+      changerVisibiliteAvecFondu(etatFinalMaquettes, () => viewer.cameraFlight.flyTo(initialCameraState || DEFAULT_CAMERA_STATE));
     }
     // Admin (porte depuis IES le 16/09) : la liste des maquettes ne doit
     // montrer que celles du projet actuellement charge, jamais les 2
@@ -1050,15 +1073,15 @@ function setInfoPanelCollapsed(collapsed) {
   infoPanelCollapse.setAttribute("aria-label", label);
   infoPanelCollapse.title = label;
 }
-// Replie a chaque arrivee sur le Viewer (19/10, demande de Gilles) : la
-// valeur memorisee n'est plus lue au chargement (elle reste ecrite au clic
-// ci-dessous). Applique avant le premier rendu, sans transition : pas de
-// transitionend, le canvas est donc redimensionne ici directement.
-setInfoPanelCollapsed(true);
+// Ouvert a l'arrivee (20/10, demande de Gilles, remplace le "replie a chaque arrivee" du 19/10) : le drawer du Viewer et celui de
+// Collision ont la meme largeur et le meme etat (voir plus bas), pour que la page ne bouge pas d'un onglet a l'autre. La valeur
+// memorisee n'est pas lue au chargement (elle reste ecrite au clic). Applique avant le premier rendu, sans transition.
+setInfoPanelCollapsed(false);
 window.dispatchEvent(new Event("resize"));
 infoPanelCollapse.addEventListener("click", () => {
   const collapsed = !infoPanel.classList.contains("collapsed");
   setInfoPanelCollapsed(collapsed);
+  setCollisionPanelCollapsed(collapsed);
   try {
     localStorage.setItem(INFO_PANEL_COLLAPSED_KEY, collapsed ? "1" : "0");
   } catch (e) {
@@ -2852,7 +2875,8 @@ function openDetection(detection) {
   // (19/10, demande de Gilles) : seul le bandeau titre est visible, le bouton
   // existant la deplie ; l'etat n'est pas reinitialise entre deux collisions.
   collisionDiscussion.classList.add("collapsed");
-  setCollisionPanelCollapsed(false);
+  // Meme etat que le drawer du Viewer (partage, 20/10).
+  setCollisionPanelCollapsed(infoPanel.classList.contains("collapsed"));
   // A l'entree dans la page Collision, le contexte repart sur "Isole".
   collisionContexteNiveau = "isole";
   // Meme logique que dans un fil de discussion : ici on ne fait que
@@ -2877,8 +2901,7 @@ function openDetection(detection) {
   const subset = detection ? MAQUETTES.filter((m) => detection.modeles.includes(m.id)) : [];
   // Nouvelle detection : fantome du contexte et transparence repartent de zero.
   if (collisionContexteOn || collisionActiveClash || collisionOpacityTouched.length > 0) resetCollisionOpacityState();
-  MAQUETTES.forEach((m) => { m.shown = detection ? detection.modeles.includes(m.id) : true; });
-  applyVisibility();
+  changerVisibiliteAvecFondu(new Map(MAQUETTES.map((m) => [m.id, detection ? detection.modeles.includes(m.id) : true])));
   renderMaquetteRows(collisionMaquettesList, subset);
   renderCollisionMaquetteToggles(subset);
 
@@ -3528,6 +3551,72 @@ function pickBestClashView(clash, center, nearbyAabbs, volume = null) {
 // sont possibles, la rotation se fait toujours autour du point de collision. Le deplacement lateral (clic droit, deux
 // doigts, clavier) deplacerait le point regarde : a chaque image, on le ramene sur la collision en reculant l'oeil du
 // meme decalage, ce qui annule le deplacement sans toucher a la rotation ni au zoom.
+// ---- Angle de vue enregistre par collision (20/10) ----
+// Stocke dans le navigateur (localStorage), par collision : decalage de l'oeil par rapport au point de collision, et vecteur "haut".
+// Relatif a la bulle, donc valable meme si la camera automatique change.
+const CLE_ANGLES_COLLISION = "ouvra-angles-collision";
+function lireAnglesEnregistres() {
+  try {
+    return JSON.parse(localStorage.getItem(CLE_ANGLES_COLLISION)) || {};
+  } catch (e) {
+    return {};
+  }
+}
+let anglesEnregistres = lireAnglesEnregistres();
+function angleEnregistre(clash) {
+  const a = anglesEnregistres[clash.id];
+  return a && Array.isArray(a.offset) && a.offset.length === 3 && Array.isArray(a.up) ? a : null;
+}
+function ecrireAnglesEnregistres() {
+  try {
+    localStorage.setItem(CLE_ANGLES_COLLISION, JSON.stringify(anglesEnregistres));
+  } catch (e) {
+    // localStorage indisponible (navigation privee...) : l'angle ne survit pas au rechargement.
+  }
+}
+const saveAngleBtn = document.getElementById("saveAngleBtn");
+// "Angle automatique" : uniquement en pleine page de la collision (fiche de gauche, voir construireFicheCollision).
+const resetAngleBtn = document.createElement("button");
+resetAngleBtn.type = "button";
+resetAngleBtn.id = "resetAngleBtn";
+resetAngleBtn.hidden = true;
+resetAngleBtn.textContent = "Revenir à l'angle automatique";
+resetAngleBtn.title = "Supprimer l'angle enregistré de cette collision et revenir à l'angle automatique";
+function majBoutonsAngle() {
+  const clash = collisionActiveClash;
+  const actif = !!clash && !collisionDetail.hidden && !clash.factice;
+  saveAngleBtn.hidden = !actif;
+  resetAngleBtn.hidden = !(actif && angleEnregistre(clash));
+}
+let minuteurAngle = null;
+saveAngleBtn.addEventListener("click", () => {
+  const clash = collisionActiveClash;
+  if (!clash) return;
+  const point = clashCenter(clash);
+  const cam = viewer.camera;
+  anglesEnregistres[clash.id] = {
+    offset: [cam.eye[0] - point[0], cam.eye[1] - point[1], cam.eye[2] - point[2]],
+    up: Array.from(cam.up)
+  };
+  ecrireAnglesEnregistres();
+  majBoutonsAngle();
+  saveAngleBtn.textContent = "Angle enregistré ✓";
+  saveAngleBtn.classList.add("enregistre");
+  clearTimeout(minuteurAngle);
+  minuteurAngle = setTimeout(() => {
+    saveAngleBtn.textContent = "Enregistrer cet angle";
+    saveAngleBtn.classList.remove("enregistre");
+  }, 1600);
+});
+resetAngleBtn.addEventListener("click", () => {
+  const clash = collisionActiveClash;
+  if (!clash) return;
+  delete anglesEnregistres[clash.id];
+  ecrireAnglesEnregistres();
+  majBoutonsAngle();
+  flyToClash(clash, true);
+});
+
 let verrouCamera = null;
 // La rotation de xeokit tourne autour du "pivot" (PivotController), pose par defaut sous le curseur a chaque clic : en
 // vue collision il est force sur la bulle. Le deplacement lateral est annule a chaque image (voir plus bas).
@@ -3594,7 +3683,15 @@ function flyToClash(clash, cadrageVolume = false, onDone = undefined) {
   });
   console.info("[collision] recherche des voisins : " + candidateIds.length + " candidats, " + nearbyAabbs.length + " retenus, " + Math.round(performance.now() - tFly) + " ms");
 
-  const eye = pickBestClashView(clash, center, nearbyAabbs, volume);
+  let eye = pickBestClashView(clash, center, nearbyAabbs, volume);
+  let up = [0, 1, 0];
+  // Angle officiel enregistre par Gilles pour cette collision (bouton "Enregistrer cet angle") : il remplace l'angle automatique,
+  // au choix de la collision comme au bouton Recentrer.
+  const angle = cadrageVolume ? angleEnregistre(clash) : null;
+  if (angle && center.every(Number.isFinite)) {
+    eye = [center[0] + angle.offset[0], center[1] + angle.offset[1], center[2] + angle.offset[2]];
+    up = angle.up;
+  }
   if (volume) {
     const dist = Math.hypot(eye[0] - center[0], eye[1] - center[1], eye[2] - center[2]);
     console.info("[collision] cadrage n° " + (CLASHES.indexOf(clash) + 1) + " : volume " +
@@ -3605,7 +3702,7 @@ function flyToClash(clash, cadrageVolume = false, onDone = undefined) {
   // cancel() et non stop() : flyTo() appelle stop() sur un vol en cours, et stop() DECLENCHE la callback d'arrivee de l'ancien vol
   // (calcul de transparence et verrou de camera de la collision precedente, en pleine animation). cancel() l'abandonne sans rappel.
   viewer.cameraFlight.cancel();
-  viewer.cameraFlight.flyTo({ eye, look: center, up: [0, 1, 0], duration: 1.2 }, () => {
+  viewer.cameraFlight.flyTo({ eye, look: center, up, duration: 1.2 }, () => {
     if (cadrageVolume && center.every(Number.isFinite)) verrouillerCamera(center.slice());
     if (onDone) onDone();
   });
@@ -3633,6 +3730,7 @@ const CLASH_MARKER_OPACITY_ACTIVE = COLLISION_BULLES_SURIMPRESSION ? 0.25 : 0.55
 
 let clashMarkerGeometry = null;
 let clashMarkerMaterial = null;
+let clashMarkerAnchor = null;
 const clashMarkers = new Map(); // clash.id -> Mesh
 let activeClashMarkerId = null;
 
@@ -3642,6 +3740,20 @@ function ensureClashMarkerAssets() {
     radius: 1, heightSegments: 12, widthSegments: 12
   }));
   clashMarkerMaterial = new PhongMaterial(viewer.scene, { diffuse: [1, 1, 1], emissive: [1, 1, 1] });
+  // Mesh d'ancrage invisible, jamais detruit : xeokit compile le programme WebGL du Mesh de facon SYNCHRONE dans
+  // le constructeur de Mesh (getShaderParameter), et le detruit des que le dernier Mesh qui l'utilise disparait.
+  // Sans ancre, chaque retour a un couple avec marqueurs recompilait le shader, et cet appel attend toute la file
+  // GPU (14 000 bufferSubData de la dissolution precedente) : gel de 4 a 8 s. Avec l'ancre, le programme reste
+  // vivant et les marqueurs ne compilent plus rien.
+  clashMarkerAnchor = new Mesh(viewer.scene, {
+    id: CLASH_MARKER_ID_PREFIX + "ancre",
+    geometry: clashMarkerGeometry,
+    material: clashMarkerMaterial,
+    visible: false,
+    pickable: false,
+    colorize: CLASH_MARKER_COLORS.nouveau,
+    opacity: CLASH_MARKER_OPACITY
+  });
 }
 
 function clearClashMarkers() {
@@ -3661,6 +3773,14 @@ let clashBullesList = [];
 let clashBullesActiveId = null;
 let clashBullesRaf = 0;
 let clashBullesBound = false;
+let clashBullesDessine = false;
+
+// Contexte 2D des bulles en mode logiciel (willReadFrequently) : un canvas 2D accelere par le GPU se synchronise
+// avec le processus GPU a chaque setTransform/clearRect ; quand la file GPU est encombree par la dissolution
+// des maquettes (14 000 bufferSubData), le fil principal attendait 6 a 9 s. 15 cercles se dessinent tres bien au CPU.
+function contexteBulles() {
+  return clashBullesCanvas.getContext("2d", { willReadFrequently: true });
+}
 
 function clearClashBulles() {
   clashBullesList = [];
@@ -3668,8 +3788,13 @@ function clearClashBulles() {
   if (clashBullesRaf) cancelAnimationFrame(clashBullesRaf);
   clashBullesRaf = 0;
   if (!clashBullesCanvas) return;
-  const ctx = clashBullesCanvas.getContext("2d");
-  if (ctx) ctx.clearRect(0, 0, clashBullesCanvas.width, clashBullesCanvas.height);
+  // clearRect sur un canvas 2D accelere = point de synchronisation avec le processus GPU (6,7 s mesures sous
+  // SwiftShader au premier choix d'un couple, quand le canvas etait vide) : on n'efface que s'il a ete dessine.
+  if (clashBullesDessine) {
+    const ctx = contexteBulles();
+    if (ctx) ctx.clearRect(0, 0, clashBullesCanvas.width, clashBullesCanvas.height);
+    clashBullesDessine = false;
+  }
   clashBullesCanvas.hidden = true;
 }
 
@@ -3699,14 +3824,16 @@ function drawClashBulles() {
   clashBullesCanvas.style.top = glCanvas.offsetTop + "px";
   clashBullesCanvas.style.width = w + "px";
   clashBullesCanvas.style.height = h + "px";
-  const ctx = clashBullesCanvas.getContext("2d");
+  const ctx = contexteBulles();
   if (!ctx) return;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, w, h);
+  clashBullesDessine = true;
   const cam = viewer.camera;
   const v = cam.viewMatrix;
   const m = cam.projMatrix;
-  clashBullesList.forEach(({ id, center }) => {
+  // La bulle de la collision selectionnee est dessinee en dernier : elle passe au-dessus des autres quand elles se superposent.
+  clashBullesList.slice().sort((a, b) => (a.id === clashBullesActiveId) - (b.id === clashBullesActiveId)).forEach(({ id, center }) => {
     const [x, y, z] = center;
     const ex = v[0] * x + v[4] * y + v[8] * z + v[12];
     const ey = v[1] * x + v[5] * y + v[9] * z + v[13];
@@ -3861,6 +3988,7 @@ let colorizedClashEntityIds = [];
 
 function clearClashElementColors(sansRecalcul) {
   deverrouillerCamera();
+  if (!sansRecalcul) setTimeout(majBoutonsAngle, 0);
   // Transparence de la collision rendue (le fantome du contexte, lui, reste).
   // sansRecalcul (19/10) : utilise par highlightClashElements, qui recalcule
   // juste apres ; evite de remettre puis de remettre en fantome ~74 000 objets
@@ -3924,27 +4052,84 @@ function collisionEntityIds(maquetteId) {
 
 function collisionMaskingIds(clash) {
   const [idA, idB] = clash.entityIds;
-  const point = clashCenter(clash);
-  const candidateMaquettes = ["hosp-arch"];
-  const struct = MAQUETTES.find((m) => m.id === "hosp-struct");
-  if (struct && struct.shown) candidateMaquettes.push("hosp-struct");
-  // proches : a moins de CLASH_REVEAL_RAYON du point (boite englobante agrandie de 4 m) ; lointains : tout le reste visible.
-  const proches = [];
-  const lointains = [];
+  // Maquettes du couple affichees (Architecture et Mecanique pour l'hopital) ; sans couple connu : Architecture (+ Structure si affichee).
+  let candidateMaquettes = collisionSubsetMaquettes.map((m) => m.id);
+  if (candidateMaquettes.length === 0) {
+    candidateMaquettes = ["hosp-arch"];
+    const struct = MAQUETTES.find((m) => m.id === "hosp-struct");
+    if (struct && struct.shown) candidateMaquettes.push("hosp-struct");
+  }
+  // Tous les autres elements visibles de ces maquettes, par maquette : ils passent en fantome (plus de masquage a distance, 20/10).
+  const autres = {};
   candidateMaquettes.forEach((maquetteId) => {
-    collisionEntityIds(maquetteId).forEach((id) => {
-      if (id === idA || id === idB) return;
+    autres[maquetteId] = collisionEntityIds(maquetteId).filter((id) => {
+      if (id === idA || id === idB) return false;
       const entity = viewer.scene.objects[id];
-      if (!entity || !entity.visible) return;
-      const aabb = collisionAabbOf(id);
-      if (aabb && aabbNearPoint(aabb, point, CLASH_REVEAL_RAYON)) proches.push(id);
-      else lointains.push(id);
+      return !!entity && entity.visible;
     });
   });
-  return { proches, lointains };
+  return autres;
 }
 
+// Elements lointains masques par la collision selectionnee : { id de maquette: [ids] }. Remis visibles (si leur maquette l'est encore)
+// a chaque recalcul et a la sortie.
+let collisionLointainsMasques = null;
+// Elements proches passes en fantome X-ray par la collision selectionnee : { id de maquette: [ids] }, et materiau X-ray d'origine.
+let collisionFantomes = null;
+let collisionXraySauvegarde = null;
+function changerFantomesGroupe(parMaquette, actif) {
+  const modeles = [];
+  Object.keys(parMaquette).forEach((maquetteId) => {
+    const m = MAQUETTES.find((x) => x.id === maquetteId);
+    if (m && m.model) modeles.push(m.model);
+  });
+  if (modeles.length === 0) return;
+  ecritureGroupeeDrapeaux(modeles, () => {
+    Object.keys(parMaquette).forEach((maquetteId) => {
+      parMaquette[maquetteId].forEach((id) => {
+        const entite = viewer.scene.objects[id];
+        if (!entite) return;
+        entite.xrayed = actif;
+        entite.pickable = !actif;
+      });
+    });
+  });
+}
+function changerVisibiliteGroupee(parMaquette, visible) {
+  const modeles = [];
+  Object.keys(parMaquette).forEach((maquetteId) => {
+    const m = MAQUETTES.find((x) => x.id === maquetteId);
+    if (m && m.model && (visible ? m.shown : true)) modeles.push(m.model);
+  });
+  if (modeles.length === 0) return;
+  ecritureGroupeeDrapeaux(modeles, () => {
+    Object.keys(parMaquette).forEach((maquetteId) => {
+      const m = MAQUETTES.find((x) => x.id === maquetteId);
+      if (!m || !m.model || (visible && !m.shown)) return;
+      parMaquette[maquetteId].forEach((id) => {
+        const entite = viewer.scene.objects[id];
+        if (entite) entite.visible = visible;
+      });
+    });
+  });
+}
 function resetCollisionOpacities() {
+  if (collisionFantomes) {
+    changerFantomesGroupe(collisionFantomes, false);
+    collisionFantomes = null;
+  }
+  if (collisionXraySauvegarde) {
+    const materiau = viewer.scene.xrayMaterial;
+    materiau.fillAlpha = collisionXraySauvegarde.fillAlpha;
+    materiau.edgeAlpha = collisionXraySauvegarde.edgeAlpha;
+    materiau.fillColor = collisionXraySauvegarde.fillColor;
+    materiau.edgeColor = collisionXraySauvegarde.edgeColor;
+    collisionXraySauvegarde = null;
+  }
+  if (collisionLointainsMasques) {
+    changerVisibiliteGroupee(collisionLointainsMasques, true);
+    collisionLointainsMasques = null;
+  }
   if (collisionOpacityTouched.length === 0) return;
   viewer.scene.setObjectsOpacity(collisionOpacityTouched, 1);
   collisionOpacityTouched = [];
@@ -3965,13 +4150,20 @@ function applyCollisionOpacities() {
     collisionGhostMaquettes.forEach((m) => put(collisionEntityIds(m.id), COLLISION_CONTEXTE_OPACITY));
   }
   if (COLLISION_REVELATION && !COLLISION_ISOLATION && collisionActiveClash) {
-    const [idA, idB] = collisionActiveClash.entityIds;
-    const { smaller, larger } = smallerLargerEntityIds(idA, idB);
-    put([smaller], CLASH_ELEMENT_OPACITY);
-    put([larger], CLASH_REVEAL_OPACITY);
-    const { proches, lointains } = collisionMaskingIds(collisionActiveClash);
-    put(proches, CLASH_REVEAL_OPACITY);
-    put(lointains, CLASH_LOINTAIN_OPACITY);
+    // Les 2 elements en conflit gardent opacite 1 (rien n'est pose dessus). Tout le reste des 2 maquettes : fantome X-ray, jamais masque
+    // (le contexte reste visible partout : pas de zone vide en passant d'une collision a l'autre).
+    const autres = collisionMaskingIds(collisionActiveClash);
+    const materiau = viewer.scene.xrayMaterial;
+    collisionXraySauvegarde = {
+      fillAlpha: materiau.fillAlpha, edgeAlpha: materiau.edgeAlpha,
+      fillColor: Array.from(materiau.fillColor), edgeColor: Array.from(materiau.edgeColor)
+    };
+    materiau.fillAlpha = collisionContexteOn ? CLASH_FANTOME_CONTEXTE_FILL_ALPHA : CLASH_FANTOME_FILL_ALPHA;
+    materiau.edgeAlpha = collisionContexteOn ? CLASH_FANTOME_CONTEXTE_EDGE_ALPHA : CLASH_FANTOME_EDGE_ALPHA;
+    materiau.fillColor = CLASH_FANTOME_COLOR;
+    materiau.edgeColor = CLASH_FANTOME_COLOR;
+    collisionFantomes = autres;
+    changerFantomesGroupe(autres, true);
   }
   const byOpacity = new Map();
   target.forEach((opacity, id) => {
@@ -4710,6 +4902,7 @@ function ensureCollisionControles() {
     if (head) {
       head.appendChild(wrap);
       wrap.addEventListener("click", (e) => e.stopPropagation());
+      construireFicheCollision(wrap);
       [[p.sel, "Priorité"], [st.sel, "Statut"]].forEach(([sel, nom]) => {
         sel.setAttribute("aria-label", nom);
         sel.title = nom;
@@ -4824,10 +5017,15 @@ function appliquerOpacitesSiActive(clash) {
   if (collisionActiveClash !== clash || opacitesAppliqueesPour === clash) return;
   opacitesAppliqueesPour = clash;
   applyCollisionOpacities();
+  // Pleine page ouverte : le plan du niveau de la nouvelle collision, une fois le contexte en fantome pose.
+  if (collisionDiscussion.classList.contains("cb-grand")) majPlanCollision();
 }
 function selectClash(clash) {
   clearTimeout(minuteurOpacitesCollision);
   opacitesAppliqueesPour = null;
+  // Le contexte de la collision precedente est remis tel quel des le choix : la camera traverse la maquette complete pendant son vol, le
+  // fantome de la nouvelle collision n'est pose qu'a l'arrivee (voir appliquerOpacitesSiActive).
+  resetCollisionOpacities();
   if (COLLISION_TRANSITION_VERROUILLEE) debuterTransitionCollision();
   flyToClash(clash, true, () => {
     if (COLLISION_TRANSITION_VERROUILLEE) finirTransitionCollision();
@@ -4840,6 +5038,13 @@ function selectClash(clash) {
   highlightClashElements(clash);
   recenterTarget = () => flyToClash(clash, true);
   showThreadDiscussion(clash);
+  majBoutonsAngle();
+  // Pleine page ouverte : les infos suivent tout de suite la collision choisie, le plan est efface puis refait a l'arrivee de la camera.
+  if (collisionDiscussion.classList.contains("cb-grand")) {
+    majInfosCollision(clash);
+    if (fichePlanCanvasEl) fichePlanCanvasEl.getContext("2d").clearRect(0, 0, fichePlanCanvasEl.width, fichePlanCanvasEl.height);
+    if (fichePlanLegendeEl) fichePlanLegendeEl.textContent = "Génération du plan…";
+  }
 }
 
 // Point d'entree commun pour selectionner un clash, que ce soit via la
@@ -4892,7 +5097,9 @@ function setCollisionPanelCollapsed(collapsed) {
 }
 if (collisionInfoPanelCollapse) {
   collisionInfoPanelCollapse.addEventListener("click", () => {
-    setCollisionPanelCollapsed(!collisionInfoPanel.classList.contains("collapsed"));
+    const replie = !collisionInfoPanel.classList.contains("collapsed");
+    setCollisionPanelCollapsed(replie);
+    setInfoPanelCollapsed(replie);
     window.dispatchEvent(new Event("resize"));
   });
   collisionInfoPanel.addEventListener("transitionend", (e) => {
@@ -4987,6 +5194,291 @@ collisionDiscussionToggle.addEventListener("click", defilerChronologieBas);
 
 // COLLISION_ECHANGES_GRAND : agrandir la zone d'echange sur toute la zone de la 3D.
 // N'agit que sur des classes de #collisionDiscussion : aucun etat 3D, aucun deplacement de viewerWrap.
+// ---- Fiche de la collision en pleine page (20/10) : infos sous l'apercu + plan du niveau ----
+// Contenu des blocs inseres sous Priorite / Statut (colonne de gauche). Visibles seulement en pleine page (CSS .cb-grand).
+let ficheInfosEl = null;
+let fichePlanBlocEl = null;
+let fichePlanCanvasEl = null;
+let fichePlanLegendeEl = null;
+const plansCollision = new Map(); // id de collision -> { url, w, h }
+function construireFicheCollision(wrap) {
+  ficheInfosEl = document.createElement("dl");
+  ficheInfosEl.id = "collisionInfos";
+  ficheInfosEl.className = "coll-infos";
+  fichePlanBlocEl = document.createElement("button");
+  fichePlanBlocEl.type = "button";
+  fichePlanBlocEl.id = "collisionPlanBloc";
+  fichePlanBlocEl.className = "coll-plan";
+  fichePlanBlocEl.title = "Agrandir le plan";
+  fichePlanCanvasEl = document.createElement("canvas");
+  fichePlanLegendeEl = document.createElement("span");
+  fichePlanLegendeEl.className = "coll-plan-legende";
+  fichePlanBlocEl.append(fichePlanCanvasEl, fichePlanLegendeEl);
+  fichePlanBlocEl.addEventListener("click", () => {
+    const plan = collisionActiveClash && plansCollision.get(collisionActiveClash.id);
+    if (!plan) return;
+    document.getElementById("collisionPlanGrand").src = plan.url;
+    document.getElementById("collisionPlanModal").hidden = false;
+  });
+  wrap.append(ficheInfosEl, fichePlanBlocEl, resetAngleBtn);
+}
+document.getElementById("collisionPlanModal").addEventListener("click", () => { document.getElementById("collisionPlanModal").hidden = true; });
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && !document.getElementById("collisionPlanModal").hidden) {
+    e.stopImmediatePropagation();
+    document.getElementById("collisionPlanModal").hidden = true;
+  }
+}, true);
+
+// Ancetres IFC d'un element (niveau, batiment, piece...) a partir des metadonnees xeokit, indexes par type.
+function ancetresIfc(id) {
+  const out = {};
+  let cur = viewer.metaScene.metaObjects[id];
+  while (cur) {
+    if (!out[cur.type]) out[cur.type] = cur;
+    cur = cur.parent;
+  }
+  return out;
+}
+let nomsBatimentsCache = null;
+function nomsBatiments() {
+  if (!nomsBatimentsCache) {
+    nomsBatimentsCache = new Set(Object.values(viewer.metaScene.metaObjects).filter((mo) => mo.type === "IfcBuilding").map((mo) => mo.name));
+  }
+  return nomsBatimentsCache;
+}
+function majInfosCollision(clash) {
+  if (!ficheInfosEl) return;
+  ficheInfosEl.innerHTML = "";
+  if (!clash) return;
+  const ajouter = (libelle, valeur, detail) => {
+    const dt = document.createElement("dt");
+    dt.textContent = libelle;
+    const dd = document.createElement("dd");
+    dd.textContent = valeur;
+    if (detail) {
+      const small = document.createElement("small");
+      small.textContent = detail;
+      dd.appendChild(small);
+    }
+    ficheInfosEl.append(dt, dd);
+  };
+  const niveau = (clash.zone.match(/·\s*([^·]+)$/) || [])[1];
+  if (niveau) ajouter("Niveau", niveau.trim().replace(/^Level\s*/i, ""));
+  // Un seul niveau (ligne du dessus) ; chaque element n'est donne que par son type, sans identifiant ni etage repete.
+  const [partA, partB] = clash.zone.split(" ↔ ");
+  const [idA, idB] = clash.entityIds;
+  ajouter(clash.disciplineA, collisionTypeFr(partA || ""));
+  ajouter(clash.disciplineB, collisionTypeFr((partB || "").split("·")[0]));
+  // Piece : seulement quand l'element est rattache a une piece (aucune dans les maquettes de l'hopital aujourd'hui).
+  const pieces = [idA, idB].map((id) => ancetresIfc(id).IfcSpace).filter(Boolean).map((p) => p.name);
+  if (pieces.length) ajouter("Pièce", [...new Set(pieces)].join(" / "));
+  // Batiment : seulement s'il y en a plusieurs (noms distincts) dans le projet.
+  if (nomsBatiments().size > 1) {
+    const noms = [idA, idB].map((id) => ancetresIfc(id).IfcBuilding).filter(Boolean).map((b) => b.name);
+    if (noms.length) ajouter("Bâtiment", [...new Set(noms)].join(" / "));
+  }
+}
+
+// Plan du niveau (methode A, 20/10) : rendu reel de la maquette vue de dessus (camera orthographique), coupee juste au-dessus du
+// conflit sur l'epaisseur d'un etage, en X-ray net (traits des murs et gaines), avec la zone du conflit entouree par-dessus.
+// Une seule image, calculee a l'ouverture de la pleine page puis gardee en memoire pour cette collision. Tout se passe dans la
+// meme tache JS : camera, materiau X-ray et projection sont restaures avant la peinture suivante, rien ne clignote.
+function genererPlanCollision(clash) {
+  const cache = plansCollision.get(clash.id);
+  if (cache) return cache;
+  const point = clashCenter(clash);
+  if (!point.every(Number.isFinite)) return null;
+  const [idA, idB] = clash.entityIds;
+  const maquettes = MAQUETTES.filter((m) => m.model);
+  const ids = collisionSameLevelSet(clash, maquettes);
+  let boite = null;
+  const etendre = (aabb) => {
+    if (!aabb) return;
+    boite = boite ? [Math.min(boite[0], aabb[0]), Math.min(boite[1], aabb[1]), Math.min(boite[2], aabb[2]), Math.max(boite[3], aabb[3]), Math.max(boite[4], aabb[4]), Math.max(boite[5], aabb[5])] : aabb.slice();
+  };
+  // Cadrage sur le batiment lui-meme : emprises des elements du niveau, en ecartant 2 % des plus excentres de chaque cote (un element
+  // isole tres loin, dalle de site ou repere, agrandissait le cadre et laissait le batiment petit et decentre).
+  const minsX = [];
+  const maxsX = [];
+  const minsZ = [];
+  const maxsZ = [];
+  // Plan de coupe : au-dessus du plus haut des DEUX elements en conflit (et au moins 0,4 m au-dessus du point), pour qu'ils soient rendus en
+  // entier, avec leur vraie forme et leur couleur (rouge / vert). Plus de rectangle englobant par-dessus : il debordait des elements obliques.
+  const aabbA = collisionAabbOf(idA);
+  const aabbB = collisionAabbOf(idB);
+  const coupe = Math.max(point[1] + 0.4, aabbA ? aabbA[4] + 0.02 : 0, aabbB ? aabbB[4] + 0.02 : 0);
+  // Elements gardes : ceux du niveau qui commencent sous le plan de coupe (murs, sols, gaines basses) ; plafonds et gaines hautes
+  // sont au-dessus et ne sont pas dessines. Les deux elements en conflit sont toujours gardes.
+  const garder = new Set([idA, idB]);
+  (ids ? Array.from(ids) : []).forEach((id) => {
+    const aabb = collisionAabbOf(id);
+    if (!aabb) return;
+    etendre(aabb);
+    if (aabb[1] <= coupe) {
+      garder.add(id);
+      minsX.push(aabb[0]); maxsX.push(aabb[3]); minsZ.push(aabb[2]); maxsZ.push(aabb[5]);
+    }
+  });
+  const quantile = (tableau, q) => {
+    const t = tableau.slice().sort((a, b) => a - b);
+    return t[Math.min(t.length - 1, Math.max(0, Math.round(q * (t.length - 1))))];
+  };
+  if (minsX.length >= 20) {
+    // Emprise robuste, toujours agrandie pour contenir le point de collision avec un peu d'air.
+    boite = [
+      Math.min(quantile(minsX, 0.02), point[0] - 4), boite[1], Math.min(quantile(minsZ, 0.02), point[2] - 4),
+      Math.max(quantile(maxsX, 0.98), point[0] + 4), boite[4], Math.max(quantile(maxsZ, 0.98), point[2] + 4)
+    ];
+  }
+  if (!boite) {
+    etendre(collisionAabbOf(idA));
+    etendre(collisionAabbOf(idB));
+    if (boite) boite = [boite[0] - 15, boite[1], boite[2] - 15, boite[3] + 15, boite[4], boite[5] + 15];
+  }
+  if (!boite) return null;
+  const marge = 1.12; // un peu d'air autour du batiment
+  const cx = (boite[0] + boite[3]) / 2;
+  const cz = (boite[2] + boite[5]) / 2;
+  const largeurX = Math.max(boite[3] - boite[0], 4) * marge;
+  const largeurZ = Math.max(boite[5] - boite[2], 4) * marge;
+  const canevas = viewer.scene.canvas.canvas;
+  const aspect = canevas.clientWidth / Math.max(canevas.clientHeight, 1);
+  const cam = viewer.camera;
+  const sauve = {
+    eye: Array.from(cam.eye), look: Array.from(cam.look), up: Array.from(cam.up), projection: cam.projection,
+    scale: cam.ortho.scale, near: cam.ortho.near, far: cam.ortho.far
+  };
+  const mat = viewer.scene.xrayMaterial;
+  const matSauve = { fillAlpha: mat.fillAlpha, edgeAlpha: mat.edgeAlpha, fillColor: Array.from(mat.fillColor), edgeColor: Array.from(mat.edgeColor) };
+  const modeles = maquettes.map((m) => m.model);
+  const masques = [];
+  let url = null;
+  let projeter = null;
+  let W = 0;
+  let H = 0;
+  try {
+    // Le reste du batiment est masque UN instant (ecriture groupee, meme tache JS) : sinon tous les etages se superposent en vue de dessus.
+    ecritureGroupeeDrapeaux(modeles, () => {
+      modeles.forEach((m) => m.entityList.forEach((e) => {
+        if (e.visible && !garder.has(e.id)) { masques.push(e); e.visible = false; }
+      }));
+    });
+    mat.fillAlpha = 0.10;
+    mat.edgeAlpha = 0.85;
+    mat.fillColor = [0.5, 0.6, 0.7];
+    mat.edgeColor = [0.85, 0.9, 0.95];
+    // Projection orthographique vue de dessus ; l'oeil est AU niveau du plan de coupe, donc tout ce qui est plus haut est derriere la
+    // camera et coupe par le plan proche. Portee lointaine tres grande : une portee courte rend une image vide (mesure du 20/10).
+    cam.projection = "ortho";
+    cam.ortho.near = 0.1;
+    cam.ortho.far = 10000;
+    cam.ortho.scale = Math.max(largeurX, largeurZ * aspect);
+    cam.eye = [cx, coupe + 0.15, cz]; // plan proche a 0,1 m sous l'oeil : le haut des elements (coupe + 0,02) reste visible
+    cam.look = [cx, coupe - 1, cz];
+    cam.up = [0, 0, -1];
+    // Haute resolution meme quand la 3D n'est plus qu'une photo (pleine page) : le rendu d'instantane de xeokit redimensionne la zone de
+    // dessin, avec le MEME rapport largeur/hauteur que l'ecran (la projection orthographique s'y cale). Repli : zone de dessin actuelle.
+    if (canevas.clientWidth < 800) {
+      try {
+        W = 1200;
+        H = Math.max(200, Math.round(W * canevas.clientHeight / Math.max(canevas.clientWidth, 1)));
+        url = viewer.getSnapshot({ width: W, height: H, format: "png" });
+      } catch (e) {
+        url = null;
+      }
+    }
+    if (!url) {
+      viewer.scene.render(true);
+      url = canevas.toDataURL("image/png");
+      W = canevas.width;
+      H = canevas.height;
+    }
+    const V = Array.from(cam.viewMatrix);
+    const P = Array.from(cam.projMatrix);
+    projeter = (x, y, z) => {
+      const vx = V[0] * x + V[4] * y + V[8] * z + V[12];
+      const vy = V[1] * x + V[5] * y + V[9] * z + V[13];
+      const vz = V[2] * x + V[6] * y + V[10] * z + V[14];
+      const px = P[0] * vx + P[4] * vy + P[8] * vz + P[12];
+      const py = P[1] * vx + P[5] * vy + P[9] * vz + P[13];
+      return [(px * 0.5 + 0.5) * W, (1 - (py * 0.5 + 0.5)) * H];
+    };
+  } finally {
+    mat.fillAlpha = matSauve.fillAlpha;
+    mat.edgeAlpha = matSauve.edgeAlpha;
+    mat.fillColor = matSauve.fillColor;
+    mat.edgeColor = matSauve.edgeColor;
+    cam.ortho.scale = sauve.scale;
+    cam.ortho.near = sauve.near;
+    cam.ortho.far = sauve.far;
+    cam.projection = sauve.projection;
+    cam.eye = sauve.eye;
+    cam.look = sauve.look;
+    cam.up = sauve.up;
+    if (masques.length) ecritureGroupeeDrapeaux(modeles, () => masques.forEach((e) => { e.visible = true; }));
+    // Image 3D remise a jour dans la meme tache : le plan n'est jamais peint a l'ecran.
+    viewer.scene.render(true);
+  }
+  if (!url || !projeter) return null;
+  const plan = { url, w: W, h: H, projeter, point, idA, idB };
+  plansCollision.set(clash.id, plan);
+  return plan;
+}
+// Compose l'image finale : fond, plan, zone des deux elements en conflit et repere sur le point de collision.
+function composerPlanCollision(clash, plan, cible, quand) {
+  const image = new Image();
+  image.onload = () => {
+    if (collisionActiveClash !== clash && quand === "ouverture") return;
+    cible.width = plan.w;
+    cible.height = plan.h;
+    const ctx = cible.getContext("2d");
+    ctx.fillStyle = "#101512";
+    ctx.fillRect(0, 0, plan.w, plan.h);
+    ctx.drawImage(image, 0, 0, plan.w, plan.h);
+    const [px, py] = plan.projeter(plan.point[0], plan.point[1], plan.point[2]);
+    ctx.lineWidth = 5;
+    ctx.strokeStyle = "#ffffff";
+    ctx.beginPath(); ctx.arc(px, py, 26, 0, Math.PI * 2); ctx.stroke();
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = "#f0b429";
+    ctx.beginPath(); ctx.arc(px, py, 21, 0, Math.PI * 2); ctx.stroke();
+    plan.url = cible.toDataURL("image/png");
+    plan.pret = true;
+    if (fichePlanLegendeEl) fichePlanLegendeEl.textContent = "Plan du niveau, zone du conflit entourée";
+  };
+  image.src = plan.url;
+}
+function majPlanCollision() {
+  const clash = collisionActiveClash;
+  if (!fichePlanBlocEl || !clash || clash.factice || !collisionDiscussion.classList.contains("cb-grand")) return;
+  fichePlanLegendeEl.textContent = "Génération du plan…";
+  setTimeout(() => {
+    if (collisionActiveClash !== clash) return;
+    let plan = null;
+    try {
+      plan = genererPlanCollision(clash);
+    } catch (e) {
+      console.warn("[collision] plan impossible : " + e.message);
+    }
+    if (!plan) {
+      fichePlanLegendeEl.textContent = "Plan indisponible pour cette collision";
+      return;
+    }
+    if (plan.pret) {
+      const img = new Image();
+      img.onload = () => {
+        fichePlanCanvasEl.width = plan.w; fichePlanCanvasEl.height = plan.h;
+        fichePlanCanvasEl.getContext("2d").drawImage(img, 0, 0);
+        fichePlanLegendeEl.textContent = "Plan du niveau, zone du conflit entourée";
+      };
+      img.src = plan.url;
+    } else {
+      composerPlanCollision(clash, plan, fichePlanCanvasEl, "ouverture");
+    }
+  }, 60);
+}
+
 // Passage anime au pleine page (20/10) : en pleine page le bandeau est en position absolue sur toute la zone de la 3D.
 // L'animation fait glisser son bord haut (WAAPI sur "top") entre la place du bandeau et le haut de la zone, 0,28 s, comme
 // le depliement du bandeau : le contenu se reorganise a chaque image. A la fermeture, les classes ne changent qu'a la fin.
@@ -5079,7 +5571,18 @@ function ouvrirEchangesGrand() {
   if (!echangesGrandBtn || echangesGrandOuvert || !collisionDiscussion.classList.contains("cb")) return;
   echangesGrandOuvert = true;
   echangesGrandEtaitReplie = collisionDiscussion.classList.contains("collapsed");
+  // Le plan est rendu AVANT l'animation : la 3D est alors encore grande (apres, elle n'est plus qu'une photo de 250 px et le plan
+  // sortirait en basse resolution). Mis en cache par collision.
+  if (collisionActiveClash && !collisionActiveClash.factice && window.matchMedia("(min-width: 769px)").matches) {
+    try {
+      genererPlanCollision(collisionActiveClash);
+    } catch (e) {
+      console.warn("[collision] plan impossible : " + e.message);
+    }
+  }
   basculerGrandAnime(true, echangesGrandEtaitReplie);
+  majInfosCollision(collisionActiveClash);
+  setTimeout(majPlanCollision, 400); // apres l'animation d'ouverture, pour ne pas la saccader
   echangesGrandBtn.setAttribute("aria-pressed", "true");
   echangesGrandBtn.setAttribute("aria-label", "Réduire les échanges");
   echangesGrandBtn.title = "Réduire les échanges";
@@ -5365,6 +5868,104 @@ const niveauxState = [];
 // c'est ce qui evitait les bugs en cascade des versions precedentes (masquer
 // une maquette puis en montrer une autre pouvait rendre visibles des objets
 // d'une maquette pourtant encore decochee).
+// Changement de maquettes affichees en "dissolution" (20/10). Cause du gel mesuree (profil CPU Chromium, 4 a 20 s) : dans xeokit,
+// masquer ou afficher une maquette ecrit les drapeaux de chacun de ses objets dans la carte graphique un par un (bufferSubData),
+// soit ~14 000 appels pour l'Architecture. Faits d'un bloc, ils bloquent la page. Ici les objets a changer sont melanges puis
+// traites par paquets, image par image, avec un budget de temps (~9 ms par image) : la page ne gele jamais et on voit les maquettes
+// se dissoudre l'une dans l'autre (duree visee 0,35 s, plus longue seulement si la machine est lente). Un nouveau changement
+// pendant une dissolution reprend depuis l'etat reel des objets (rien n'est perdu ni double).
+// etats = Map id de maquette -> doit etre affichee ; apres : appele a la fin.
+// Ecriture GROUPEE des drapeaux de visibilite (20/10). Mesure (profil CPU Brave) : pour chaque objet dont la visibilite change, xeokit
+// fait un gl.bufferSubData ; 14 000 appels pour l'Architecture, dont la file attend 5 a 9 s dans le processus graphique (images
+// qui saccadent, fil principal gele des qu'un appel synchrone suit). Ici, pendant `changer`, l'ecriture graphique de chaque couche
+// est coupee (les compteurs internes de xeokit sont mis a jour normalement), puis les drapeaux de toutes les parties des modeles
+// touches sont ecrits en memoire et envoyes en UN envoi par couche (chemin "differe" que xeokit n'utilise qu'au chargement).
+// S'appuie sur des champs internes de xeokit (layer._setFlags, mesh.portionId, entity._flags) : si l'un manque, repli sur la
+// methode normale (objet par objet), plus lente mais correcte.
+function ecritureGroupeeDrapeaux(modeles, changer) {
+  const couches = new Set();
+  modeles.forEach((m) => (m.layerList || []).forEach((l) => couches.add(l)));
+  const compatible = modeles.length > 0 && [...couches].every((l) => typeof l._setFlags === "function" && typeof l.flushInitFlags === "function") &&
+    modeles.every((m) => m.entityList.every((e) => e.meshes && e._flags !== undefined && e.meshes.every((me) => me.layer && me.portionId !== undefined)));
+  if (!compatible) {
+    changer();
+    return;
+  }
+  const originaux = new Map();
+  couches.forEach((l) => { originaux.set(l, l._setFlags); l._setFlags = () => {}; });
+  try {
+    changer();
+  } finally {
+    couches.forEach((l) => { l._setFlags = originaux.get(l); });
+  }
+  modeles.forEach((m) => m.entityList.forEach((e) => e.meshes.forEach((me) => {
+    if (couches.has(me.layer)) me.layer._setFlags(me.portionId, e._flags, me._transparent, true);
+  })));
+  couches.forEach((l) => l.flushInitFlags());
+  viewer.scene.glRedraw();
+}
+
+let dissolutionActive = null;
+const DISSOLUTION_DUREE = 350;
+const DISSOLUTION_BUDGET_MS = 9;
+function melanger(tableau) {
+  for (let i = tableau.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const t = tableau[i]; tableau[i] = tableau[j]; tableau[j] = t;
+  }
+  return tableau;
+}
+function changerVisibiliteAvecFondu(etats, apres) {
+  if (dissolutionActive) dissolutionActive.annuler();
+  const appliquerFinal = () => {
+    MAQUETTES.forEach((m) => { if (etats.has(m.id)) m.shown = etats.get(m.id); });
+    applyVisibility();
+    if (apres) apres();
+  };
+  const animer = window.matchMedia("(min-width: 769px)").matches && !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  // Objets dont l'etat reel differe de l'etat voulu (les garde-corps mal places restent masques, cf applyVisibility).
+  const aChanger = [];
+  MAQUETTES.forEach((m) => {
+    if (!m.model || !etats.has(m.id)) return;
+    const veut = etats.get(m.id);
+    m.model.entityList.forEach((entite) => {
+      if (entite.visible === veut) return;
+      if (veut && HOSPITAL_MISPLACED_RAILING_IDS.includes(entite.id)) return;
+      aChanger.push([entite, veut]);
+    });
+  });
+  if (!animer || aChanger.length === 0) {
+    appliquerFinal();
+    return;
+  }
+  melanger(aChanger);
+  const modelesTouches = MAQUETTES.filter((m) => m.model && etats.has(m.id) && m.model.entityList.some((e) => e.visible !== etats.get(m.id))).map((m) => m.model);
+  const debut = performance.now();
+  let indice = 0;
+  let annule = false;
+  const etat = { annuler: () => { annule = true; dissolutionActive = null; } };
+  dissolutionActive = etat;
+  const pas = () => {
+    if (annule) return;
+    const t0 = performance.now();
+    const voulu = Math.max(indice + 1, Math.ceil(Math.min(1, (t0 - debut) / DISSOLUTION_DUREE) * aChanger.length));
+    const fin = Math.min(aChanger.length, voulu);
+    // Un seul envoi graphique par couche et par image, quel que soit le nombre d'objets de ce paquet.
+    ecritureGroupeeDrapeaux(modelesTouches, () => {
+      for (; indice < fin; indice++) {
+        const [entite, veut] = aChanger[indice];
+        entite.visible = veut;
+      }
+    });
+    if (indice < aChanger.length) requestAnimationFrame(pas);
+    else {
+      dissolutionActive = null;
+      appliquerFinal();
+    }
+  };
+  requestAnimationFrame(pas);
+}
+
 function applyVisibility() {
   const shownById = new Map(MAQUETTES.map((m) => [m.id, m.shown]));
 

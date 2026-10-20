@@ -273,6 +273,8 @@
         <div id="viewerWrap">
           <canvas id="viewerCanvas"></canvas>
           <div id="viewerToolbar">
+            <!-- Angle de vue d'une collision (20/10) : visibles seulement en vue Collision, collision selectionnee. -->
+            <button id="saveAngleBtn" hidden title="Enregistrer l'angle de vue actuel comme angle officiel de cette collision">Enregistrer cet angle</button>
             <button id="recenterBtn" title="Recentrer la caméra sur la maquette">Recentrer</button>
             <button id="newDiscussionBtn" title="Ouvrir une nouvelle discussion à partir de ce point de vue">Nouvelle discussion</button>
           </div>
@@ -631,5 +633,9 @@
     </div>
 
     <script type="module" src="/src/main.js"></script>
+      <!-- Plan du niveau d'une collision, agrandi (clic sur le plan de la pleine page, 20/10). -->
+    <div id="collisionPlanModal" hidden role="dialog" aria-label="Plan du niveau de la collision">
+      <img id="collisionPlanGrand" alt="Plan du niveau avec la zone du conflit">
+    </div>
   </body>
 </html>
