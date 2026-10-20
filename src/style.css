@@ -138,7 +138,8 @@ html, body {
 /* Mobile (05/09) : la navbar (4 onglets + marque) ne tient pas sur un petit
    ecran, le menu passe en tiroir derriere un bouton hamburger. */
 @media (max-width: 768px) {
-  #navbarToggle { display: block; font-size: 26px; padding: 6px 10px; }
+  #navbarToggle { display: block; font-size: 26px; padding: 6px 10px; margin-left: 0; }
+  #navbar #navbarContact { position: static; transform: none; margin: 0 auto; }
   #navbarLinks {
     display: none;
     position: fixed;
@@ -189,40 +190,27 @@ html, body {
 }
 
 #appBody {
-  height: calc(100% - 52px - 56px);
+  height: calc(100% - 52px);
 }
 
-/* Bandeau CTA : element de flux normal (pas position fixed), place apres
-   #appBody et deduit de son calc ci-dessus. Reduit la hauteur disponible de
-   toutes les vues (viewer inclus) plutot que de flotter par-dessus, pour ne
-   rien masquer des toolbars/panneaux positionnes en bas de chaque vue. */
-#ctaBanner {
-  height: 56px;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 14px;
-  background: var(--surface);
-  border-top: 1px solid var(--border);
-  padding: 0 18px;
-  text-align: center;
-}
-#ctaBanner p { margin: 0; font-size: 13px; color: var(--muted); }
-#ctaBanner a {
-  color: #fff;
-  background: var(--accent);
+/* Bouton "Me contacter" dans la navbar (20/10, remplace l'ancien bandeau du bas) :
+   orange de l'accueil, pour se detacher du vert de l'application. Ordinateur et
+   mobile : centre (mobile : entre la marque et le hamburger, cf media query). */
+#navbarContact {
+  /* Ordinateur : centre dans la navbar (position absolue sur #navbar, qui est relative). */
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #e8935c;
+  color: #1f2b24;
   font-size: 13px;
   font-weight: 700;
-  padding: 8px 16px;
+  padding: 7px 14px;
   border-radius: 6px;
   text-decoration: none;
   white-space: nowrap;
 }
-#ctaBanner a:hover { opacity: 0.9; }
-@media (max-width: 480px) {
-  #ctaBanner p { display: none; }
-}
+#navbarContact:hover { background: #f08a4b; }
 
 .view {
   display: flex;
@@ -249,11 +237,25 @@ html, body {
 #loadingOverlay {
   position: absolute;
   inset: 0;
+  z-index: 10;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: rgba(22, 28, 24, 0.6);
+  gap: 18px;
+  background: #161c18;
 }
+#loadingOverlay .loading-titre { margin: 0; font-size: 14px; font-weight: 600; color: var(--text); }
+/* Etat de chaque maquette sous le logo (20/10). */
+.loading-etats {
+  list-style: none; margin: 0; padding: 0;
+  display: flex; flex-direction: column; gap: 6px;
+  font-size: 12.5px; color: var(--muted);
+}
+.loading-etats li { display: flex; justify-content: space-between; gap: 24px; min-width: 220px; }
+.loading-etats li.en-cours { color: var(--text); }
+.loading-etats li.ok .loading-etat { color: var(--accent); }
+.loading-etats .loading-etat { font-variant-numeric: tabular-nums; }
 #loadingOverlay.hidden { display: none; }
 
 .spinner {
@@ -1877,8 +1879,7 @@ html, body {
 /* Sur l'accueil : navbar de l'app et bannière "Intéressé ?" masquées (l'accueil
    a son propre en-tête et son bloc contact). Classe posée sur body par
    activateView, retirée en quittant l'accueil. */
-body.acc-actif #navbar,
-body.acc-actif #ctaBanner { display: none; }
+body.acc-actif #navbar { display: none; }
 body.acc-actif #appBody { height: 100%; }
 
 
@@ -2380,7 +2381,8 @@ body.acc-actif #appBody { height: 100%; }
 
 /* Liste des collisions reductible sur ordinateur (19/10), comme le panneau du
    Viewer : fine bande avec le seul bouton de bascule. Masque sur mobile. */
-#collisionInfoPanel { position: relative; transition: flex-basis 0.2s ease; }
+/* Ordinateur seulement : sur mobile, le panneau reste un tiroir flottant (position fixed). */
+@media (min-width: 769px) { #collisionInfoPanel { position: relative; transition: flex-basis 0.2s ease; } }
 #collisionInfoPanelCollapse {
   align-self: flex-start; margin: 8px 0 0 8px; width: 28px; height: 28px; padding: 0; flex: none;
   background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 6px;
@@ -2396,10 +2398,154 @@ body.acc-actif #appBody { height: 100%; }
 /* Drawer de la liste des collisions : pas d'animation de largeur (19/10). La 3D
    de la page Collision est lourde (isolation, fantomes) : une animation la
    redessinerait a chaque image et gelerait l'interface. Un seul redimensionnement. */
-#collisionInfoPanel { transition: none; }
+@media (min-width: 769px) { #collisionInfoPanel { transition: none; } }
 
 /* Liste des collisions : verrou pendant le vol de camera (19/10). La ligne
    active reste nette, les autres sont attenuees et inertes. */
 #collisionsList.en-transition { pointer-events: none; }
 #collisionsList.en-transition .collision-item:not(.active) { opacity: 0.55; }
 #collisionsList.en-transition .collision-item.active { cursor: progress; }
+
+/* Mention d'attribution du jeu de test (Autodesk), tout en bas du Viewer, au
+   centre, discrete (19/10). */
+#view-viewer { position: relative; }
+#viewerAttribution {
+  position: absolute; left: 50%; bottom: 2px; transform: translateX(-50%); z-index: 3;
+  margin: 0; max-width: calc(100% - 24px); text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  font-size: 10px; line-height: 12px; color: var(--muted); opacity: 0.7; pointer-events: none;
+}
+
+/* Indicateur discret du chargement des maquettes qui continue en arriere-plan
+   (CHARGEMENT_PROGRESSIF, 19/10) : texte seul, en bas au centre, au-dessus de la
+   barre de contact. Affiche aussi le temps total une fois fini. */
+#chargementSuite {
+  position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 60;
+  max-width: calc(100% - 24px); padding: 5px 12px; border-radius: 999px;
+  background: rgba(24, 29, 26, 0.9); border: 1px solid var(--border); color: var(--muted);
+  font-size: 11.5px; line-height: 1.3; white-space: nowrap; pointer-events: none;
+}
+#chargementSuite[hidden] { display: none; }
+body.acc-actif #chargementSuite { display: none; }
+
+/* Diagnostic a l'ecran (?diag=1) */
+#diagEcran {
+  position: fixed; top: 4px; left: 4px; right: 4px; z-index: 99999; margin: 0; padding: 6px 8px;
+  background: rgba(0, 0, 0, 0.82); color: #9dff9d; font: 10px/1.35 ui-monospace, Menlo, monospace;
+  white-space: pre-wrap; word-break: break-all; pointer-events: none; border-radius: 6px;
+}
+
+/* Mobile, page Collision (19/10) : Architecture, Mecanique et Contexte cote a cote
+   sur une seule ligne, Recentrer juste dessous, sous Contexte. */
+@media (max-width: 768px) {
+  #collisionMaquetteToggles { left: 16px; right: 16px; max-width: none; flex-wrap: nowrap; gap: 6px; }
+  #collisionMaquetteToggles .collision-maquette-toggle {
+    flex: 1 1 0; min-width: 0; justify-content: center; gap: 5px; padding: 0 6px; font-size: 12px;
+  }
+  #collisionMaquetteToggles .collision-maquette-toggle-dot { width: 10px; height: 10px; }
+  #collisionMaquetteToggles .collision-contexte-toggle::before { width: 10px; height: 10px; }
+  #collisionViewerSlot #viewerToolbar { top: 68px; right: 16px; }
+}
+
+/* Bouton "Message" : ouvre le champ de reponse (19/10). Pleine largeur, discret. */
+#messageOuvrirBtn {
+  flex-shrink: 0; align-self: stretch; margin-top: 6px; min-height: 36px; padding: 0 12px;
+  background: transparent; color: var(--text); border: 1px solid var(--border); border-radius: 6px;
+  font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer;
+}
+#messageOuvrirBtn:hover { border-color: var(--muted); }
+#messageOuvrirBtn[hidden] { display: none; }
+#collisionDiscussion.collapsed #messageOuvrirBtn { display: none; }
+@media (max-width: 768px) { #messageOuvrirBtn { min-height: 44px; } }
+
+/* Echanges en pleine page (19/10) : bouton Message colle en bas. */
+#collisionDiscussion.cb.cb-grand #messageOuvrirBtn { width: 100%; max-width: 720px; margin: auto auto 0; box-sizing: border-box; }
+#collisionDiscussion.cb.cb-grand #discussionMessages { flex: 0 1 auto; }
+
+/* Selecteurs Priorite / Statut en menu personnalise (19/10) : le <select> reste en
+   source de verite mais masque ; bouton a deux lignes (nom du champ + valeur), menu titre. */
+.collision-controle select { display: none; }
+#collisionDiscussion.cb .collision-controle label { display: none; }
+.collision-trigger {
+  position: relative; display: flex; align-items: center; gap: 8px; width: 100%; box-sizing: border-box;
+  min-height: 44px; padding: 0 10px 0 12px; background: transparent; color: var(--text);
+  border: 1px solid var(--border); border-radius: 8px; font: inherit; cursor: pointer; text-align: left;
+}
+.collision-trigger:hover { border-color: var(--muted); }
+.collision-trigger[aria-expanded="true"] { border-color: var(--accent); }
+.collision-trigger:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.collision-trigger .collision-select-dot { position: static; margin: 0; flex-shrink: 0; }
+.collision-trigger-texte { display: flex; flex-direction: column; min-width: 0; line-height: 1.15; }
+.collision-trigger-lib { font-size: 9px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.collision-trigger-val { font-size: 12.5px; font-weight: 600; white-space: nowrap; }
+.collision-trigger-chevron {
+  width: 10px; height: 6px; margin-left: auto; flex-shrink: 0; background: no-repeat center / 10px 6px
+  url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%239aa59d' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+.collision-trigger[aria-expanded="true"] .collision-trigger-chevron { transform: rotate(180deg); }
+@media (min-width: 769px) { .collision-trigger { min-height: 36px; } }
+#collisionDiscussion.cb .collision-controle { flex: 0 0 auto; }
+#collisionDiscussion.cb .collision-trigger { width: auto; }
+
+.collision-menu {
+  position: fixed; z-index: 1000; padding: 6px; background: var(--surface); color: var(--text);
+  border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+}
+.collision-menu-titre {
+  padding: 6px 10px 8px; font-size: 10px; font-weight: 700; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--muted);
+}
+.collision-menu-option {
+  display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 0 10px;
+  background: transparent; color: inherit; border: 0; border-radius: 6px; font: inherit; font-size: 13.5px;
+  cursor: pointer; text-align: left;
+}
+.collision-menu-option:hover, .collision-menu-option:focus-visible { background: rgba(127, 127, 127, 0.16); outline: none; }
+.collision-menu-option[aria-selected="true"] { font-weight: 700; }
+.collision-menu-option .collision-select-dot { position: static; margin: 0; flex-shrink: 0; }
+.collision-menu-texte { flex: 1; }
+.collision-menu-coche { width: 14px; text-align: right; color: var(--accent); }
+@media (min-width: 769px) { .collision-menu-option { min-height: 34px; } }
+.collision-menu[data-champ="prio"] [data-valeur="urgente"] .collision-select-dot { background: #f85149; }
+.collision-menu[data-champ="prio"] [data-valeur="haute"] .collision-select-dot { background: #f0883e; }
+.collision-menu[data-champ="prio"] [data-valeur="normale"] .collision-select-dot { background: #6e8bb5; }
+.collision-menu[data-champ="prio"] [data-valeur="basse"] .collision-select-dot { background: #b4bcc6; }
+.collision-menu[data-champ="statut"] [data-valeur="nouveau"] .collision-select-dot { background: #f0883e; }
+.collision-menu[data-champ="statut"] [data-valeur="confirme"] .collision-select-dot { background: #f85149; }
+.collision-menu[data-champ="statut"] [data-valeur="ecarte"] .collision-select-dot { background: #8b949e; }
+.collision-menu[data-champ="statut"] [data-valeur="resolu"] .collision-select-dot { background: #3fb950; }
+
+
+/* Zone du bas compacte (19/10) : numero seul, filtre en onglets fins, plus de ligne de details. */
+#collisionDiscussion.cb #collisionDiscussionTitle {
+  flex: 0 0 auto; max-width: none; overflow: visible; text-overflow: clip; font-size: 15px; font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+#collisionDiscussion.cb #collisionDiscussionIds { display: none; }
+#collisionDiscussion.cb #collisionFiltre { margin: 0 0 4px; gap: 14px; }
+#collisionDiscussion.cb #collisionFiltre button,
+#collisionFiltre button {
+  flex: 0 0 auto; min-height: 28px; padding: 0 2px; border: 0; border-bottom: 2px solid transparent; border-radius: 0;
+  background: transparent; font-size: 12px;
+}
+#collisionDiscussion.cb #collisionFiltre button[aria-pressed="true"] {
+  background: transparent; color: var(--text); border-bottom-color: var(--accent);
+}
+@media (max-width: 768px) { #collisionDiscussion.cb #collisionFiltre button { min-height: 30px; } }
+
+/* Demarrage sur une vue autre que l'accueil (20/10) : le logo seul, jamais l'accueil
+   entrevu. Classe "demarrage" posee sur <html> par un script de l'en-tete, retiree
+   par activateView(). */
+#splashLogo { display: none; }
+html.demarrage #splashLogo {
+  display: flex; position: fixed; inset: 0; z-index: 99990;
+  align-items: center; justify-content: center; background: #161c18;
+}
+
+/* Logo de l'ecran de chargement en SVG integre (20/10) : .logo-spin tourne, .logo-zoom grossit a la
+   revelation de la maquette (reveleMaquette dans main.js). Les deux pivotent autour du centre de l'anneau. */
+.logo-zoom, .logo-spin { width: 64px; height: 64px; transform-origin: 51.3% 50.1%; }
+.logo-zoom svg { display: block; }
+.logo-spin { animation: ouvra-logo-spin 1.4s cubic-bezier(0.65, 0, 0.35, 1) infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .logo-spin { animation: ouvra-logo-pulse 1.8s ease-in-out infinite; }
+}

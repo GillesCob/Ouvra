@@ -199,6 +199,48 @@ const COLLISION_ISOLATION_ETAGE = true;
 // de camera ne parcourt que l'etage de la collision (boites en cache) au lieu
 // de toute la scene. false = comportement d'avant (gel observe).
 const COLLISION_CADRAGE_ETAGE = true;
+// HOPITAL_MAQUETTES_LEGERES (19/10, test mobile : chargement trop long) : Architecture
+// et Mecanique viennent des XKT du depot xeokit (26,5 Mo, ~25 000 objets, metadonnees
+// en JSON a part) au lieu des conversions d'Ouvra (45,7 Mo, ~75 000 objets). Les
+// identifiants des collisions correspondent, sauf la n° 14 (mur-rideau absent de
+// l'architecture allegee), ecartee ici. false = maquettes d'origine, 15 collisions.
+// Reglages commutables par l'adresse (tests sur telephone, 19/10) :
+// ?legere=0 (maquettes d'origine), ?aretes=1 (aretes sur mobile), ?webifc=1
+// (initialise web-ifc), ?progressif=0 (ancien chargement). Sans parametre :
+// les valeurs par defaut ci-dessous.
+const PARAMS_URL = new URLSearchParams(location.search);
+const reglageUrl = (nom, defaut) => (PARAMS_URL.has(nom) ? PARAMS_URL.get(nom) !== "0" : defaut);
+// Maquettes allegees (XKT version 2) : ILLISIBLES sur iPhone (0 entite creee, constate
+// le 19/10), alors qu'elles se lisent sur ordinateur. Desactivees par defaut ; ?legere=1 pour les tester.
+const HOPITAL_MAQUETTES_LEGERES = reglageUrl("legere", false);
+// Structure reconvertie en XKT version 12 (IFC d'Auckland converti avec xeokit-convert, 19/10) : lisible
+// sur iPhone, memes identifiants que l'ancienne (2 826 sur 2 846). ?structv12=0 pour l'ancien fichier (version 2).
+const HOPITAL_STRUCTURE_V12 = reglageUrl("structv12", true);
+// CHARGEMENT_PROGRESSIF (19/10, test mobile : attente trop longue) : le Viewer s'affiche
+// des que la PREMIERE maquette est chargee (les suivantes continuent en
+// arriere-plan, avec un indicateur discret et le temps de chaque lot), l'ordre
+// de chargement met la Mecanique en dernier, et le telechargement demarre sans
+// attendre l'initialisation de web-ifc (WASM inutile pour les XKT).
+// false = comportement d'avant (ecran de chargement jusqu'a la derniere maquette).
+// 20/10 (demande de Gilles) : desactive par defaut, la maquette n'apparait qu'une fois TOUT charge,
+// avec l'etat de chaque maquette sous le logo. ?progressif=1 pour retrouver l'affichage des la premiere.
+const CHARGEMENT_PROGRESSIF = reglageUrl("progressif", false);
+// CHARGEMENT_SANS_ATTENDRE_WEBIFC (19/10) : demarrer le telechargement des XKT en meme
+// temps que l'initialisation de web-ifc. Coupe le 19/10 : l'iPhone n'arrivait
+// plus a charger (memoire de l'onglet). true = demarrage immediat (ordinateur seulement).
+const CHARGEMENT_SANS_ATTENDRE_WEBIFC = false;
+// HOPITAL_SANS_WEBIFC (19/10) : l'hopital n'est fait que de XKT, web-ifc (lecteur d'IFC, WASM
+// qui reserve de la memoire) n'est donc pas initialise du tout. Test iPhone :
+// l'onglet etait tue par iOS (memoire) pendant le chargement de la 2e maquette.
+// false = web-ifc initialise comme avant.
+const HOPITAL_SANS_WEBIFC = !reglageUrl("webifc", false);
+// MOBILE_SANS_ARETES (19/10) : sur telephone, les maquettes sont chargees sans les
+// aretes (contours noirs) qui doublent la geometrie en memoire graphique. Test
+// iPhone : la maquette apparaissait puis disparaissait (contexte WebGL perdu).
+// false = aretes partout.
+const MOBILE_SANS_ARETES = !reglageUrl("aretes", false);
+const APPAREIL_MOBILE = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || window.matchMedia("(max-width: 768px)").matches;
+const HOPITAL_CLASHES_ABSENTS_LEGERES = new Set(["hosp-clash-14"]);
 // COLLISION_TRANSITION_VERROUILLEE (19/10) : pendant le vol de camera vers une
 // collision, on ne peut pas en selectionner une autre (liste et bulles), et le
 // calcul lourd de l'isolation n'est fait qu'APRES l'arret de la camera (l'animation
@@ -238,13 +280,51 @@ const MASQUE_TODO_ADMIN = true;
 const MASQUE_ANCIENNE_LANDING = true;
 const MASQUE_MAQUETTES_LOURDES = true;
 const COLLISIONS_HOPITAL_ECHANTILLON = true;
-const MAQUETTES_LOURDES_IDS = ["hosp-alarm", "hosp-plomb", "hosp-spr"];
+// Electricite ajoutee le 19/10 (test mobile : navigation lente, soupcon sur cette maquette) ; retirer "hosp-elec" pour la reafficher.
+const MAQUETTES_LOURDES_IDS = ["hosp-alarm", "hosp-plomb", "hosp-spr", "hosp-elec"];
 
 const loadingOverlay = document.getElementById("loadingOverlay");
 // Ecran de chargement : le logo Ouvra en rotation simple (19/10, remplace l'ancien
 // spinner a points). Remis a chaque chargement, car l'overlay est vide en cas
 // d'erreur (texte d'erreur a la place du logo).
-const LOADING_LOGO_HTML = '<img class="loading-logo" src="/images/ouvra-icon.svg" alt="Chargement en cours" width="64" height="64">';
+const LOADING_LOGO_HTML = '<div class="logo-zoom"><div class="logo-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="94 10 146 146" width="64" height="64" role="img" aria-label="Chargement en cours"><path fill="#f4f2ed" d="M168.95 12.88 A70.32 70.32 0 1 0 168.95 153.42 L168.95 137.72 A55.22 55.22 0 1 1 168.95 27.3 Z"/><path fill="#f4f2ed" d="M213.65 40.22 A60.75 60.75 0 0 1 213.65 138 L213.65 115.96 A44.78 44.78 0 0 0 213.65 62.67 Z"/><path fill="#6d806f" d="M182.04 26.18 L211.04 38.67 L211.04 121.6 L182.04 137.46 Z"/></svg></div></div>';
+// Revelation de la maquette (20/10) : le "O" du logo grossit depuis le centre de son anneau jusqu'a ce que
+// son ouverture depasse l'ecran, pendant que l'ecran de chargement s'efface. Transform et opacite
+// seulement (compositeur), fondu simple si l'utilisateur reduit les animations.
+// Anneau du logo (viewBox 94 10 146 146) : centre (168.95, 83.15), rayon interieur 55,22.
+function reveleMaquette() {
+  if (loadingOverlay.classList.contains("error")) return;
+  const finir = () => {
+    loadingOverlay.classList.add("hidden");
+    loadingOverlay.getAnimations().forEach((a) => a.cancel());
+  };
+  const zoom = loadingOverlay.querySelector(".logo-zoom");
+  const spin = loadingOverlay.querySelector(".logo-spin");
+  if (!zoom || !spin || !zoom.animate || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    if (loadingOverlay.animate) loadingOverlay.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300, fill: "forwards" }).onfinish = finir;
+    else finir();
+    return;
+  }
+  spin.style.animationPlayState = "paused";
+  const r = zoom.getBoundingClientRect();
+  const cx = r.left + r.width * ((168.95 - 94) / 146);
+  const cy = r.top + r.height * ((83.15 - 10) / 146);
+  const o = loadingOverlay.getBoundingClientRect();
+  const loin = Math.max(
+    Math.hypot(cx - o.left, cy - o.top), Math.hypot(cx - o.right, cy - o.top),
+    Math.hypot(cx - o.left, cy - o.bottom), Math.hypot(cx - o.right, cy - o.bottom)
+  );
+  const echelle = (loin / (r.width * (55.22 / 146))) * 1.1;
+  const duree = 900;
+  loadingOverlay.querySelectorAll(".loading-titre, .loading-etats").forEach((el) => {
+    el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 200, fill: "forwards" });
+  });
+  zoom.animate([{ transform: "scale(1)" }, { transform: "scale(" + echelle + ")" }], { duration: duree, easing: "cubic-bezier(0.65, 0, 0.35, 1)", fill: "forwards" });
+  loadingOverlay.animate(
+    [{ opacity: 1, offset: 0 }, { opacity: 1, offset: 0.35 }, { opacity: 0, offset: 1 }],
+    { duration: duree, fill: "forwards" }
+  ).onfinish = finir;
+}
 const viewerCanvas = document.getElementById("viewerCanvas");
 const niveauxList = document.getElementById("niveauxList");
 const maquettesList = document.getElementById("maquettesList");
@@ -728,8 +808,10 @@ function activateView(viewName) {
   if (viewName !== "collision" && (collisionContexteOn || collisionActiveClash || collisionOpacityTouched.length > 0)) {
     resetCollisionOpacityState();
   }
-  // Accueil : navbar et bandeau CTA de l'app masques par CSS (body.acc-actif).
+  // Accueil : navbar de l'app masquee par CSS (body.acc-actif).
   document.body.classList.toggle("acc-actif", viewName === "accueil");
+  // La vue est choisie : le logo de demarrage (#splashLogo) peut s'effacer.
+  document.documentElement.classList.remove("demarrage");
   navLinks.forEach((l) => l.classList.toggle("active", l.dataset.view === viewName));
   document.querySelectorAll(".view").forEach((view) => {
     view.hidden = view.id !== "view-" + viewName;
@@ -833,11 +915,13 @@ navbarToggle.addEventListener("click", () => {
 // Clic en dehors du menu ouvert (sur le reste de la page) : le referme,
 // meme logique que les tiroirs "☰ Infos"/"☰ Sections" mais sans voile
 // dedie (le menu ne masque pas le contenu, un simple clic ailleurs suffit).
-document.addEventListener("click", (e) => {
+// "pointerdown" en phase de capture : Safari iOS n'emet pas "click" sur une
+// zone non cliquable, et le canvas 3D capte les gestes avant le document.
+document.addEventListener("pointerdown", (e) => {
   if (!navbarLinksEl.classList.contains("open")) return;
   if (navbarLinksEl.contains(e.target) || navbarToggle.contains(e.target)) return;
   navbarLinksEl.classList.remove("open");
-});
+}, true);
 
 // Tiroir "Sections" de la page Presentation, mobile uniquement : masque par
 // defaut (cf media query), un bouton dedie l'affiche en overlay par-dessus
@@ -1046,6 +1130,9 @@ const HOSPITAL_VISIBLE_VIEWS = ["presentation", "viewer", "collision", "discussi
 if (MASQUE_SELECTEUR_PROJET) {
   projectSelect.hidden = true;
   projectSelect.value = HOSPITAL_PROJECT_KEY;
+} else {
+  // Le HTML de depart masque le selecteur (etat sans JavaScript) : on le reaffiche ici.
+  projectSelect.hidden = false;
 }
 
 // Profils fictifs (portes depuis IES le 16/09) : simule le fait que
@@ -1121,7 +1208,9 @@ function applyPersona(persona, forceNav) {
 
   const currentView = document.querySelector(".view:not([hidden])");
   const currentViewName = currentView ? currentView.id.replace("view-", "") : null;
-  const currentViewAllowed = navLinks.some((l) => l.dataset.view === currentViewName && !l.hidden);
+  // L'accueil n'est pas un onglet de la navbar : il est toujours autorise (sinon le
+  // rechargement de l'accueil basculait d'office sur le Viewer, 19/10).
+  const currentViewAllowed = currentViewName === "accueil" || navLinks.some((l) => l.dataset.view === currentViewName && !l.hidden);
   if (forceNav || !currentViewAllowed) {
     activateView(isHospitalProject ? "viewer" : PERSONA_DEFAULT_VIEW[persona]);
   }
@@ -1489,7 +1578,19 @@ const PROJECTS = {
     { id: "hosp-alarm", src: "/models/hospital/fireAlarms.xkt", metaSrc: "/models/hospital/fireAlarms.json", label: "Alarme incendie", color: "#f85149", colorize: [0.97, 0.32, 0.29], format: "xkt", shown: true },
     { id: "hosp-plomb", src: "/models/hospital/plumbing.xkt", metaSrc: "/models/hospital/plumbing.json", label: "Plomberie", color: "#3fb950", colorize: [0.25, 0.73, 0.31], format: "xkt", shown: true },
     { id: "hosp-spr", src: "/models/hospital/sprinklers.xkt", metaSrc: "/models/hospital/sprinklers.json", label: "Sprinklers", color: "#39c5cf", colorize: [0.22, 0.77, 0.81], format: "xkt", shown: true }
-  ].filter((m) => !(MASQUE_MAQUETTES_LOURDES && MAQUETTES_LOURDES_IDS.includes(m.id)))
+  ].filter((m) => !(MASQUE_MAQUETTES_LOURDES && MAQUETTES_LOURDES_IDS.includes(m.id))).map((m) => {
+    if (HOPITAL_STRUCTURE_V12 && m.id === "hosp-struct") {
+      const copie = Object.assign({}, m, { src: "/models/hospital/structure-v12.xkt" });
+      delete copie.metaSrc;
+      return copie;
+    }
+    return m;
+  }).map((m) => {
+    if (!HOPITAL_MAQUETTES_LEGERES) return m;
+    if (m.id === "hosp-arch") return Object.assign({}, m, { src: "/models/hospital/legere/architectural.xkt", metaSrc: "/models/hospital/legere/architectural.json" });
+    if (m.id === "hosp-mep") return Object.assign({}, m, { src: "/models/hospital/legere/mechanical.xkt", metaSrc: "/models/hospital/legere/mechanical.json" });
+    return m;
+  })
 };
 
 const MAQUETTES = [];
@@ -1869,7 +1970,7 @@ function applyProjectData(projectKey) {
     // vide, et les clashs n'y sont jamais ajoutes (renderDiscussionsPage ne
     // lit que DISCUSSIONS), donc la page Discussions n'est pas affectee.
     DETECTIONS.push(...HOSPITAL_DETECTIONS);
-    CLASHES.push(...HOSPITAL_CLASHES);
+    CLASHES.push(...HOSPITAL_CLASHES.filter((c) => !(HOPITAL_MAQUETTES_LEGERES && HOPITAL_CLASHES_ABSENTS_LEGERES.has(c.id))));
   }
 }
 applyProjectData(projectSelect.value);
@@ -3754,7 +3855,17 @@ function titreCourtCollision(clash) {
   const levelMatch = clash.zone.match(/·\s*([^·]+)$/);
   const niveau = (levelMatch ? levelMatch[1].trim() : "").replace(/^Level\s*/i, "Niveau ");
   const types = collisionTypeFr(partA || "") + " ↔ " + collisionTypeFr((partB || "").split("·")[0]);
-  return "n° " + (CLASHES.indexOf(clash) + 1) + " · " + types + (niveau ? " · " + niveau : "");
+  // Titre = identifiant seul (19/10, demande de Gilles : le nom complet n'etait pas lisible
+  // sur mobile) ; types et niveau passent sur la 2e ligne (detailsCollision).
+  return String(CLASHES.indexOf(clash) + 1);
+}
+function detailsCollision(clash) {
+  const [partA, partB] = clash.zone.split(" ↔ ");
+  const levelMatch = clash.zone.match(/·\s*([^·]+)$/);
+  const niveau = (levelMatch ? levelMatch[1].trim() : "").replace(/^Level\s*/i, "Niveau ");
+  const types = collisionTypeFr(partA || "") + " ↔ " + collisionTypeFr((partB || "").split("·")[0]);
+  const ids = (clash.zone.match(/\(#(\d+)\)/g) || []).map((m) => m.slice(1, -1));
+  return [types, niveau, ids.join(" ↔ ")].filter(Boolean).join(" · ");
 }
 
 function majBandeauCollision(thread) {
@@ -3768,9 +3879,46 @@ function majBandeauCollision(thread) {
     return;
   }
   collisionDiscussionTitle.textContent = titreCourtCollision(thread);
-  collisionDiscussionTitle.title = thread.zone;
-  const ids = (thread.zone.match(/\(#(\d+)\)/g) || []).map((m) => m.slice(1, -1));
-  collisionIdsEl.textContent = ids.join(" ↔ ");
+  // 19/10 : plus aucun nom d'element ni de type (detailsCollision gardee, non utilisee).
+  collisionDiscussionTitle.removeAttribute("title");
+  collisionIdsEl.textContent = "";
+}
+
+// Champ de reponse a la demande (19/10, demande de Gilles) : en mode bandeau, seul un
+// bouton "Message" est visible, il ouvre le champ ; plus de place pour defiler
+// dans les echanges. Hors mode bandeau (Discussions), comportement d'avant.
+let messageOuvert = false;
+const messageOuvrirBtn = document.getElementById("messageOuvrirBtn");
+function majFormulaireReponse(isOpen) {
+  const cb = collisionDiscussion.classList.contains("cb");
+  if (!cb || !messageOuvrirBtn) {
+    discussionReplyForm.hidden = !isOpen;
+    if (messageOuvrirBtn) messageOuvrirBtn.hidden = true;
+    return;
+  }
+  messageOuvrirBtn.hidden = !isOpen || messageOuvert;
+  discussionReplyForm.hidden = !isOpen || !messageOuvert;
+}
+function fermerMessage() {
+  messageOuvert = false;
+  majFormulaireReponse(!!currentDiscussionThread && isThreadOpen(currentDiscussionThread));
+}
+if (messageOuvrirBtn) {
+  // Un clic ailleurs referme le champ (le brouillon reste dans le textarea) et ramene le bouton.
+  document.addEventListener("pointerdown", (e) => {
+    if (!messageOuvert) return;
+    if (discussionReplyForm.contains(e.target) || messageOuvrirBtn.contains(e.target)) return;
+    fermerMessage();
+  }, true);
+  messageOuvrirBtn.addEventListener("click", () => {
+    messageOuvert = true;
+    majFormulaireReponse(true);
+    discussionReplyInput.focus();
+    defilerChronologieBas();
+  });
+  discussionReplyInput.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && collisionDiscussion.classList.contains("cb")) fermerMessage();
+  });
 }
 
 function defilerChronologieBas() {
@@ -3902,8 +4050,102 @@ function ensureCollisionControles() {
       selectWrap.dataset.valeur = sel.value;
       changerChampCollision(champ, sel.value);
     });
+    // Menu personnalise (19/10) : le <select> reste la source de verite mais est masque ;
+    // un bouton "Priorité / Haute" ouvre un menu titre avec pastilles et coche.
+    const trigger = document.createElement("button");
+    trigger.type = "button";
+    trigger.className = "collision-trigger";
+    trigger.setAttribute("aria-haspopup", "listbox");
+    trigger.setAttribute("aria-expanded", "false");
+    const trigDot = document.createElement("span");
+    trigDot.className = "collision-select-dot";
+    trigDot.setAttribute("aria-hidden", "true");
+    const trigTexte = document.createElement("span");
+    trigTexte.className = "collision-trigger-texte";
+    const trigLib = document.createElement("span");
+    trigLib.className = "collision-trigger-lib";
+    trigLib.textContent = libelle;
+    const trigVal = document.createElement("span");
+    trigVal.className = "collision-trigger-val";
+    trigTexte.append(trigLib, trigVal);
+    const chevron = document.createElement("span");
+    chevron.className = "collision-trigger-chevron";
+    chevron.setAttribute("aria-hidden", "true");
+    trigger.append(trigDot, trigTexte, chevron);
+    selectWrap.prepend(trigger);
+    const maj = () => {
+      selectWrap.dataset.valeur = sel.value;
+      trigVal.textContent = labels[sel.value] || "";
+    };
+    maj();
+    let menu = null;
+    const fermer = () => {
+      if (!menu) return;
+      menu.remove();
+      menu = null;
+      trigger.setAttribute("aria-expanded", "false");
+      document.removeEventListener("pointerdown", surClicExterieur, true);
+      document.removeEventListener("keydown", surTouche, true);
+    };
+    const surClicExterieur = (e) => {
+      if (menu && !menu.contains(e.target) && !trigger.contains(e.target)) fermer();
+    };
+    const surTouche = (e) => {
+      if (e.key === "Escape") { e.stopPropagation(); fermer(); trigger.focus(); }
+    };
+    trigger.addEventListener("click", () => {
+      if (menu) { fermer(); return; }
+      menu = document.createElement("div");
+      menu.className = "collision-menu";
+      menu.setAttribute("role", "listbox");
+      menu.dataset.champ = selectWrap.dataset.champ;
+      const titre = document.createElement("div");
+      titre.className = "collision-menu-titre";
+      titre.textContent = libelle;
+      menu.appendChild(titre);
+      Object.keys(labels).forEach((k) => {
+        const opt = document.createElement("button");
+        opt.type = "button";
+        opt.className = "collision-menu-option";
+        opt.setAttribute("role", "option");
+        opt.dataset.valeur = k;
+        opt.setAttribute("aria-selected", String(k === sel.value));
+        const d = document.createElement("span");
+        d.className = "collision-select-dot";
+        const t = document.createElement("span");
+        t.className = "collision-menu-texte";
+        t.textContent = labels[k];
+        const coche = document.createElement("span");
+        coche.className = "collision-menu-coche";
+        coche.textContent = k === sel.value ? "✓" : "";
+        opt.append(d, t, coche);
+        opt.addEventListener("click", () => {
+          if (sel.value !== k) {
+            sel.value = k;
+            sel.dispatchEvent(new Event("change"));
+            maj();
+          }
+          fermer();
+          trigger.focus();
+        });
+        menu.appendChild(opt);
+      });
+      menu.style.visibility = "hidden";
+      document.body.appendChild(menu);
+      const r = trigger.getBoundingClientRect();
+      const mh = menu.offsetHeight;
+      const mw = Math.max(menu.offsetWidth, 168);
+      const place = window.innerHeight - r.bottom;
+      menu.style.top = (place >= mh + 8 ? r.bottom + 6 : Math.max(8, r.top - mh - 6)) + "px";
+      menu.style.left = Math.max(8, Math.min(r.left, window.innerWidth - mw - 8)) + "px";
+      menu.style.minWidth = mw + "px";
+      menu.style.visibility = "";
+      trigger.setAttribute("aria-expanded", "true");
+      document.addEventListener("pointerdown", surClicExterieur, true);
+      document.addEventListener("keydown", surTouche, true);
+    });
     field.append(lab, selectWrap);
-    return { field, sel, selectWrap };
+    return { field, sel, selectWrap, maj };
   };
   const statutsProposes = { nouveau: STATUT_LABELS.nouveau, confirme: STATUT_LABELS.confirme, ecarte: STATUT_LABELS.ecarte, resolu: STATUT_LABELS.resolu };
   const p = mk("collisionPrioriteSelect", "Priorité", PRIORITE_LABELS, "priorité");
@@ -3922,7 +4164,7 @@ function ensureCollisionControles() {
       });
     }
   }
-  collisionControles = { wrap, prio: p.sel, statut: st.sel };
+  collisionControles = { wrap, prio: p.sel, statut: st.sel, majPrio: p.maj, majStatut: st.maj };
   return collisionControles;
 }
 
@@ -3936,6 +4178,8 @@ function majCollisionControles(thread) {
   c.statut.value = thread.statut;
   c.prio.parentNode.dataset.valeur = c.prio.value;
   c.statut.parentNode.dataset.valeur = c.statut.value;
+  c.majPrio();
+  c.majStatut();
 }
 
 function changerChampCollision(champ, vers) {
@@ -3950,7 +4194,7 @@ function changerChampCollision(champ, vers) {
   sauverEtatCollisions();
   renderCollisionsList(CLASHES.filter((c) => c.detectionId === clash.detectionId));
   renderDiscussionMessages(clash);
-  discussionReplyForm.hidden = !isThreadOpen(clash);
+  majFormulaireReponse(isThreadOpen(clash));
   majCollisionControles(clash);
 }
 
@@ -3983,7 +4227,8 @@ function showThreadDiscussion(thread) {
   collisionDiscussion.hidden = false;
   renderDiscussionMessages(thread);
 
-  discussionReplyForm.hidden = !isOpen;
+  messageOuvert = false;
+  majFormulaireReponse(isOpen);
   discussionReplyInput.value = "";
 
   // Instruction BE -> Projeteur (portee depuis IES le 16/09) : bouton
@@ -4161,6 +4406,7 @@ discussionReplyForm.addEventListener("submit", (e) => {
   currentDiscussionThread.discussion.push(COLLISION_PRIORITES ? { auteur: "Vous", texte, quand: new Date().toISOString() } : { auteur: "Vous", texte });
   renderDiscussionMessages(currentDiscussionThread);
   discussionReplyInput.value = "";
+  fermerMessage();
 });
 
 // Instruction BE -> Projeteur (portee depuis IES le 16/09) : copie le
@@ -5015,6 +5261,14 @@ function loadProject(projectKey) {
     MAQUETTES.push(maquette);
   });
 
+  if (projectKey === HOSPITAL_PROJECT_KEY) {
+    // 20/10 : du plus leger au plus lourd (poids des fichiers XKT : alarme 0,05 Mo, electricite 0,1,
+    // plomberie 2, sprinklers 3, structure 5, mecanique 20 (12 en version legere), architecture 26 (15)),
+    // pour que les premiers temps affiches soient tres courts et que l'attente paraisse plus rapide.
+    const ordre = ["hosp-alarm", "hosp-elec", "hosp-plomb", "hosp-spr", "hosp-struct", "hosp-mep", "hosp-arch"];
+    const rang = (m) => { const i = ordre.indexOf(m.id); return i < 0 ? ordre.length : i; };
+    MAQUETTES.sort((a, b) => rang(a) - rang(b));
+  }
   niveauxState.length = 0;
   // renderNiveaux() sort tot si la maquette source des niveaux n'est pas
   // (encore) chargee : vide la liste a la main ici pour ne pas laisser les
@@ -5026,7 +5280,30 @@ function loadProject(projectKey) {
   renderMaquetteRows(collisionMaquettesList, MAQUETTES);
 
   loadingOverlay.classList.remove("hidden", "error");
-  loadingOverlay.innerHTML = LOADING_LOGO_HTML;
+  loadingOverlay.innerHTML = '<p class="loading-titre">Chargement des maquettes</p>' + LOADING_LOGO_HTML;
+
+  // Etat de chaque maquette sous le logo (20/10) : en attente, en cours, puis le temps de chargement.
+  const etatsMaquettes = new Map();
+  const etatsListe = document.createElement("ul");
+  etatsListe.className = "loading-etats";
+  MAQUETTES.forEach((m) => {
+    const li = document.createElement("li");
+    const nom = document.createElement("span");
+    nom.textContent = m.label;
+    const etat = document.createElement("span");
+    etat.className = "loading-etat";
+    etat.textContent = "en attente";
+    li.append(nom, etat);
+    etatsListe.appendChild(li);
+    etatsMaquettes.set(m.id, { li, etat });
+  });
+  loadingOverlay.appendChild(etatsListe);
+  function majEtatMaquette(maquette, texte, classe) {
+    const el = etatsMaquettes.get(maquette.id);
+    if (!el) return;
+    el.etat.textContent = texte;
+    el.li.className = classe;
+  }
 
   // Chargement sequentiel (porte depuis IES le 16/09, meme correctif que le
   // crash Safari observe en 4G sur Qiddiya) : un lot a la fois plutot que
@@ -5034,31 +5311,71 @@ function loadProject(projectKey) {
   // de bande passante/memoire des gros fichiers XKT telecharges+parses
   // simultanement, et affiche chaque lot des qu'il est pret au lieu qu'ils
   // arrivent presque tous en meme temps.
+  const tDebutChargement = performance.now();
+  const tempsParMaquette = [];
+  function majIndicateurChargement(texte) {
+    const chip = ensureChargementSuite();
+    chip.textContent = texte;
+    chip.hidden = !texte;
+  }
+  function premiereMaquetteAffichee() {
+    // Viewer utilisable des la premiere maquette (CHARGEMENT_PROGRESSIF).
+    loadingOverlay.classList.add("hidden");
+    initialCameraState = getDefaultCameraState(projectKey);
+    if (initialCameraState) {
+      viewer.cameraFlight.flyTo(initialCameraState);
+    } else {
+      viewer.cameraFlight.flyTo({ aabb: viewer.scene.getAABB(), duration: 0 });
+      initialCameraState = { eye: viewer.camera.eye.slice(), look: viewer.camera.look.slice(), up: viewer.camera.up.slice() };
+    }
+  }
   function loadNextMaquette(index) {
     if (index >= MAQUETTES.length) {
-      loadingOverlay.classList.add("hidden");
+      if (CHARGEMENT_PROGRESSIF) {
+        const total = ((performance.now() - tDebutChargement) / 1000).toFixed(1).replace(".", ",");
+        console.info("[chargement] " + tempsParMaquette.join(" | ") + " | total " + total + " s");
+        window.__tempsChargement = tempsParMaquette.concat(["total " + total + " s"]);
+        majIndicateurChargement("Chargé en " + total + " s");
+        // Disparait au premier clic/toucher n'importe ou (19/10), ou apres 6 s.
+        const effacer = () => {
+          majIndicateurChargement("");
+          document.removeEventListener("pointerdown", effacer, true);
+        };
+        document.addEventListener("pointerdown", effacer, true);
+        setTimeout(effacer, 6000);
+      }
+      // 20/10 : 1 s de pause pour lire le temps de la derniere maquette (la 3D se dessine derriere),
+      // puis le logo s'ouvre sur la maquette. Affichage immediat en mode progressif.
+      if (CHARGEMENT_PROGRESSIF) loadingOverlay.classList.add("hidden");
+      else setTimeout(reveleMaquette, 1000);
       // Arrivee directe sur #collision : la detection unique s'ouvre une fois
       // les maquettes chargees.
       if (!document.getElementById("view-collision").hidden) {
         if (collisionDetail.hidden) openSoleDetectionIfAlone();
         else if (DETECTIONS.length === 1) renderClashMarkers(CLASHES.filter((c) => c.detectionId === DETECTIONS[0].id));
       }
-      initialCameraState = getDefaultCameraState(projectKey);
-      if (initialCameraState) {
-        viewer.cameraFlight.flyTo(initialCameraState);
-      } else {
-        viewer.cameraFlight.flyTo({ aabb: viewer.scene.getAABB(), duration: 0 });
-        // Snapshot du cadrage obtenu : reutilise par le bouton "Recentrer"
-        // (initialCameraState || DEFAULT_CAMERA_STATE ailleurs dans le
-        // fichier), qui retomberait sinon sur les coordonnees demo.
-        initialCameraState = { eye: viewer.camera.eye.slice(), look: viewer.camera.look.slice(), up: viewer.camera.up.slice() };
+      if (!CHARGEMENT_PROGRESSIF) {
+        initialCameraState = getDefaultCameraState(projectKey);
+        if (initialCameraState) {
+          // duration 0 : la maquette apparait deja cadree, sans vol visible.
+          viewer.cameraFlight.flyTo(Object.assign({}, initialCameraState, { duration: 0 }));
+        } else {
+          viewer.cameraFlight.flyTo({ aabb: viewer.scene.getAABB(), duration: 0 });
+          // Snapshot du cadrage obtenu : reutilise par le bouton "Recentrer"
+          // (initialCameraState || DEFAULT_CAMERA_STATE ailleurs dans le
+          // fichier), qui retomberait sinon sur les coordonnees demo.
+          initialCameraState = { eye: viewer.camera.eye.slice(), look: viewer.camera.look.slice(), up: viewer.camera.up.slice() };
+        }
       }
       return;
     }
 
     const maquette = MAQUETTES[index];
+    const tMaquette = performance.now();
+    majEtatMaquette(maquette, "en cours…", "en-cours");
+    if (CHARGEMENT_PROGRESSIF && index > 0) majIndicateurChargement("Chargement : " + maquette.label + " (" + (index + 1) + "/" + MAQUETTES.length + ")");
     const model = maquette.format === "xkt"
-      ? xktLoader.load(Object.assign({ id: maquette.id, src: maquette.src, edges: true }, maquette.metaSrc ? { metaModelSrc: maquette.metaSrc } : {}))
+      ? xktLoader.load(Object.assign({ id: maquette.id, src: maquette.src, edges: !(MOBILE_SANS_ARETES && APPAREIL_MOBILE) }, maquette.metaSrc ? { metaModelSrc: maquette.metaSrc } : {}))
       : ifcLoader.load({ id: maquette.id, src: maquette.src, excludeTypes: ["IfcSpace"], edges: true });
 
     maquette.model = model;
@@ -5076,6 +5393,11 @@ function loadProject(projectKey) {
       // MAQUETTES, mais renderNiveaux() sort tout de suite si la CEA n'est
       // pas encore prete, et se re-declenche correctement des qu'elle l'est.
       renderNiveaux();
+      const secondes = ((performance.now() - tMaquette) / 1000).toFixed(1).replace(".", ",");
+      tempsParMaquette.push(maquette.label + " " + secondes + " s");
+      window.__tempsChargement = tempsParMaquette.slice();
+      majEtatMaquette(maquette, "✓ " + secondes + " s", "ok");
+      if (CHARGEMENT_PROGRESSIF && index === 0) premiereMaquetteAffichee();
       loadNextMaquette(index + 1);
     });
 
@@ -5084,6 +5406,7 @@ function loadProject(projectKey) {
     // lots suivants ne se chargent pas, plutot que de continuer sur un etat
     // partiellement rate sans le signaler clairement.
     model.on("error", (msg) => {
+      model.__erreur = String(msg).slice(0, 120);
       loadingOverlay.classList.add("error");
       loadingOverlay.textContent = "Erreur de chargement (" + maquette.label + ") : " + msg;
     });
@@ -5092,10 +5415,90 @@ function loadProject(projectKey) {
   loadNextMaquette(0);
 }
 
-IfcAPI.Init().then(() => {
-  ifcLoader = new WebIFCLoaderPlugin(viewer, { WebIFC, IfcAPI });
-  xktLoader = new XKTLoaderPlugin(viewer);
+// Perte du contexte graphique (memoire saturee, surtout sur telephone) : message
+// visible a l'ecran, pour ne pas laisser une 3D vide sans explication.
+viewerCanvas.addEventListener("webglcontextlost", (e) => {
+  e.preventDefault();
+  console.warn("[3D] contexte WebGL perdu (memoire graphique saturee)");
+  const chip = ensureChargementSuite();
+  chip.textContent = "Mémoire graphique saturée : la 3D est interrompue. Recharge la page.";
+  chip.hidden = false;
+  chip.style.pointerEvents = "auto";
+});
+// Diagnostic a l'ecran (?diag=1, 19/10) : sur telephone, pas de console. Affiche
+// la taille du canvas, l'etat du contexte WebGL, les objets visibles, la camera
+// et les temps de chargement, rafraichis chaque seconde.
+function installerDiagnostic() {
+  if (!/[?&]diag=1/.test(location.search)) return;
+  const pre = document.createElement("pre");
+  pre.id = "diagEcran";
+  document.body.appendChild(pre);
+  const maj = () => {
+    try {
+      const scene = viewer.scene;
+      const canvas = scene.canvas.canvas;
+      const gl = scene.canvas.gl;
+      let rendu = "?";
+      try {
+        const ext = gl.getExtension("WEBGL_debug_renderer_info");
+        rendu = ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : "inconnu";
+      } catch (e) { rendu = "erreur"; }
+      const lignes = [
+        "canvas " + canvas.clientWidth + "x" + canvas.clientHeight + " (px " + canvas.width + "x" + canvas.height + "), dpr " + window.devicePixelRatio,
+        "contexte perdu : " + (gl && gl.isContextLost ? gl.isContextLost() : "?") + " | " + rendu,
+        "visibles " + scene.numVisibleObjects + ", xray " + scene.numXRayedObjects,
+        "modeles " + Object.keys(scene.models).join(","),
+        "camera eye " + viewer.camera.eye.map((v) => v.toFixed(0)).join(",") + " look " + viewer.camera.look.map((v) => v.toFixed(0)).join(","),
+        "vue " + (Array.from(document.querySelectorAll(".view")).filter((v) => !v.hidden).map((v) => v.id).join(",")),
+        ...MAQUETTES.map((m) => {
+          const md = m.model;
+          if (!md) return m.id + " : pas de modele";
+          return m.id + " : entites " + md.numEntities + ", meshes " + (md.numMeshes !== undefined ? md.numMeshes : "?") +
+            ", detruit " + md.destroyed +
+            (md.__erreur ? ", ERREUR " + md.__erreur : "");
+        }),
+        "metaModels " + Object.keys(viewer.metaScene.metaModels).length,
+        "chargement " + (window.__tempsChargement || []).join(" | ")
+      ];
+      pre.textContent = lignes.join("\n");
+    } catch (e) { pre.textContent = "diag erreur : " + e.message; }
+  };
+  maj();
+  // Leger (19/10) : un rafraichissement toutes les 4 s, sans parcourir les objets (les versions precedentes faussaient les temps mesures).
+  setInterval(maj, 4000);
+}
+
+let chargementSuiteEl = null;
+function ensureChargementSuite() {
+  if (chargementSuiteEl) return chargementSuiteEl;
+  chargementSuiteEl = document.createElement("div");
+  chargementSuiteEl.id = "chargementSuite";
+  chargementSuiteEl.setAttribute("role", "status");
+  chargementSuiteEl.hidden = true;
+  document.body.appendChild(chargementSuiteEl);
+  return chargementSuiteEl;
+}
+
+installerDiagnostic();
+let chargementDemarre = false;
+function demarrerChargement() {
+  if (chargementDemarre) return;
+  chargementDemarre = true;
   loadProject(projectSelect.value);
+  if (!document.getElementById("view-collision").hidden) openSoleDetectionIfAlone();
+}
+// (20/10) Ne depend plus de CHARGEMENT_PROGRESSIF : sans web-ifc, c'est ce bloc qui lance le chargement.
+if ((CHARGEMENT_SANS_ATTENDRE_WEBIFC || HOPITAL_SANS_WEBIFC) && projectSelect.value === HOSPITAL_PROJECT_KEY) {
+  // Telechargement des XKT sans attendre web-ifc (WASM) : seul l'IFC en a besoin.
+  xktLoader = new XKTLoaderPlugin(viewer);
+  demarrerChargement();
+}
+
+// L'hopital n'utilise que des XKT : on n'initialise pas web-ifc (memoire du telephone).
+if (!(HOPITAL_SANS_WEBIFC && projectSelect.value === HOSPITAL_PROJECT_KEY)) IfcAPI.Init().then(() => {
+  ifcLoader = new WebIFCLoaderPlugin(viewer, { WebIFC, IfcAPI });
+  if (!xktLoader) xktLoader = new XKTLoaderPlugin(viewer);
+  demarrerChargement();
   // Arrivee directe (rechargement) sur #collision : la liste des collisions
   // s'affiche tout de suite, sans attendre la fin du chargement des maquettes
   // (sinon la page de choix de la paire reste visible pendant le chargement).

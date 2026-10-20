@@ -14,23 +14,35 @@
     <meta property="og:image:height" content="1080" />
     <meta name="twitter:card" content="summary_large_image" />
     <link rel="stylesheet" href="/src/style.css" />
+    <script>
+      // Rechargement sur une autre vue que l'accueil (#viewer, #collision...) : on affiche le
+      // logo seul (#splashLogo) au lieu de laisser voir l'accueil le temps que le script charge.
+      // Retire par activateView() dans main.js.
+      (function () {
+        var vue = location.hash.replace("#", "").split("/")[0];
+        if (vue && vue !== "accueil") document.documentElement.classList.add("demarrage");
+      })();
+    </script>
   </head>
-  <body>
+  <!-- Etat de depart sans JavaScript (19/10) : accueil affiche, navbar masquee (classe acc-actif), Todo, Admin, selecteur de projet et bouton des profils masques. Le script les remet comme il faut (interrupteurs MASQUE_* de src/main.js) ; sans ces attributs, la page brute etait visible plusieurs secondes sur mobile avant le chargement du script. -->
+  <body class="acc-actif">
+    <div id="splashLogo"><img class="loading-logo" src="/images/ouvra-icon.svg" alt="Chargement en cours" width="64" height="64"></div>
     <header id="navbar">
       <button type="button" id="navbarBrand"><img src="/images/ouvra-icon.svg" alt="" id="navbarBrandIcon">OUVRA</button>
+      <a id="navbarContact" href="https://gillescobigo.com/#contact" target="_blank" rel="noopener noreferrer">Me contacter</a>
       <button type="button" id="navbarToggle" aria-label="Ouvrir le menu">☰</button>
       <nav id="navbarLinks">
         <button type="button" class="nav-link" data-view="viewer" data-persona="presentation-globale bim-manager synthese be projeteur externe">Viewer</button>
         <button type="button" class="nav-link" data-view="collision" data-persona="presentation-globale bim-manager synthese be">Collision</button>
         <button type="button" class="nav-link" data-view="discussions" data-persona="presentation-globale bim-manager synthese be">Discussions</button>
-        <button type="button" class="nav-link" data-view="projeteur" data-persona="projeteur">Todo</button>
-        <button type="button" class="nav-link" data-view="admin" data-persona="bim-manager">Admin</button>
+        <button type="button" class="nav-link" data-view="projeteur" data-persona="projeteur" hidden>Todo</button>
+        <button type="button" class="nav-link" data-view="admin" data-persona="bim-manager" hidden>Admin</button>
       </nav>
-      <select id="projectSelect" aria-label="Changer de projet/maquette" title="Changer de projet/maquette">
+      <select id="projectSelect" aria-label="Changer de projet/maquette" title="Changer de projet/maquette" hidden>
         <option value="demo">Démo POC</option>
         <option value="hospital-xkt">WestRiverSide Hospital</option>
       </select>
-      <button type="button" id="activateProfilesBtn">Activer les profils</button>
+      <button type="button" id="activateProfilesBtn" hidden>Activer les profils</button>
       <select id="personaSelect" aria-label="Changer de profil" hidden>
         <option value="presentation-globale">Présentation outil global</option>
         <option value="bim-manager">BIM Manager</option>
@@ -257,7 +269,7 @@
       <div id="view-viewer" class="view" hidden>
         <div id="viewerWrap">
           <canvas id="viewerCanvas"></canvas>
-          <div id="loadingOverlay" role="status"><img class="loading-logo" src="/images/ouvra-icon.svg" alt="Chargement en cours" width="64" height="64"></div>
+          <div id="loadingOverlay" role="status"><div class="logo-zoom"><div class="logo-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="94 10 146 146" width="64" height="64" role="img" aria-label="Chargement en cours"><path fill="#f4f2ed" d="M168.95 12.88 A70.32 70.32 0 1 0 168.95 153.42 L168.95 137.72 A55.22 55.22 0 1 1 168.95 27.3 Z"/><path fill="#f4f2ed" d="M213.65 40.22 A60.75 60.75 0 0 1 213.65 138 L213.65 115.96 A44.78 44.78 0 0 0 213.65 62.67 Z"/><path fill="#6d806f" d="M182.04 26.18 L211.04 38.67 L211.04 121.6 L182.04 137.46 Z"/></svg></div></div></div>
           <div id="viewerToolbar">
             <button id="recenterBtn" title="Recentrer la caméra sur la maquette">Recentrer</button>
             <button id="newDiscussionBtn" title="Ouvrir une nouvelle discussion à partir de ce point de vue">Nouvelle discussion</button>
@@ -348,6 +360,7 @@
           <dl class="fiche-content" id="ficheSheetContent"></dl>
           <div id="ficheSheetDocs"></div>
         </div>
+              <p id="viewerAttribution" title="Jeu de test West Riverside Hospital, Open IFC Model Repository (Université d'Auckland), fourni avec l'autorisation d'Autodesk Inc.">Maquette West Riverside Hospital, avec l'autorisation d'Autodesk Inc.</p>
       </div>
 
       <div id="view-collision" class="view" hidden>
@@ -386,6 +399,7 @@
               <span id="threadAssignedBadge" hidden></span>
               <button type="button" id="createInstructionBtn" hidden>→ Créer une instruction pour le projeteur</button>
               <ul id="discussionMessages"></ul>
+              <button type="button" id="messageOuvrirBtn" hidden>Message</button>
               <form id="discussionReplyForm" hidden>
                 <textarea id="discussionReplyInput" placeholder="Répondre..." rows="2"></textarea>
                 <button type="submit">Envoyer</button>
@@ -508,11 +522,6 @@
           <button type="button" id="profilsActivateBtn" class="landing-part-btn">Activer les profils</button>
         </div>
       </div>
-    </div>
-
-    <div id="ctaBanner">
-      <p>Intéressé ?</p>
-      <a href="https://gillescobigo.com/#contact" target="_blank" rel="noopener noreferrer">Me contacter</a>
     </div>
 
     <div id="docModalOverlay" hidden>
