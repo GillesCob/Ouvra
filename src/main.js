@@ -1,4 +1,4 @@
-import { Viewer, AnnotationsPlugin, WebIFCLoaderPlugin, XKTLoaderPlugin, SectionPlanesPlugin, Mesh, ReadableGeometry, PhongMaterial, buildSphereGeometry } from "@xeokit/xeokit-sdk";
+import { Viewer, AnnotationsPlugin, WebIFCLoaderPlugin, XKTLoaderPlugin, SectionPlanesPlugin, TransformControl, Mesh, ReadableGeometry, PhongMaterial, buildSphereGeometry } from "@xeokit/xeokit-sdk";
 import * as WebIFC from "web-ifc";
 import { HOSPITAL_DETECTIONS, HOSPITAL_CLASHES } from "./clashesHospital.js";
 
@@ -342,6 +342,11 @@ const projectSelect = document.getElementById("projectSelect");
 const niveauxResetBtn = document.getElementById("niveauxResetBtn");
 const maquettesResetBtn = document.getElementById("maquettesResetBtn");
 const coupeToolbar = document.getElementById("coupeToolbar");
+const coupeSliderWrap = document.getElementById("coupeSliderWrap");
+const coupeChoixBar = document.getElementById("coupeChoixBar");
+const coupeChoixSurface = document.getElementById("coupeChoixSurface");
+const coupeChoixHoriz = document.getElementById("coupeChoixHoriz");
+const coupeSlider = document.getElementById("coupeSlider");
 const coupeBtn = document.getElementById("coupeBtn");
 const coupeToggleVisibilityBtn = document.getElementById("coupeToggleVisibilityBtn");
 const coupeInvertBtn = document.getElementById("coupeInvertBtn");
@@ -966,6 +971,12 @@ function closeInfoPanelDrawer() {
 infoPanelBackdrop.addEventListener("click", closeInfoPanelDrawer);
 const infoPanelCloseBtn = document.getElementById("infoPanelClose");
 if (infoPanelCloseBtn) infoPanelCloseBtn.addEventListener("click", closeInfoPanelDrawer);
+// Toucher la maquette ferme la feuille "Afficher" (mobile, 20/10). "pointerdown" en capture : le canvas 3D capte
+// les gestes avant le reste ; le geste continue ensuite normalement (la selection ou la rotation se font).
+document.addEventListener("pointerdown", (e) => {
+  if (e.target !== viewerCanvas || !infoPanel.classList.contains("open")) return;
+  if (window.matchMedia("(max-width: 768px)").matches) closeInfoPanelDrawer();
+}, true);
 
 // Ordinateur uniquement (bouton masque sur mobile, cf style.css) : reduit le
 // panneau a une fine bande. Le canvas est redimensionne une fois la
@@ -1484,6 +1495,13 @@ window.viewer = viewer;
 // d'origine [0.051, 0.055, 0.063].
 viewer.scene.canvas.backgroundColor = [0.063, 0.084, 0.072];
 
+// Eclairage de la scene (20/10, a tester) : les lumieres par defaut de xeokit (ambiante 0,7 + deux directionnelles
+// 0,7 et 0,9) totalisent environ 1,6 sur une surface bien orientee, donc les murs blancs saturent (blanc pur,
+// peu de contraste avec les elements en collision). Toutes les intensites sont multipliees par ce facteur,
+// 0,65 ramene le total a environ 1. 1 = comportement d'avant.
+const FACTEUR_LUMIERE = 0.65;
+Object.values(viewer.scene.lights).forEach((lumiere) => { lumiere.intensity = lumiere.intensity * FACTEUR_LUMIERE; });
+
 // Vitesse de navigation (portee depuis IES le 16/09, etendue a la souris) :
 // reglages par defaut du SDK (dragRotationRate/mouseWheelDollyRate/
 // touchPanRate/touchDollyRate), trop reactifs pour un debutant (souris) et
@@ -1547,6 +1565,22 @@ document.addEventListener("pointerdown", (e) => {
   cameraSpeedPanel.hidden = true;
   cameraSpeedToggle.classList.remove("active");
 });
+
+// Plan de coupe (20/10, demande de Gilles) : plus de rotation possible (une fausse manoeuvre pouvait ruiner la
+// demo). TransformControl n'affiche les arcs de rotation que si on lui fournit onQuaternion : on le retire toujours.
+// On ne garde que la fleche bleue (l'axe Z du plan, sa normale) : elle montre de quel cote part la coupe et peut se
+// tirer. Les fleches rouge et verte deplacent le plan sur lui-meme, ce qui ne change pas la coupe (un plan est infini).
+// Le curseur "Position de la coupe" reste le moyen principal de deplacer le plan.
+const setHandlersOrigine = TransformControl.prototype.setHandlers;
+TransformControl.prototype.setHandlers = function (handlers) {
+  if (!handlers) return setHandlersOrigine.call(this, handlers);
+  const resultat = setHandlersOrigine.call(this, Object.assign({}, handlers, { onQuaternion: null }));
+  if (this._displayMeshes) {
+    this._displayMeshes.x.setPositionActive(false);
+    this._displayMeshes.y.setPositionActive(false);
+  }
+  return resultat;
+};
 
 const sectionPlanes = new SectionPlanesPlugin(viewer);
 
@@ -2266,12 +2300,15 @@ function restoreViewerState(snapshot) {
     activeCoupeId = "coupe-surface";
     sectionPlanes.createSectionPlane({ id: activeCoupeId, pos: snapshot.coupe.pos, dir: snapshot.coupe.dir });
     viewer.scene.sectionPlanes[activeCoupeId].active = snapshot.coupe.active;
+    orienterPlanDeCoupe(viewer.scene.sectionPlanes[activeCoupeId]);
+    ecouterPositionCoupe(viewer.scene.sectionPlanes[activeCoupeId]);
     sectionPlanes.showControl(activeCoupeId);
     coupeBtn.textContent = "Désactiver la coupe";
     coupeBtn.classList.add("active");
     coupeToggleVisibilityBtn.hidden = false;
     coupeToggleVisibilityBtn.textContent = "Masquer le plan de coupe";
     coupeInvertBtn.hidden = false;
+    majCoupeSlider();
   }
 }
 
@@ -4667,6 +4704,8 @@ function applyVisibility() {
   }
 
   refreshCollisionMaquetteToggles();
+  // Previent le curseur de coupe (course a recalculer selon ce qui est visible).
+  window.dispatchEvent(new Event("visibilite-changee"));
 }
 
 // Garde-corps (IfcRailing) du projet hopital dont la chaine IfcLocalPlacement
@@ -5008,7 +5047,11 @@ function closeFicheSheet() {
   ficheSheet.classList.remove("open");
 }
 
-ficheSheetClose.addEventListener("click", closeFicheSheet);
+// Fermer la fiche deselectionne l'element (20/10) : de pres dans la maquette, il n'y a plus de zone vide ou toucher.
+ficheSheetClose.addEventListener("click", () => {
+  closeFicheSheet();
+  deselectEntity();
+});
 
 // Remonte l'arbre spatial IFC (parent en parent) jusqu'a trouver l'etage
 // auquel l'element clique est officiellement rattache dans le fichier
@@ -5095,11 +5138,30 @@ function deselectEntity() {
 // coupe actif a la fois.
 let coupePickingMode = false;
 let activeCoupeId = null;
+// Choix "Sur une surface" / "Coupe horizontale" ouvert par "Creer une coupe" (20/10).
+let coupeChoixOuvert = false;
+
+// Etat des boutons : coupe active (Desactiver), choix ouvert (Annuler + les deux choix), sinon Creer une coupe.
+function majBoutonsCoupe() {
+  const choix = coupeChoixOuvert && !activeCoupeId;
+  coupeChoixBar.hidden = !choix;
+  coupeChoixSurface.classList.toggle("active", choix && coupePickingMode);
+  coupeChoixSurface.textContent = coupePickingMode ? "Cliquez sur une surface…" : "Sur une surface";
+  if (activeCoupeId) {
+    coupeBtn.textContent = "Désactiver la coupe";
+    coupeBtn.classList.add("active");
+  } else if (choix) {
+    coupeBtn.textContent = "Annuler";
+    coupeBtn.classList.add("active");
+  } else {
+    coupeBtn.textContent = "Créer une coupe";
+    coupeBtn.classList.remove("active");
+  }
+}
 
 function setCoupePickingMode(on) {
   coupePickingMode = on;
-  coupeBtn.classList.toggle("active", on);
-  coupeBtn.textContent = on ? "Cliquez sur une surface..." : (activeCoupeId ? "Désactiver la coupe" : "Créer une coupe");
+  majBoutonsCoupe();
 }
 
 function destroyActiveCoupe() {
@@ -5111,13 +5173,121 @@ function destroyActiveCoupe() {
   coupeToggleVisibilityBtn.hidden = true;
   coupeToggleVisibilityBtn.textContent = "Masquer le plan de coupe";
   coupeInvertBtn.hidden = true;
-  coupeBtn.textContent = "Créer une coupe";
-  coupeBtn.classList.remove("active");
+  coupeChoixOuvert = false;
+  coupePickingMode = false;
+  majBoutonsCoupe();
+  if (coupeSliderWrap) coupeSliderWrap.hidden = true;
+}
+
+// Curseur "Position de la coupe" : deplace le plan le long de sa normale, entre les deux extremites de la maquette
+// projetees sur cette normale. Sur mobile il remplace la fleche 3D (retiree), sur ordinateur il s'y ajoute.
+// Course du curseur (20/10) : etendue des elements VISIBLES seulement (sans les bulles de collision), sinon des
+// elements masques mais lointains (les garde-corps mal places de l'hopital, tout pres de l'origine du monde)
+// l'etiraient bien au-dela de la maquette. Si tout est masque, etendue de toute la maquette : le plan ne sort jamais
+// de la maquette. Calculee une fois (creation, inversion, changement de visibilite), pas a chaque mouvement.
+let coupeAabb = null;
+function calculerAabbCoupe() {
+  const sansBulles = (ids) => ids.filter((id) => !String(id).startsWith(CLASH_MARKER_ID_PREFIX));
+  let ids = sansBulles(viewer.scene.visibleObjectIds);
+  if (ids.length === 0) ids = sansBulles(viewer.scene.objectIds);
+  return ids.length ? viewer.scene.getAABB(ids) : viewer.scene.aabb;
+}
+// Axe du curseur : la direction du plan, sauf pour un plan (presque) horizontal ou on prend toujours la verticale
+// vers le haut, pour que pousser le curseur vers la droite monte le plan, que la coupe soit inversee ou non.
+function coupeAxe(sectionPlane) {
+  const d = sectionPlane.dir;
+  return Math.abs(d[1]) > 0.7 ? (d[1] > 0 ? [d[0], d[1], d[2]] : [-d[0], -d[1], -d[2]]) : [d[0], d[1], d[2]];
+}
+function coupePlage(sectionPlane) {
+  const a = coupeAabb || (coupeAabb = calculerAabbCoupe());
+  const axe = coupeAxe(sectionPlane);
+  let tmin = Infinity;
+  let tmax = -Infinity;
+  for (const x of [a[0], a[3]]) for (const y of [a[1], a[4]]) for (const z of [a[2], a[5]]) {
+    const t = x * axe[0] + y * axe[1] + z * axe[2];
+    if (t < tmin) tmin = t;
+    if (t > tmax) tmax = t;
+  }
+  return { tmin, tmax };
+}
+function coupeDistance(sectionPlane) {
+  const axe = coupeAxe(sectionPlane);
+  return sectionPlane.pos[0] * axe[0] + sectionPlane.pos[1] * axe[1] + sectionPlane.pos[2] * axe[2];
+}
+// Le plan peut aussi etre deplace par la fleche 3D : le curseur suit.
+function coupeSyncValeur(sectionPlane) {
+  const { tmin, tmax } = coupePlage(sectionPlane);
+  const ratio = tmax > tmin ? (coupeDistance(sectionPlane) - tmin) / (tmax - tmin) : 0.5;
+  coupeSlider.value = String(Math.min(1000, Math.max(0, Math.round(ratio * 1000))));
+}
+function ecouterPositionCoupe(sectionPlane) {
+  sectionPlane.on("pos", () => coupeSyncValeur(sectionPlane));
+}
+function majCoupeSlider() {
+  const sectionPlane = activeCoupeId ? viewer.scene.sectionPlanes[activeCoupeId] : null;
+  coupeSliderWrap.hidden = !sectionPlane;
+  if (!sectionPlane) return;
+  coupeAabb = calculerAabbCoupe();
+  // Place le curseur juste au-dessus de la barre de coupe.
+  coupeSliderWrap.style.bottom = (parseFloat(getComputedStyle(coupeToolbar).bottom) + coupeToolbar.offsetHeight + 8) + "px";
+  coupeSyncValeur(sectionPlane);
+}
+coupeSlider.addEventListener("input", () => {
+  const sectionPlane = activeCoupeId ? viewer.scene.sectionPlanes[activeCoupeId] : null;
+  if (!sectionPlane) return;
+  const { tmin, tmax } = coupePlage(sectionPlane);
+  const decalage = tmin + (Number(coupeSlider.value) / 1000) * (tmax - tmin) - coupeDistance(sectionPlane);
+  const axe = coupeAxe(sectionPlane);
+  sectionPlane.pos = [
+    sectionPlane.pos[0] + axe[0] * decalage,
+    sectionPlane.pos[1] + axe[1] * decalage,
+    sectionPlane.pos[2] + axe[2] * decalage
+  ];
+});
+window.addEventListener("resize", () => { if (activeCoupeId) majCoupeSlider(); });
+window.addEventListener("visibilite-changee", () => { if (activeCoupeId) majCoupeSlider(); });
+
+// Orientation du rectangle du plan de coupe (20/10, demande de Gilles) : son bord bas reste parallele au sol.
+// xeokit laisse une rotation libre autour de la normale (roll) : on impose donc l'orientation, avec comme
+// axes locaux X = horizontal, Y = la verticale du monde projetee sur le plan, Z = la direction du plan
+// (SectionPlane : dir = quaternion * [0, 0, 1], la direction ne change donc pas). Monde : Y vers le haut.
+function orienterPlanDeCoupe(sectionPlane) {
+  const d = sectionPlane.dir;
+  const z = [d[0], d[1], d[2]];
+  let x = [z[2], 0, -z[0]]; // haut x z : toujours horizontal
+  let n = Math.hypot(x[0], x[1], x[2]);
+  if (n < 1e-3) { // plan quasi horizontal : pas de "bas" defini, on prend l'axe X du monde
+    const k = z[0];
+    x = [1 - z[0] * k, -z[1] * k, -z[2] * k];
+    n = Math.hypot(x[0], x[1], x[2]);
+  }
+  x = x.map((v) => v / n);
+  const y = [z[1] * x[2] - z[2] * x[1], z[2] * x[0] - z[0] * x[2], z[0] * x[1] - z[1] * x[0]];
+  // Quaternion [x, y, z, w] depuis la base (colonnes x, y, z).
+  const m00 = x[0], m10 = x[1], m20 = x[2], m01 = y[0], m11 = y[1], m21 = y[2], m02 = z[0], m12 = z[1], m22 = z[2];
+  const trace = m00 + m11 + m22;
+  let q;
+  if (trace > 0) {
+    const t = 0.5 / Math.sqrt(trace + 1);
+    q = [(m21 - m12) * t, (m02 - m20) * t, (m10 - m01) * t, 0.25 / t];
+  } else if (m00 > m11 && m00 > m22) {
+    const t = 2 * Math.sqrt(1 + m00 - m11 - m22);
+    q = [0.25 * t, (m01 + m10) / t, (m02 + m20) / t, (m21 - m12) / t];
+  } else if (m11 > m22) {
+    const t = 2 * Math.sqrt(1 + m11 - m00 - m22);
+    q = [(m01 + m10) / t, 0.25 * t, (m12 + m21) / t, (m02 - m20) / t];
+  } else {
+    const t = 2 * Math.sqrt(1 + m22 - m00 - m11);
+    q = [(m02 + m20) / t, (m12 + m21) / t, 0.25 * t, (m10 - m01) / t];
+  }
+  sectionPlane.quaternion = q;
 }
 
 coupeInvertBtn.addEventListener("click", () => {
   if (!activeCoupeId) return;
   sectionPlanes.flipSectionPlanes();
+  orienterPlanDeCoupe(viewer.scene.sectionPlanes[activeCoupeId]);
+  majCoupeSlider();
 });
 
 coupeBtn.addEventListener("click", () => {
@@ -5125,10 +5295,19 @@ coupeBtn.addEventListener("click", () => {
     destroyActiveCoupe();
     return;
   }
-  // Retire le 04/09 : reutiliser un element deja selectionne ne donnait pas
-  // une position fiable. On repasse par un clic explicite sur la maquette
-  // a chaque fois, dans tous les cas.
-  setCoupePickingMode(!coupePickingMode);
+  // "Creer une coupe" ouvre le choix (sur une surface, ou horizontale), "Annuler" le referme (20/10).
+  coupeChoixOuvert = !coupeChoixOuvert;
+  if (!coupeChoixOuvert) coupePickingMode = false;
+  majBoutonsCoupe();
+});
+
+// Sur une surface : meme principe qu'avant (04/09), le prochain clic sur la maquette pose le plan avec la normale de
+// la surface visee. Retire le 04/09 : reutiliser un element deja selectionne ne donnait pas une position fiable.
+coupeChoixSurface.addEventListener("click", () => setCoupePickingMode(!coupePickingMode));
+// Coupe horizontale : a mi-hauteur des elements visibles, on retire ce qui est au-dessus du plan.
+coupeChoixHoriz.addEventListener("click", () => {
+  const a = calculerAabbCoupe();
+  creerCoupe([(a[0] + a[3]) / 2, (a[1] + a[4]) / 2, (a[2] + a[5]) / 2], [0, -1, 0]);
 });
 
 coupeToggleVisibilityBtn.addEventListener("click", () => {
@@ -5149,18 +5328,25 @@ coupeToggleVisibilityBtn.addEventListener("click", () => {
 // (pickSurface), pas une approximation (ni entity.aabb, ni direction
 // camera, qui donnaient tous les deux un plan errone, cf incidents du
 // 04/09).
-function createCoupeFromHit(hit) {
+function creerCoupe(pos, dir) {
   activeCoupeId = "coupe-surface";
-  // Sens inverse de la normale de surface par defaut (demande explicite du
-  // 04/09) : coupe ce qui est devant la surface visee, pas derriere.
-  const dir = [-hit.worldNormal[0], -hit.worldNormal[1], -hit.worldNormal[2]];
-  sectionPlanes.createSectionPlane({ id: activeCoupeId, pos: hit.worldPos, dir });
+  sectionPlanes.createSectionPlane({ id: activeCoupeId, pos, dir });
+  orienterPlanDeCoupe(viewer.scene.sectionPlanes[activeCoupeId]);
+  ecouterPositionCoupe(viewer.scene.sectionPlanes[activeCoupeId]);
   sectionPlanes.showControl(activeCoupeId);
-  coupeBtn.textContent = "Désactiver la coupe";
-  coupeBtn.classList.add("active");
+  coupeChoixOuvert = false;
+  coupePickingMode = false;
+  majBoutonsCoupe();
   coupeToggleVisibilityBtn.hidden = false;
   coupeToggleVisibilityBtn.textContent = "Masquer le plan de coupe";
   coupeInvertBtn.hidden = false;
+  majCoupeSlider();
+}
+
+function createCoupeFromHit(hit) {
+  // Sens inverse de la normale de surface par defaut (demande explicite du
+  // 04/09) : coupe ce qui est devant la surface visee, pas derriere.
+  creerCoupe(hit.worldPos, [-hit.worldNormal[0], -hit.worldNormal[1], -hit.worldNormal[2]]);
 }
 
 function handleViewerPick(canvasCoords) {
@@ -5180,6 +5366,15 @@ function handleViewerPick(canvasCoords) {
   if (hit && hit.entity && typeof hit.entity.id === "string" && hit.entity.id.startsWith(CLASH_MARKER_ID_PREFIX)) {
     const clash = CLASHES.find((c) => c.id === hit.entity.id.slice(CLASH_MARKER_ID_PREFIX.length));
     if (clash) activateClash(clash);
+    return;
+  }
+
+  // Retoucher l'element deja selectionne le deselectionne (20/10) : de pres dans la maquette, il n'y a plus de
+  // zone vide ou toucher. Une des mecaniques possibles avec la croix de la fiche (la croix reste la plus visible).
+  if (hit && hit.entity && selectedEntity && hit.entity.id === selectedEntity.id) {
+    deselectEntity();
+    closeFicheSheet();
+    closeFicheCard();
     return;
   }
 

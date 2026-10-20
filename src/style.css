@@ -2566,9 +2566,9 @@ html.demarrage #splashLogo {
   .logo-spin { animation: ouvra-logo-pulse 1.8s ease-in-out infinite; }
 }
 
-/* Tiroirs mobiles (20/10) : "Afficher" (Viewer) est une feuille du bas sur la moitie de la hauteur, sans voile
-   (la 3D reste visible et manipulable au-dessus) ; "Collisions" un tiroir pleine largeur depuis la droite ; chacun
-   avec une croix de fermeture. Mobile seulement. */
+/* Tiroirs mobiles (20/10) : feuilles du bas, chacune avec une croix de fermeture. "Afficher" (Viewer) couvre la
+   moitie de la hauteur, sans voile (la 3D reste visible au-dessus, la toucher la ferme) ; "Collisions" monte
+   jusqu'en haut. Mobile seulement. */
 .drawer-head { display: none; }
 @media (max-width: 768px) {
   .drawer-head {
@@ -2590,6 +2590,121 @@ html.demarrage #splashLogo {
   #infoPanel.open { transform: translateY(0); }
   #infoPanelBackdrop:not([hidden]) { background: transparent; pointer-events: none; }
 
-  /* Collision : meme glissement depuis la droite, pleine largeur. */
-  #collisionInfoPanel { left: 0; width: auto; }
+  /* Collision : meme feuille du bas, mais elle monte jusqu'en haut (sous la navbar). */
+  #collisionInfoPanel {
+    left: 0; right: 0; width: auto; border-radius: 14px 14px 0 0; border-top: 1px solid var(--border);
+    transform: translateY(100%);
+  }
+  #collisionInfoPanel.open { transform: translateY(0); }
+}
+
+/* Curseur "Position de la coupe" (20/10) : mobile seulement, il remplace la fleche 3D du plan de coupe. */
+#coupeSliderWrap { display: none; }
+@media (max-width: 768px) {
+  #coupeSliderWrap:not([hidden]) {
+    display: flex; flex-direction: column; gap: 2px; position: absolute; left: 16px; right: 16px; bottom: 64px; z-index: 4;
+    padding: 8px 14px 6px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+  }
+  #coupeSliderWrap label { font-size: 9px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+  #coupeSlider { width: 100%; height: 36px; margin: 0; accent-color: #e8935c; }
+}
+
+/* Retouches mobiles (20/10) : tiroirs plus lents, "Tout afficher" moins haut, tiroir Collisions sans double titre,
+   bandeau de la collision centre, avec ses titres quand il est replie et sur une ligne fine quand il est ouvert. */
+@media (max-width: 768px) {
+  #infoPanel, #collisionInfoPanel { transition: transform 0.35s ease; }
+
+  /* "Tout afficher" sur sa propre ligne, mais sans marge superflue : le 1er niveau remonte. */
+  #infoPanel .tabpanel { padding-top: 4px; }
+  #infoPanel .panel-head { margin: 0; }
+  #infoPanel .reset-btn { min-height: 28px; padding: 0 8px; }
+
+  /* Tiroir Collisions : le titre en face de la croix reste, celui de la liste disparait (la liste remonte). */
+  #section-collision-liste > summary { display: none; }
+
+  /* Bandeau de la collision : tout est centre, avec le meme ecart entre tous les elements. */
+  #collisionDiscussion.cb { padding-bottom: 4px; }
+  #collisionDiscussion.cb #collisionDiscussionHead { margin: 0 -12px; justify-content: center; gap: 8px; }
+  #collisionDiscussion.cb #collisionControles { gap: 8px; }
+  #collisionDiscussion.cb #collisionDiscussionToggle { min-width: 24px; }
+
+  /* Replie (juste apres le choix d'une collision) : les titres restent, ils expliquent les deux boutons.
+     Ouvert (clic sur le numero ou sur la double fleche) : ligne fine sans titres, pour laisser la place aux echanges. */
+  #collisionDiscussion.cb:not(.collapsed) #collisionDiscussionHead { min-height: 36px; }
+  #collisionDiscussion.cb:not(.collapsed) #collisionDiscussionToggle { min-height: 36px; }
+  #collisionDiscussion.cb:not(.collapsed) .cb-titre-lib { display: none; }
+  #collisionDiscussion.cb:not(.collapsed) .collision-trigger { min-height: 32px; padding: 0 8px; }
+  #collisionDiscussion.cb:not(.collapsed) .collision-trigger-lib { display: none; }
+  #collisionDiscussion.cb:not(.collapsed) #collisionGrandBtn { min-width: 36px; min-height: 36px; }
+
+  /* Echanges agrandis (double fleche) : plus d'air au-dessus des statuts et sous les onglets, et le bouton Message
+     ne passe plus sous le bouton "Collisions" (il ne prend plus toute la largeur). */
+  #collisionDiscussion.cb.cb-grand #collisionDiscussionHead { margin-top: 10px; }
+  #collisionDiscussion.cb.cb-grand #collisionFiltre { margin-bottom: 10px; }
+  #collisionDiscussion.cb.cb-grand #messageOuvrirBtn { width: calc(100% - 140px); margin: auto auto 0 0; }
+
+  /* Bandeau de la collision : memes largeurs et memes positions replie, ouvert ou agrandi (20/10). */
+  #collisionDiscussion.cb #collisionDiscussionHead { gap: 6px; }
+  #collisionDiscussion.cb #collisionControles { gap: 6px; }
+  #collisionDiscussion.cb #collisionDiscussionToggle { flex: 0 0 24px; width: 24px; min-width: 24px; }
+  #collisionDiscussion.cb h3 { flex: 0 0 58px; width: 58px; }
+  #collisionDiscussion.cb .collision-controle { flex: 0 0 112px; }
+  #collisionDiscussion.cb .collision-trigger { width: 112px; box-sizing: border-box; }
+  #collisionDiscussion.cb #collisionGrandBtn { flex: 0 0 40px; width: 40px; min-width: 40px; }
+
+  /* Barre de coupe (20/10) : les boutons de coupe sur une seule ligne, sous le curseur ; "Vitesse" et "Afficher"
+     restent seuls sur la ligne du bas. */
+  /* Sans coupe : "Creer une coupe" seul, sur la ligne du bas, entre Vitesse et Afficher. */
+  #coupeToolbar {
+    left: 97px; right: 115px; bottom: 16px; max-width: none; flex-wrap: nowrap; justify-content: center;
+  }
+  /* Coupe active : les trois boutons sur leur propre ligne, au-dessus de Vitesse et Afficher. */
+  #coupeToolbar:has(#coupeInvertBtn:not([hidden])) { left: 16px; right: 16px; bottom: 60px; }
+  /* Seul sur la ligne du bas, "Creer une coupe" a la meme hauteur que Vitesse et Afficher. */
+  #coupeToolbar:not(:has(#coupeInvertBtn:not([hidden]))) button { min-height: 32px; padding: 7px 12px; }
+  #coupeToolbar button {
+    flex: 0 1 150px; min-width: 0; min-height: 40px; padding: 6px 4px; font-size: 12px; line-height: 1.15;
+    white-space: normal; text-align: center;
+  }
+
+  /* Vitesse ouverte : le curseur prend toute la largeur, jusque sous "Afficher" (qu'il recouvre), pour plus de
+     precision et un visuel plus net. Un toucher en dehors le referme (cf main.js). */
+  #cameraSpeedControl:has(#cameraSpeedPanel:not([hidden])) { right: 16px; z-index: 35; }
+  #cameraSpeedPanel { flex: 1; min-width: 0; max-width: none; padding: 4px 12px; gap: 12px; }
+  #cameraSpeedSlider { flex: 1; width: auto; min-width: 0; height: 28px; margin: 0; accent-color: #e8935c; }
+  #cameraSpeedValue { min-width: 36px; font-size: 12px; }
+}
+
+/* Ordinateur : curseur de vitesse de navigation plus large (20/10), pour regler plus finement. */
+@media (min-width: 769px) {
+  #cameraSpeedPanel { max-width: 340px; padding: 6px 12px; gap: 12px; }
+  #cameraSpeedSlider { width: 240px; accent-color: #e8935c; }
+  #cameraSpeedValue { min-width: 36px; font-size: 12px; }
+}
+
+/* Curseur "Position de la coupe" aussi sur ordinateur (20/10), au-dessus de la barre de coupe, a droite. La fleche 3D
+   du plan reste disponible (ordinateur seulement). */
+@media (min-width: 769px) {
+  #coupeSliderWrap:not([hidden]) {
+    display: flex; flex-direction: column; gap: 2px; position: absolute; right: 16px; width: 340px; z-index: 4;
+    padding: 8px 14px 6px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+  }
+  #coupeSliderWrap label { font-size: 9px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+  #coupeSlider { width: 100%; height: 28px; margin: 0; accent-color: #e8935c; }
+}
+
+/* Choix apres "Creer une coupe" (20/10) : "Sur une surface" et "Coupe horizontale", sur la ligne qui accueillera les
+   boutons de coupe une fois le plan cree. Ordinateur : a droite au-dessus de la barre ; mobile : pleine largeur. */
+#coupeChoixBar { display: none; }
+#coupeChoixBar:not([hidden]) { display: flex; gap: 8px; position: absolute; right: 16px; bottom: 56px; z-index: 4; }
+#coupeToolbar[hidden] ~ #coupeChoixBar { display: none; }
+#coupeChoixBar button {
+  padding: 7px 12px; background: var(--surface); color: var(--text); border: 1px solid var(--border);
+  border-radius: 6px; font-size: 12.5px; cursor: pointer; white-space: nowrap;
+}
+#coupeChoixBar button:hover { border-color: var(--accent); }
+#coupeChoixBar button.active { border-color: var(--accent); color: var(--accent); }
+@media (max-width: 768px) {
+  #coupeChoixBar:not([hidden]) { left: 16px; right: 16px; bottom: 60px; }
+  #coupeChoixBar button { flex: 1 1 0; min-width: 0; min-height: 40px; padding: 6px 4px; font-size: 12px; line-height: 1.15; white-space: normal; text-align: center; }
 }

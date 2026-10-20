@@ -282,6 +282,16 @@
             <button id="coupeInvertBtn" title="Inverser le côté coupé" hidden>Inverser la coupe</button>
             <button id="coupeToggleVisibilityBtn" title="Afficher ou masquer le rectangle/poignées du plan de coupe" hidden>Masquer le plan de coupe</button>
           </div>
+          <!-- Choix apres "Creer une coupe" (20/10) : sur une surface de la maquette, ou horizontale. -->
+          <div id="coupeChoixBar" hidden>
+            <button type="button" id="coupeChoixSurface">Sur une surface</button>
+            <button type="button" id="coupeChoixHoriz">Coupe horizontale</button>
+          </div>
+          <!-- Mobile seulement (cf CSS) : remplace la fleche 3D, trop fine au doigt, pour deplacer le plan de coupe. -->
+          <div id="coupeSliderWrap" hidden>
+            <label for="coupeSlider">Position de la coupe</label>
+            <input type="range" id="coupeSlider" min="0" max="1000" step="1" value="500">
+          </div>
 
           <!-- Vitesse de navigation (portee depuis IES le 16/09, etendue a la
                souris sur ordinateur) : reglage manuel de la sensibilite
@@ -352,17 +362,6 @@
           </details>
         </aside>
 
-        <!-- Mobile uniquement (cf media query) : evite d'ouvrir le tiroir
-             "☰ Infos" complet juste pour voir la fiche d'un element tape,
-             une modale discrete en bas d'ecran suffit. -->
-        <div id="ficheSheet" role="dialog" aria-label="Info sélection">
-          <div id="ficheSheetHeader">
-            <span>Info sélection</span>
-            <button type="button" id="ficheSheetClose" aria-label="Fermer">✕</button>
-          </div>
-          <dl class="fiche-content" id="ficheSheetContent"></dl>
-          <div id="ficheSheetDocs"></div>
-        </div>
               <p id="viewerAttribution" title="Jeu de test West Riverside Hospital, Open IFC Model Repository (Université d'Auckland), fourni avec l'autorisation d'Autodesk Inc.">Maquette West Riverside Hospital, avec l'autorisation d'Autodesk Inc.</p>
       </div>
 
@@ -526,6 +525,19 @@
           <button type="button" id="profilsActivateBtn" class="landing-part-btn">Activer les profils</button>
         </div>
       </div>
+    </div>
+
+    <!-- Fiche "Info selection" mobile (20/10) : hors des vues pour etre visible aussi dans la page Collision. -->
+    <!-- Mobile uniquement (cf media query) : evite d'ouvrir le tiroir
+         "☰ Infos" complet juste pour voir la fiche d'un element tape,
+         une modale discrete en bas d'ecran suffit. -->
+    <div id="ficheSheet" role="dialog" aria-label="Info sélection">
+      <div id="ficheSheetHeader">
+        <span>Info sélection</span>
+        <button type="button" id="ficheSheetClose" aria-label="Fermer">✕</button>
+      </div>
+      <dl class="fiche-content" id="ficheSheetContent"></dl>
+      <div id="ficheSheetDocs"></div>
     </div>
 
     <!-- Ecran de chargement (20/10) : hors de #viewerWrap, plein ecran, au-dessus de la navbar et des tiroirs,
