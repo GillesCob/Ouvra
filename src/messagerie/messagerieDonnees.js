@@ -138,9 +138,11 @@ export function sujetsClos(conv) {
   return conv.sujets.filter((s) => s.statut === "clos").sort((a, b) => b.closLe - a.closLe);
 }
 
-// Pastilles de sujets : les sujets urgents d'abord, puis ceux avec des non lus, puis les plus recents.
-export function sujetsTries(conv) {
-  return conv.sujets.slice().sort((x, y) => (!!estUrgent(y) - !!estUrgent(x)) || (y.nonLus > 0) - (x.nonLus > 0) || dernierMessage(y).quand - dernierMessage(x).quand);
+// Pastilles de sujets : les sujets urgents d'abord, puis ceux avec des non lus, puis les plus recents. Le sujet actif (actifId) garde son rang
+// de « non lu » tant qu'il est ouvert : l'ouvrir ne le deplace pas dans la bande, il ne descend qu'une fois quitte.
+export function sujetsTries(conv, actifId) {
+  const aDuNeuf = (s) => s.nonLus > 0 || s.id === actifId;
+  return conv.sujets.slice().sort((x, y) => (!!estUrgent(y) - !!estUrgent(x)) || (aDuNeuf(y) - aDuNeuf(x)) || dernierMessage(y).quand - dernierMessage(x).quand);
 }
 
 export function convParId(conversations, id) {

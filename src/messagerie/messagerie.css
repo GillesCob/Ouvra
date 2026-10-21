@@ -120,20 +120,15 @@
 .msg-sujets { flex-shrink: 0; display: flex; align-items: center; gap: 8px; padding: 8px 16px; background: var(--surface); border-bottom: 1px solid var(--border); }
 .msg-sujets-lbl { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
 .msg-bande { position: relative; flex: 1; min-width: 0; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
-.msg-bande-thumb {
-  position: absolute; top: 0; bottom: 0; left: 0; width: 0; border-radius: 999px; z-index: 0; pointer-events: none; box-sizing: border-box;
-  background: color-mix(in srgb, var(--accent) 24%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 60%, transparent);
-  transition: transform 0.3s ease, width 0.3s ease;
-}
 .msg-note-sujet, .msg-zone-fil { transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out; }
 .msg-note-sujet.msg-fil-sortie, .msg-note-sujet.msg-fil-entree, .msg-zone-fil.msg-fil-sortie, .msg-zone-fil.msg-fil-entree { opacity: 0; transform: translateY(8px); }
-@media (prefers-reduced-motion: reduce) { .msg-bande-thumb, .msg-note-sujet, .msg-zone-fil { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .msg-note-sujet, .msg-zone-fil { transition: none; } }
 .msg-bande::-webkit-scrollbar { display: none; }
 .msg-pastille {
-  position: relative; z-index: 1; flex-shrink: 0; min-height: 34px; display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border);
+  flex-shrink: 0; min-height: 34px; display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border);
   background: var(--bg); color: var(--muted); border-radius: 999px; padding: 5px 12px; font-size: 12.5px; font-weight: 600; white-space: nowrap;
 }
-.msg-pastille.actif { color: var(--text); border-color: transparent; background: none; }
+.msg-pastille.actif { color: var(--text); border-color: var(--msg-accent); }
 .msg-pastille.a-du-neuf { color: var(--text); }
 .msg-pastille.clos { color: var(--muted); }
 .msg-pastille .msg-badge { height: 16px; min-width: 16px; font-size: 10.5px; padding: 0 5px; }

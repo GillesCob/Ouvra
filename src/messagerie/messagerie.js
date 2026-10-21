@@ -290,52 +290,46 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
       '<div class="msg-composer"><button type="button" class="msg-icone" id="msgBoutonVue" data-act="menu-vue" aria-label="Joindre une prise de vue" aria-haspopup="true" aria-expanded="false" title="Joindre une prise de vue">' + ICONE_APPAREIL + "</button>" +
         '<textarea id="msgSaisie" rows="1" placeholder="Écrire un message" aria-label="Écrire un message"></textarea>' +
         '<button type="button" class="msg-envoyer" id="msgEnvoyer" data-act="envoyer">Envoyer</button></div>';
-    new ResizeObserver(placerPastilleSujets).observe($("msgBande"));
     $("msgScroller").addEventListener("scroll", () => {
       if (racine.offsetParent !== null) defilementMemorise = $("msgScroller").scrollTop;
       synchroniserBoutonBas();
     }, { passive: true });
   }
 
-  // Bascule entre sujets : meme fonctionnement que Niveaux / Maquettes du drawer du Viewer. La pastille glisse sous la puce active
-  // (0,3 s, position et largeur mesurees), le fil s'efface en descendant de 8 px, change, puis revient (voir ouvrirConversation).
-  function placerPastilleSujets() {
+  // Le sujet choisi defile doucement tout a gauche de la bande (juste apres le titre « Sujets »), en 0,3 s quelle que soit la distance ;
+  // si la bande ne peut pas defiler assez loin, elle s'arrete en butee. Un nouveau choix reprend depuis la position courante.
+  let animationBande = 0;
+  function sujetActifEnPremier() {
     const bande = $("msgBande");
-    const thumb = bande && bande.querySelector(".msg-bande-thumb");
     const actif = bande && bande.querySelector(".msg-pastille.actif");
-    if (!thumb || !actif || !actif.offsetWidth) return;
-    const premiere = !thumb.dataset.pose;
-    if (premiere) thumb.style.transition = "none";
-    thumb.style.width = actif.offsetWidth + "px";
-    thumb.style.transform = "translateX(" + actif.offsetLeft + "px)";
-    if (premiere) {
-      void thumb.offsetWidth;
-      thumb.style.transition = "";
-      thumb.dataset.pose = "1";
+    if (!actif) return;
+    cancelAnimationFrame(animationBande);
+    const depart = bande.scrollLeft;
+    const cible = Math.max(0, Math.min(actif.offsetLeft, bande.scrollWidth - bande.clientWidth));
+    if (Math.abs(cible - depart) < 1 || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      bande.scrollLeft = cible;
+      return;
     }
+    const debut = performance.now();
+    const pas = (maintenant) => {
+      const k = Math.min(1, (maintenant - debut) / 300);
+      bande.scrollLeft = depart + (cible - depart) * (1 - Math.pow(1 - k, 3));
+      if (k < 1) animationBande = requestAnimationFrame(pas);
+    };
+    animationBande = requestAnimationFrame(pas);
   }
 
   function rendreBande(c) {
     let html = '<button type="button" class="msg-pastille' + (!etat.sujetId ? " actif" : "") + (c.principal.nonLus ? " a-du-neuf" : "") + '" data-act="sujet" data-s="" aria-pressed="' + (!etat.sujetId) + '">Principal' +
       (c.principal.nonLus && etat.sujetId ? '<span class="msg-badge">' + c.principal.nonLus + "</span>" : "") + "</button>";
-    sujetsTries(c).forEach((s) => {
+    sujetsTries(c, etat.sujetId).forEach((s) => {
       if (s.statut === "clos" && s.id !== etat.sujetId) return;
       html += '<button type="button" class="msg-pastille' + (etat.sujetId === s.id ? " actif" : "") + (s.nonLus ? " a-du-neuf" : "") + (s.statut === "clos" ? " clos" : "") + '" data-act="sujet" data-s="' + echapper(s.id) + '" aria-pressed="' + (etat.sujetId === s.id) + '">' +
         '<span class="msg-point st-' + s.statut + '" title="' + LIBELLES_STATUT[s.statut] + '"></span><span class="msg-sr">' + LIBELLES_STATUT[s.statut] + ", </span># " + echapper(s.titre) +
         (estUrgent(s) ? '<span class="msg-urgent">Urgent</span>' : "") +
         (s.nonLus ? '<span class="msg-badge" aria-label="' + s.nonLus + ' non lus">' + s.nonLus + "</span>" : "") + "</button>";
     });
-    const bande = $("msgBande");
-    let thumb = bande.querySelector(".msg-bande-thumb");
-    if (!thumb) {
-      thumb = document.createElement("span");
-      thumb.className = "msg-bande-thumb";
-      thumb.setAttribute("aria-hidden", "true");
-      bande.prepend(thumb);
-    }
-    bande.querySelectorAll(".msg-pastille").forEach((p) => p.remove());
-    thumb.insertAdjacentHTML("afterend", html);
-    placerPastilleSujets();
+    $("msgBande").innerHTML = html;
     const nbClos = c.sujets.filter((s) => s.statut === "clos").length;
     const bouton = $("msgHistorique");
     bouton.hidden = nbClos === 0;
@@ -534,10 +528,12 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
     const zones = voletPret ? [$("msgNoteSujet"), racine.querySelector(".msg-zone-fil")] : [];
     if (!voletPret || avant === null || window.matchMedia("(prefers-reduced-motion: reduce)").matches || (avant && avant.sujet === filCourant().sujet)) {
       afficher();
+      sujetActifEnPremier();
       return;
     }
     // Meme conversation, autre sujet : la pastille glisse tout de suite, le fil attend (sortie 0,3 s, changement, retour 0,3 s).
     rendreBande(c);
+    sujetActifEnPremier();
     zones.forEach((z) => z.classList.add("msg-fil-sortie"));
     minuteurSujet = setTimeout(() => {
       afficher();
