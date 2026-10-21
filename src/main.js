@@ -1110,9 +1110,11 @@ function animerEntreeListe(ul) {
 }
 
 // Cadrage global du batiment : la camera est posee directement dessus, sans vol.
-function poserCameraCadrageGlobal() {
+// avecDezoom : la camera recule en vol (1,1 s) jusqu'a ce cadrage au lieu d'y etre posee.
+function poserCameraCadrageGlobal(avecDezoom) {
   viewer.cameraFlight.cancel();
-  viewer.cameraFlight.jumpTo(cadrageBatimentDansZone());
+  if (avecDezoom) viewer.cameraFlight.flyTo(Object.assign(cadrageBatimentDansZone(), { duration: 1.1 }));
+  else viewer.cameraFlight.jumpTo(cadrageBatimentDansZone());
 }
 
 // Remise a plat de l'affichage 3D a l'arrivee (sous le canvas masque) : transparence, fantome, couleurs, selection, marqueurs, coupe, X-ray,
@@ -1133,10 +1135,10 @@ function remettreA3DNeutre() {
 
 // Cible Viewer : toutes les maquettes visibles et tous les niveaux coches (pendant une prise de vue de la messagerie : les maquettes
 // que le Viewer avait avant de le quitter, memorisees dans memoMaquettesViewer).
-function appliquerCibleViewer(maquettesVoulues) {
+function appliquerCibleViewer(maquettesVoulues, avecDezoom) {
   if (document.getElementById("view-viewer").hidden) return;
   remettreA3DNeutre();
-  poserCameraCadrageGlobal();
+  poserCameraCadrageGlobal(avecDezoom);
   definirMaquettesVisibles(new Map(MAQUETTES.map((m) => [m.id, maquettesVoulues ? maquettesVoulues.get(m.id) !== false : true])));
   renderMaquetteRows(maquettesList, MAQUETTES);
 }
@@ -1197,6 +1199,8 @@ navLinks.forEach((link) => {
     if (page === "viewer" || page === "collision") {
       viewerDepuisVueDiscussion = false;
       const maquettesPrise = priseDeVue && page === "viewer" ? memoMaquettesViewer : null;
+      // Clic sur Viewer ou Collision alors qu'une collision precise est ouverte : la camera dezoome jusqu'au resultat final.
+      const depuisCollisionPrecise = !collisionDetail.hidden && !!collisionActiveClash;
       // Une collision restee ouverte : on repasse au recap (sinon revenir sur Collision rouvrirait la meme detection avec viewerWrap deplace
       // ailleurs : canvas vide).
       if (!collisionDetail.hidden) {
@@ -1209,12 +1213,12 @@ navLinks.forEach((link) => {
       }
       activateView(page, { garder3D: true });
       if (page === "viewer") {
-        appliquerCibleViewer(maquettesPrise);
+        appliquerCibleViewer(maquettesPrise, depuisCollisionPrecise);
         animerEntreeListe(niveauxList);
         animerEntreeListe(maquettesList);
       } else {
         ouvrirPageCollision();
-        poserCameraCadrageGlobal();
+        poserCameraCadrageGlobal(depuisCollisionPrecise);
       }
       navbarLinksEl.classList.remove("open");
       return;
