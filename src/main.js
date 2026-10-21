@@ -1104,13 +1104,14 @@ function jouerClasse(el, classe, duree) {
   setTimeout(() => el.classList.remove(classe), duree);
 }
 // Duree totale de l'apparition en cascade d'une liste (decalage de 30 ms plafonne a 9, animation de 0,3 s).
-function dureeEntreeListe(ul) {
-  return Math.min(Math.max(ul.children.length - 1, 0), 9) * 30 + 300;
+// decalage : nombre d'elements qui precedent la liste dans la cascade (le titre de la paire en Collision).
+function dureeEntreeListe(ul, decalage = 0) {
+  return Math.min(Math.max(ul.children.length + decalage - 1, 0), 9) * 30 + 300;
 }
-function animerEntreeListe(ul) {
+function animerEntreeListe(ul, decalage = 0) {
   if (ul) ul.classList.remove("liste-attente"); // lignes masquees en attendant l'apparition (voir openDetection)
   if (!ul || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-  Array.from(ul.children).forEach((enfant, i) => enfant.style.setProperty("--i", Math.min(i, 9)));
+  Array.from(ul.children).forEach((enfant, i) => enfant.style.setProperty("--i", Math.min(i + decalage, 9)));
   jouerClasse(ul, "liste-entree", 700);
 }
 
@@ -1157,14 +1158,21 @@ function remettreA3DNeutre() {
 // avecFondu (arrivee depuis Collision) : les maquettes masquees reapparaissent progressivement (dissolution).
 // reveler (ids des objets en fantome avant la remise au propre, apres un dezoom) : ils repassent d'abord progressivement en rendu plein,
 // puis les maquettes reapparaissent et les listes du drawer s'affichent en cascade.
-function appliquerCibleViewer(maquettesVoulues, avecDezoom, avecFondu, reveler) {
+// animerListes : les listes Niveaux et Maquettes du drawer apparaissent en cascade (faux si on est deja dans le Viewer).
+function appliquerCibleViewer(maquettesVoulues, avecDezoom, avecFondu, reveler, animerListes) {
   if (document.getElementById("view-viewer").hidden) return;
   remettreA3DNeutre();
   poserCameraCadrageGlobal(avecDezoom);
   const etats = new Map(MAQUETTES.map((m) => [m.id, maquettesVoulues ? maquettesVoulues.get(m.id) !== false : true]));
+  // Apparition des listes differee (degel, dissolution) : les lignes restent masquees jusque-la, sinon elles s'afficheraient, disparaitraient
+  // au depart de l'animation, puis reapparaitraient (une seule animation).
+  if (reveler && animerListes) {
+    niveauxList.classList.add("liste-attente");
+    maquettesList.classList.add("liste-attente");
+  }
   const finir = () => {
     renderMaquetteRows(maquettesList, MAQUETTES);
-    if (reveler) {
+    if (reveler && animerListes) {
       animerEntreeListe(niveauxList);
       animerEntreeListe(maquettesList);
     }
@@ -1301,8 +1309,8 @@ navLinks.forEach((link) => {
       }
       activateView(page, { garder3D: true });
       if (page === "viewer") {
-        appliquerCibleViewer(maquettesPrise, depuisCollisionPrecise, depuisCollision, xrayAvantDezoom);
-        if (!xrayAvantDezoom) {
+        appliquerCibleViewer(maquettesPrise, depuisCollisionPrecise, depuisCollision, xrayAvantDezoom, !depuisViewer);
+        if (!xrayAvantDezoom && !depuisViewer) {
           animerEntreeListe(niveauxList);
           animerEntreeListe(maquettesList);
         }
@@ -3981,14 +3989,22 @@ function openDetection(detection, options = {}) {
   const liste = detection ? collisionsList : collisionCouplesList;
   // Si l'apparition est differee (degel, dissolution), les lignes restent masquees jusque-la : sinon elles s'afficheraient, disparaitraient
   // au depart de l'animation, puis reapparaitraient.
-  if (options.fondu || options.reveler) liste.classList.add("liste-attente");
+  // Le titre de la paire de maquettes ouvre la cascade (indice 0), les lignes de la liste suivent : une seule apparition.
+  const titre = detection ? collisionListTitle.parentElement : null;
+  const decalage = titre ? 1 : 0;
+  if (options.fondu || options.reveler) {
+    liste.classList.add("liste-attente");
+    if (titre) titre.classList.add("titre-attente");
+  }
   const lancerApparition = () => {
+    if (titre) titre.classList.remove("titre-attente");
     if (detectionCourante !== detection) {
       liste.classList.remove("liste-attente");
       return;
     }
-    dureeApparitionMs = dureeEntreeListe(liste);
-    animerEntreeListe(liste);
+    dureeApparitionMs = dureeEntreeListe(liste, decalage);
+    if (titre && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) jouerClasse(titre, "titre-entree", 700);
+    animerEntreeListe(liste, decalage);
     renderClashMarkers(marqueursAPoser);
   };
   const apparition = options.fondu ? () => changerVisibiliteAvecFondu(etatsModeles, lancerApparition) : lancerApparition;

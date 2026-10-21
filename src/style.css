@@ -2944,6 +2944,8 @@ html.demarrage #splashLogo {
 /* Drawer Collision (20/10) : ces sections ne se replient pas, donc ni fleche ni curseur cliquable sur leur titre. */
 #section-collision-liste > summary, #section-collision-couples > summary { cursor: default; }
 #section-collision-liste > summary.info-section-title::after, #section-collision-couples > summary.info-section-title::after { display: none; }
+/* Titre « Collisions » du drawer retire (le titre de la paire de maquettes suffit). */
+#section-collision-liste > summary.info-section-title { display: none; }
 
 /* Laptop, pleine page d'une collision (20/10) : meme structure que la pleine page d'une discussion. Colonne de gauche : la
    3D en photo figee (cliquable pour revenir) avec Priorite et Statut dessous ; colonne de droite : la conversation sur toute
@@ -3018,6 +3020,9 @@ html.demarrage #splashLogo {
 /* Listes : les lignes apparaissent l'une apres l'autre (--i pose par animerEntreeListe). */
 .liste-entree > * { animation: entreeListe 0.3s ease-out both; animation-delay: calc(var(--i, 0) * 30ms); }
 .liste-attente > * { opacity: 0; }
+/* Titre de la paire de maquettes du drawer Collision : premier element de la cascade, avant les lignes de la liste. */
+.collision-titre-wrap.titre-attente { opacity: 0; }
+.collision-titre-wrap.titre-entree { animation: entreeListe 0.3s ease-out both; }
 @keyframes entreeListe { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 
 /* Bandeau de collision : il monte a la premiere selection, son contenu se renouvelle ensuite. */
@@ -3057,7 +3062,7 @@ html.demarrage #splashLogo {
 
 @media (prefers-reduced-motion: reduce) {
   .liste-entree > *, #collisionDiscussion.bandeau-entree, #collisionDiscussion.bandeau-maj > *, .clash-pastille.active::before,
-  .apparition, #filTagsNb.pulse, #discussionsDetailPane.detail-entree { animation: none; }
+  .apparition, #filTagsNb.pulse, #discussionsDetailPane.detail-entree, .collision-titre-wrap.titre-entree { animation: none; }
   #appBody { transition: none; }
 }
 
