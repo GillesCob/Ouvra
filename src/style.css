@@ -2672,6 +2672,27 @@ html.demarrage #splashLogo {
   #infoPanel .panel-head { margin: 0; }
   #infoPanel .reset-btn { min-height: 28px; padding: 0 8px; }
 
+  /* Tiroir Viewer : plus de ligne "Afficher + croix". Le titre reste pour les lecteurs d'ecran (masque visuellement), la
+     croix (zone tactile 44 px) est calee dans le coin haut droit, et la bascule Niveaux / Maquettes remonte sur sa ligne
+     en laissant la place de la croix a droite. */
+  #infoPanel .drawer-head { position: absolute; top: 0; right: 0; z-index: 2; min-height: 0; padding: 0; border-bottom: none; }
+  #infoPanel .drawer-head > span {
+    position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+  }
+  #infoPanel .tabs { margin-top: 4px; margin-right: 50px; }
+
+  /* Tiroir Collisions : plus de ligne "Collisions + croix". Le mot reste pour les lecteurs d'ecran (masque), la croix
+     (zone tactile 44 px) est calee dans le coin haut droit, et le titre de la paire remonte en lui laissant sa place. */
+  #collisionInfoPanel .drawer-head { position: absolute; top: 0; right: 0; z-index: 2; min-height: 0; padding: 0; border-bottom: none; }
+  #collisionInfoPanel .drawer-head > span {
+    position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+  }
+  #collisionInfoPanel .collision-titre-wrap { margin-right: 44px; }
+  /* Le trait sous le titre court jusqu'au bord droit du tiroir (sous la croix) : il est porte par le conteneur
+     (58 px = marge de la croix 44 + marge interne du tiroir 14), pas par le bouton qui reste a gauche de la croix. */
+  #collisionInfoPanel .collision-list-title { border-bottom: none; }
+  #collisionInfoPanel .collision-titre-wrap::after { content: ""; position: absolute; left: 0; right: -58px; bottom: 0; height: 1px; background: var(--border); pointer-events: none; }
+
   /* Tiroir Collisions : le titre en face de la croix reste, celui de la liste disparait (la liste remonte). */
   #section-collision-liste > summary { display: none; }
 

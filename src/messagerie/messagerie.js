@@ -34,7 +34,7 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
   let vueDialogue = null;
   let vuesAffichees = [];
   let vuesPeriment = false; // des vues ont change pendant que la page etait masquee : le fil affiche est a redessiner
-  const etat = { onglet: "individuel", seulementNonLus: false, q: "", convId: null, sujetId: null, recherche: "" };
+  const etat = { onglet: "individuel", convId: null, sujetId: null, recherche: "" };
 
   const $ = (id) => document.getElementById(id);
   const mobile = () => window.matchMedia(MOBILE).matches;
@@ -50,10 +50,6 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
           '<button type="button" role="tab" id="msgOngletIndividuel" data-act="onglet" data-v="individuel" aria-selected="true" aria-controls="msgListe">Individuel <span class="msg-badge" id="msgBadgeIndividuel" hidden></span></button>' +
           '<button type="button" role="tab" id="msgOngletGroupe" data-act="onglet" data-v="groupe" aria-selected="false" aria-controls="msgListe">Groupes <span class="msg-badge" id="msgBadgeGroupe" hidden></span></button>' +
         "</div>" +
-        '<div class="msg-outils">' +
-          '<input id="msgRecherche" type="search" placeholder="Rechercher" aria-label="Rechercher une conversation" autocomplete="off" />' +
-          '<button type="button" class="msg-filtre" id="msgNonLus" data-act="non-lus" aria-pressed="false">Non lus</button>' +
-        "</div>" +
         '<div class="msg-liste" id="msgListe" role="tabpanel" aria-labelledby="msgOngletIndividuel"></div>' +
         '<div class="msg-demo">Échanges fictifs, pour la démonstration</div>' +
       "</aside>" +
@@ -65,8 +61,24 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
     racine.addEventListener("input", surSaisie);
     racine.addEventListener("keydown", surTouche);
     racine.addEventListener("change", surChangement);
-    document.addEventListener("click", fermerMenuVueSiExterieur);
     document.addEventListener("keydown", surEchap);
+    // Menu « ⋯ » (mobile) : l'appui qui le ferme en dehors est un clic neutre (rien d'autre ne se declenche).
+    document.addEventListener("pointerdown", (e) => {
+      const menu = $("msgMenu");
+      if (!menu || menu.hidden || !window.matchMedia("(max-width: 768px)").matches) return;
+      if (e.target.closest("#msgOptions, #msgMenu")) return;
+      fermerMenu();
+      absorberGesteNeutre();
+    }, true);
+    EVENEMENTS_ABSORBES.forEach((type) => {
+      document.addEventListener(type, (e) => {
+        if (!gesteNeutre) return;
+        if (type === "pointerup") terminerGesteNeutre();
+        e.stopPropagation();
+        if (e.cancelable) e.preventDefault();
+      }, true);
+    });
+    ["pointercancel", "touchcancel"].forEach((type) => document.addEventListener(type, terminerGesteNeutre, true));
     monte = true;
   }
 
@@ -108,13 +120,18 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
       else afficher();
       return;
     }
+    // Quitter la page ferme la modale restee ouverte : sinon elle reapparait a l'arrivee suivante sur Discussions.
+    if (dialogueOuvert()) { declencheurDialogue = null; fermerDialogue(); }
     if (priseDeVueEnCours && nomVue !== "viewer") annulerPriseDeVue(false);
+    if (nomVue !== "viewer") retourConversationActif = false;
     montrerBandeau(priseDeVueEnCours && nomVue === "viewer");
+    montrerBandeauRetour(retourConversationActif && !priseDeVueEnCours && nomVue === "viewer");
   }
 
   function afficher() {
     if (!monte || !conversations.length) return;
     montrerBandeau(false);
+    montrerBandeauRetour(false);
     if (premierAffichage) {
       premierAffichage = false;
       rendreListe();
@@ -194,21 +211,15 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
   }
 
   function rendreListe() {
-    const q = etat.q.trim().toLowerCase();
     const items = conversations
-      .filter((c) => c.type === etat.onglet && (!q || c.nom.toLowerCase().includes(q)) && (!etat.seulementNonLus || nonLusConv(c) > 0))
+      .filter((c) => c.type === etat.onglet)
       .sort((a, b) => {
         const ua = nonLusConv(a) > 0;
         const ub = nonLusConv(b) > 0;
         if (ua !== ub) return ua ? -1 : 1;
         return activiteConv(b) - activiteConv(a);
       });
-    const nouveaux = items.filter((c) => nonLusConv(c) > 0);
-    const anciens = items.filter((c) => nonLusConv(c) === 0);
-    let html = "";
-    if (!items.length) html = '<div class="msg-vide">Aucune conversation.</div>';
-    if (nouveaux.length) html += '<div class="msg-liste-titre nouveau">Nouveaux messages</div>' + nouveaux.map(ligneConv).join("");
-    if (anciens.length) html += (nouveaux.length ? '<div class="msg-liste-titre">Plus anciens</div>' : "") + anciens.map(ligneConv).join("");
+    const html = items.length ? items.map(ligneConv).join("") : '<div class="msg-vide">Aucune conversation.</div>';
     $("msgListe").innerHTML = html;
     majBadges();
   }
@@ -228,14 +239,6 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
       thumb.style.transition = "";
       pastillePosee = true;
     }
-  }
-
-  // Le nouveau sujet doit etre visible dans la liste : recherche et filtre « Non lus » remis a zero.
-  function reinitialiserFiltres() {
-    etat.q = "";
-    etat.seulementNonLus = false;
-    $("msgRecherche").value = "";
-    $("msgNonLus").setAttribute("aria-pressed", "false");
   }
 
   let minuteurOnglet = null;
@@ -277,6 +280,16 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
         '<div class="msg-titre"><b>' + echapper(c.nom) + "</b><span>" +
           (c.type === "groupe" ? echapper(c.membres.map((m) => prenom(personne(m).nom)).join(", ")) : echapper(c.sousTitre)) + "</span></div>" +
         '<button type="button" class="msg-icone" data-act="recherche-conv" aria-label="Rechercher dans la conversation" aria-expanded="false" aria-controls="msgBarreRecherche">' + ICONE_LOUPE + "</button>" +
+        '<button type="button" class="msg-icone msg-options" id="msgOptions" data-act="options" aria-label="Options de la conversation" aria-haspopup="true" aria-expanded="false" aria-controls="msgMenu">&hellip;</button>' +
+        '<div class="msg-menu" id="msgMenu" hidden>' +
+          '<button type="button" data-act="nouveau-sujet">+ Nouveau sujet</button>' +
+          '<button type="button" id="msgMenuHistorique" data-act="historique" hidden>Historique</button>' +
+          '<button type="button" data-act="participants" aria-expanded="false">Participants</button>' +
+          '<ul class="msg-menu-participants" hidden>' + (c.type === "groupe"
+            ? c.membres.map((m) => "<li>" + echapper(personne(m).nom) + (personne(m).role ? "<span>" + echapper(personne(m).role) + "</span>" : "") + "</li>").join("")
+            : "<li>" + echapper(c.nom) + (c.sousTitre ? "<span>" + echapper(c.sousTitre) + "</span>" : "") + "</li>") + "</ul>" +
+          '<div class="msg-menu-sujet" id="msgMenuSujet" hidden></div>' +
+        "</div>" +
       "</div>" +
       '<div class="msg-barre-recherche" id="msgBarreRecherche" hidden><input id="msgChampRecherche" type="search" placeholder="Rechercher dans cette conversation" aria-label="Rechercher dans cette conversation" autocomplete="off" /><span id="msgNbResultats" aria-live="polite"></span></div>' +
       '<div class="msg-sujets"><span class="msg-sujets-lbl">Sujets</span><div class="msg-bande" id="msgBande"></div>' +
@@ -286,8 +299,7 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
       '<div class="msg-zone-fil"><div class="msg-defile" id="msgScroller" tabindex="-1"></div>' +
         '<button type="button" class="msg-bas" id="msgBas" data-act="bas" aria-label="Aller au dernier message" hidden>&darr;</button></div>' +
       '<div class="msg-vue-pendante" id="msgVuePendante" hidden></div>' +
-      '<div class="msg-menu-vue" id="msgMenuVue" role="menu" hidden></div>' +
-      '<div class="msg-composer"><button type="button" class="msg-icone" id="msgBoutonVue" data-act="menu-vue" aria-label="Joindre une prise de vue" aria-haspopup="true" aria-expanded="false" title="Joindre une prise de vue">' + ICONE_APPAREIL + "</button>" +
+      '<div class="msg-composer"><button type="button" class="msg-icone" id="msgBoutonVue" data-act="prendre-vue" aria-label="Prendre une vue dans le Viewer" title="Prendre une vue dans le Viewer">' + ICONE_APPAREIL + "</button>" +
         '<textarea id="msgSaisie" rows="1" placeholder="Écrire un message" aria-label="Écrire un message"></textarea>' +
         '<button type="button" class="msg-envoyer" id="msgEnvoyer" data-act="envoyer">Envoyer</button></div>';
     $("msgScroller").addEventListener("scroll", () => {
@@ -334,12 +346,15 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
     const bouton = $("msgHistorique");
     bouton.hidden = nbClos === 0;
     bouton.textContent = "Historique (" + nbClos + ")";
+    const entree = $("msgMenuHistorique");
+    entree.hidden = nbClos === 0;
+    entree.textContent = "Historique (" + nbClos + ")";
   }
 
   function htmlVue(m) {
     if (!m.vue) return "";
     vuesAffichees.push(m);
-    return '<button type="button" class="msg-vue" data-act="agrandir" data-vp="' + (vuesAffichees.length - 1) + '" title="Agrandir la prise de vue">' + imageVue(m.vue) +
+    return '<button type="button" class="msg-vue" data-act="agrandir" data-vp="' + (vuesAffichees.length - 1) + '" title="Ouvrir cette vue dans le Viewer">' + imageVue(m.vue) +
       '<span class="msg-vue-legende">' + echapper(legendeVue(m.vue)) + "</span></button>";
   }
 
@@ -387,7 +402,9 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
       const m = messages[i];
       const cle = cleJour(m.quand);
       if (cle !== jour) {
-        html += '<div class="msg-jour"><span>' + echapper(libelleJour(m.quand, instant())) + "</span></div>";
+        // Un conteneur par jour : le repere de date (sticky) est limite a son jour, le suivant le repousse.
+        if (jour) html += "</div>";
+        html += '<div class="msg-groupe-jour"><div class="msg-jour"><span>' + echapper(libelleJour(m.quand, instant())) + "</span></div>";
         jour = cle;
         precedent = null;
       }
@@ -412,6 +429,7 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
         htmlVue(m) + (texte ? '<div class="msg-texte">' + texte + heure + "</div>" : heure) + "</div></div>";
       precedent = m;
     }
+    if (jour) html += "</div>";
     if (!messages.length) html += '<div class="msg-vide">Aucun message.</div>';
 
     const ancienneHauteur = zone.scrollHeight;
@@ -446,6 +464,8 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
     return c.type !== "groupe" ? [] : c.membres.filter((p) => p !== MOI && !s.tagues.includes(p));
   }
 
+  let noteOuverteId = null;
+
   // Bandeau du sujet ouvert : titre, taggues, statut, Cloturer / Rouvrir, vue d'origine.
   function rendreNoteSujet() {
     const cur = filCourant();
@@ -453,8 +473,10 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
     const saisie = $("msgSaisie");
     const envoyer = $("msgEnvoyer");
     const boutonVue = $("msgBoutonVue");
+    majMenuSujet();
     if (!cur.sujet) {
       note.hidden = true;
+      noteOuverteId = null;
       saisie.disabled = false;
       envoyer.disabled = false;
       boutonVue.disabled = false;
@@ -465,24 +487,91 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
     const clos = s.statut === "clos";
     const origine = vueOrigine(s);
     const boutonOrigine = origine
-      ? '<button type="button" class="msg-origine" data-act="agrandir-origine" title="Agrandir la prise de vue d\'origine"><span class="msg-origine-img">' + imageVue(origine.vue) + "</span><span>Vue d'origine</span></button>"
+      ? '<button type="button" class="msg-origine" data-act="agrandir-origine" title="Ouvrir la vue d\'origine dans le Viewer"><span class="msg-origine-img">' + imageVue(origine.vue) + "</span><span>Vue d'origine</span></button>"
       : "";
+    if (mobile()) {
+      // Mobile : plus de rangee sous la bande, les actions du sujet vivent dans le menu « ⋯ » (bloc « Ce sujet »).
+      note.hidden = true;
+      note.innerHTML = "";
+      noteOuverteId = null;
+      saisie.disabled = clos;
+      envoyer.disabled = clos;
+      boutonVue.disabled = clos;
+      saisie.placeholder = clos ? "Sujet clos : rouvrez-le pour répondre" : "Écrire un message";
+      return;
+    }
     note.hidden = false;
-    note.className = "msg-note-sujet" + (clos ? " clos" : "");
+    if (noteOuverteId !== s.id) noteOuverteId = null;
+    const ouvert = noteOuverteId === s.id;
+    note.className = "msg-note-sujet" + (clos ? " clos" : "") + (ouvert ? " details-ouverts" : "");
+    const tagues = echapper(s.tagues.map((p) => personne(p).nom).join(", "));
+    const infoClos = clos ? "clos par " + echapper(personne(s.closPar).nom) + " le " + dateHeure(s.closLe) + " &middot; " + s.messages.length + " messages" : "";
+    // Mobile : une rangee compacte (retour, titre, statut, chevron) + des details repliables. Ordinateur : les memes elements, mise en page inchangee.
+    const tete = '<div class="msg-note-tete"><button type="button" class="msg-note-retour" data-act="vers-principal" aria-label="Retour à la conversation principale">&larr;</button>' +
+      "<span class=\"msg-note-texte\"><b># " + echapper(s.titre) + "</b>" + (clos ? "" : (s.urgent ? ' <span class="msg-urgent">Urgent</span>' : "")) +
+      '<span class="msg-note-suite"> &middot; ' + (clos ? infoClos : "tagués : " + tagues) + "</span></span>" +
+      '<span class="msg-note-etat"><span class="msg-point st-' + s.statut + '"></span>' + LIBELLES_STATUT[s.statut] + (s.urgent && !clos ? ' <span class="msg-urgent">Urgent</span>' : "") + "</span>" +
+      '<button type="button" class="msg-note-chevron" data-act="details-sujet" aria-label="Détails du sujet" aria-expanded="' + ouvert + '"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 6l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>';
+    const lignePersonnes = '<div class="msg-note-personnes">' + (clos ? infoClos : "tagués : " + tagues) + "</div>";
+    let actions;
     if (clos) {
-      note.innerHTML = boutonOrigine + "<span><b># " + echapper(s.titre) + "</b> &middot; clos par " + echapper(personne(s.closPar).nom) + " le " + dateHeure(s.closLe) + " &middot; " + s.messages.length + " messages</span>" +
-        '<button type="button" class="msg-bouton-petit" data-act="rouvrir">Rouvrir</button><button type="button" class="msg-lien" data-act="vers-principal">&larr; Principal</button>';
+      actions = '<button type="button" class="msg-bouton-petit" data-act="rouvrir">Rouvrir</button><button type="button" class="msg-lien msg-lien-principal" data-act="vers-principal">&larr; Principal</button>';
     } else {
-      note.innerHTML = boutonOrigine + "<span><b># " + echapper(s.titre) + "</b>" + (s.urgent ? ' <span class="msg-urgent">Urgent</span>' : "") + " &middot; tagués : " + echapper(s.tagues.map((p) => personne(p).nom).join(", ")) + "</span>" +
-        '<select id="msgStatut" aria-label="Statut du sujet">' + STATUTS_ACTIFS.map((k) => '<option value="' + k + '"' + (s.statut === k ? " selected" : "") + ">" + LIBELLES_STATUT[k] + "</option>").join("") + "</select>" +
+      actions = '<select id="msgStatut" aria-label="Statut du sujet">' + STATUTS_ACTIFS.map((k) => '<option value="' + k + '"' + (s.statut === k ? " selected" : "") + ">" + LIBELLES_STATUT[k] + "</option>").join("") + "</select>" +
         '<button type="button" class="msg-bouton-petit msg-bascule-urgent" data-act="urgence" aria-pressed="' + !!s.urgent + '">Urgent</button>' +
         (membresAjoutables(cur.c, s).length ? '<button type="button" class="msg-bouton-petit" data-act="ouvrir-ajout">+ Personne</button>' : "") +
-        '<button type="button" class="msg-bouton-petit" data-act="cloturer">Clôturer</button><button type="button" class="msg-lien" data-act="vers-principal">&larr; Principal</button>';
+        '<button type="button" class="msg-bouton-petit" data-act="cloturer">Clôturer</button><button type="button" class="msg-lien msg-lien-principal" data-act="vers-principal">&larr; Principal</button>';
     }
+    note.innerHTML = tete + '<div class="msg-note-details" id="msgNoteDetails"><div class="msg-note-int">' + boutonOrigine + lignePersonnes + actions + "</div></div>";
     saisie.disabled = clos;
     envoyer.disabled = clos;
     boutonVue.disabled = clos;
     saisie.placeholder = clos ? "Sujet clos : rouvrez-le pour répondre" : "Écrire un message";
+  }
+
+  // Mobile : bloc « Ce sujet » du menu « ⋯ », reconstruit a chaque rendu du fil pour refleter statut, urgence et clos.
+  function majMenuSujet() {
+    const zone = $("msgMenuSujet");
+    if (!zone) return;
+    const cur = filCourant();
+    if (!cur || !cur.sujet || !mobile()) { zone.hidden = true; zone.innerHTML = ""; return; }
+    const s = cur.sujet;
+    const clos = s.statut === "clos";
+    const origine = vueOrigine(s);
+    const taguesHtml = s.tagues.map((p) => "<li>" + echapper(personne(p).nom) + (personne(p).role ? "<span>" + echapper(personne(p).role) + "</span>" : "") + "</li>").join("");
+    let h = '<div class="msg-menu-titre">Ce sujet</div>';
+    if (clos) h += '<div class="msg-menu-ligne">Statut : ' + LIBELLES_STATUT[s.statut] + "</div>";
+    else h += '<label class="msg-menu-ligne" for="msgStatutMenu">Statut :<select id="msgStatutMenu" aria-label="Statut du sujet">' +
+      STATUTS_ACTIFS.map((k) => '<option value="' + k + '"' + (s.statut === k ? " selected" : "") + ">" + LIBELLES_STATUT[k] + "</option>").join("") + "</select></label>";
+    if (!clos) {
+      h += '<button type="button" data-act="urgence" aria-pressed="' + !!s.urgent + '">Urgent<span class="msg-menu-coche">' + (s.urgent ? "&#10003;" : "") + "</span></button>";
+      if (membresAjoutables(cur.c, s).length) h += '<button type="button" data-act="ouvrir-ajout">+ Personne</button>';
+      h += '<button type="button" data-act="cloturer">Clôturer</button>';
+    } else h += '<button type="button" data-act="rouvrir">Rouvrir</button>';
+    if (origine) h += '<button type="button" data-act="agrandir-origine">Vue d\'origine</button>';
+    h += '<button type="button" data-act="taguees" aria-expanded="false">Personnes taguées</button><ul class="msg-menu-taguees" hidden>' + taguesHtml + "</ul>";
+    zone.innerHTML = h;
+    zone.hidden = false;
+  }
+
+  // Mobile : deplie / replie les details du sujet (hauteur 0,28 s ease, meme principe que le bandeau de collision).
+  function basculerDetailsSujet(bouton) {
+    const note = $("msgNoteSujet");
+    const zone = $("msgNoteDetails");
+    const cur = filCourant();
+    if (!zone || !cur || !cur.sujet) return;
+    const ouvrir = !note.classList.contains("details-ouverts");
+    noteOuverteId = ouvrir ? cur.sujet.id : null;
+    bouton.setAttribute("aria-expanded", String(ouvrir));
+    const reduit = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const h = zone.firstElementChild.offsetHeight;
+    if (reduit) { note.classList.toggle("details-ouverts", ouvrir); return; }
+    zone.style.height = (ouvrir ? 0 : h) + "px";
+    note.classList.toggle("details-ouverts", ouvrir);
+    void zone.offsetHeight;
+    zone.style.transition = "height 0.28s ease";
+    zone.style.height = (ouvrir ? h : 0) + "px";
+    setTimeout(() => { zone.style.transition = ""; zone.style.height = ""; }, 300);
   }
 
   function rendreFilCourant(garderDefilement) {
@@ -573,9 +662,9 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
   function ouvrirDialogue(html, libelle, declencheur) {
     const boite = $("msgDialogue");
     declencheurDialogue = declencheur || document.activeElement;
-    fermerMenuVue();
     boite.hidden = false;
-    boite.innerHTML = '<div class="msg-carte" role="dialog" aria-modal="true" aria-label="' + echapper(libelle) + '">' + html + "</div>";
+    boite.innerHTML = '<div class="msg-carte" role="dialog" aria-modal="true" aria-label="' + echapper(libelle) + '">' + html +
+      '<button type="button" class="msg-croix" data-act="fermer-dialogue" aria-label="Fermer">\u2715</button></div>';
     const premierChamp = boite.querySelector("[autofocus], input, textarea, button");
     if (premierChamp) premierChamp.focus();
   }
@@ -755,7 +844,6 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
     const sujet = creerSujet(cible, { titre, texte, tagues, vue: vueDialogue, quand: instant(), urgent: $("msgNsUrgent").checked });
     declencheurDialogue = null;
     fermerDialogue();
-    reinitialiserFiltres();
     choisirOnglet(cible.type);
     ouvrirConversation(cible.id, sujet.id);
   }
@@ -771,7 +859,6 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
     ajouterMessage(fil, { auteur: MOI, quand: instant(), texte, vue: vueDialogue || undefined });
     declencheurDialogue = null;
     fermerDialogue();
-    reinitialiserFiltres();
     choisirOnglet(c.type);
     ouvrirConversation(c.id, sujetId);
   }
@@ -800,22 +887,6 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
     $("msgHistQ").addEventListener("input", remplir);
   }
 
-  function agrandirVue(m) {
-    const cur = filCourant();
-    const verrouille = cur && cur.sujet && cur.sujet.statut === "clos";
-    const qui = m.auteur === MOI ? "vous" : personne(m.auteur).nom;
-    const reel = !!m.vue.etat;
-    ouvrirDialogue(
-      "<h3>Prise de vue : " + echapper(legendeVue(m.vue)) + "</h3>" +
-      '<div class="msg-grande-vue">' + imageVue(m.vue) + "</div>" +
-      '<p class="msg-aide">Prise par ' + echapper(qui) + " le " + dateHeure(m.quand) + ". " +
-      (reel ? "« Ouvrir dans le Viewer » rétablit le même angle et les mêmes maquettes." : "La vue 3D est en préparation : « Ouvrir dans le Viewer » ouvre simplement le Viewer pour l'instant.") + "</p>" +
-      '<div class="msg-rangee"><button type="button" class="msg-fantome" data-act="ouvrir-viewer">Ouvrir dans le Viewer</button>' +
-      '<button type="button" class="msg-primaire" data-act="joindre-vue"' + (verrouille ? " disabled" : "") + ">Joindre à ma réponse</button></div>",
-      "Prise de vue", document.activeElement);
-    vueDialogue = m.vue;
-  }
-
   // ---------- Prises de vue : piece jointe en attente, menu, mode « prendre une vue dans le Viewer » ----------
   function copieVue(vue) {
     return { seed: vue.seed, niveau: vue.niveau, modeles: vue.modeles, image: vue.image, etat: vue.etat };
@@ -832,31 +903,6 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
     zone.hidden = false;
     zone.innerHTML = '<span class="msg-puce-vue"><span class="msg-puce-img">' + imageVue(vuePendante) + "</span><span>Prise de vue jointe : " + echapper(legendeVue(vuePendante)) + "</span></span>" +
       '<button type="button" class="msg-retirer" data-act="retirer-vue" aria-label="Retirer la prise de vue">&times;</button>';
-  }
-
-  function fermerMenuVue() {
-    const menu = $("msgMenuVue");
-    if (!menu || menu.hidden) return;
-    menu.hidden = true;
-    const bouton = $("msgBoutonVue");
-    if (bouton) bouton.setAttribute("aria-expanded", "false");
-  }
-  function fermerMenuVueSiExterieur(e) {
-    const menu = $("msgMenuVue");
-    if (menu && !menu.hidden && !e.target.closest("#msgMenuVue, #msgBoutonVue")) fermerMenuVue();
-  }
-
-  function basculerMenuVue() {
-    const menu = $("msgMenuVue");
-    if (!menu.hidden) { fermerMenuVue(); return; }
-    const cur = filCourant();
-    const origine = cur.sujet && vueOrigine(cur.sujet);
-    menu.innerHTML = '<button type="button" role="menuitem" data-act="prendre-vue">Prendre une vue dans le Viewer<span>Cadre la maquette, puis valide la vue</span></button>' +
-      (origine ? '<button type="button" role="menuitem" data-act="vue-origine">Reprendre la vue d\'origine du sujet<span>' + echapper(legendeVue(origine.vue)) + "</span></button>" : "");
-    menu.hidden = false;
-    $("msgBoutonVue").setAttribute("aria-expanded", "true");
-    const premier = menu.querySelector("button");
-    if (premier) premier.focus();
   }
 
   // Bandeau affiche sur le Viewer pendant la prise de vue.
@@ -879,10 +925,47 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
   function montrerBandeau(visible) {
     if (visible && !bandeau) creerBandeau();
     if (bandeau) bandeau.hidden = !visible;
+    document.body.classList.toggle("msg-vue-actif", visible); // mobile : decale la barre d'outils du Viewer sous le bandeau
+  }
+
+  // Bandeau « vue de la conversation » : affiche sur le Viewer ouvert depuis une vue de conversation, avec retour direct.
+  // Meme emplacement et meme composant visuel que le bandeau de prise de vue, les deux modes sont exclusifs.
+  let retourConversationActif = false;
+  let bandeauRetour = null;
+  function montrerBandeauRetour(visible) {
+    if (visible && !bandeauRetour) {
+      bandeauRetour = document.createElement("div");
+      bandeauRetour.id = "msgBandeauRetour";
+      bandeauRetour.setAttribute("role", "region");
+      bandeauRetour.setAttribute("aria-label", "Vue d'une conversation");
+      bandeauRetour.hidden = true;
+      bandeauRetour.innerHTML = '<button type="button" data-act="retour-conversation">\u2190 Retour à la conversation</button><span class="msg-bandeau-lieu"></span>';
+      bandeauRetour.addEventListener("click", (e) => {
+        if (!e.target.closest('[data-act="retour-conversation"]')) return;
+        retourConversationActif = false;
+        montrerBandeauRetour(false);
+        allerA("discussions");
+        if (etat.convId) ouvrirConversation(etat.convId, etat.sujetId);
+      });
+      document.body.appendChild(bandeauRetour);
+    }
+    if (!bandeauRetour) return;
+    if (visible) {
+      const cur = filCourant();
+      $("msgBandeauRetour").querySelector(".msg-bandeau-lieu").textContent = cur
+        ? "Vue de : " + cur.c.nom + (cur.sujet ? " \u00b7 # " + cur.sujet.titre : "")
+        : "Vue d'une conversation";
+    }
+    bandeauRetour.hidden = !visible;
+    document.body.classList.toggle("msg-retour-actif", visible); // decale la barre d'outils du Viewer sous le bandeau
+  }
+  // Appelee par main.js : vrai quand le Viewer vient d'etre ouvert sur une vue de conversation, faux des qu'on quitte cet etat.
+  function vueDeConversation(actif) {
+    retourConversationActif = actif;
+    montrerBandeauRetour(actif && !priseDeVueEnCours);
   }
 
   function demarrerPriseDeVue() {
-    fermerMenuVue();
     priseDeVueEnCours = true;
     allerA("viewer");
     // Le bandeau apparait quand la page Viewer est effectivement affichee (surVueActivee).
@@ -904,22 +987,65 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
   }
 
   // ---------- Evenements ----------
+  // Geste neutre : pendant l'appui qui ferme le menu, les evenements pointeur/tactile/souris/clic sont absorbes (capture sur document),
+  // le drapeau est retire 400 ms apres la fin du geste (garde-fou a 5 s).
+  let gesteNeutre = false;
+  let gesteNeutreTimer = 0;
+  const EVENEMENTS_ABSORBES = ["pointerdown", "pointermove", "pointerup", "touchstart", "touchmove", "touchend", "mousedown", "mousemove", "mouseup", "click", "dblclick", "contextmenu"];
+  function absorberGesteNeutre() {
+    gesteNeutre = true;
+    clearTimeout(gesteNeutreTimer);
+    gesteNeutreTimer = setTimeout(() => { gesteNeutre = false; }, 5000);
+  }
+  function terminerGesteNeutre() {
+    if (!gesteNeutre) return;
+    clearTimeout(gesteNeutreTimer);
+    gesteNeutreTimer = setTimeout(() => { gesteNeutre = false; }, 400);
+  }
+
+  function fermerMenu() {
+    const menu = $("msgMenu");
+    if (!menu || menu.hidden) return;
+    menu.hidden = true;
+    $("msgOptions").setAttribute("aria-expanded", "false");
+    menu.querySelector(".msg-menu-participants").hidden = true;
+    menu.querySelector('[data-act="participants"]').setAttribute("aria-expanded", "false");
+    const taguees = menu.querySelector(".msg-menu-taguees");
+    if (taguees) taguees.hidden = true;
+  }
+
   function surClic(e) {
     // Clic sur le fond sombre autour d'un dialogue : on le ferme (comme Échap)
     if (e.target === $("msgDialogue")) { fermerDialogue(); return; }
     const cible = e.target.closest("[data-act]");
+    // Menu « ⋯ » (mobile) : un appui en dehors le ferme ; le choix d'une entree (hors « Participants ») le ferme aussi.
+    if (!e.target.closest("#msgOptions, #msgMenu")) fermerMenu();
     if (!cible || !racine.contains(cible)) return;
     const act = cible.dataset.act;
+    if (cible.closest("#msgMenu") && act !== "participants" && act !== "taguees") fermerMenu();
     const cur = filCourant();
     switch (act) {
       case "onglet": choisirOnglet(cible.dataset.v); break;
-      case "non-lus":
-        etat.seulementNonLus = !etat.seulementNonLus;
-        cible.setAttribute("aria-pressed", String(etat.seulementNonLus));
-        rendreListe();
-        break;
       case "conversation": ouvrirConversation(cible.dataset.id, null); break;
       case "retour": racine.classList.remove("volet-ouvert"); break;
+      case "options": {
+        const ouvrir = $("msgMenu").hidden;
+        $("msgMenu").hidden = !ouvrir;
+        cible.setAttribute("aria-expanded", String(ouvrir));
+        break;
+      }
+      case "participants": {
+        const liste = $("msgMenu").querySelector(".msg-menu-participants");
+        liste.hidden = !liste.hidden;
+        cible.setAttribute("aria-expanded", String(!liste.hidden));
+        break;
+      }
+      case "taguees": {
+        const liste = cible.nextElementSibling;
+        liste.hidden = !liste.hidden;
+        cible.setAttribute("aria-expanded", String(!liste.hidden));
+        break;
+      }
       case "recherche-conv": {
         const barre = $("msgBarreRecherche");
         barre.hidden = !barre.hidden;
@@ -933,14 +1059,15 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
       case "vers-principal": ouvrirConversation(etat.convId, null); break;
       case "plus-ancien": cur.fil.affiches += TAILLE_PAQUET; rendreMessages(true); break;
       case "bas": allerAuDernier(); break;
-      case "agrandir": agrandirVue(vuesAffichees[Number(cible.dataset.vp)]); break;
-      case "agrandir-origine": agrandirVue(vueOrigine(cur.sujet)); break;
+      case "agrandir": ouvrirDansViewer(vuesAffichees[Number(cible.dataset.vp)].vue); break;
+      case "details-sujet": basculerDetailsSujet(cible); break;
+      case "agrandir-origine": ouvrirDansViewer(vueOrigine(cur.sujet).vue); break;
       case "cloturer": cloturer(cur.c, cur.sujet, instant()); rafraichirApresChangement(); break;
       case "urgence": {
         if (!cur.sujet || cur.sujet.statut === "clos") break;
         basculerUrgence(cur.sujet, instant());
         rafraichirApresChangement();
-        const bouton = $("msgNoteSujet").querySelector('[data-act="urgence"]');
+        const bouton = cible.closest("#msgMenu") ? $("msgOptions") : $("msgNoteSujet").querySelector('[data-act="urgence"]');
         if (bouton) bouton.focus();
         break;
       }
@@ -958,43 +1085,19 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
       case "mode-dialogue": if (cible.getAttribute("aria-pressed") !== "true") changerModeDialogue(cible.dataset.v); break;
       case "ajouter-vue": ajouterVueDepuisDialogue(); break;
       case "tag": cible.setAttribute("aria-pressed", String(cible.getAttribute("aria-pressed") !== "true")); majOuSujet(); break;
-      case "ouvrir-ajout": ouvrirDialogueAjout(cible); break;
+      case "ouvrir-ajout": ouvrirDialogueAjout(cible.closest("#msgMenu") ? $("msgOptions") : cible); break;
       case "ajouter-personne": ajouterPersonneDepuisDialogue(cible.dataset.p); break;
       case "fermer-dialogue": fermerDialogue(); break;
       case "envoyer": envoyerMessage(); break;
-      case "menu-vue": basculerMenuVue(); break;
       case "prendre-vue": demarrerPriseDeVue(); break;
-      case "vue-origine": {
-        const origine = vueOrigine(cur.sujet);
-        fermerMenuVue();
-        if (origine) { vuePendante = copieVue(origine.vue); rendreVuePendante(); $("msgSaisie").focus(); }
-        break;
-      }
       case "retirer-vue": vuePendante = null; rendreVuePendante(); break;
-      case "joindre-vue": {
-        const vue = vueDialogue;
-        declencheurDialogue = null;
-        fermerDialogue();
-        vuePendante = copieVue(vue);
-        rendreVuePendante();
-        $("msgSaisie").focus();
-        break;
-      }
-      case "ouvrir-viewer": {
-        const vue = vueDialogue;
-        declencheurDialogue = null;
-        fermerDialogue();
-        ouvrirDansViewer(vue);
-        break;
-      }
       default: break;
     }
   }
 
   function surSaisie(e) {
     const id = e.target.id;
-    if (id === "msgRecherche") { etat.q = e.target.value; rendreListe(); }
-    else if (id === "msgChampRecherche") {
+    if (id === "msgChampRecherche") {
       etat.recherche = e.target.value;
       rendreMessages(false);
       if (!etat.recherche) allerAuRepere();
@@ -1002,7 +1105,8 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
   }
 
   function surChangement(e) {
-    if (e.target.id === "msgStatut") {
+    if (e.target.id === "msgStatut" || e.target.id === "msgStatutMenu") {
+      if (e.target.id === "msgStatutMenu") fermerMenu();
       const cur = filCourant();
       changerStatut(cur.c, cur.sujet, e.target.value, instant());
       rafraichirApresChangement();
@@ -1034,10 +1138,9 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
 
   function surEchap(e) {
     if (e.key !== "Escape" || racine.closest(".view").hidden) return;
+    if ($("msgMenu") && !$("msgMenu").hidden) { fermerMenu(); $("msgOptions").focus(); return; }
     if (dialogueOuvert()) { fermerDialogue(); return; }
-    const menu = $("msgMenuVue");
-    if (menu && !menu.hidden) { fermerMenuVue(); const b = $("msgBoutonVue"); if (b) b.focus(); }
   }
 
-  return { preparer, surVueActivee, nouveauSujetDepuisViewer, rechargerVues, priseDeVueEnCours: () => priseDeVueEnCours };
+  return { preparer, surVueActivee, vueDeConversation, nouveauSujetDepuisViewer, rechargerVues, priseDeVueEnCours: () => priseDeVueEnCours };
 }

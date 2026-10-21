@@ -1279,6 +1279,8 @@ navLinks.forEach((link) => {
     sortieVueDemarree = false;
     transitionVue(link.dataset.view, () => {
     const page = link.dataset.view;
+    // Tout changement de page par la navbar met fin a l'etat « vue de conversation » (bandeau de retour).
+    if (messagerie) messagerie.vueDeConversation(false);
     const dezoomFait = dezoomDejaFait;
     dezoomDejaFait = false;
     // Objets en fantome au moment ou l'arrivee classique se joue apres un dezoom : ils repasseront progressivement en rendu plein.
@@ -1375,7 +1377,36 @@ document.addEventListener("pointerdown", (e) => {
   if (!navbarLinksEl.classList.contains("open")) return;
   if (navbarLinksEl.contains(e.target) || navbarToggle.contains(e.target)) return;
   navbarLinksEl.classList.remove("open");
+  absorberGesteNeutre();
 }, true);
+
+// Clic neutre (mobile) : l'appui qui ferme le menu ne doit rien declencher d'autre
+// (xeokit ecoute souris + tactile sur le canvas). Pendant ce geste, les evenements
+// pointeur/tactile/souris/clic sont absorbes en phase de capture sur document, puis
+// le drapeau est retire quand le doigt est leve (+ delai de securite).
+let gesteNeutre = false;
+let gesteNeutreTimer = 0;
+const EVENEMENTS_ABSORBES = ["pointerdown", "pointermove", "pointerup", "touchstart", "touchmove", "touchend", "mousedown", "mousemove", "mouseup", "click", "dblclick", "contextmenu"];
+function absorberGesteNeutre() {
+  if (!window.matchMedia("(max-width: 768px)").matches) return;
+  gesteNeutre = true;
+  clearTimeout(gesteNeutreTimer);
+  gesteNeutreTimer = setTimeout(() => { gesteNeutre = false; }, 5000);
+}
+function terminerGesteNeutre() {
+  if (!gesteNeutre) return;
+  clearTimeout(gesteNeutreTimer);
+  gesteNeutreTimer = setTimeout(() => { gesteNeutre = false; }, 400);
+}
+EVENEMENTS_ABSORBES.forEach((type) => {
+  document.addEventListener(type, (e) => {
+    if (!gesteNeutre) return;
+    if (type === "pointerup" || type === "pointercancel") terminerGesteNeutre();
+    e.stopPropagation();
+    if (e.cancelable) e.preventDefault();
+  }, true);
+});
+["pointercancel", "touchcancel"].forEach((type) => document.addEventListener(type, terminerGesteNeutre, true));
 
 // Tiroir "Sections" de la page Presentation, mobile uniquement : masque par
 // defaut (cf media query), un bouton dedie l'affiche en overlay par-dessus
@@ -3783,6 +3814,7 @@ function ouvrirViewerSurVue(vue) {
   activateView("viewer");
   restoreViewerState(vue.etat);
   viewerDepuisVueDiscussion = true;
+  if (messagerie) messagerie.vueDeConversation(true);
   viewer.camera.projection = "perspective"; // projection de la capture (la page Collision peut avoir laisse l'orthographique du plan)
   viewer.cameraFlight.jumpTo({ eye: vue.etat.camera.eye, look: vue.etat.camera.look, up: vue.etat.camera.up });
   navbarLinksEl.classList.remove("open");
@@ -3882,7 +3914,7 @@ function remplirCouples(ul) {
     btn.addEventListener("click", () => {
       memoriserDetection(detection.id);
       // Changer de couple de maquettes : les maquettes se dissolvent progressivement, puis les bulles de la nouvelle paire apparaissent.
-      openDetection(detection, { fondu: true });
+      openDetection(detection, { fondu: true, garderTiroir: true });
     });
 
     // Une pastille de couleur par maquette du couple, comme les boutons de la 3D.
@@ -3984,7 +4016,8 @@ function openDetection(detection, options = {}) {
   // Mobile (<= 768 px) : tiroir ferme par defaut pour ne pas masquer la 3D
   // (decision du 19/10). Ordinateur : le panneau est un volet fixe, toujours ouvert.
   const collisionMobile = window.matchMedia("(max-width: 768px)").matches;
-  collisionInfoPanel.classList.toggle("open", !collisionMobile || !detection);
+  // options.garderTiroir (changement de paire de maquettes) : le tiroir reste ouvert, seule la liste des collisions se met a jour.
+  collisionInfoPanel.classList.toggle("open", !collisionMobile || !detection || !!options.garderTiroir);
   collisionInfoPanelBackdrop.hidden = true;
 
   // Ne montre que les maquettes de cette detection (ex. Maquette CEA hors
@@ -4045,7 +4078,8 @@ function cadrageBatimentDansZone() {
   const base = initialCameraState || DEFAULT_CAMERA_STATE;
   const canevas = viewer.scene.canvas.canvas;
   if (!canevas || !canevas.clientWidth || !canevas.clientHeight) return Object.assign({}, base);
-  const facteur = Math.max(1, 1.6 / (canevas.clientWidth / canevas.clientHeight));
+  // Mobile (<= 768 px) : pas de recul (la zone 3D portrait donnerait un facteur de 3 : maquette minuscule), meme vue que « Recentrer ».
+  const facteur = window.matchMedia("(max-width: 768px)").matches ? 1 : Math.max(1, 1.6 / (canevas.clientWidth / canevas.clientHeight));
   const dir = [base.eye[0] - base.look[0], base.eye[1] - base.look[1], base.eye[2] - base.look[2]];
   return {
     eye: [base.look[0] + dir[0] * facteur, base.look[1] + dir[1] * facteur, base.look[2] + dir[2] * facteur],
@@ -7023,6 +7057,72 @@ function closeCollisionInfoPanelDrawer() {
 collisionInfoPanelBackdrop.addEventListener("click", closeCollisionInfoPanelDrawer);
 const collisionInfoPanelCloseBtn = document.getElementById("collisionInfoPanelClose");
 if (collisionInfoPanelCloseBtn) collisionInfoPanelCloseBtn.addEventListener("click", closeCollisionInfoPanelDrawer);
+
+// Fermeture des tiroirs mobiles (feuilles du bas) par glissement du doigt vers le bas (21/10). Partage entre "Afficher"
+// et "Collisions" : le tiroir suit le doigt seulement si tout contenu defilable sous le doigt est en haut ; au
+// relachement, on ferme via la fermeture existante (celle de la croix) si le geste est assez long ou rapide.
+function enableDrawerSwipeToClose(drawer, closeFn, isOpen = () => drawer.classList.contains("open"), ignoreSel = 'input[type="range"]') {
+  const mobile = window.matchMedia("(max-width: 768px)");
+  let startX = 0, startY = 0, startT = 0, dy = 0, tracking = false, dragging = false, scrollers = [];
+  const scrollersFrom = (el) => {
+    const list = [];
+    for (let n = el; n && n !== drawer.parentElement; n = n.parentElement) {
+      const oy = getComputedStyle(n).overflowY;
+      if ((oy === "auto" || oy === "scroll") && n.scrollHeight > n.clientHeight) list.push(n);
+      if (n === drawer) break;
+    }
+    return list;
+  };
+  drawer.addEventListener("touchstart", (e) => {
+    tracking = dragging = false;
+    if (!mobile.matches || !isOpen() || e.touches.length !== 1) return;
+    if (e.target.closest && e.target.closest(ignoreSel)) return;
+    const t = e.touches[0];
+    startX = t.clientX; startY = t.clientY; startT = e.timeStamp; dy = 0;
+    scrollers = scrollersFrom(e.target);
+    tracking = true;
+  }, { passive: true });
+  drawer.addEventListener("touchmove", (e) => {
+    if (!tracking) return;
+    const t = e.touches[0];
+    const mx = t.clientX - startX, my = t.clientY - startY;
+    if (!dragging) {
+      if (Math.abs(mx) > Math.abs(my) && Math.abs(mx) > 8) { tracking = false; return; }
+      if (my < -8) { tracking = false; return; }
+      if (my <= 8) return;
+      if (scrollers.some((s) => s.scrollTop > 0)) { tracking = false; return; }
+      dragging = true;
+      drawer.style.transition = "none";
+    }
+    dy = Math.max(0, my);
+    drawer.style.transform = "translateY(" + dy + "px)";
+    if (e.cancelable) e.preventDefault();
+  }, { passive: false });
+  const finish = (e) => {
+    if (!dragging) { tracking = false; return; }
+    tracking = dragging = false;
+    const dt = Math.max(1, e.timeStamp - startT);
+    const fast = dy > 30 && dy / dt > 0.5;
+    const far = dy > 80 || dy > drawer.clientHeight * 0.25;
+    drawer.style.transition = "";
+    drawer.style.transform = "";
+    if (fast || far) closeFn();
+  };
+  drawer.addEventListener("touchend", finish, { passive: true });
+  drawer.addEventListener("touchcancel", finish, { passive: true });
+}
+enableDrawerSwipeToClose(infoPanel, closeInfoPanelDrawer);
+enableDrawerSwipeToClose(collisionInfoPanel, closeCollisionInfoPanelDrawer);
+// Bandeau de collision (mobile) : grand ecran -> fermeture de la pleine page ; ouvert en partie -> repli.
+enableDrawerSwipeToClose(
+  collisionDiscussion,
+  () => {
+    if (echangesGrandOuvert) fermerEchangesGrand(false);
+    else basculerBandeauAnime(true);
+  },
+  () => !collisionDiscussion.hidden && collisionDiscussion.classList.contains("cb") && !collisionDiscussion.classList.contains("collapsed") && !bandeauEnAnimation,
+  'input[type="range"], select, textarea, input'
+);
 
 renderDetections();
 
