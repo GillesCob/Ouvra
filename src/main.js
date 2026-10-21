@@ -1157,6 +1157,11 @@ function transitionVue(vue, changer) {
     return;
   }
   transitionVueEnCours = true;
+  // Viewer <-> Collision sur laptop : la structure de la page ne bouge pas (meme 3D, meme drawer de 300 px, Recentrer et Vitesse
+  // au meme endroit). Seul le contenu change : drawer, boutons propres a chaque page (voir .contenu-seul dans style.css).
+  const vues = ["viewer", "collision"];
+  const contenuSeul = window.matchMedia("(min-width: 769px)").matches && courant && vues.includes(courant.dataset.view) && vues.includes(vue);
+  appBodyEl.classList.toggle("contenu-seul", !!contenuSeul);
   traitNavigation.classList.remove("balayage");
   void traitNavigation.offsetWidth;
   traitNavigation.classList.add("balayage");
@@ -1170,6 +1175,7 @@ function transitionVue(vue, changer) {
     window.dispatchEvent(new Event("resize"));
     setTimeout(() => {
       transitionVueEnCours = false;
+      appBodyEl.classList.remove("contenu-seul");
     }, 300);
   }, 300);
 }

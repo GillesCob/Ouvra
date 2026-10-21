@@ -3065,14 +3065,28 @@ html.demarrage #splashLogo {
 }
 
 /* ============================================================================
-   Viewer <-> Collision sur laptop (20/10) : la structure de la page ne bouge pas, seul le contenu change.
+   Viewer <-> Collision sur laptop (20/10) : la page ne bouge pas, seul le contenu change.
    - meme largeur de drawer (300 px) et meme zone 3D (la bordure haute du Collision est retiree) ;
    - Recentrer reste en haut a droite dans les deux pages, "Nouvelle discussion" se place a sa gauche ;
+   - la bascule (portfolio : 0,3 s, fondu et 8 px) ne concerne que le contenu du drawer et les boutons propres a chaque page :
+     "Creer une coupe" et "Nouvelle discussion" s'effacent, les boutons de maquettes et le bandeau de collision apparaissent.
    ============================================================================ */
 @media (min-width: 769px) {
   #collisionViewerSlot { border-top: none; }
   #viewerToolbar #newDiscussionBtn { order: -1; }
 
+  #appBody.contenu-seul.vue-sortie, #appBody.contenu-seul.vue-entree { opacity: 1; transform: none; }
+  #appBody.contenu-seul :is(
+    #infoPanel > :not(#infoPanelCollapse), #collisionInfoPanel > :not(#collisionInfoPanelCollapse),
+    #newDiscussionBtn, #coupeToolbar, #collisionMaquetteToggles, #collisionDiscussion
+  ) { transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out; }
+  #appBody.contenu-seul.vue-sortie :is(
+    #infoPanel > :not(#infoPanelCollapse), #collisionInfoPanel > :not(#collisionInfoPanelCollapse),
+    #newDiscussionBtn, #coupeToolbar, #collisionMaquetteToggles, #collisionDiscussion
+  ), #appBody.contenu-seul.vue-entree :is(
+    #infoPanel > :not(#infoPanelCollapse), #collisionInfoPanel > :not(#collisionInfoPanelCollapse),
+    #newDiscussionBtn, #coupeToolbar, #collisionMaquetteToggles, #collisionDiscussion
+  ) { opacity: 0; transform: translateY(8px); }
 }
 
 /* Les bulles de collision apparaissent (leger grossissement depuis leur centre) au lieu de surgir. */
