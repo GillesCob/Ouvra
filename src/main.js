@@ -1139,11 +1139,17 @@ function remettreA3DNeutre() {
 
 // Cible Viewer : toutes les maquettes visibles et tous les niveaux coches (pendant une prise de vue de la messagerie : les maquettes
 // que le Viewer avait avant de le quitter, memorisees dans memoMaquettesViewer).
-function appliquerCibleViewer(maquettesVoulues, avecDezoom) {
+// avecFondu (arrivee depuis Collision) : les maquettes masquees reapparaissent progressivement (dissolution).
+function appliquerCibleViewer(maquettesVoulues, avecDezoom, avecFondu) {
   if (document.getElementById("view-viewer").hidden) return;
   remettreA3DNeutre();
   poserCameraCadrageGlobal(avecDezoom);
-  definirMaquettesVisibles(new Map(MAQUETTES.map((m) => [m.id, maquettesVoulues ? maquettesVoulues.get(m.id) !== false : true])));
+  const etats = new Map(MAQUETTES.map((m) => [m.id, maquettesVoulues ? maquettesVoulues.get(m.id) !== false : true]));
+  if (avecFondu) {
+    changerVisibiliteAvecFondu(etats, () => renderMaquetteRows(maquettesList, MAQUETTES));
+    return;
+  }
+  definirMaquettesVisibles(etats);
   renderMaquetteRows(maquettesList, MAQUETTES);
 }
 
@@ -1191,8 +1197,9 @@ navLinks.forEach((link) => {
     placerPastilleNavbar(link);
     transitionVue(link.dataset.view, () => {
     const page = link.dataset.view;
-    // Passage Viewer vers Collision : les maquettes hors paire se dissolvent progressivement (voir openDetection).
+    // Passages Viewer vers Collision et Collision vers Viewer : les maquettes se dissolvent progressivement (voir openDetection et appliquerCibleViewer).
     const depuisViewer = !!navLinks.find((l) => l.classList.contains("active") && l.dataset.view === "viewer");
+    const depuisCollision = !!navLinks.find((l) => l.classList.contains("active") && l.dataset.view === "collision");
     const priseDeVue = !!(messagerie && messagerie.priseDeVueEnCours());
     const deja3D = !viewViewer.hidden;
     // Choix du Viewer retenu en le quittant : sert seulement a la prise de vue de la messagerie.
@@ -1221,7 +1228,7 @@ navLinks.forEach((link) => {
       }
       activateView(page, { garder3D: true });
       if (page === "viewer") {
-        appliquerCibleViewer(maquettesPrise, depuisCollisionPrecise);
+        appliquerCibleViewer(maquettesPrise, depuisCollisionPrecise, depuisCollision);
         animerEntreeListe(niveauxList);
         animerEntreeListe(maquettesList);
       } else {
@@ -3775,7 +3782,8 @@ function remplirCouples(ul) {
     if (detection === detectionCourante) btn.classList.add("courant");
     btn.addEventListener("click", () => {
       memoriserDetection(detection.id);
-      openDetection(detection);
+      // Changer de couple de maquettes : les maquettes se dissolvent progressivement, puis les bulles de la nouvelle paire apparaissent.
+      openDetection(detection, { fondu: true });
     });
 
     // Une pastille de couleur par maquette du couple, comme les boutons de la 3D.
