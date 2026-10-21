@@ -1197,10 +1197,12 @@ navLinks.forEach((link) => {
       return;
     }
     if (page === "viewer" || page === "collision") {
+      const depuisVueDiscussion = viewerDepuisVueDiscussion;
       viewerDepuisVueDiscussion = false;
       const maquettesPrise = priseDeVue && page === "viewer" ? memoMaquettesViewer : null;
-      // Clic sur Viewer ou Collision alors qu'une collision precise est ouverte : la camera dezoome jusqu'au resultat final.
-      const depuisCollisionPrecise = !collisionDetail.hidden && !!collisionActiveClash;
+      // Clic sur Viewer ou Collision alors qu'une collision precise ou une vue ouverte depuis une conversation est affichee : la camera
+      // dezoome jusqu'au resultat final.
+      const depuisCollisionPrecise = (!collisionDetail.hidden && !!collisionActiveClash) || depuisVueDiscussion;
       // Une collision restee ouverte : on repasse au recap (sinon revenir sur Collision rouvrirait la meme detection avec viewerWrap deplace
       // ailleurs : canvas vide).
       if (!collisionDetail.hidden) {
@@ -1217,6 +1219,7 @@ navLinks.forEach((link) => {
         animerEntreeListe(niveauxList);
         animerEntreeListe(maquettesList);
       } else {
+        if (depuisVueDiscussion) remettreA3DNeutre();
         ouvrirPageCollision();
         poserCameraCadrageGlobal(depuisCollisionPrecise);
       }
