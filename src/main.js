@@ -1161,7 +1161,12 @@ function remettreA3DNeutre() {
 // animerListes : les listes Niveaux et Maquettes du drawer apparaissent en cascade (faux si on est deja dans le Viewer).
 function appliquerCibleViewer(maquettesVoulues, avecDezoom, avecFondu, reveler, animerListes) {
   if (document.getElementById("view-viewer").hidden) return;
-  remettreA3DNeutre();
+  garderXrayAuReset = !!reveler;
+  try {
+    remettreA3DNeutre();
+  } finally {
+    garderXrayAuReset = false;
+  }
   poserCameraCadrageGlobal(avecDezoom);
   const etats = new Map(MAQUETTES.map((m) => [m.id, maquettesVoulues ? maquettesVoulues.get(m.id) !== false : true]));
   // Apparition des listes differee (degel, dissolution) : les lignes restent masquees jusque-la, sinon elles s'afficheraient, disparaitraient
@@ -1184,7 +1189,7 @@ function appliquerCibleViewer(maquettesVoulues, avecDezoom, avecFondu, reveler, 
       finir();
     }
   };
-  if (reveler) degelerFantomesProgressivement(reveler, appliquer);
+  if (reveler) degelerFantomesProgressivement(reveler, appliquer, true);
   else appliquer();
 }
 
@@ -1315,8 +1320,13 @@ navLinks.forEach((link) => {
           animerEntreeListe(maquettesList);
         }
       } else {
-        if (depuisVueDiscussion) remettreA3DNeutre();
-        ouvrirPageCollision({ fondu: depuisViewer, reveler: xrayAvantDezoom });
+        garderXrayAuReset = !!xrayAvantDezoom;
+        try {
+          if (depuisVueDiscussion) remettreA3DNeutre();
+          ouvrirPageCollision({ fondu: depuisViewer, reveler: xrayAvantDezoom });
+        } finally {
+          garderXrayAuReset = false;
+        }
         poserCameraCadrageGlobal(depuisCollisionPrecise);
       }
       navbarLinksEl.classList.remove("open");
@@ -3425,6 +3435,10 @@ const XRAY_MATERIAU_DEFAUT = {
   edgeColor: Array.from(viewer.scene.xrayMaterial.edgeColor)
 };
 
+// Vrai le temps d'une remise a plat dont l'etat fantome (X-ray) doit etre conserve : il est ensuite retire progressivement par
+// degelerFantomesProgressivement, sans etre efface puis remis (une seule ecriture sur la maquette).
+let garderXrayAuReset = false;
+
 function entitesObjetsDeMaquette(maquette) {
   return maquette.model && maquette.model.entityList ? maquette.model.entityList.filter((e) => e.isObject) : [];
 }
@@ -3572,7 +3586,7 @@ function restaurerEtatEntites(entites) {
   const apres = []; // couleurs et opacites : hors ecriture groupee (setObjects* gere ses propres drapeaux)
   ecritureGroupeeDrapeaux(modeles, () => {
     courants.forEach((a, mid) => {
-      a.xray.forEach((id) => { const e = scene.objects[id]; if (e) { e.xrayed = false; e.pickable = true; } });
+      a.xray.forEach((id) => { const e = scene.objects[id]; if (e) { if (!garderXrayAuReset) e.xrayed = false; e.pickable = true; } });
       a.selection.forEach((id) => { const e = scene.objects[id]; if (e) e.selected = false; });
       a.surlignes.forEach((id) => { const e = scene.objects[id]; if (e) e.highlighted = false; });
       a.masques.forEach((id) => { const e = scene.objects[id]; if (e) { e.culled = false; e.visible = true; } });
@@ -3599,12 +3613,14 @@ function restaurerEtatEntites(entites) {
     });
   });
   apres.forEach((appliquer) => appliquer());
-  const mat = scene.xrayMaterial;
-  const voulu = entites.xrayMat || XRAY_MATERIAU_DEFAUT;
-  mat.fillAlpha = voulu.fillAlpha;
-  mat.edgeAlpha = voulu.edgeAlpha;
-  mat.fillColor = voulu.fillColor;
-  mat.edgeColor = voulu.edgeColor;
+  if (!garderXrayAuReset) {
+    const mat = scene.xrayMaterial;
+    const voulu = entites.xrayMat || XRAY_MATERIAU_DEFAUT;
+    mat.fillAlpha = voulu.fillAlpha;
+    mat.edgeAlpha = voulu.edgeAlpha;
+    mat.fillColor = voulu.fillColor;
+    mat.edgeColor = voulu.edgeColor;
+  }
   const selectionnee = Object.values(scene.selectedObjects).find((e) => e.model && MAQUETTES.some((m) => m.id === e.model.id));
   if (selectionnee) selectedEntity = selectionnee;
 }
@@ -4008,7 +4024,7 @@ function openDetection(detection, options = {}) {
     renderClashMarkers(marqueursAPoser);
   };
   const apparition = options.fondu ? () => changerVisibiliteAvecFondu(etatsModeles, lancerApparition) : lancerApparition;
-  if (options.reveler) degelerFantomesProgressivement(options.reveler, apparition);
+  if (options.reveler) degelerFantomesProgressivement(options.reveler, apparition, true);
   else apparition();
   clearClashElementColors();
   deselectEntity();
@@ -5309,10 +5325,10 @@ function changerVisibiliteGroupee(parMaquette, visible) {
 }
 function resetCollisionOpacities() {
   if (collisionFantomes) {
-    changerFantomesGroupe(collisionFantomes, false);
+    if (!garderXrayAuReset) changerFantomesGroupe(collisionFantomes, false);
     collisionFantomes = null;
   }
-  if (collisionXraySauvegarde) {
+  if (collisionXraySauvegarde && !garderXrayAuReset) {
     const materiau = viewer.scene.xrayMaterial;
     materiau.fillAlpha = collisionXraySauvegarde.fillAlpha;
     materiau.edgeAlpha = collisionXraySauvegarde.edgeAlpha;
@@ -7236,16 +7252,32 @@ function changerVisibiliteAvecFondu(etats, apres) {
 
 // Passage progressif du rendu fantome (X-ray) au rendu plein : les objets listes sont remis en fantome puis redeviennent pleins par
 // paquets aleatoires, meme principe et meme duree que la dissolution des maquettes. apres : appelee a la fin. Annulable via dissolutionActive.
-function degelerFantomesProgressivement(ids, apres) {
+// Remet le materiau X-ray a sa valeur normale (apres le retrait progressif des fantomes).
+function restaurerMateriauXrayApresDegel() {
+  const mat = viewer.scene.xrayMaterial;
+  const voulu = collisionXraySauvegarde || XRAY_MATERIAU_DEFAUT;
+  mat.fillAlpha = voulu.fillAlpha;
+  mat.edgeAlpha = voulu.edgeAlpha;
+  mat.fillColor = voulu.fillColor;
+  mat.edgeColor = voulu.edgeColor;
+  collisionXraySauvegarde = null;
+}
+// xrayConserve : les objets sont encore en fantome (la remise a plat les a gardes), il n'y a donc rien a remettre en fantome avant de
+// les retirer progressivement.
+function degelerFantomesProgressivement(ids, apres, xrayConserve) {
   if (dissolutionActive) dissolutionActive.annuler();
   const entites = ids.map((id) => viewer.scene.objects[id]).filter(Boolean);
-  const finir = () => { if (apres) apres(); };
+  const modeles = MAQUETTES.filter((maquette) => maquette.model).map((maquette) => maquette.model);
+  const finir = () => {
+    if (xrayConserve) restaurerMateriauXrayApresDegel();
+    if (apres) apres();
+  };
   if (entites.length === 0 || !window.matchMedia("(min-width: 769px)").matches || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    if (xrayConserve && entites.length > 0) ecritureGroupeeDrapeaux(modeles, () => entites.forEach((entite) => { entite.xrayed = false; entite.pickable = true; }));
     finir();
     return;
   }
-  const modeles = MAQUETTES.filter((maquette) => maquette.model).map((maquette) => maquette.model);
-  ecritureGroupeeDrapeaux(modeles, () => entites.forEach((entite) => { entite.xrayed = true; }));
+  if (!xrayConserve) ecritureGroupeeDrapeaux(modeles, () => entites.forEach((entite) => { entite.xrayed = true; }));
   melanger(entites);
   const debut = performance.now();
   let indice = 0;
@@ -7257,7 +7289,10 @@ function degelerFantomesProgressivement(ids, apres) {
     const voulu = Math.max(indice + 1, Math.ceil(Math.min(1, (performance.now() - debut) / DISSOLUTION_DUREE) * entites.length));
     const fin = Math.min(entites.length, voulu);
     ecritureGroupeeDrapeaux(modeles, () => {
-      for (; indice < fin; indice++) entites[indice].xrayed = false;
+      for (; indice < fin; indice++) {
+        entites[indice].xrayed = false;
+        entites[indice].pickable = true;
+      }
     });
     if (indice < entites.length) requestAnimationFrame(pas);
     else {
