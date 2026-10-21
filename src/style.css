@@ -3017,6 +3017,7 @@ html.demarrage #splashLogo {
    ============================================================================ */
 /* Listes : les lignes apparaissent l'une apres l'autre (--i pose par animerEntreeListe). */
 .liste-entree > * { animation: entreeListe 0.3s ease-out both; animation-delay: calc(var(--i, 0) * 30ms); }
+.liste-attente > * { opacity: 0; }
 @keyframes entreeListe { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 
 /* Bandeau de collision : il monte a la premiere selection, son contenu se renouvelle ensuite. */

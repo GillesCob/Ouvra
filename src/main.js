@@ -1108,6 +1108,7 @@ function dureeEntreeListe(ul) {
   return Math.min(Math.max(ul.children.length - 1, 0), 9) * 30 + 300;
 }
 function animerEntreeListe(ul) {
+  if (ul) ul.classList.remove("liste-attente"); // lignes masquees en attendant l'apparition (voir openDetection)
   if (!ul || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
   Array.from(ul.children).forEach((enfant, i) => enfant.style.setProperty("--i", Math.min(i, 9)));
   jouerClasse(ul, "liste-entree", 700);
@@ -1154,17 +1155,29 @@ function remettreA3DNeutre() {
 // Cible Viewer : toutes les maquettes visibles et tous les niveaux coches (pendant une prise de vue de la messagerie : les maquettes
 // que le Viewer avait avant de le quitter, memorisees dans memoMaquettesViewer).
 // avecFondu (arrivee depuis Collision) : les maquettes masquees reapparaissent progressivement (dissolution).
-function appliquerCibleViewer(maquettesVoulues, avecDezoom, avecFondu) {
+// reveler (ids des objets en fantome avant la remise au propre, apres un dezoom) : ils repassent d'abord progressivement en rendu plein,
+// puis les maquettes reapparaissent et les listes du drawer s'affichent en cascade.
+function appliquerCibleViewer(maquettesVoulues, avecDezoom, avecFondu, reveler) {
   if (document.getElementById("view-viewer").hidden) return;
   remettreA3DNeutre();
   poserCameraCadrageGlobal(avecDezoom);
   const etats = new Map(MAQUETTES.map((m) => [m.id, maquettesVoulues ? maquettesVoulues.get(m.id) !== false : true]));
-  if (avecFondu) {
-    changerVisibiliteAvecFondu(etats, () => renderMaquetteRows(maquettesList, MAQUETTES));
-    return;
-  }
-  definirMaquettesVisibles(etats);
-  renderMaquetteRows(maquettesList, MAQUETTES);
+  const finir = () => {
+    renderMaquetteRows(maquettesList, MAQUETTES);
+    if (reveler) {
+      animerEntreeListe(niveauxList);
+      animerEntreeListe(maquettesList);
+    }
+  };
+  const appliquer = () => {
+    if (avecFondu) changerVisibiliteAvecFondu(etats, finir);
+    else {
+      definirMaquettesVisibles(etats);
+      finir();
+    }
+  };
+  if (reveler) degelerFantomesProgressivement(reveler, appliquer);
+  else appliquer();
 }
 
 // Transition de page (20/10), calquee sur le portfolio (bascule Mode Dev / Mode Batiment) : la page s'efface en descendant de
@@ -1175,13 +1188,12 @@ const traitNavigation = document.createElement("div");
 traitNavigation.id = "navTrait";
 traitNavigation.setAttribute("aria-hidden", "true");
 document.getElementById("navbar").appendChild(traitNavigation);
-function transitionVue(vue, changer) {
+// Debut de la transition : le contenu de la page quitte l'ecran. Renvoie faux si aucune transition n'est necessaire (page deja ouverte,
+// transition deja en cours, mouvement reduit).
+function demarrerSortieVue(vue) {
   const appBodyEl = document.getElementById("appBody");
   const courant = navLinks.find((l) => l.classList.contains("active"));
-  if ((courant && courant.dataset.view === vue) || transitionVueEnCours || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-    changer();
-    return;
-  }
+  if ((courant && courant.dataset.view === vue) || transitionVueEnCours || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return false;
   transitionVueEnCours = true;
   // Viewer <-> Collision sur laptop : la structure de la page ne bouge pas (meme 3D, meme drawer de 300 px, Recentrer et Vitesse
   // au meme endroit). Seul le contenu change : drawer, boutons propres a chaque page (voir .contenu-seul dans style.css).
@@ -1192,41 +1204,66 @@ function transitionVue(vue, changer) {
   void traitNavigation.offsetWidth;
   traitNavigation.classList.add("balayage");
   appBodyEl.classList.add("vue-sortie");
+  return true;
+}
+// Fin de la transition : le contenu change, puis la page revient.
+function terminerTransitionVue(changer) {
+  const appBodyEl = document.getElementById("appBody");
+  changer();
+  appBodyEl.classList.remove("vue-sortie");
+  appBodyEl.classList.add("vue-entree");
+  void appBodyEl.offsetHeight;
+  appBodyEl.classList.remove("vue-entree");
+  window.dispatchEvent(new Event("resize"));
   setTimeout(() => {
-    changer();
-    appBodyEl.classList.remove("vue-sortie");
-    appBodyEl.classList.add("vue-entree");
-    void appBodyEl.offsetHeight;
-    appBodyEl.classList.remove("vue-entree");
-    window.dispatchEvent(new Event("resize"));
-    setTimeout(() => {
-      transitionVueEnCours = false;
-      appBodyEl.classList.remove("contenu-seul");
-    }, 300);
+    transitionVueEnCours = false;
+    appBodyEl.classList.remove("contenu-seul");
   }, 300);
 }
+// sortieDejaFaite : la sortie a deja ete lancee (voir le dezoom dans le handler des onglets), le contenu change tout de suite.
+function transitionVue(vue, changer, sortieDejaFaite) {
+  if (sortieDejaFaite) {
+    terminerTransitionVue(changer);
+    return;
+  }
+  if (!demarrerSortieVue(vue)) {
+    changer();
+    return;
+  }
+  setTimeout(() => terminerTransitionVue(changer), 300);
+}
 
+let sortieVueDemarree = false; // vrai si la sortie du contenu a ete lancee pendant le dezoom (0,3 s avant son arrivee)
+let minuteurSortieVue = null;
 let dezoomDejaFait = false; // vrai le temps du clic rejoue a l'arrivee du dezoom (voir le handler ci-dessous)
 navLinks.forEach((link) => {
   link.addEventListener("click", () => {
     placerPastilleNavbar(link);
-    // Clic sur Collision alors qu'une collision precise est ouverte : la camera dezoome d'abord, la mise en forme de la maquette
+    // Clic sur Collision ou Viewer alors qu'une collision precise ou une vue ouverte depuis une conversation est affichee : la camera dezoome d'abord, la mise en forme de la maquette
     // (X-ray, fantomes, selection, bulles) ne change pas pendant le vol ; a l'arrivee, l'arrivee classique sur Collision se joue
     // (remise au propre, dissolution progressive, apparition des lignes et des bulles) : le clic est rejoue avec dezoomDejaFait.
-    if (link.dataset.view === "collision" && !collisionDetail.hidden && collisionActiveClash && !dezoomDejaFait) {
+    if ((link.dataset.view === "collision" || link.dataset.view === "viewer") && !dezoomDejaFait
+        && ((!collisionDetail.hidden && collisionActiveClash) || viewerDepuisVueDiscussion)) {
       // Le bandeau de la collision se ferme avant le vol : la zone 3D a sa taille finale, la maquette arrive au meme endroit qu'a l'arrivee
       // « au propre » sur Collision.
       collisionDiscussion.hidden = true;
       window.dispatchEvent(new Event("resize"));
       // Le verrou de la camera sur la bulle est libere : sinon, a chaque image, il recentre la bulle sur l'axe de vue et decale la maquette.
       deverrouillerCamera();
+      // Le contenu du drawer quitte l'ecran 0,3 s avant la fin du dezoom (vol de 1,1 s) : a l'arrivee, il change tout de suite.
+      sortieVueDemarree = false;
+      clearTimeout(minuteurSortieVue);
+      minuteurSortieVue = setTimeout(() => { sortieVueDemarree = demarrerSortieVue(link.dataset.view); }, 800);
       poserCameraCadrageGlobal(true, () => {
+        clearTimeout(minuteurSortieVue);
         dezoomDejaFait = true;
         link.click();
       });
       navbarLinksEl.classList.remove("open");
       return;
     }
+    const sortieFaite = sortieVueDemarree;
+    sortieVueDemarree = false;
     transitionVue(link.dataset.view, () => {
     const page = link.dataset.view;
     const dezoomFait = dezoomDejaFait;
@@ -1264,12 +1301,14 @@ navLinks.forEach((link) => {
       }
       activateView(page, { garder3D: true });
       if (page === "viewer") {
-        appliquerCibleViewer(maquettesPrise, depuisCollisionPrecise, depuisCollision);
-        animerEntreeListe(niveauxList);
-        animerEntreeListe(maquettesList);
+        appliquerCibleViewer(maquettesPrise, depuisCollisionPrecise, depuisCollision, xrayAvantDezoom);
+        if (!xrayAvantDezoom) {
+          animerEntreeListe(niveauxList);
+          animerEntreeListe(maquettesList);
+        }
       } else {
         if (depuisVueDiscussion) remettreA3DNeutre();
-        ouvrirPageCollision({ fondu: depuisViewer && !depuisVueDiscussion, reveler: xrayAvantDezoom });
+        ouvrirPageCollision({ fondu: depuisViewer, reveler: xrayAvantDezoom });
         poserCameraCadrageGlobal(depuisCollisionPrecise);
       }
       navbarLinksEl.classList.remove("open");
@@ -1298,7 +1337,7 @@ navLinks.forEach((link) => {
       adminFrame.src = "/personas/admin-groupes.html?project=" + encodeURIComponent(projectSelect.value);
     }
     navbarLinksEl.classList.remove("open");
-    });
+    }, sortieFaite);
   });
 });
 
@@ -3939,16 +3978,22 @@ function openDetection(detection, options = {}) {
 
   renderCollisionsList(detectionClashes);
   // Les lignes de la liste et les bulles apparaissent ensemble et finissent en meme temps (apres la dissolution si elle a lieu).
+  const liste = detection ? collisionsList : collisionCouplesList;
+  // Si l'apparition est differee (degel, dissolution), les lignes restent masquees jusque-la : sinon elles s'afficheraient, disparaitraient
+  // au depart de l'animation, puis reapparaitraient.
+  if (options.fondu || options.reveler) liste.classList.add("liste-attente");
   const lancerApparition = () => {
-    if (detectionCourante !== detection) return;
-    const liste = detection ? collisionsList : collisionCouplesList;
+    if (detectionCourante !== detection) {
+      liste.classList.remove("liste-attente");
+      return;
+    }
     dureeApparitionMs = dureeEntreeListe(liste);
     animerEntreeListe(liste);
     renderClashMarkers(marqueursAPoser);
   };
-  if (options.fondu) changerVisibiliteAvecFondu(etatsModeles, lancerApparition);
-  else if (options.reveler) degelerFantomesProgressivement(options.reveler, lancerApparition);
-  else lancerApparition();
+  const apparition = options.fondu ? () => changerVisibiliteAvecFondu(etatsModeles, lancerApparition) : lancerApparition;
+  if (options.reveler) degelerFantomesProgressivement(options.reveler, apparition);
+  else apparition();
   clearClashElementColors();
   deselectEntity();
 
