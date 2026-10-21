@@ -1148,8 +1148,11 @@ navLinks.forEach((link) => {
         discussionsListPane.hidden = false;
       }
       activateView(page, { garder3D: true });
-      if (page === "viewer") appliquerCibleViewer(maquettesPrise);
-      else {
+      if (page === "viewer") {
+        appliquerCibleViewer(maquettesPrise);
+        animerEntreeListe(niveauxList);
+        animerEntreeListe(maquettesList);
+      } else {
         ouvrirPageCollision();
         poserCameraCadrageGlobal();
       }
