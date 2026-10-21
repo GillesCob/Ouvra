@@ -372,7 +372,7 @@ body.acc-actif #loadingOverlay { display: none; }
 
 /* Panneau du Viewer reductible (01/10, ordinateur uniquement) : une fine
    bande avec le seul bouton de bascule, la maquette recupere la largeur. */
-#infoPanel { position: relative; transition: flex-basis 0.2s ease; }
+#infoPanel { position: relative; transition: flex-basis 0.35s ease; }
 #infoPanelCollapse {
   align-self: flex-start;
   margin: 8px 0 0 8px;
@@ -2458,7 +2458,7 @@ body.acc-actif #appBody { height: 100%; }
 /* Liste des collisions reductible sur ordinateur (19/10), comme le panneau du
    Viewer : fine bande avec le seul bouton de bascule. Masque sur mobile. */
 /* Ordinateur seulement : sur mobile, le panneau reste un tiroir flottant (position fixed). */
-@media (min-width: 769px) { #collisionInfoPanel { position: relative; transition: flex-basis 0.2s ease; } }
+@media (min-width: 769px) { #collisionInfoPanel { position: relative; transition: flex-basis 0.35s ease; } }
 #collisionInfoPanelCollapse {
   align-self: flex-start; margin: 8px 0 0 8px; width: 28px; height: 28px; padding: 0; flex: none;
   background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 6px;
@@ -2471,10 +2471,6 @@ body.acc-actif #appBody { height: 100%; }
 }
 @media (max-width: 768px) { #collisionInfoPanelCollapse { display: none; } }
 
-/* Drawer de la liste des collisions : pas d'animation de largeur (19/10). La 3D
-   de la page Collision est lourde (isolation, fantomes) : une animation la
-   redessinerait a chaque image et gelerait l'interface. Un seul redimensionnement. */
-@media (min-width: 769px) { #collisionInfoPanel { transition: none; } }
 
 /* Liste des collisions : verrou pendant le vol de camera (19/10). La ligne
    active reste nette, les autres sont attenuees et inertes. */
