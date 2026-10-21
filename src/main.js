@@ -1103,6 +1103,10 @@ function jouerClasse(el, classe, duree) {
   el.classList.add(classe);
   setTimeout(() => el.classList.remove(classe), duree);
 }
+// Duree totale de l'apparition en cascade d'une liste (decalage de 30 ms plafonne a 9, animation de 0,3 s).
+function dureeEntreeListe(ul) {
+  return Math.min(Math.max(ul.children.length - 1, 0), 9) * 30 + 300;
+}
 function animerEntreeListe(ul) {
   if (!ul || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
   Array.from(ul.children).forEach((enfant, i) => enfant.style.setProperty("--i", Math.min(i, 9)));
@@ -1187,6 +1191,8 @@ navLinks.forEach((link) => {
     placerPastilleNavbar(link);
     transitionVue(link.dataset.view, () => {
     const page = link.dataset.view;
+    // Passage Viewer vers Collision : les maquettes hors paire se dissolvent progressivement (voir openDetection).
+    const depuisViewer = !!navLinks.find((l) => l.classList.contains("active") && l.dataset.view === "viewer");
     const priseDeVue = !!(messagerie && messagerie.priseDeVueEnCours());
     const deja3D = !viewViewer.hidden;
     // Choix du Viewer retenu en le quittant : sert seulement a la prise de vue de la messagerie.
@@ -1220,7 +1226,7 @@ navLinks.forEach((link) => {
         animerEntreeListe(maquettesList);
       } else {
         if (depuisVueDiscussion) remettreA3DNeutre();
-        ouvrirPageCollision();
+        ouvrirPageCollision({ fondu: depuisViewer && !depuisVueDiscussion });
         poserCameraCadrageGlobal(depuisCollisionPrecise);
       }
       navbarLinksEl.classList.remove("open");
@@ -3840,7 +3846,8 @@ function ouvrirPageCollision(options = {}) {
 }
 
 // detection = null : aucun couple choisi (20/10), la 3D montre toutes les maquettes et le drawer la liste des couples.
-function openDetection(detection) {
+// options.fondu (arrivee depuis le Viewer) : les maquettes hors paire se dissolvent progressivement, puis les bulles apparaissent.
+function openDetection(detection, options = {}) {
   detectionCourante = detection;
   renderDetections();
   collisionRecap.hidden = true;
@@ -3881,13 +3888,21 @@ function openDetection(detection) {
   const etatsModeles = new Map(MAQUETTES.map((m) => [m.id, detection ? detection.modeles.includes(m.id) : true]));
   const detectionClashes = detection ? CLASHES.filter((c) => c.detectionId === detection.id) : [];
   const marqueursAPoser = detectionClashes.filter((c) => !c.factice);
-  definirMaquettesVisibles(etatsModeles);
+  if (!options.fondu) definirMaquettesVisibles(etatsModeles);
   renderMaquetteRows(collisionMaquettesList, subset);
   renderCollisionMaquetteToggles(subset);
 
   renderCollisionsList(detectionClashes);
-  animerEntreeListe(detection ? collisionsList : collisionCouplesList);
-  renderClashMarkers(marqueursAPoser);
+  // Les lignes de la liste et les bulles apparaissent ensemble et finissent en meme temps (apres la dissolution si elle a lieu).
+  const lancerApparition = () => {
+    if (detectionCourante !== detection) return;
+    const liste = detection ? collisionsList : collisionCouplesList;
+    dureeApparitionMs = dureeEntreeListe(liste);
+    animerEntreeListe(liste);
+    renderClashMarkers(marqueursAPoser);
+  };
+  if (options.fondu) changerVisibiliteAvecFondu(etatsModeles, lancerApparition);
+  else lancerApparition();
   clearClashElementColors();
   deselectEntity();
 
@@ -4795,9 +4810,15 @@ function ensureClashMarkerAssets() {
 }
 
 // Apparition des collisions l'une apres l'autre (20/10, demande de Gilles) : a la pose des marqueurs, pastilles numerotees, cercles jaunes et
-// spheres 3D apparaissent un par un, les plus urgentes d'abord (70 ms d'ecart, une seconde au plus pour 15). Instantane si le systeme demande
-// moins de mouvement. Les minuteurs sont annules des qu'on efface les marqueurs.
-const PAS_REVELATION_MS = 70;
+// spheres 3D apparaissent un par un, les plus urgentes d'abord. L'ensemble dure autant que l'apparition des lignes de la liste du drawer
+// (dureeApparitionMs, posee par openDetection) : la derniere bulle a fini de grossir quand la derniere ligne a fini d'apparaitre, quel
+// que soit leur nombre ; l'ecart entre deux bulles se deduit du nombre. Instantane si le systeme demande moins de mouvement. Les
+// minuteurs sont annules des qu'on efface les marqueurs.
+let dureeApparitionMs = 600;
+const FONDU_APPARITION_MS = 450; // duree de l'animation CSS .clash-pastille (pastilleApparition)
+function pasRevelation(nombre) {
+  return nombre > 1 ? Math.max(0, (dureeApparitionMs - FONDU_APPARITION_MS) / (nombre - 1)) : 0;
+}
 let clashRevelationTimers = [];
 function rangsRevelation(clashes) {
   const rang = { urgente: 0, haute: 1, normale: 2, basse: 3 };
@@ -4940,7 +4961,7 @@ function renderClashBulles(clashes, rangs) {
   clashBullesList = clashes.map((clash) => ({ id: clash.id, center: clashCenter(clash), revele: !rangs }));
   if (rangs) {
     clashBullesList.forEach((bulle) => {
-      clashRevelationTimers.push(setTimeout(() => { bulle.revele = true; scheduleClashBulles(); }, rangs.get(bulle.id) * PAS_REVELATION_MS));
+      clashRevelationTimers.push(setTimeout(() => { bulle.revele = true; scheduleClashBulles(); }, rangs.get(bulle.id) * pasRevelation(clashes.length)));
     });
   }
   scheduleClashBulles();
@@ -4994,7 +5015,7 @@ function renderClashPastilles(clashes, rangs) {
     const el = clashPastillesContainer.querySelector('[data-clash-id="' + clash.id + '"]');
     clashPastilles.set(clash.id, { annotation, el });
     // Apparition decalee : l'animation CSS d'entree (.clash-pastille) attend son rang.
-    if (rangs && el) el.style.animationDelay = rangs.get(clash.id) * PAS_REVELATION_MS + "ms";
+    if (rangs && el) el.style.animationDelay = rangs.get(clash.id) * pasRevelation(clashes.length) + "ms";
   });
 }
 
@@ -5017,7 +5038,7 @@ function renderClashMarkers(clashes) {
       visible: !progressif
     });
     clashMarkers.set(clash.id, mesh);
-    if (progressif) clashRevelationTimers.push(setTimeout(() => { if (clashMarkers.get(clash.id) === mesh) mesh.visible = true; }, rangs.get(clash.id) * PAS_REVELATION_MS));
+    if (progressif) clashRevelationTimers.push(setTimeout(() => { if (clashMarkers.get(clash.id) === mesh) mesh.visible = true; }, rangs.get(clash.id) * pasRevelation(clashes.length)));
   });
   renderClashPastilles(clashes, progressif ? rangs : null);
   renderClashBulles(clashes, progressif ? rangs : null);
@@ -7045,8 +7066,70 @@ function ecritureGroupeeDrapeaux(modeles, changer) {
   viewer.scene.glRedraw();
 }
 
+let dissolutionActive = null;
+const DISSOLUTION_DUREE = 350;
+const DISSOLUTION_BUDGET_MS = 9;
+function melanger(tableau) {
+  for (let i = tableau.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const t = tableau[i]; tableau[i] = tableau[j]; tableau[j] = t;
+  }
+  return tableau;
+}
+function changerVisibiliteAvecFondu(etats, apres) {
+  if (dissolutionActive) dissolutionActive.annuler();
+  const appliquerFinal = () => {
+    MAQUETTES.forEach((m) => { if (etats.has(m.id)) m.shown = etats.get(m.id); });
+    applyVisibility();
+    if (apres) apres();
+  };
+  const animer = window.matchMedia("(min-width: 769px)").matches && !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  // Objets dont l'etat reel differe de l'etat voulu (les garde-corps mal places restent masques, cf applyVisibility).
+  const aChanger = [];
+  MAQUETTES.forEach((m) => {
+    if (!m.model || !etats.has(m.id)) return;
+    const veut = etats.get(m.id);
+    m.model.entityList.forEach((entite) => {
+      if (entite.visible === veut) return;
+      if (veut && HOSPITAL_MISPLACED_RAILING_IDS.includes(entite.id)) return;
+      aChanger.push([entite, veut]);
+    });
+  });
+  if (!animer || aChanger.length === 0) {
+    appliquerFinal();
+    return;
+  }
+  melanger(aChanger);
+  const modelesTouches = MAQUETTES.filter((m) => m.model && etats.has(m.id) && m.model.entityList.some((e) => e.visible !== etats.get(m.id))).map((m) => m.model);
+  const debut = performance.now();
+  let indice = 0;
+  let annule = false;
+  const etat = { annuler: () => { annule = true; dissolutionActive = null; } };
+  dissolutionActive = etat;
+  const pas = () => {
+    if (annule) return;
+    const t0 = performance.now();
+    const voulu = Math.max(indice + 1, Math.ceil(Math.min(1, (t0 - debut) / DISSOLUTION_DUREE) * aChanger.length));
+    const fin = Math.min(aChanger.length, voulu);
+    // Un seul envoi graphique par couche et par image, quel que soit le nombre d'objets de ce paquet.
+    ecritureGroupeeDrapeaux(modelesTouches, () => {
+      for (; indice < fin; indice++) {
+        const [entite, veut] = aChanger[indice];
+        entite.visible = veut;
+      }
+    });
+    if (indice < aChanger.length) requestAnimationFrame(pas);
+    else {
+      dissolutionActive = null;
+      appliquerFinal();
+    }
+  };
+  requestAnimationFrame(pas);
+}
+
 // Applique d'un coup la visibilite voulue des maquettes (etats : id -> bool).
 function definirMaquettesVisibles(etats) {
+  if (dissolutionActive) dissolutionActive.annuler();
   MAQUETTES.forEach((m) => { if (etats.has(m.id)) m.shown = etats.get(m.id); });
   applyVisibility();
 }
