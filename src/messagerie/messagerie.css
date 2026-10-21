@@ -1,0 +1,270 @@
+/* Messagerie de la page Discussions (interrupteur DISCUSSIONS_MESSAGERIE de src/main.js).
+   Toutes les classes portent le prefixe msg- ; les couleurs partent des variables d'Ouvra (--bg, --surface, --border, --text, --muted)
+   et un accent plus clair (--msg-accent) pour rester lisible sur fond vert sombre (--accent, #5c7a5f, est trop sombre pour du texte). */
+
+#view-discussions.msg-actif > #discussionsListPane,
+#view-discussions.msg-actif > #discussionsDetailPane { display: none; }
+
+.msg-racine {
+  --msg-accent: #7fae84;
+  --msg-sur-accent: #0f1612;
+  --msg-releve: #2a352d;
+  --msg-bulle-recue: #242e27;
+  --msg-bulle-envoyee: #2c4331;
+  --msg-mention: #e08a3c;
+  --msg-teinte-l: 32%;
+  --msg-vfond: #10150f;
+  --msg-vdalle: rgba(127, 174, 132, 0.12);
+  --msg-vtrait: #56695a;
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 340px minmax(0, 1fr);
+  background: var(--bg);
+  color: var(--text);
+}
+.msg-racine[hidden] { display: none; }
+.msg-racine *, .msg-racine *::before, .msg-racine *::after { box-sizing: border-box; }
+.msg-racine [hidden], #msgBandeauVue[hidden] { display: none !important; }
+.msg-racine button { font: inherit; color: inherit; cursor: pointer; }
+.msg-racine :is(button, input, textarea, select):focus-visible,
+#msgBandeauVue button:focus-visible { outline: 2px solid var(--msg-accent); outline-offset: 1px; }
+.msg-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ---------- Pastilles de nombre ---------- */
+.msg-badge {
+  min-width: 18px; height: 18px; padding: 0 6px; border-radius: 9px;
+  background: var(--msg-accent); color: var(--msg-sur-accent);
+  font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center;
+}
+.msg-badge-mention { background: var(--msg-mention); color: #1b1007; }
+.msg-badge-urgent { background: transparent; color: var(--msg-mention); border: 1.5px solid var(--msg-mention); }
+.msg-badge[hidden] { display: none; }
+/* Urgence : petite pastille, meme teinte que les mentions. */
+.msg-urgent { display: inline-flex; align-items: center; height: 16px; padding: 0 6px; border-radius: 8px; background: var(--msg-mention); color: #1b1007; font-size: 10.5px; font-weight: 700; }
+/* Dans la navbar : a cote du libelle « Discussions ». Hors de .msg-racine, donc les couleurs sont redonnees ici. */
+.nav-link .msg-badge-nav { margin-left: 6px; vertical-align: middle; background: #7fae84; color: #0f1612; }
+
+/* ---------- Liste ---------- */
+.msg-lateral { display: flex; flex-direction: column; min-height: 0; background: var(--surface); border-right: 1px solid var(--border); }
+.msg-onglets { display: flex; gap: 4px; padding: 12px 12px 8px; }
+.msg-onglets button {
+  flex: 1; min-height: 40px; border: 1px solid var(--border); background: var(--bg); color: var(--muted);
+  border-radius: 8px; padding: 8px 10px; font-weight: 600; font-size: 13px;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.msg-onglets button[aria-selected="true"] { color: var(--text); border-color: var(--msg-accent); }
+.msg-outils { display: flex; gap: 8px; padding: 0 12px 10px; }
+.msg-outils input, .msg-barre-recherche input, .msg-carte :is(input, textarea, select) {
+  background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; font: inherit; font-size: 13px;
+}
+.msg-outils input { flex: 1; min-width: 0; min-height: 40px; }
+.msg-filtre {
+  min-height: 40px; border: 1px solid var(--border); background: var(--bg); color: var(--muted);
+  border-radius: 8px; padding: 0 12px; font-size: 12.5px; font-weight: 600; white-space: nowrap;
+}
+.msg-filtre[aria-pressed="true"] { color: var(--msg-sur-accent); background: var(--msg-accent); border-color: var(--msg-accent); }
+
+.msg-liste { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.msg-liste-titre { padding: 10px 14px 4px; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.msg-liste-titre.nouveau { color: var(--msg-accent); }
+
+.msg-conv {
+  width: 100%; min-height: 60px; display: grid; grid-template-columns: 40px 1fr auto; gap: 2px 12px;
+  align-items: center; text-align: left; background: none; border: 0; border-left: 3px solid transparent;
+  padding: 10px 14px 10px 11px;
+}
+.msg-conv:hover, .msg-conv.actif { background: var(--msg-releve); }
+.msg-conv.non-lu { border-left-color: var(--msg-accent); }
+.msg-conv .msg-av { grid-row: 1 / span 3; }
+.msg-conv-nom { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.msg-conv.non-lu .msg-conv-nom { font-weight: 700; }
+.msg-conv-heure { font-size: 11.5px; color: var(--muted); }
+.msg-conv.non-lu .msg-conv-heure { color: var(--msg-accent); font-weight: 600; }
+.msg-conv-apercu { grid-column: 2; font-size: 12.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.msg-conv.non-lu .msg-conv-apercu { color: var(--text); }
+.msg-conv-droite { grid-column: 3; grid-row: 2; display: flex; gap: 4px; justify-content: flex-end; }
+
+.msg-av {
+  width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;
+  background: hsl(var(--h) 24% var(--msg-teinte-l)); color: var(--text);
+  display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px;
+}
+.msg-av.groupe { border-radius: 12px; }
+.msg-av.pt { width: 28px; height: 28px; font-size: 10.5px; }
+.msg-demo { flex-shrink: 0; padding: 8px 14px; border-top: 1px solid var(--border); font-size: 11.5px; color: var(--muted); text-align: center; }
+.msg-vide { padding: 24px 16px; color: var(--muted); text-align: center; }
+
+/* ---------- Volet de conversation ---------- */
+.msg-volet { position: relative; display: flex; flex-direction: column; min-height: 0; min-width: 0; }
+.msg-volet-vide { margin: auto; color: var(--muted); }
+.msg-entete { flex-shrink: 0; display: flex; align-items: center; gap: 12px; padding: 10px 16px; background: var(--surface); border-bottom: 1px solid var(--border); }
+.msg-titre { flex: 1; min-width: 0; }
+.msg-titre b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.msg-titre span { font-size: 12px; color: var(--muted); display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.msg-icone { background: none; border: 1px solid transparent; border-radius: 8px; width: 40px; height: 40px; color: var(--muted); font-size: 16px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.msg-icone:hover:not(:disabled) { color: var(--text); background: var(--msg-releve); }
+.msg-icone:disabled { opacity: 0.5; cursor: not-allowed; }
+.msg-retour { display: none; }
+
+.msg-sujets { flex-shrink: 0; display: flex; align-items: center; gap: 8px; padding: 8px 16px; background: var(--surface); border-bottom: 1px solid var(--border); }
+.msg-sujets-lbl { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.msg-bande { flex: 1; min-width: 0; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+.msg-bande::-webkit-scrollbar { display: none; }
+.msg-pastille {
+  flex-shrink: 0; min-height: 34px; display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border);
+  background: var(--bg); color: var(--muted); border-radius: 999px; padding: 5px 12px; font-size: 12.5px; font-weight: 600; white-space: nowrap;
+}
+.msg-pastille.actif { color: var(--text); border-color: var(--msg-accent); }
+.msg-pastille.a-du-neuf { color: var(--text); }
+.msg-pastille.clos { color: var(--muted); }
+.msg-pastille .msg-badge { height: 16px; min-width: 16px; font-size: 10.5px; padding: 0 5px; }
+.msg-ajout { flex-shrink: 0; min-height: 34px; border: 1px dashed var(--border); background: none; color: var(--muted); border-radius: 999px; padding: 5px 12px; font-size: 12.5px; font-weight: 600; }
+.msg-ajout:hover { color: var(--msg-accent); border-color: var(--msg-accent); }
+
+.msg-point { width: 8px; height: 8px; border-radius: 50%; background: var(--msg-accent); flex-shrink: 0; }
+.msg-point.st-encours { background: #5b9bd5; }
+.msg-point.st-attente { background: #e08a3c; }
+.msg-point.st-clos { background: var(--muted); }
+
+.msg-note-sujet { flex-shrink: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; padding: 6px 16px; font-size: 12.5px; color: var(--muted); border-bottom: 1px solid var(--border); background: var(--bg); }
+.msg-note-sujet.clos { background: var(--msg-releve); }
+.msg-note-sujet b { color: var(--text); }
+.msg-note-sujet > span { flex: 1; min-width: 160px; }
+.msg-note-sujet select { min-height: 34px; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 4px 8px; font: inherit; font-size: 12.5px; font-weight: 600; }
+.msg-bascule-urgent[aria-pressed="true"] { color: #1b1007; background: var(--msg-mention); border-color: var(--msg-mention); }
+.msg-lien { background: none; border: 0; color: var(--msg-accent); font-weight: 600; font-size: 12.5px; min-height: 34px; padding: 0 4px; }
+.msg-bouton-petit { min-height: 34px; background: none; border: 1px solid var(--border); border-radius: 8px; padding: 4px 10px; color: var(--text); font-size: 12.5px; font-weight: 600; }
+.msg-bouton-petit:hover { border-color: var(--msg-accent); }
+.msg-origine { display: flex; align-items: center; gap: 8px; border: 1px solid var(--border); border-radius: 8px; padding: 3px 10px 3px 3px; color: var(--text); font-size: 12px; font-weight: 600; background: var(--surface); }
+.msg-origine:hover { border-color: var(--msg-accent); }
+.msg-origine-img { width: 56px; height: 35px; border-radius: 5px; overflow: hidden; display: block; flex-shrink: 0; }
+
+.msg-barre-recherche { flex-shrink: 0; display: flex; align-items: center; gap: 10px; padding: 8px 16px; background: var(--surface); border-bottom: 1px solid var(--border); }
+.msg-barre-recherche input { flex: 1; min-width: 0; min-height: 40px; }
+.msg-barre-recherche span { font-size: 12.5px; color: var(--muted); white-space: nowrap; }
+
+.msg-zone-fil { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.msg-defile { position: relative; flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 8px 16px 14px; }
+.msg-defile:focus { outline: none; }
+.msg-plus-ancien { display: block; margin: 8px auto 4px; min-height: 40px; background: var(--surface); border: 1px solid var(--border); color: var(--muted); border-radius: 999px; padding: 6px 14px; font-size: 12.5px; font-weight: 600; }
+.msg-plus-ancien:hover { color: var(--text); }
+.msg-jour { position: sticky; top: 4px; z-index: 2; display: flex; justify-content: center; margin: 12px 0 6px; pointer-events: none; }
+.msg-jour span { background: var(--msg-releve); color: var(--muted); border-radius: 999px; padding: 3px 12px; font-size: 11.5px; font-weight: 600; }
+.msg-repere { display: flex; align-items: center; gap: 10px; margin: 14px 0 8px; color: var(--msg-accent); font-size: 12px; font-weight: 700; }
+.msg-repere::before, .msg-repere::after { content: ""; flex: 1; height: 1px; background: var(--msg-accent); opacity: 0.5; }
+
+.msg-ligne { display: flex; gap: 8px; margin-top: 2px; max-width: 100%; }
+.msg-ligne.premier { margin-top: 10px; }
+.msg-ligne.moi { justify-content: flex-end; }
+.msg-av-place { width: 28px; flex-shrink: 0; }
+.msg-bulle { max-width: min(560px, 80%); background: var(--msg-bulle-recue); border: 1px solid var(--border); border-radius: 12px; padding: 7px 11px; }
+.msg-ligne.moi .msg-bulle { background: var(--msg-bulle-envoyee); border-color: transparent; }
+.msg-qui { font-size: 12px; font-weight: 700; color: var(--msg-accent); margin-bottom: 1px; }
+.msg-texte { word-wrap: break-word; overflow-wrap: anywhere; white-space: pre-wrap; }
+.msg-heure { float: right; margin: 6px 0 0 12px; font-size: 10.5px; color: var(--muted); }
+.msg-mention { color: var(--msg-mention); font-weight: 700; }
+.msg-journal { margin: 10px auto 4px; max-width: 90%; text-align: center; font-size: 12.5px; color: var(--muted); }
+.msg-journal button { background: none; border: 0; padding: 0; color: var(--msg-accent); font-weight: 700; text-decoration: underline; text-underline-offset: 2px; }
+.msg-racine mark { background: color-mix(in srgb, var(--msg-accent) 35%, transparent); color: inherit; border-radius: 3px; }
+
+.msg-bas {
+  position: absolute; right: 18px; bottom: 14px; z-index: 5; width: 44px; height: 44px; border-radius: 50%;
+  background: var(--surface); border: 1px solid var(--border); color: var(--text); font-size: 17px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+}
+
+.msg-composer { flex-shrink: 0; display: flex; gap: 8px; align-items: flex-end; padding: 10px 16px 12px; background: var(--surface); border-top: 1px solid var(--border); }
+.msg-composer textarea {
+  flex: 1; min-width: 0; resize: none; max-height: 120px; min-height: 40px; background: var(--bg); color: var(--text); border: 1px solid var(--border);
+  border-radius: 12px; padding: 9px 12px; font: inherit; font-size: 14px;
+}
+.msg-composer textarea:disabled, .msg-envoyer:disabled { opacity: 0.5; cursor: not-allowed; }
+.msg-envoyer { background: var(--msg-accent); color: var(--msg-sur-accent); border: 0; border-radius: 12px; min-height: 40px; padding: 0 16px; font-weight: 700; }
+
+/* ---------- Prises de vue ---------- */
+.msg-vsvg, .msg-vimg { display: block; width: 100%; height: 100%; }
+.msg-vimg { object-fit: cover; }
+/* Vignette neutre tant que la vue 3D recoltee n'existe pas (premier chargement seulement) : meme gabarit, jamais le schema. */
+.msg-vattente { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; background: var(--msg-vfond); color: var(--muted); font-size: 11.5px; text-align: center; }
+.msg-vsvg-fond { fill: var(--msg-vfond); }
+.msg-vsvg-dalle { fill: var(--msg-vdalle); stroke: var(--msg-vtrait); stroke-width: 1; }
+.msg-vsvg-dalle.hi { fill: color-mix(in srgb, var(--msg-accent) 28%, transparent); }
+.msg-vsvg-poteau { stroke: var(--msg-vtrait); stroke-width: 1.2; }
+.msg-vsvg-poutre { stroke: var(--msg-accent); stroke-width: 3; }
+.msg-vsvg-gaine { stroke: #e08a3c; stroke-width: 4; stroke-linecap: round; }
+.msg-vsvg-marque { fill: rgba(229, 83, 75, 0.35); stroke: #e5534b; stroke-width: 2; }
+.msg-vsvg-etiquette { fill: var(--muted); font: 700 12px system-ui, sans-serif; }
+.msg-vue { display: block; width: 100%; max-width: 280px; margin: 0 0 6px; padding: 0; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--surface); text-align: left; }
+.msg-vue > :first-child { aspect-ratio: 16 / 10; }
+.msg-vue:hover { border-color: var(--msg-accent); }
+.msg-vue-legende { display: block; padding: 4px 8px; font-size: 11.5px; color: var(--muted); }
+.msg-vue-pendante { flex-shrink: 0; display: flex; align-items: center; gap: 10px; padding: 8px 16px 0; background: var(--surface); border-top: 1px solid var(--border); }
+.msg-puce-vue { display: flex; align-items: center; gap: 10px; background: var(--msg-releve); border: 1px solid var(--border); border-radius: 8px; padding: 4px 10px 4px 4px; font-size: 12.5px; color: var(--muted); min-width: 0; }
+.msg-puce-img { width: 72px; height: 45px; border-radius: 5px; overflow: hidden; display: block; flex-shrink: 0; }
+.msg-retirer { background: none; border: 0; color: var(--muted); font-size: 22px; line-height: 1; min-width: 40px; min-height: 40px; }
+.msg-menu-vue { position: absolute; left: 16px; bottom: 64px; z-index: 8; min-width: 280px; max-width: calc(100% - 32px); background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 6px; box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4); }
+.msg-menu-vue button { display: block; width: 100%; min-height: 44px; text-align: left; background: none; border: 0; border-radius: 8px; padding: 8px 10px; font-weight: 600; }
+.msg-menu-vue button:hover { background: var(--msg-releve); }
+.msg-menu-vue button span { display: block; font-size: 12px; font-weight: 400; color: var(--muted); }
+.msg-grande-vue { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+.msg-grande-vue > :first-child { height: auto; aspect-ratio: 16 / 10; }
+.msg-grande-vue .msg-vimg { object-fit: contain; background: var(--msg-vfond); }
+.msg-vue-jointe { width: 220px; max-width: 100%; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.msg-vue-jointe > :first-child { aspect-ratio: 16 / 10; }
+
+/* ---------- Dialogues ---------- */
+.msg-dialogue { position: absolute; inset: 0; z-index: 10; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; padding: 16px; }
+.msg-carte { width: min(480px, 100%); max-height: 100%; overflow-y: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 12px; }
+.msg-carte h3 { margin: 0; font-size: 16px; }
+.msg-carte label, .msg-etiquette { font-size: 12px; font-weight: 700; color: var(--muted); display: block; margin-bottom: 4px; }
+.msg-carte :is(input, textarea, select) { width: 100%; min-height: 40px; padding: 8px 10px; }
+.msg-carte textarea { resize: none; height: 72px; }
+.msg-bascule { display: flex; gap: 4px; }
+.msg-bascule button { flex: 1; min-height: 40px; border: 1px solid var(--border); background: var(--bg); color: var(--muted); border-radius: 8px; padding: 8px 10px; font-weight: 600; font-size: 13px; }
+.msg-bascule button[aria-pressed="true"] { color: var(--text); border-color: var(--msg-accent); }
+.msg-carte .msg-case { display: flex; align-items: center; gap: 8px; min-height: 40px; }
+.msg-carte .msg-case input { width: 18px; min-height: 0; height: 18px; padding: 0; flex-shrink: 0; accent-color: var(--msg-mention); }
+.msg-carte .msg-case label { margin: 0; display: inline; font-size: 13px; color: var(--text); cursor: pointer; }
+.msg-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.msg-tags button { min-height: 40px; display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--muted); border-radius: 999px; padding: 4px 12px 4px 5px; font-size: 12.5px; font-weight: 600; }
+.msg-tags button[aria-pressed="true"] { color: var(--text); border-color: var(--msg-accent); background: var(--msg-releve); }
+.msg-rangee { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.msg-fantome, .msg-primaire { min-height: 40px; border-radius: 8px; padding: 8px 14px; }
+.msg-fantome { background: none; border: 1px solid var(--border); color: var(--muted); }
+.msg-fantome:hover { color: var(--text); border-color: var(--msg-accent); }
+.msg-primaire { background: var(--msg-accent); color: var(--msg-sur-accent); border: 0; font-weight: 700; }
+.msg-primaire:disabled { opacity: 0.5; cursor: not-allowed; }
+.msg-aide { margin: 0; font-size: 12px; color: var(--muted); }
+.msg-histo { max-height: 46vh; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; }
+.msg-histo-ligne { min-height: 44px; text-align: left; background: none; border: 0; border-radius: 8px; padding: 8px 10px; display: flex; flex-direction: column; gap: 1px; }
+.msg-histo-ligne:hover { background: var(--msg-releve); }
+.msg-histo-ligne span { font-size: 12px; color: var(--muted); }
+
+/* ---------- Bandeau « prise de vue » affiche sur le Viewer ---------- */
+#msgBandeauVue {
+  position: fixed; top: 52px; left: 0; right: 0; z-index: 55; display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap;
+  padding: 8px 12px; background: var(--surface); border-bottom: 1px solid var(--border); color: var(--text); font-size: 13px; font-weight: 600;
+}
+#msgBandeauVue button { min-height: 40px; border-radius: 8px; padding: 6px 16px; font: inherit; font-weight: 700; cursor: pointer; border: 1px solid var(--border); background: none; color: var(--text); }
+#msgBandeauVue button[data-act="valider"] { background: #7fae84; color: #0f1612; border-color: #7fae84; }
+
+/* ---------- Mobile : la liste OU la conversation ---------- */
+@media (max-width: 768px) {
+  .msg-racine { grid-template-columns: minmax(0, 1fr); }
+  .msg-volet { display: none; }
+  .msg-racine.volet-ouvert .msg-lateral { display: none; }
+  .msg-racine.volet-ouvert .msg-volet { display: flex; }
+  .msg-retour { display: inline-flex; }
+  .msg-bulle { max-width: 86%; }
+  .msg-sujets-lbl { display: none; }
+  .msg-sujets, .msg-entete, .msg-note-sujet, .msg-defile, .msg-composer, .msg-barre-recherche, .msg-vue-pendante { padding-left: 12px; padding-right: 12px; }
+  .msg-pastille, .msg-ajout { min-height: 40px; }
+  .msg-composer textarea, .msg-outils input, .msg-barre-recherche input, .msg-carte :is(input, textarea, select) { font-size: 16px; }
+  .msg-menu-vue { left: 12px; }
+  .msg-bas { right: 12px; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .msg-conv, .msg-pastille, .msg-badge, .msg-vue { transition: background 0.15s, border-color 0.15s; }
+}

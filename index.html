@@ -451,10 +451,28 @@
       </div>
 
       <div id="view-discussions" class="view" hidden>
+        <!-- Messagerie (21/10) : remplace l'interface ci-dessous quand DISCUSSIONS_MESSAGERIE est vrai (src/main.js). Contenu construit par
+             src/messagerie/messagerie.js. L'ancienne page (liste par niveaux, panneau de discussion) est conservee, masquee. -->
+        <div id="msgRoot" class="msg-racine" hidden></div>
         <div id="discussionsListPane">
-          <h2>Discussions</h2>
-          <p class="info-empty" id="discussionsThreadsEmpty" hidden>Aucun fil pour l'instant.</p>
-          <ul class="info-list" id="discussionsThreadsList"></ul>
+          <div id="discLayout">
+            <aside id="discCoupe" aria-labelledby="discCoupeTitre">
+              <h3 class="disc-panel-titre" id="discCoupeTitre">Niveaux</h3>
+              <p class="disc-panel-sous">Nombre de discussions à chaque niveau.</p>
+              <div class="disc-ruban" id="discRuban"><span class="disc-ruban-label">Général</span></div>
+              <div id="discEtages" role="group" aria-label="Niveaux"></div>
+              <div class="disc-legende"><span class="disc-legende-prio"><span><i class="tl-dot" data-champ="prio" data-v="urgente"></i>Urgente</span><span><i class="tl-dot" data-champ="prio" data-v="haute"></i>Haute</span><span><i class="tl-dot" data-champ="prio" data-v="normale"></i>Normale</span><span><i class="tl-dot" data-champ="prio" data-v="basse"></i>Basse</span></span></div>
+            </aside>
+            <section id="discMain" aria-label="Discussions">
+              <div id="discToolbar">
+                <h2>Discussions</h2>
+                <div class="disc-seg" id="discEtat" role="group" aria-label="Filtrer par état"></div>
+                <div class="disc-seg" id="discPriorite" role="group" aria-label="Filtrer par priorité"></div>
+              </div>
+              <p class="info-empty" id="discussionsThreadsEmpty" hidden>Aucun fil pour l'instant.</p>
+              <div id="discussionsThreadsList" role="list" aria-label="Liste des discussions, triées par priorité puis activité récente"></div>
+            </section>
+          </div>
         </div>
 
         <div id="discussionsDetailPane" hidden>
@@ -483,6 +501,9 @@
                 <button type="button" class="fil-plein" id="filPleinBtn" title="Afficher la conversation en pleine page"><span class="fil-plein-ouvrir">⤢ Pleine page</span><span class="fil-plein-fermer">⤡ Réduire</span></button>
               </div>
               <div class="fil-fiche">
+                <div class="fil-bloc fil-controles" id="filControles">
+                  <div class="fil-controles-champs" id="filControlesChamps"></div>
+                </div>
                 <div class="fil-bloc" id="filTags">
                   <span class="fil-bloc-titre">Participants <b id="filTagsNb"></b></span>
                   <ul class="fil-liste" id="filListe"></ul>
@@ -614,19 +635,14 @@
     <div id="newDiscussionModalOverlay" hidden>
       <div id="newDiscussionModal" role="dialog" aria-modal="true">
         <button id="newDiscussionClose" aria-label="Fermer">×</button>
-        <h3>Nouvelle discussion</h3>
+        <h3 id="newDiscussionTitre">Nouvelle discussion</h3>
         <form id="newDiscussionForm">
+          <!-- Un seul champ (20/10) : le souci. Le niveau et les maquettes sont deduits de la vue 3D, le titre de ce message (une IA
+               en proposera un plus tard), les participants s'ajoutent ensuite dans la discussion. -->
           <label class="modal-field">
-            Sujet / zone concernée
-            <input type="text" id="newDiscussionZone" required>
+            Expliquez le souci
+            <textarea id="newDiscussionComment" rows="4" required placeholder="Que se passe-t-il ? Le niveau et les maquettes sont repris automatiquement de la vue 3D."></textarea>
           </label>
-          <label class="modal-field">
-            Premier commentaire
-            <textarea id="newDiscussionComment" rows="3" required></textarea>
-          </label>
-          <fieldset id="newDiscussionRecipients">
-            <legend>Destinataires</legend>
-          </fieldset>
           <button type="submit">Créer la discussion</button>
         </form>
       </div>

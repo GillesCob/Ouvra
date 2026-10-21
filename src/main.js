@@ -1,6 +1,7 @@
 import { Viewer, AnnotationsPlugin, WebIFCLoaderPlugin, XKTLoaderPlugin, SectionPlanesPlugin, TransformControl, Mesh, ReadableGeometry, PhongMaterial, buildSphereGeometry } from "@xeokit/xeokit-sdk";
 import * as WebIFC from "web-ifc";
 import { HOSPITAL_DETECTIONS, HOSPITAL_CLASHES, HOSPITAL_CLASHES_FACTICES } from "./clashesHospital.js";
+import { creerMessagerie } from "./messagerie/messagerie.js";
 
 // ============================================================================
 // INTERRUPTEURS DE MASQUAGE : base propre du 19/10
@@ -17,6 +18,13 @@ import { HOSPITAL_DETECTIONS, HOSPITAL_CLASHES, HOSPITAL_CLASHES_FACTICES } from
 //   masque, activateView renvoie vers le Viewer). Reactiver : false, remettre
 //   l'onglet data-view="presentation" dans la navbar (index.html) et retirer
 //   "hidden" du bouton #landingPresentationBtn de la landing.
+//
+// DISCUSSIONS_MESSAGERIE (21/10)
+//   Page Discussions : true = nouvelle messagerie (conversations individuelles et
+//   de groupe, sujets a statut, prises de vue, code dans src/messagerie/) ; false =
+//   ancienne page (liste par niveaux, panneau de discussion). L'ancienne page, son
+//   code, son HTML et son CSS sont conserves, simplement masques. Retour arriere :
+//   mettre l'interrupteur a false.
 //
 // MASQUE_SELECTEUR_PROJET
 //   Selecteur de projet #projectSelect cache et valeur forcee sur l'hopital
@@ -279,6 +287,19 @@ const CLASH_FANTOME_CONTEXTE_EDGE_ALPHA = 0.24;
 const CLASH_FANTOME_COLOR = [0.82, 0.84, 0.86];
 // Etat de la transparence de la page Collision, declare ici (et non pres des
 // fonctions) car activateView le lit des le chargement initial.
+// Mode d'affichage de la vue 3D d'une collision (20/10, bouton "Contexte" devenu menu) :
+//  "conflit"  : les 2 elements en plein, le reste des 2 maquettes en fantome leger (defaut) ;
+//  "contexte" : fantome plus marque et les autres maquettes en transparence coloree (ancien bouton Contexte) ;
+//  "couple"   : les 2 maquettes du couple telles quelles, sans transparence ;
+//  "toutes"   : toutes les maquettes du projet telles quelles, sans transparence.
+// collisionContexteOn : vrai quand les maquettes hors couple sont affichees ("contexte" et "toutes").
+let collisionModeAffichage = "conflit";
+const MODES_AFFICHAGE_COLLISION = [
+  { id: "conflit", libelle: "Conflit seul", detail: "Les 2 éléments en plein, le reste en fantôme léger" },
+  { id: "contexte", libelle: "Contexte", detail: "Fantôme plus marqué, autres maquettes en transparence" },
+  { id: "couple", libelle: "Les 2 maquettes", detail: "Les 2 maquettes en conflit, sans transparence" },
+  { id: "toutes", libelle: "Tout le projet", detail: "Toutes les maquettes, sans transparence" }
+];
 let collisionContexteOn = false;
 let collisionActiveClash = null;
 let collisionOpacityTouched = [];
@@ -286,6 +307,7 @@ let collisionIsolationIds = [];
 let collisionIsolationSavedMaterial = null;
 let collisionSubsetMaquettes = [];
 let collisionContexteBtn = null;
+let collisionAffichageMenu = null;
 let collisionContexteNiveau = "isole"; // niveau par defaut a l'arrivee (19/10, demande de Gilles) ; avant : "proche"
 let collisionNiveauBtns = [];
 let collisionContextePickIds = [];
@@ -293,6 +315,7 @@ const MASQUE_FICHE_DANS_DRAWER = true;
 const MASQUE_LISTE_MAQUETTES_COLLISION = true;
 const MASQUE_FICHE_COLLISION_DANS_DRAWER = true;
 const PRESENTATION_MASQUEE = true;
+const DISCUSSIONS_MESSAGERIE = true;
 const MASQUE_SELECTEUR_PROJET = true;
 const MASQUE_PROFILS = true;
 const MASQUE_TODO_ADMIN = true;
@@ -482,9 +505,7 @@ const newDiscussionBtn = document.getElementById("newDiscussionBtn");
 const newDiscussionModalOverlay = document.getElementById("newDiscussionModalOverlay");
 const newDiscussionClose = document.getElementById("newDiscussionClose");
 const newDiscussionForm = document.getElementById("newDiscussionForm");
-const newDiscussionZone = document.getElementById("newDiscussionZone");
 const newDiscussionComment = document.getElementById("newDiscussionComment");
-const newDiscussionRecipients = document.getElementById("newDiscussionRecipients");
 
 // Contenu porte depuis le mockup vault Projets/Chantier/mockups/cdc-dashboard.html
 // (reference de contenu), adapte : renvois "carte N du suivi" retires (plus
@@ -800,6 +821,8 @@ let initialCameraState = null;
 // Maquettes affichees/masquees dans le Viewer (20/10) : memorisees en quittant le Viewer par la navbar,
 // reappliquees au retour (Collision et Discussions repartent d'un etat propre, pas le Viewer).
 let memoMaquettesViewer = null;
+// Vrai quand l'etat courant du Viewer vient d'une vue de discussion (pose par ouvrirViewerSurVue), remis a faux au retour sur l'etat general.
+let viewerDepuisVueDiscussion = false;
 
 // Vue par defaut figee (05/09), valeurs relevees via la console DevTools sur
 // une orientation validee par Gilles : plus fiable qu'un fit automatique sur
@@ -833,13 +856,185 @@ function redirectMaskedView(viewName) {
   return viewName;
 }
 
-function activateView(viewName) {
-  if (viewName !== "collision") fermerEchangesGrand(false);
+// Messagerie de la page Discussions (21/10). Les fonctions passees en options sont appelees plus tard, apres le chargement complet
+// du module : elles peuvent donc utiliser ce qui est declare plus bas.
+// Recolte AUTOMATIQUE des vues 3D de la messagerie (21/10, serveur de dev SEULEMENT : le plugin tools/viteRecolteVues.js qui ecrit les
+// fichiers n'existe pas ailleurs). Au chargement, une fois TOUTES les maquettes chargees, si public/images/vues/index.json ne couvre pas
+// les premieres collisions reelles, chacune est selectionnee comme sur la page Collision (selectClash : camera a l'angle enregistre,
+// isolation X-ray) puis la 3D en PERSPECTIVE est capturee en JPEG et envoyee au plugin avec l'etat du Viewer (camera, niveaux,
+// maquettes, coupe). Tout se passe dans #rendusHorsEcran (la 3D y est deplacee, invisible) : rien n'est affiche, la page courante
+// (jamais Viewer ni Collision) n'est pas touchee. Un rendu a la fois, avec des pauses. Puis camera, visibilites, X-ray, coupe et
+// emplacement de la 3D sont remis tels qu'avant. Un changement de page l'interrompt. Les fichiers etant statiques ensuite, les
+// rechargements suivants n'ont plus rien a faire (la messagerie lit index.json au demarrage).
+const RECOLTE_NOMBRE = 8;
+const RECOLTE_LARGEUR_MAX = 640;
+// Version du format des vues enregistrees : une entree d'index d'une autre version (ou sans camera) est recoltee de nouveau.
+const RECOLTE_VERSION = 3;
+const recolteAuto = { enCours: false, interrompue: false, termine: false, minuteur: null, essais: 0, echecs: 0 };
+const attendreMs = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const imageSuivante = () => new Promise((resolve) => requestAnimationFrame(() => resolve()));
+function collisionsPourVues() {
+  return CLASHES.filter((c) => c.detectionId === "hopital-arch-mep" && !c.factice).slice(0, RECOLTE_NOMBRE);
+}
+function nomVueAffichee() {
+  const vue = document.querySelector(".view:not([hidden])");
+  return vue ? vue.id.replace(/^view-/, "") : null;
+}
+// Metadonnees enregistrees avec l'image : lieu lisible + etat complet du Viewer (utilise par « Ouvrir dans le Viewer »).
+function decrireClashPourVue(clash) {
+  const detection = DETECTIONS.find((d) => d.id === clash.detectionId);
+  const etat = captureViewerState();
+  return {
+    version: RECOLTE_VERSION,
+    collisionId: clash.id,
+    niveau: libelleNiveau(clash.zone.split("·").pop().trim()),
+    modeles: detection.modeles.map((id) => COLLISION_TOGGLE_LABELS[id] || id).join(" + "),
+    camera: etat.camera,
+    niveaux: etat.niveaux,
+    maquettes: etat.maquettes,
+    coupe: etat.coupe,
+    entites: etat.entites
+  };
+}
+function planifierRecolteAuto(delai) {
+  const r = recolteAuto;
+  if (!import.meta.env.DEV || r.enCours || r.termine || r.minuteur) return;
+  if (new URLSearchParams(location.search).has("vues")) return; // mode manuel (panneau) : pas d'automatisme
+  r.minuteur = setTimeout(() => { r.minuteur = null; verifierRecolteAuto(); }, delai);
+}
+async function verifierRecolteAuto() {
+  const r = recolteAuto;
+  const pret = CLASHES.length > 0 && MAQUETTES.length > 0 && MAQUETTES.every((m) => m.chargee) && loadingOverlay.classList.contains("hidden") &&
+    !document.hidden && !viewer.cameraFlight.flying && dissolutionActive === null && !transitionVueEnCours &&
+    !["viewer", "collision"].includes(nomVueAffichee());
+  if (!pret) {
+    if (++r.essais <= 300) planifierRecolteAuto(4000);
+    return;
+  }
+  r.essais = 0;
+  const cibles = collisionsPourVues();
+  let deja = new Set();
+  try {
+    const reponse = await fetch(import.meta.env.BASE_URL + "images/vues/index.json", { cache: "no-store" });
+    if (reponse.ok) {
+      const liste = await reponse.json();
+      if (Array.isArray(liste)) deja = new Set(liste.filter((v) => v && typeof v.id === "string" && v.version === RECOLTE_VERSION && v.camera && v.entites).map((v) => v.id));
+    }
+  } catch (e) {
+    // Index absent (le serveur de dev renvoie alors une page HTML) ou illisible : tout est a recolter.
+  }
+  const manquantes = cibles.filter((c) => !deja.has(c.id));
+  if (!manquantes.length) { r.termine = true; return; }
+  executerRecolteAuto(manquantes);
+}
+async function executerRecolteAuto(cibles) {
+  const r = recolteAuto;
+  r.enCours = true;
+  r.interrompue = false;
+  const detection = DETECTIONS.find((d) => d.id === "hopital-arch-mep");
+  const etatAvant = captureViewerState();
+  const detectionAvant = detectionCourante;
+  const parent = viewerWrap.parentNode;
+  const suivant = viewerWrap.nextSibling;
+  let boite = document.getElementById("rendusHorsEcran");
+  if (!boite) {
+    boite = document.createElement("div");
+    boite.id = "rendusHorsEcran";
+    boite.setAttribute("aria-hidden", "true");
+    document.body.appendChild(boite);
+  }
+  const canevas = viewer.scene.canvas.canvas;
+  let enregistrees = 0;
+  try {
+    // Meme ouverture que la page Collision (maquettes de la paire, marqueurs, isolation), puis la 3D passe hors ecran.
+    openDetection(detection);
+    boite.appendChild(viewerWrap);
+    // Taille prise en compte par xeokit (ResizeObserver puis tick de la scene : quelques images).
+    for (let i = 0; i < 120; i++) {
+      const prete = canevas.clientWidth > 0 && viewer.scene.canvas.boundary[2] === canevas.clientWidth &&
+        viewer.scene.canvas.boundary[3] === canevas.clientHeight && canevas.width > 0;
+      if (prete) break;
+      if (i === 119) throw new Error("la 3D hors écran n'a pas pris sa taille.");
+      await imageSuivante();
+    }
+    // Fondu des maquettes (dissolution par paquets) termine.
+    for (let i = 0; dissolutionActive !== null; i++) {
+      if (i > 240) throw new Error("le fondu des maquettes ne se termine pas.");
+      await attendreMs(250);
+    }
+    for (const clash of cibles) {
+      if (r.interrompue || viewerWrap.parentNode !== boite) break;
+      await new Promise((resolve, reject) => {
+        const filet = setTimeout(() => { clearInterval(veille); reject(new Error("la caméra n'est pas arrivée à la collision " + clash.id + ".")); }, 20000);
+        const veille = setInterval(() => { if (r.interrompue) { clearTimeout(filet); clearInterval(veille); resolve(); } }, 200);
+        selectClash(clash, () => { clearTimeout(filet); clearInterval(veille); resolve(); });
+      });
+      if (r.interrompue) break;
+      await imageSuivante();
+      await imageSuivante();
+      const image = await capturerVueJpeg(RECOLTE_LARGEUR_MAX);
+      if (r.interrompue) break;
+      const reponse = await fetch("/__vues/" + encodeURIComponent(clash.id), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image, meta: decrireClashPourVue(clash) })
+      });
+      if (!reponse.ok) throw new Error("le serveur a refusé la vue " + clash.id + " (" + reponse.status + ").");
+      enregistrees++;
+      await attendreMs(600); // pause : la page reste fluide entre deux rendus
+    }
+    if (!r.interrompue) r.termine = true;
+  } catch (erreur) {
+    console.warn("[récolte des vues] " + erreur.message);
+    if (++r.echecs >= 2) r.termine = true; // deux echecs : on arrete, rien ne boucle
+  } finally {
+    clearTimeout(minuteurOpacitesCollision);
+    if (viewerWrap.parentNode === boite) {
+      // Page non Viewer/Collision toujours affichee : on remet tout comme avant (equivalent de ce que fait la navigation).
+      viewer.cameraFlight.cancel();
+      resetCollisionOpacityState();
+      finirTransitionCollision();
+      clearClashMarkers();
+      clearClashElementColors();
+      deselectEntity();
+      recenterTarget = null;
+      collisionDetail.hidden = true;
+      collisionRecap.hidden = false;
+      detectionCourante = detectionAvant;
+      restoreAllModelsVisible();
+      restoreViewerState(etatAvant);
+      viewer.cameraFlight.jumpTo({ eye: etatAvant.camera.eye, look: etatAvant.camera.look, up: etatAvant.camera.up });
+      if (suivant && suivant.parentNode === parent) parent.insertBefore(viewerWrap, suivant);
+      else parent.appendChild(viewerWrap);
+    }
+    r.enCours = false;
+    if (messagerie && enregistrees > 0) messagerie.rechargerVues();
+    // Interrompue ou reportee : la prochaine page non Viewer/Collision relance la verification (les vues deja ecrites sont comptees).
+    if (!r.termine) planifierRecolteAuto(r.echecs > 0 ? 30000 : 3000);
+  }
+}
+const viewDiscussions = document.getElementById("view-discussions");
+const messagerie = DISCUSSIONS_MESSAGERIE ? creerMessagerie({
+  racine: document.getElementById("msgRoot"),
+  lienNavbar: navLinks.find((l) => l.dataset.view === "discussions"),
+  capturerVue: capturerVuePourMessagerie,
+  allerA: (nomVue) => navLinks.find((l) => l.dataset.view === nomVue).click(),
+  ouvrirDansViewer: ouvrirViewerSurVue
+}) : null;
+if (messagerie) {
+  document.getElementById("msgRoot").hidden = false;
+  viewDiscussions.classList.add("msg-actif");
+}
+
+// options.garder3D (transition Viewer/Collision) : ni remise a zero de la collision ni fermeture des echanges agrandis au depart, ils sont
+// faits a l'arrivee du dezoom (transitionVersViewer / openDetection), pour que l'affichage 3D reste tel quel pendant le vol.
+function activateView(viewName, options = {}) {
+  if (viewName !== "collision" && !options.garder3D) fermerEchangesGrand(false);
   if (PRESENTATION_MASQUEE && viewName === "presentation") viewName = "viewer";
   if (MASQUE_ANCIENNE_LANDING && viewName === "landing") viewName = "accueil";
   viewName = redirectMaskedView(viewName);
   // Quitter la page Collision : plus aucune transparence ni fantome.
-  if (viewName !== "collision" && (collisionContexteOn || collisionActiveClash || collisionOpacityTouched.length > 0)) {
+  if (viewName !== "collision" && !options.garder3D && (collisionContexteOn || collisionActiveClash || collisionOpacityTouched.length > 0)) {
     resetCollisionOpacityState();
   }
   // Accueil : navbar de l'app masquee par CSS (body.acc-actif).
@@ -850,6 +1045,12 @@ function activateView(viewName) {
   document.querySelectorAll(".view").forEach((view) => {
     view.hidden = view.id !== "view-" + viewName;
   });
+  if (messagerie) messagerie.surVueActivee(viewName);
+  if (import.meta.env.DEV) {
+    // Changement de page pendant la recolte automatique : elle s'interrompt et remet tout en place ; sinon elle (re)verifie son point de depart.
+    if (recolteAuto.enCours) recolteAuto.interrompue = true;
+    else planifierRecolteAuto(1500);
+  }
   if (viewName !== "viewer") {
     closeFicheCard();
     closeFicheSheet();
@@ -942,64 +1143,155 @@ function transitionVue(vue, changer) {
   }, 300);
 }
 
+// Sequence UNIQUE (21/10) pour tout clic sur Viewer ou Collision, d'ou que l'on parte : 1. depart : l'affichage 3D courant est conserve tel quel ;
+// 2. une seule camera dezoome (1,1 s) vers la vue globale du batiment, les bulles de collision s'effacent pendant le vol ; 3. a l'arrivee, la cible
+// est appliquee en un seul passage (3D en fondu court : remise a plat puis apparition des seules maquettes voulues). Un compteur d'identifiant
+// annule la sequence precedente si un nouveau clic arrive pendant le vol ou le fondu.
+let transitionCibleId = 0;
+const FONDU_ARRIVEE_MS = 250;
+// Vrai quand on quitte une collision specifique (sa mise en page : X-ray, couleurs, transparence, bulles) : pose par le handler des onglets,
+// lu une seule fois par dezoomPuisAppliquer.
+let depuisMiseEnPageCollision = false;
+
+// La camera est deja (a tres peu pres) au cadrage global : pas besoin de dezoomer.
+function cameraAuCadrageGlobal() {
+  const cible = cadrageBatimentDansZone();
+  const eye = viewer.camera.eye;
+  const look = viewer.camera.look;
+  const distance = Math.hypot(cible.eye[0] - cible.look[0], cible.eye[1] - cible.look[1], cible.eye[2] - cible.look[2]) || 1;
+  const ecart = (u, v) => Math.hypot(u[0] - v[0], u[1] - v[1], u[2] - v[2]);
+  return ecart(eye, cible.eye) < distance * 0.03 && ecart(look, cible.look) < distance * 0.03;
+}
+
+function dezoomPuisAppliquer(appliquerCible) {
+  const id = ++transitionCibleId;
+  const actif = () => id === transitionCibleId;
+  const depuisCollision = depuisMiseEnPageCollision;
+  depuisMiseEnPageCollision = false;
+  const canevas = document.getElementById("viewerCanvas");
+  if (canevas) { canevas.style.transition = ""; canevas.style.opacity = ""; }
+  // cancel() et non stop() : voir flyToClash (pas de callback d'arrivee d'un vol annule).
+  viewer.cameraFlight.cancel();
+  if (dissolutionActive) dissolutionActive.annuler();
+  const reduit = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  // Deja au cadrage global et sans mise en page de collision a defaire (ex. Viewer vers Collision) : la maquette ne bouge pas, seules les
+  // maquettes apparaissent ou disparaissent en fondu (comportement d'origine).
+  if (!depuisCollision && cameraAuCadrageGlobal()) {
+    appliquerCible();
+    return;
+  }
+  effacerClashMarkersProgressivement();
+  const arriver = () => {
+    if (!actif()) return;
+    // Plus de fondu du canvas (il donnait un ecran noir) : la remise a plat de la mise en page de la collision et le fondu des maquettes
+    // voulues se font ensemble, a l'arrivee du dezoom.
+    appliquerCible();
+    // Une fois la zone 3D recalee sur sa taille finale, le cadrage est corrige s'il s'ecarte du cadrage de reference.
+    setTimeout(() => {
+      if (actif() && !cameraAuCadrageGlobal()) viewer.cameraFlight.jumpTo(cadrageBatimentDansZone());
+    }, 160);
+  };
+  // Cadrage sur la zone 3D ACTUELLE (apres le deplacement eventuel de viewerWrap vers la page cible).
+  const cadrage = cadrageBatimentDansZone();
+  if (reduit) {
+    viewer.cameraFlight.jumpTo(cadrage);
+    arriver();
+    return;
+  }
+  let fait = false;
+  let filet = null;
+  const suite = () => {
+    if (fait) return;
+    fait = true;
+    clearTimeout(filet);
+    arriver();
+  };
+  viewer.cameraFlight.flyTo(Object.assign(cadrage, { duration: 1.1 }), suite);
+  filet = setTimeout(suite, 2200); // si le vol est interrompu, la suite part quand meme
+}
+
+// Remise a plat de l'affichage 3D a l'arrivee (sous le canvas masque) : transparence, fantome, couleurs, selection, marqueurs, coupe, X-ray,
+// niveaux coches. La visibilite des maquettes est laissee a changerVisibiliteAvecFondu.
+function remettreA3DNeutre() {
+  clearTimeout(minuteurOpacitesCollision);
+  if (dissolutionActive) dissolutionActive.annuler();
+  fermerEchangesGrand(false);
+  resetCollisionOpacityState();
+  finirTransitionCollision();
+  clearClashMarkers();
+  clearClashElementColors();
+  deselectEntity();
+  restoreViewerState({
+    niveaux: niveauxState.map((n) => ({ name: n.name, checked: true })),
+    coupe: null,
+    entites: { parMaquette: {}, xrayMat: null }
+  });
+}
+
+// Cible Viewer : toutes les maquettes visibles et tous les niveaux coches (pendant une prise de vue de la messagerie : les maquettes
+// que le Viewer avait avant de le quitter, memorisees dans memoMaquettesViewer).
+function transitionVersViewer(maquettesVoulues) {
+  dezoomPuisAppliquer(() => {
+    if (document.getElementById("view-viewer").hidden) return;
+    remettreA3DNeutre();
+    const etats = new Map(MAQUETTES.map((m) => [m.id, maquettesVoulues ? maquettesVoulues.get(m.id) !== false : true]));
+    changerVisibiliteAvecFondu(etats, () => renderMaquetteRows(maquettesList, MAQUETTES));
+  });
+}
+
 navLinks.forEach((link) => {
   link.addEventListener("click", () => transitionVue(link.dataset.view, () => {
+    const page = link.dataset.view;
+    const priseDeVue = !!(messagerie && messagerie.priseDeVueEnCours());
+    const deja3D = !viewViewer.hidden;
+    // Choix du Viewer retenu en le quittant : sert seulement a la prise de vue de la messagerie.
+    if (deja3D) memoMaquettesViewer = new Map(MAQUETTES.map((m) => [m.id, m.shown]));
+    // Prise de vue en cours, deja dans le Viewer : rien ne se reinitialise.
+    if (page === "viewer" && priseDeVue && deja3D) {
+      navbarLinksEl.classList.remove("open");
+      return;
+    }
+    if (page === "viewer" || page === "collision") {
+      viewerDepuisVueDiscussion = false;
+      const maquettesPrise = priseDeVue && page === "viewer" ? memoMaquettesViewer : null;
+      depuisMiseEnPageCollision = !collisionDetail.hidden || collisionContexteOn || !!collisionActiveClash || collisionOpacityTouched.length > 0;
+      // Une collision restee ouverte : on repasse au recap (sinon revenir sur Collision rouvrirait la meme detection avec viewerWrap deplace
+      // ailleurs : canvas vide). Aucun effacement ici : les bulles s'effacent pendant le vol (dezoomPuisAppliquer).
+      if (!collisionDetail.hidden) {
+        collisionDetail.hidden = true;
+        collisionRecap.hidden = false;
+      }
+      if (!discussionsDetailPane.hidden) {
+        discussionsDetailPane.hidden = true;
+        discussionsListPane.hidden = false;
+      }
+      activateView(page, { garder3D: true });
+      if (page === "viewer") transitionVersViewer(maquettesPrise);
+      else ouvrirPageCollision({ dezoomPuisTransition: true });
+      navbarLinksEl.classList.remove("open");
+      return;
+    }
+    // Autre page (sans 3D) : annule une sequence en cours, repart d'un etat sain (une detection ou un fil qui masquait des maquettes).
+    ++transitionCibleId;
     fermerEchangesGrand(false);
-    // Etat des maquettes avant la navigation : sert au fondu vers le Viewer (changerVisibiliteAvecFondu).
-    const etatMaquettesAvantNav = new Map(MAQUETTES.map((m) => [m.id, m.shown]));
-    // Avant que restoreAllModelsVisible() ne remette tout visible : on retient le choix du Viewer.
-    if (!viewViewer.hidden) memoMaquettesViewer = new Map(MAQUETTES.map((m) => [m.id, m.shown]));
-    // Repart d'un etat sain si on quitte directement (sans passer par un
-    // bouton retour) une detection ou un fil qui masquait certaines
-    // maquettes (ex. Maquette CEA hors sujet). "restoreAllModelsVisible"
-    // n'est appelee qu'au clic, jamais au chargement initial : MAQUETTES
-    // n'existe pas encore a ce moment-la plus bas dans le fichier.
     restoreAllModelsVisible();
-    // Idem pour une detection restee ouverte : sinon revenir sur Collision
-    // via la navbar (au lieu du bouton retour) rouvre la meme detection,
-    // mais viewerWrap a entre-temps ete deplace ailleurs (ex. onglet
-    // Viewer) : canvas vide, page noire.
     if (!collisionDetail.hidden) {
       collisionDetail.hidden = true;
       collisionRecap.hidden = false;
-      clearClashMarkers();
+      effacerClashMarkersProgressivement();
       clearClashElementColors();
       deselectEntity();
     }
-    // Meme chose pour un fil de discussion reste ouvert : sinon revenir sur
-    // Discussions via la navbar rouvre le meme fil au lieu de la liste.
+    // Meme chose pour un fil de discussion reste ouvert : sinon revenir sur Discussions rouvre le meme fil au lieu de la liste.
     if (!discussionsDetailPane.hidden) {
       discussionsDetailPane.hidden = true;
       discussionsListPane.hidden = false;
     }
-    activateView(link.dataset.view);
-    if (link.dataset.view === "discussions") animerEntreeListe(discussionsThreadsList);
-    if (link.dataset.view === "collision") ouvrirPageCollision();
-    // Revenir sur Viewer doit repartir d'un etat "neutre" et previsible :
-    // equivalent a cliquer "Recentrer" (camera) et "Tout afficher" (niveaux,
-    // les maquettes le sont deja via restoreAllModelsVisible ci-dessus).
-    if (link.dataset.view === "viewer") {
-      if (memoMaquettesViewer) {
-        MAQUETTES.forEach((m) => { if (memoMaquettesViewer.has(m.id)) m.shown = memoMaquettesViewer.get(m.id); });
-        renderMaquetteRows(maquettesList, MAQUETTES);
-      }
-      niveauxState.forEach((n) => {
-        n.checked = true;
-        if (n.checkboxEl) n.checkboxEl.checked = true;
-      });
-      // Fondu des maquettes qui reapparaissent : on revient un instant a l'etat d'avant la navigation (meme tache JS, rien
-      // n'est peint entre les deux), puis on fond vers l'etat final ; le vol de camera attend la fin du fondu.
-      const etatFinalMaquettes = new Map(MAQUETTES.map((m) => [m.id, m.shown]));
-      MAQUETTES.forEach((m) => { if (etatMaquettesAvantNav.has(m.id)) m.shown = etatMaquettesAvantNav.get(m.id); });
-      applyVisibility();
-      changerVisibiliteAvecFondu(etatFinalMaquettes, () => viewer.cameraFlight.flyTo(initialCameraState || DEFAULT_CAMERA_STATE));
-    }
-    // Admin (porte depuis IES le 16/09) : la liste des maquettes ne doit
-    // montrer que celles du projet actuellement charge, jamais les 2
-    // melangees. Le mockup est un iframe statique, donc le projet lui est
-    // passe en query string ; src reaffecte a chaque clic pour refleter le
-    // projet courant.
-    if (link.dataset.view === "admin" && !MASQUE_TODO_ADMIN) {
+    activateView(page);
+    if (page === "discussions") animerEntreeListe(discussionsThreadsList);
+    // Admin (porte depuis IES le 16/09) : la liste des maquettes ne doit montrer que celles du projet actuellement charge. Le mockup est un
+    // iframe statique : le projet lui est passe en query string, src reaffecte a chaque clic.
+    if (page === "admin" && !MASQUE_TODO_ADMIN) {
       adminFrame.src = "/personas/admin-groupes.html?project=" + encodeURIComponent(projectSelect.value);
     }
     navbarLinksEl.classList.remove("open");
@@ -1253,6 +1545,11 @@ if (validViews.includes(hashView)) {
   }
 }
 activateView(savedView);
+// Messagerie : donnees chargees quand le navigateur est au repos (le badge de la navbar en a besoin avant la premiere visite de la page).
+if (messagerie) {
+  if ("requestIdleCallback" in window) requestIdleCallback(() => messagerie.preparer(), { timeout: 6000 });
+  else setTimeout(() => messagerie.preparer(), 3000);
+}
 if (savedView !== "landing") {
   // adminFrame.src n'est normalement fixe que dans le handler de clic des
   // nav-links (cf plus haut) : une restauration directe au rechargement
@@ -2142,12 +2439,16 @@ const DETECTIONS = [];
 const CLASHES = [];
 const DISCUSSIONS = [];
 
-// Conversation de demonstration sur l'hopital (20/10, demande de Gilles) : pour juger tout de suite le rendu du panneau
-// de discussion. Noms de KNOWN_PEOPLE, textes et heures inventes. Retirer ce bloc et sa ligne dans applyProjectData
+// Discussions de demonstration sur l'hopital (20/10, demande de Gilles) : pour juger tout de suite le rendu du panneau
+// de discussion. Ces discussions sont FICTIVES (noms de KNOWN_PEOPLE, textes et heures inventes) : a retirer avant toute
+// vraie demonstration publique, avec le reste du bloc. Retirer ce bloc et sa ligne dans applyProjectData
 // pour repartir d'une liste vide.
 const HOPITAL_DISCUSSIONS_DEMO = [
   {
     id: "disc-demo-hopital-1",
+    priorite: "haute",
+    statut: "confirme",
+    lieu: { niveau: "Niveau 2", maquettes: ["Structure", "Architecture"] },
     zone: "Garde-corps du palier du niveau 2 : décalage avec le plan",
     auteur: CURRENT_USER,
     tagged: ["Julie Martin (BE Structure)", "Karim Haddad (Charpente)", "Léa Fontaine (BE Architecture)"],
@@ -2165,6 +2466,67 @@ const HOPITAL_DISCUSSIONS_DEMO = [
       { auteur: "Karim Haddad (Charpente)", quand: "2026-10-20T09:48:00", texte: "Je confirme : l'appui de la charpente est à 20 cm du nu fini. Je peux décaler le garde-corps si le BE valide la cote." },
       { auteur: "Julie Martin (BE Structure)", quand: "2026-10-20T10:30:00", texte: "Cote confirmée côté structure, c'est bien l'architecture qui a raison. Karim, tu peux décaler ton appui de 20 cm vers l'intérieur ? Je mets à jour la maquette de structure dans la foulée, nouvelle version demain." },
       { auteur: CURRENT_USER, quand: "2026-10-20T11:02:00", texte: "Merci à tous. Je crée une instruction pour le projeteur et je referme le fil dès que la nouvelle version de la maquette est déposée." }
+    ]
+  },
+  {
+    id: "disc-demo-hopital-2",
+    priorite: "urgente",
+    statut: "nouveau",
+    lieu: { niveau: "Niveau 3", maquettes: ["Mécanique", "Structure"] },
+    zone: "Réservation de trémie pour la gaine CVC au niveau 3",
+    auteur: CURRENT_USER,
+    tagged: ["Julie Martin (BE Structure)", "Karim Haddad (Charpente)", "Sofia Benali (Coordination BIM)"],
+    open: true,
+    discussion: [
+      { auteur: CURRENT_USER, quand: "2026-10-19T10:15:00", texte: "La gaine CVC du niveau 3 traverse la dalle sans réservation prévue. Il faut une trémie, merci de confirmer l'emplacement." },
+      { auteur: "Julie Martin (BE Structure)", quand: "2026-10-19T14:20:00", texte: "Une trémie de 60 x 40 cm est possible à cet endroit, à condition de rester à 30 cm de la poutre voisine." },
+      { auteur: "Karim Haddad (Charpente)", quand: "2026-10-20T08:50:00", texte: "Côté charpente, rien ne gêne. Je n'ai pas de pièce dans cette zone." }
+    ]
+  },
+  {
+    id: "disc-demo-hopital-3",
+    priorite: "normale",
+    statut: "nouveau",
+    lieu: { niveau: "Niveau 2", maquettes: ["Architecture", "Électricité"] },
+    zone: "Hauteur sous plafond du couloir du niveau 2",
+    auteur: CURRENT_USER,
+    tagged: ["Léa Fontaine (BE Architecture)", "Sofia Benali (Coordination BIM)"],
+    open: true,
+    discussion: [
+      { auteur: CURRENT_USER, quand: "2026-10-19T11:30:00", texte: "Sous les chemins de câbles, le couloir du niveau 2 n'a plus que 2,15 m de hauteur libre. Le programme demande 2,30 m." },
+      { auteur: "Léa Fontaine (BE Architecture)", quand: "2026-10-19T15:45:00", texte: "Je regarde si on peut abaisser le faux plafond dans l'axe du couloir ou décaler les chemins de câbles." },
+      { auteur: "Sofia Benali (Coordination BIM)", quand: "2026-10-20T09:30:00", texte: "Je prépare une coupe du couloir pour la prochaine réunion de synthèse." }
+    ]
+  },
+  {
+    id: "disc-demo-hopital-4",
+    priorite: "basse",
+    statut: "resolu",
+    lieu: { niveau: null, maquettes: ["Structure"] },
+    zone: "Mise à jour de la maquette Structure du 19/10",
+    auteur: CURRENT_USER,
+    tagged: ["Julie Martin (BE Structure)", "Sofia Benali (Coordination BIM)"],
+    open: false,
+    discussion: [
+      { auteur: CURRENT_USER, quand: "2026-10-19T10:40:00", texte: "Julie a déposé ce matin la nouvelle version de la maquette Structure, avec les poutres du niveau 2 corrigées." },
+      { auteur: "Sofia Benali (Coordination BIM)", quand: "2026-10-19T13:10:00", texte: "Bien reçue, je lance le contrôle et je relance la détection de collisions." },
+      { auteur: "Julie Martin (BE Structure)", quand: "2026-10-19T16:00:00", texte: "Oui, les poutres du niveau 2 sont corrigées, rien d'autre n'a changé dans cette version." },
+      { auteur: CURRENT_USER, quand: "2026-10-20T14:00:00", texte: "Contrôle terminé, la version est validée. Je ferme le fil." }
+    ]
+  },
+  {
+    id: "disc-demo-hopital-5",
+    priorite: "haute",
+    statut: "confirme",
+    lieu: { niveau: null, maquettes: ["Architecture", "Plomberie"] },
+    zone: "Passage des réseaux de plomberie dans la cage d'escalier B",
+    auteur: CURRENT_USER,
+    tagged: ["Léa Fontaine (BE Architecture)", "Karim Haddad (Charpente)"],
+    open: true,
+    discussion: [
+      { auteur: CURRENT_USER, quand: "2026-10-20T10:20:00", texte: "Léa, les réseaux de plomberie traversent la cage d'escalier B, ce qui réduit la largeur de passage. Une autre route est à étudier." },
+      { auteur: "Karim Haddad (Charpente)", quand: "2026-10-20T13:15:00", texte: "On peut les passer sous le palier, il y a la place côté charpente. Je vous envoie une coupe." },
+      { auteur: CURRENT_USER, quand: "2026-10-20T15:50:00", texte: "Bonne piste, merci. J'attends la coupe pour valider avec la plomberie." }
     ]
   }
 ];
@@ -2209,39 +2571,317 @@ function renderDiscussionsPage() {
   // "mes fils" (cree par moi ou j'y suis tagge) reste le seul filtre.
   const threads = [...DISCUSSIONS]
     .filter((t) => threadType(t) === "collision" || t.auteur === CURRENT_USER || (t.tagged || []).includes(CURRENT_USER));
+  // Deux modes : les discussions ouvertes (par défaut), ou l'historique (fermées : statuts resolu et ecarte). Le numéro des
+  // pastilles et des cartes se compte dans le mode affiché.
+  discussionsNbFermees = threads.filter((t) => !isThreadOpen(t)).length;
+  const historique = discussionsFiltres.etat === "historique";
+  discussionsAffichees = discussionsParActivite(threads.filter((t) => isThreadOpen(t) !== historique));
 
-  discussionsThreadsList.innerHTML = "";
   discussionsThreadsEmpty.hidden = threads.length > 0;
+  initDiscussionsInteractions();
+  const focus = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.fk : null;
+  renderDiscussionsBarre(discussionsAffichees);
+  renderDiscussionsCoupe(discussionsAffichees);
+  renderDiscussionsCartes(discussionsAffichees);
+  if (focus) {
+    const cible = Array.from(document.querySelectorAll("#discussionsListPane [data-fk]")).find((e) => e.dataset.fk === focus);
+    if (cible) cible.focus({ preventScroll: true });
+  }
+}
+// Crochet réservé aux tests (URL avec ?test) : n'expose rien d'autre. Accesseur pour niveauxState, déclaré plus bas dans le module.
+if (new URLSearchParams(location.search).has("test")) window.__ouvraTest = { get niveauxState() { return niveauxState; }, DISCUSSIONS, renderDiscussionsPage };
 
-  threads.forEach((thread) => {
-    const type = threadType(thread);
+// ---- Page Discussions, mise en page "coupe du bâtiment" (20/10, maquette ouvra-discussions-v3) ----
+// Filtres combinables (priorité, niveau), conservés quand on revient d'un fil. Pas de filtre par personne : avec 10 ou 20 interlocuteurs il
+// serait illisible, et les sujets affichés sont déjà ceux qui concernent l'utilisateur.
+// etat : "ouvertes" (par défaut) ou "historique" (discussions fermées) ; les autres filtres se combinent dans les deux modes.
+const NIVEAU_GENERAL = "__general__";
+const discussionsFiltres = { etat: "ouvertes", priorite: "toutes", niveau: null };
+// Tranches de niveaux vides dépliées par un clic (clé = "premier|dernier"), conservées d'un rendu à l'autre.
+const discTranchesOuvertes = new Set();
+let discHauteurRegle = 0;
+let discussionsNbFermees = 0;
+// Priorité et statut d'une discussion (mêmes valeurs que ceux d'une collision). Un fil sans ces champs (créé par le formulaire)
+// vaut "normale" ; son statut se déduit de open ("resolu" si fermé, "nouveau" sinon).
+const STATUTS_DISCUSSION = ["nouveau", "confirme", "ecarte", "resolu"];
+const STATUTS_FERMES = ["ecarte", "resolu"];
+function prioriteFil(thread) {
+  return PRIORITE_ORDRE.includes(thread.priorite) ? thread.priorite : PRIORITE_DEFAUT;
+}
+function statutFil(thread) {
+  if (STATUTS_DISCUSSION.includes(thread.statut)) return thread.statut;
+  return thread.open === false ? "resolu" : "nouveau";
+}
+// Fils affichés, triés par activité récente : le rang (n) donne le numéro de la pastille et de la carte.
+let discussionsAffichees = [];
+let discussionsInteractionsPosees = false;
 
-    const li = document.createElement("li");
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "thread-item";
-    btn.addEventListener("click", () => openThreadDetail(thread));
+function dernierMessage(thread) {
+  const msgs = thread.discussion || [];
+  return msgs.length ? msgs[msgs.length - 1] : null;
+}
+function activiteFil(thread) {
+  const t = Date.parse((dernierMessage(thread) || {}).quand);
+  return isNaN(t) ? null : t;
+}
+// Priorité d'abord (urgente en haut), puis plus récent d'abord ; un fil sans date garde sa place d'origine après les fils datés.
+function discussionsParActivite(threads) {
+  return threads
+    .map((thread, i) => ({ thread, i, t: activiteFil(thread), p: PRIORITE_ORDRE.indexOf(prioriteFil(thread)) }))
+    .sort((a, b) => a.p - b.p || (a.t === null) - (b.t === null) || (b.t || 0) - (a.t || 0) || a.i - b.i)
+    .map((e, rang) => Object.assign(e.thread, { _rang: rang + 1 }));
+}
+function niveauFil(thread) {
+  return (thread.lieu && thread.lieu.niveau) || null;
+}
+// Valeur de tri d'un libellé de niveau : "Niveau 2" -> 2, "RDC" -> 0, le reste après (en bas).
+function rangNiveau(libelle) {
+  const m = /-?\d+/.exec(libelle);
+  if (m) return parseInt(m[0], 10);
+  return /rdc|rez/i.test(libelle) ? 0 : -1000;
+}
+// Niveaux de la coupe : tous ceux du bâtiment (niveauxState, noms IFC libellés par libelleNiveau, remplis au chargement des maquettes),
+// plus tout niveau cité par un fil mais absent de niveauxState (aucune discussion perdue), le plus haut en haut.
+// niveauxState est déclaré plus bas dans le fichier : lecture protégée tant que le module n'est pas évalué jusque-là.
+function niveauxDuBatiment() {
+  try { return niveauxState.map((n) => libelleNiveau(n.name)).filter(Boolean); } catch (e) { return []; }
+}
+function niveauxDeLaCoupe(threads) {
+  const distincts = [...new Set(niveauxDuBatiment().concat(threads.map(niveauFil).filter(Boolean)))];
+  return distincts.sort((a, b) => rangNiveau(b) - rangNiveau(a) || a.localeCompare(b, "fr"));
+}
+function personnesDuFil(thread) {
+  const noms = [];
+  const ajouter = (n) => { if (n && !noms.includes(n)) noms.push(n); };
+  (thread.discussion || []).forEach((m) => ajouter(m.auteur));
+  ajouter(thread.auteur);
+  (thread.tagged || []).forEach(ajouter);
+  return noms;
+}
+// Un nom peut apparaître "Vous (Bureau d'études)" ou "Julie Martin (BE Structure)" : comparaison sur le nom court.
+function memePersonne(a, b) {
+  return nomCourt(a) === nomCourt(b);
+}
+function filtreAccepte(thread) {
+  const f = discussionsFiltres;
+  if (f.priorite !== "toutes" && prioriteFil(thread) !== f.priorite) return false;
+  // Un fil "Général" (sans niveau) concerne tous les niveaux : il reste visible quand un niveau est choisi.
+  // Valeur dédiée "__general__" : uniquement les sujets sans niveau.
+  if (f.niveau === NIVEAU_GENERAL) return !niveauFil(thread);
+  if (f.niveau && niveauFil(thread) && niveauFil(thread) !== f.niveau) return false;
+  return true;
+}
 
-    const main = document.createElement("div");
-    main.className = "thread-main";
-    const titre = document.createElement("span");
-    titre.textContent = thread.zone;
-    const meta = document.createElement("span");
-    meta.className = "thread-meta";
-    meta.textContent = "Créé par " + thread.auteur + " · " + thread.discussion.length + " message" + (thread.discussion.length > 1 ? "s" : "");
-    main.append(titre, meta);
+// Mêmes couleurs que les pastilles de priorité d'une collision (cf style.css, .collision-select-wrap[data-champ="prio"]).
+const PRIORITE_COULEURS = { urgente: "#f85149", haute: "#f0883e", normale: "#6e8bb5", basse: "#b4bcc6" };
+function escHtmlDisc(s) {
+  return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+// Compteur rond d'une ligne de la règle : nombre de discussions du mode affiché, couleur = priorité la plus haute parmi elles.
+// Absent (chaîne vide) s'il n'y en a aucune. Un clic filtre les cartes sur ce niveau.
+function compteurRegle(liste, valeurNiveau, libelle) {
+  if (!liste.length) return "";
+  const prio = PRIORITE_ORDRE.find((p) => liste.some((t) => prioriteFil(t) === p));
+  const choisi = discussionsFiltres.niveau === valeurNiveau;
+  return '<button type="button" class="disc-compteur disc-pin prio-' + prio + '" data-niveau="' + escHtmlDisc(valeurNiveau) + '" data-fk="cpt-' + escHtmlDisc(valeurNiveau) + '" aria-pressed="' + choisi + '"'
+    + ' aria-label="' + liste.length + " discussion" + (liste.length > 1 ? "s" : "") + " : " + escHtmlDisc(libelle) + ", priorité la plus haute " + PRIORITE_LABELS[prio].toLowerCase() + '"'
+    + ' title="' + liste.length + " discussion" + (liste.length > 1 ? "s" : "") + " (" + PRIORITE_LABELS[prio].toLowerCase() + ')">' + liste.length + "</button>";
+}
+function avatarDisc(nom) {
+  return '<span class="disc-av" title="' + escHtmlDisc(nom) + '">' + escHtmlDisc(initialesNom(nom)) + "</span>";
+}
 
-    // Le label "Discussion" est retire (20/10) ; seul "Collision" reste pour distinguer un fil de collision.
-    btn.append(main);
-    if (type === "collision") {
-      const badge = document.createElement("span");
-      badge.className = "thread-type-badge " + type;
-      badge.textContent = "Collision";
-      btn.append(badge);
-    }
-    li.appendChild(btn);
-    discussionsThreadsList.appendChild(li);
+// Vignette d'un fil : la vraie vue 3D enregistrée à la création (thread.vignette, "data:image/jpeg;base64,..."), sinon un pictogramme
+// neutre (bulle de conversation) avec en dessous les maquettes concernées, ou "Sujet général".
+function vignetteDiscussion(thread) {
+  if (typeof thread.vignette === "string" && thread.vignette.startsWith("data:image/jpeg;base64,")) {
+    return '<img class="disc-vignette-img" src="' + escHtmlDisc(thread.vignette) + '" alt="Vue 3D de la maquette enregistrée à la création de la discussion : ' + escHtmlDisc(thread.zone || "") + '" decoding="async" draggable="false">';
+  }
+  const maquettes = (thread.lieu && thread.lieu.maquettes) || [];
+  return '<span class="disc-picto"><svg viewBox="0 0 48 44" aria-hidden="true" focusable="false"><path d="M8 6h32a4 4 0 0 1 4 4v18a4 4 0 0 1-4 4H22l-9 8v-8H8a4 4 0 0 1-4-4V10a4 4 0 0 1 4-4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>'
+    + '<g fill="currentColor"><circle cx="16" cy="19" r="2"/><circle cx="24" cy="19" r="2"/><circle cx="32" cy="19" r="2"/></g></svg>'
+    + '<span class="disc-picto-legende">' + escHtmlDisc(maquettes.length ? maquettes.join(" · ") : "Sujet général") + "</span></span>";
+}
+
+function renderDiscussionsBarre(threads) {
+  // Bouton Historique (nombre de discussions fermées) ; en mode historique il est enfoncé et un bouton ramène aux ouvertes.
+  const historique = discussionsFiltres.etat === "historique";
+  document.querySelector("#discToolbar h2").textContent = historique ? "Historique : discussions fermées" : "Discussions";
+  document.getElementById("discEtat").innerHTML = '<button type="button" data-historique="1" data-fk="historique" aria-pressed="' + historique + '">Historique <span class="n">(' + discussionsNbFermees + ")</span></button>"
+    + (historique ? '<button type="button" class="disc-retour" data-retour="1" data-fk="retour">← Retour aux discussions ouvertes</button>' : "");
+  // Priorité : compteurs du mode affiché ; le filtre se combine avec le niveau.
+  const cPrio = { toutes: threads.length };
+  PRIORITE_ORDRE.forEach((p) => { cPrio[p] = threads.filter((t) => prioriteFil(t) === p).length; });
+  document.getElementById("discPriorite").innerHTML = [["toutes", "Toutes"]].concat(PRIORITE_ORDRE.map((p) => [p, PRIORITE_LABELS[p]]))
+    .map(([v, l]) => '<button type="button" data-priorite="' + v + '" data-fk="prio-' + v + '" aria-pressed="' + (discussionsFiltres.priorite === v) + '">'
+      + (v === "toutes" ? "" : '<i class="tl-dot" data-champ="prio" data-v="' + v + '" aria-hidden="true"></i>') + l + '<span class="n">' + cPrio[v] + "</span></button>")
+    .join("");
+}
+
+function renderDiscussionsCoupe(threads) {
+  const niveaux = niveauxDeLaCoupe(threads);
+  if (discussionsFiltres.niveau && discussionsFiltres.niveau !== NIVEAU_GENERAL && !niveaux.includes(discussionsFiltres.niveau)) discussionsFiltres.niveau = null;
+  const etages = document.getElementById("discEtages");
+  // Règle des niveaux : une ligne par niveau, du plus haut au plus bas. Si les lignes ne tiennent pas à la hauteur minimale dans la hauteur
+  // disponible, les niveaux VIDES consécutifs se replient en tranches (les niveaux qui portent des discussions restent dépliés) ;
+  // en dernier recours la règle défile en interne.
+  const items = niveaux.map((niv) => ({ niv, liste: threads.filter((t) => niveauFil(t) === niv) }));
+  const runs = [];
+  items.forEach((it, i) => {
+    if (it.liste.length) return;
+    const dernier = runs[runs.length - 1];
+    if (dernier && dernier.fin === i - 1) { dernier.fin = i; dernier.len++; } else runs.push({ debut: i, fin: i, len: 1 });
   });
+  runs.forEach((r) => { r.cle = items[r.debut].niv + "|" + items[r.fin].niv; r.replie = false; });
+  discHauteurRegle = etages.clientHeight;
+  const ligneMin = parseFloat(getComputedStyle(etages).getPropertyValue("--ligne-min")) || 18;
+  if (discHauteurRegle > 0) {
+    let lignes = items.length;
+    runs.filter((r) => r.len >= 2 && !discTranchesOuvertes.has(r.cle)).sort((a, b) => b.len - a.len).forEach((r) => {
+      if (lignes * ligneMin > discHauteurRegle) { r.replie = true; lignes -= r.len - 1; }
+    });
+  }
+  const rangs = (niv) => rangNiveau(niv);
+  const libelleTranche = (r) => {
+    const haut = items[r.debut].niv, bas = items[r.fin].niv;
+    return rangs(haut) > -1000 && rangs(bas) > -1000 ? "Niv. " + rangs(bas) + " à " + rangs(haut) : bas + " à " + haut;
+  };
+  let html = "";
+  for (let i = 0; i < items.length; i++) {
+    const run = runs.find((r) => r.replie && r.debut === i);
+    if (run) {
+      html += '<div class="disc-etage disc-tranche"><button type="button" class="disc-tranche-btn" data-tranche="' + escHtmlDisc(run.cle) + '" data-fk="tr-' + escHtmlDisc(run.cle) + '" aria-expanded="false"'
+        + ' aria-label="Déplier ' + run.len + ' niveaux vides, ' + escHtmlDisc(libelleTranche(run)) + '">' + escHtmlDisc(libelleTranche(run)) + "</button></div>";
+      i = run.fin;
+      continue;
+    }
+    const { niv, liste } = items[i];
+    const choisi = discussionsFiltres.niveau === niv;
+    // Niveau sans discussion : ligne atténuée, étiquette non cliquable (filtrer dessus ne montrerait que les fils "Général").
+    const vide = !liste.length;
+    html += '<div class="disc-etage' + (choisi ? " sel" : "") + (vide ? " vide" : "") + '" data-niveau="' + escHtmlDisc(niv) + '" data-ligne="' + escHtmlDisc(niv) + '">'
+      + '<button type="button" class="disc-etage-label" data-niveau="' + escHtmlDisc(niv) + '" data-fk="niv-' + escHtmlDisc(niv) + '" aria-pressed="' + choisi + '"'
+      + (vide ? ' disabled aria-label="' + escHtmlDisc(niv) + ', aucune discussion"' : ' aria-label="Filtrer sur ' + escHtmlDisc(niv) + '"') + ">" + escHtmlDisc(niv) + "</button>"
+      + '<span class="disc-piste" aria-hidden="true"></span>'
+      + compteurRegle(liste, niv, niv)
+      + '<button type="button" class="disc-etage-ajout" data-nouveau-sujet-niveau="' + escHtmlDisc(niv) + '" aria-label="Nouveau sujet au ' + escHtmlDisc(niv) + '" title="Nouveau sujet lié au ' + escHtmlDisc(niv) + '">+</button></div>';
+  }
+  etages.innerHTML = html || '<p class="disc-coupe-vide">Aucun niveau renseigné pour ces discussions.</p>';
+  // Ligne du haut de la règle : Général (sujets sans niveau).
+  const ruban = document.getElementById("discRuban");
+  const generaux = threads.filter((t) => !niveauFil(t));
+  const generalChoisi = discussionsFiltres.niveau === NIVEAU_GENERAL;
+  ruban.classList.toggle("sel", generalChoisi);
+  ruban.dataset.ligne = NIVEAU_GENERAL;
+  ruban.innerHTML = '<span class="disc-ruban-label"><button type="button" class="disc-etage-label disc-general-label" data-niveau="' + NIVEAU_GENERAL + '" data-fk="niv-general" aria-pressed="' + generalChoisi + '" aria-label="Filtrer sur les sujets généraux, sans lieu">Général</button>'
+    + "<small>sans lieu</small></span>"
+    + compteurRegle(generaux, NIVEAU_GENERAL, "Général")
+    + '<button type="button" class="disc-ruban-ajout" data-nouveau-sujet="1" title="Ouvrir un sujet qui n\'est lié à aucun endroit de la maquette">+ Nouveau sujet</button>';
+}
+
+function renderDiscussionsCartes(threads) {
+  const liste = document.getElementById("discussionsThreadsList");
+  const visibles = threads.filter(filtreAccepte);
+  liste.innerHTML = "";
+  if (!visibles.length && threads.length) {
+    liste.innerHTML = '<div class="disc-vide"><span>Aucune discussion pour ce filtre.</span><button type="button" data-fk="reset" data-reset="1">Tout afficher</button></div>';
+    return;
+  }
+  if (!threads.length) {
+    // Rien dans le mode affiché : état vide propre, avec un renvoi vers l'autre liste quand elle n'est pas vide.
+    liste.innerHTML = discussionsFiltres.etat === "historique"
+      ? '<div class="disc-vide"><span>Historique vide.</span><button type="button" data-fk="retour" data-retour="1">Retour aux discussions ouvertes</button></div>'
+      : '<div class="disc-vide"><span>Aucune discussion ouverte.</span>' + (discussionsNbFermees ? '<button type="button" data-fk="historique" data-historique="1">Voir l\'historique (' + discussionsNbFermees + ")</button>" : "") + "</div>";
+    return;
+  }
+  visibles.forEach((thread) => {
+    const dernier = dernierMessage(thread);
+    const msgs = (thread.discussion || []).length;
+    const niveau = niveauFil(thread);
+    const personnes = personnesDuFil(thread);
+    const maquettes = (thread.lieu && thread.lieu.maquettes) || [];
+    const quand = dernier ? formaterQuand(dernier.quand) : "";
+    const carte = document.createElement("button");
+    carte.type = "button";
+    // thread-item conservé pour les tests existants ; la mise en forme vient de .disc-carte (voir style.css).
+    carte.className = "thread-item disc-carte";
+    carte.dataset.fil = thread.id;
+    carte.dataset.fk = "carte-" + thread.id;
+    carte.setAttribute("role", "listitem");
+    const prio = prioriteFil(thread);
+    const statut = statutFil(thread);
+    carte.setAttribute("aria-label", "Discussion " + thread._rang + ", " + thread.zone + ", priorité " + PRIORITE_LABELS[prio].toLowerCase() + ", " + STATUT_LABELS[statut].toLowerCase() + ", " + msgs + " message" + (msgs > 1 ? "s" : ""));
+    carte.dataset.niveau = niveau || NIVEAU_GENERAL;
+    // Haut de la vignette : le lieu en pastille, sur la vue 3D enregistrée ou sur le pictogramme neutre.
+    carte.innerHTML = '<span class="disc-vignette">' + vignetteDiscussion(thread)
+      + '<span class="disc-badges"><span class="disc-tag" title="' + escHtmlDisc(maquettes.join(", ")) + '">' + escHtmlDisc(niveau || "Général") + "</span></span></span>"
+      + '<span class="disc-corps"><span class="disc-etiqs">'
+      + '<span class="disc-etiq" data-etiq="priorite"><i class="tl-dot" data-champ="prio" data-v="' + prio + '" aria-hidden="true"></i>' + PRIORITE_LABELS[prio] + "</span>"
+      + '<span class="disc-etiq" data-etiq="statut"><i class="tl-dot" data-champ="statut" data-v="' + statut + '" aria-hidden="true"></i>' + STATUT_LABELS[statut] + "</span></span>"
+      + '<span class="disc-titre">' + escHtmlDisc(thread.zone) + "</span>"
+      + '<span class="disc-dernier">' + (dernier ? "<b>" + escHtmlDisc(nomCourt(dernier.auteur)) + "</b>" + (quand ? " · " + quand : "") + " · " + escHtmlDisc(dernier.texte || "") : "Aucun message") + "</span>"
+      + '<span class="disc-pied"><span class="disc-avs">' + personnes.slice(0, 5).map(avatarDisc).join("") + (personnes.length > 5 ? '<span class="disc-av plus">+' + (personnes.length - 5) + "</span>" : "") + "</span>"
+      + '<span class="disc-compte">' + msgs + " message" + (msgs > 1 ? "s" : "") + "</span></span></span>";
+    liste.appendChild(carte);
+  });
+  animerEntreeListe(liste);
+}
+
+// Écouteurs posés une seule fois sur le conteneur (le contenu est reconstruit à chaque rendu).
+function initDiscussionsInteractions() {
+  if (discussionsInteractionsPosees) return;
+  discussionsInteractionsPosees = true;
+  const pane = document.getElementById("discussionsListPane");
+  const rerendre = (fk) => {
+    renderDiscussionsBarre(discussionsAffichees);
+    renderDiscussionsCoupe(discussionsAffichees);
+    renderDiscussionsCartes(discussionsAffichees);
+    const cible = fk && Array.from(pane.querySelectorAll("[data-fk]")).find((e) => e.dataset.fk === fk);
+    if (cible) cible.focus({ preventScroll: true });
+  };
+  pane.addEventListener("click", (e) => {
+    const cible = e.target.closest("button");
+    if (!cible || !pane.contains(cible)) return;
+    const f = discussionsFiltres;
+    if (cible.dataset.historique || cible.dataset.retour) {
+      f.etat = cible.dataset.retour || f.etat === "historique" ? "ouvertes" : "historique";
+      renderDiscussionsPage();
+      return;
+    }
+    if (cible.dataset.priorite) { f.priorite = cible.dataset.priorite; rerendre(cible.dataset.fk); return; }
+    if (cible.classList.contains("disc-etage-label") || cible.classList.contains("disc-compteur")) {
+      f.niveau = f.niveau === cible.dataset.niveau ? null : cible.dataset.niveau;
+      rerendre(cible.dataset.fk);
+      return;
+    }
+    if (cible.dataset.tranche) { discTranchesOuvertes.add(cible.dataset.tranche); rerendre(null); return; }
+    if (cible.dataset.reset) { f.priorite = "toutes"; f.niveau = null; rerendre(null); return; }
+    if (cible.dataset.nouveauSujet) { ouvrirNouveauSujetGeneral(); return; }
+    if (cible.dataset.nouveauSujetNiveau) { ouvrirNouveauSujetGeneral(cible.dataset.nouveauSujetNiveau); return; }
+    if (cible.dataset.fil) {
+      const thread = discussionsAffichees.find((t) => t.id === cible.dataset.fil);
+      if (thread) openThreadDetail(thread);
+    }
+  });
+  // Survol ou focus d'une pastille éclaire la carte, et inversement.
+  const eclairer = (id) => pane.querySelectorAll("[data-fil]").forEach((e) => e.classList.toggle("eclaire", id !== null && e.dataset.fil === id));
+  pane.addEventListener("mouseover", (e) => { const c = e.target.closest("[data-fil]"); if (c) eclairer(c.dataset.fil); });
+  pane.addEventListener("mouseout", (e) => { const c = e.target.closest("[data-fil]"); if (c && !c.contains(e.relatedTarget)) eclairer(null); });
+  pane.addEventListener("focusin", (e) => { const c = e.target.closest("[data-fil]"); if (c) eclairer(c.dataset.fil); });
+  pane.addEventListener("focusout", () => eclairer(null));
+  // Survol ou focus d'une ligne de la règle (niveau ou Général) : éclaire les cartes de ce niveau.
+  const eclairerNiveau = (valeur) => pane.querySelectorAll(".disc-carte").forEach((c) => c.classList.toggle("eclaire", valeur !== null && c.dataset.niveau === valeur));
+  pane.addEventListener("mouseover", (e) => { const l = e.target.closest("[data-ligne]"); if (l) eclairerNiveau(l.dataset.ligne); });
+  pane.addEventListener("mouseout", (e) => { const l = e.target.closest("[data-ligne]"); if (l && !l.contains(e.relatedTarget)) eclairerNiveau(null); });
+  pane.addEventListener("focusin", (e) => { const l = e.target.closest("[data-ligne]"); if (l) eclairerNiveau(l.dataset.ligne); });
+  pane.addEventListener("focusout", () => eclairerNiveau(null));
+  // La règle s'adapte à la hauteur disponible : nouveau calcul des tranches quand la hauteur du panneau change (fenêtre, page qui s'affiche).
+  if (window.ResizeObserver) {
+    new ResizeObserver(() => {
+      const h = document.getElementById("discEtages").clientHeight;
+      if (h !== discHauteurRegle) renderDiscussionsCoupe(discussionsAffichees);
+    }).observe(document.getElementById("discEtages"));
+  }
 }
 
 // Vue Todo (persona Projeteur, porte depuis IES le 16/09) : memes fils que
@@ -2384,7 +3024,30 @@ function formaterQuand(iso) {
 
 function renderFilMessages(thread, nouveau) {
   filMessages.innerHTML = "";
-  thread.discussion.forEach((msg) => {
+  // Messages et changements de priorité / statut (thread.historique) dans l'ordre chronologique ; à date égale, l'ordre d'origine.
+  const temps = (x) => { const t = Date.parse(x.quand); return isNaN(t) ? 0 : t; };
+  const elements = thread.discussion.map((m) => ({ m, t: temps(m), h: false }))
+    .concat((thread.historique || []).map((m) => ({ m, t: temps(m), h: true })))
+    .map((e, i) => Object.assign(e, { i }))
+    .sort((a, b) => a.t - b.t || a.i - b.i);
+  elements.forEach(({ m: msg, h }) => {
+    if (h) {
+      const labels = msg.champ === "priorité" ? PRIORITE_LABELS : STATUT_LABELS;
+      const lj = document.createElement("li");
+      lj.className = "fil-journal";
+      const lib = document.createElement("span");
+      lib.className = "tl-champ";
+      lib.textContent = (msg.champ === "priorité" ? "Priorité" : "Statut");
+      const fleche = document.createElement("span");
+      fleche.setAttribute("aria-hidden", "true");
+      fleche.textContent = "→";
+      const quandJ = document.createElement("span");
+      quandJ.className = "fil-heure";
+      quandJ.textContent = (msg.qui || "Vous") + " · " + formaterQuand(msg.quand);
+      lj.append(lib, puceValeur(msg.champ, msg.de, labels), fleche, puceValeur(msg.champ, msg.vers, labels), quandJ);
+      filMessages.appendChild(lj);
+      return;
+    }
     const li = document.createElement("li");
     li.className = "fil-message";
     const avatar = document.createElement("span");
@@ -2481,7 +3144,51 @@ function renderFilPanel(thread) {
 
   filReponse.hidden = !ouvert;
   filReponseInput.value = "";
+  majFilControles(thread);
   renderFilMessages(thread);
+}
+
+// Priorité et Statut d'une discussion : mêmes menus personnalisés qu'une collision (creerControleMenu), dans la fiche du panneau.
+let filControles = null;
+function ensureFilControles() {
+  if (filControles) return filControles;
+  const statuts = {};
+  STATUTS_DISCUSSION.forEach((k) => { statuts[k] = STATUT_LABELS[k]; });
+  const p = creerControleMenu("filPrioriteSelect", "Priorité", PRIORITE_LABELS, "priorité", changerChampFil);
+  const st = creerControleMenu("filStatutSelect", "Statut", statuts, "statut", changerChampFil);
+  document.getElementById("filControlesChamps").append(p.field, st.field);
+  filControles = { prio: p.sel, statut: st.sel, majPrio: p.maj, majStatut: st.maj };
+  return filControles;
+}
+function majFilControles(thread) {
+  const c = ensureFilControles();
+  c.prio.value = prioriteFil(thread);
+  c.statut.value = statutFil(thread);
+  c.prio.parentNode.dataset.valeur = c.prio.value;
+  c.statut.parentNode.dataset.valeur = c.statut.value;
+  c.majPrio();
+  c.majStatut();
+}
+// Change la priorité ou le statut du fil ouvert. Un statut resolu/ecarte ferme le fil (open: false), nouveau/confirme le rouvre.
+// Chaque changement est consigné dans thread.historique (affiché dans la conversation, jamais dans thread.discussion).
+function changerChampFil(champ, vers) {
+  const fil = currentThread;
+  if (!fil || threadType(fil) === "collision") return;
+  const cle = champ === "priorité" ? "priorite" : "statut";
+  const de = cle === "priorite" ? prioriteFil(fil) : statutFil(fil);
+  if (de === vers) return;
+  fil[cle] = vers;
+  if (cle === "statut") fil.open = !STATUTS_FERMES.includes(vers);
+  if (!Array.isArray(fil.historique)) fil.historique = [];
+  fil.historique.push({ qui: "Vous", quand: new Date().toISOString(), champ, de, vers });
+  const ouvert = isThreadOpen(fil);
+  filEtat.textContent = ouvert ? "Ouverte" : "Fermée";
+  filEtat.classList.toggle("ferme", !ouvert);
+  filReponse.hidden = !ouvert;
+  renderFilTags(fil, ouvert);
+  majFilControles(fil);
+  renderFilMessages(fil, true);
+  renderDiscussionsPage();
 }
 
 filReponse.addEventListener("submit", (e) => {
@@ -2639,21 +3346,223 @@ renderProjeteurList();
 function captureViewerState() {
   return {
     camera: {
-      eye: viewer.camera.eye.slice(),
-      look: viewer.camera.look.slice(),
-      up: viewer.camera.up.slice()
+      // Array.from : xeokit renvoie des Float64Array, que JSON.stringify transforme en objet {"0":..} (camera perdue a l'enregistrement).
+      eye: Array.from(viewer.camera.eye),
+      look: Array.from(viewer.camera.look),
+      up: Array.from(viewer.camera.up)
     },
     niveaux: niveauxState.map((n) => ({ name: n.name, checked: n.checked })),
     maquettes: MAQUETTES.map((m) => ({ id: m.id, visible: m.shown })),
-    coupe: activeCoupeId ? capturedCoupeState() : null
+    coupe: activeCoupeId ? capturedCoupeState() : null,
+    entites: capturerEtatEntites()
   };
+}
+
+// Etat d'affichage des entites (21/10) : tout ce que l'utilisateur compose dans le Viewer (isolation X-ray, elements masques, couleurs,
+// transparences, selection, surlignage) ou que la page Collision pose (selectClash), enregistre de facon COMPACTE : uniquement les ecarts
+// par rapport a l'etat par defaut, par maquette. Une liste d'ids qui couvre plus de la moitie des entites de la maquette est stockee en
+// negatif ({ sauf: true } : toutes SAUF ces ids), ce qui garde l'isolation X-ray (presque tout en fantome) a quelques ids. Plafond de
+// ETAT_ENTITES_PLAFOND ids au total : les plus grandes listes sont abandonnees au-dela (entites.tronque = true).
+// Forme : { parMaquette: { <id maquette>: { masques, xray, selection, surlignes, couleurs: [{ rgb, ids }], opacites: [{ a, ids }] } },
+//           xrayMat, tronque }. masques / xray / selection / surlignes / ids = { sauf, ids }. rgb = [0..255]x3, ou null = couleur d'origine
+// (maquette avec teinte, entite sans teinte) ; a = opacite sur 0..255. Anciennes vues : pas de champ entites, rien n'est modifie.
+const ETAT_ENTITES_PLAFOND = 4000;
+const XRAY_MATERIAU_DEFAUT = {
+  fillAlpha: viewer.scene.xrayMaterial.fillAlpha,
+  edgeAlpha: viewer.scene.xrayMaterial.edgeAlpha,
+  fillColor: Array.from(viewer.scene.xrayMaterial.fillColor),
+  edgeColor: Array.from(viewer.scene.xrayMaterial.edgeColor)
+};
+
+function entitesObjetsDeMaquette(maquette) {
+  return maquette.model && maquette.model.entityList ? maquette.model.entityList.filter((e) => e.isObject) : [];
+}
+
+// Teinte de base d'une maquette, en entiers 0..255 (quantification de xeokit : floor(c * 255)), ou null.
+function teinteBaseMaquette(maquette) {
+  return maquette.colorize ? maquette.colorize.map((c) => Math.floor(c * 255)) : null;
+}
+
+// Ecarts courants par maquette, sous forme de tableaux d'ids bruts (sert a la capture ET a la remise a zero avant restauration).
+function collecterEcartsEntites() {
+  const scene = viewer.scene;
+  const parId = new Map(MAQUETTES.map((m) => [m.id, m]));
+  const acc = new Map();
+  const de = (entite) => {
+    const mid = entite.model && entite.model.id;
+    if (!parId.has(mid)) return null;
+    let a = acc.get(mid);
+    if (!a) {
+      a = { masques: [], xray: [], selection: [], surlignes: [], couleurs: new Map(), opacites: new Map() };
+      acc.set(mid, a);
+    }
+    return a;
+  };
+  Object.values(scene.xrayedObjects).forEach((e) => { const a = de(e); if (a) a.xray.push(e.id); });
+  Object.values(scene.selectedObjects).forEach((e) => { const a = de(e); if (a) a.selection.push(e.id); });
+  Object.values(scene.highlightedObjects).forEach((e) => { const a = de(e); if (a) a.surlignes.push(e.id); });
+  Object.values(scene.opacityObjects).forEach((e) => {
+    const a = de(e);
+    if (!a) return;
+    const q = Math.round(e.opacity * 255);
+    if (q === 255) return;
+    if (!a.opacites.has(q)) a.opacites.set(q, []);
+    a.opacites.get(q).push(e.id);
+  });
+  const ajouterCouleur = (a, cle, rgb, id) => {
+    if (!a.couleurs.has(cle)) a.couleurs.set(cle, { rgb, ids: [] });
+    a.couleurs.get(cle).ids.push(id);
+  };
+  MAQUETTES.forEach((m) => {
+    if (!m.model) return;
+    const base = teinteBaseMaquette(m);
+    if (base) {
+      // Teinte de la maquette perdue (ex. couleur remise a l'origine apres une collision) : ecart « couleur d'origine ».
+      entitesObjetsDeMaquette(m).forEach((e) => {
+        if (!scene.colorizedObjects[e.id]) {
+          if (!acc.has(m.id)) de(e);
+          ajouterCouleur(acc.get(m.id), "origine", null, e.id);
+        }
+      });
+    }
+    // Entites hors niveaux decoches, hors maquette masquee, hors garde-corps toujours masques : masquees (ou ecartees) par l'utilisateur.
+    if (m.shown) {
+      const attendusMasques = new Set(m.id === "hosp-arch" ? HOSPITAL_MISPLACED_RAILING_IDS : []);
+      niveauxState.forEach((n) => { if (!n.checked) (n.objectsByMaquette[m.id] || []).forEach((id) => attendusMasques.add(id)); });
+      entitesObjetsDeMaquette(m).forEach((e) => {
+        if ((!e.visible || e.culled) && !attendusMasques.has(e.id)) {
+          const a = de(e);
+          if (a) a.masques.push(e.id);
+        }
+      });
+    }
+  });
+  Object.values(scene.colorizedObjects).forEach((e) => {
+    const a = de(e);
+    if (!a) return;
+    const maquette = parId.get(e.model.id);
+    const base = teinteBaseMaquette(maquette);
+    const c = e.colorize;
+    const rgb = [Math.round(c[0] * 255), Math.round(c[1] * 255), Math.round(c[2] * 255)];
+    if (base && base[0] === rgb[0] && base[1] === rgb[1] && base[2] === rgb[2]) return;
+    ajouterCouleur(a, rgb.join(","), rgb, e.id);
+  });
+  return acc;
+}
+
+function capturerEtatEntites() {
+  const scene = viewer.scene;
+  const acc = collecterEcartsEntites();
+  const parMaquette = {};
+  const grandes = []; // { liste, taille } : candidates a l'abandon si le plafond est depasse
+  let total = 0;
+  const compacter = (ids, tous) => {
+    const negatif = ids.length * 2 > tous.length;
+    let liste;
+    if (negatif) {
+      const set = new Set(ids);
+      liste = { sauf: true, ids: tous.filter((id) => !set.has(id)) };
+    } else {
+      liste = { sauf: false, ids };
+    }
+    total += liste.ids.length;
+    return liste;
+  };
+  acc.forEach((a, mid) => {
+    const m = MAQUETTES.find((x) => x.id === mid);
+    const tous = entitesObjetsDeMaquette(m).map((e) => e.id);
+    const sortie = {};
+    ["masques", "xray", "selection", "surlignes"].forEach((cat) => {
+      if (a[cat].length) sortie[cat] = compacter(a[cat], tous);
+    });
+    if (a.couleurs.size) sortie.couleurs = [...a.couleurs.values()].map((c) => ({ rgb: c.rgb, ids: compacter(c.ids, tous) }));
+    if (a.opacites.size) sortie.opacites = [...a.opacites.entries()].map(([q, ids]) => ({ a: q, ids: compacter(ids, tous) }));
+    if (Object.keys(sortie).length) parMaquette[mid] = sortie;
+  });
+  // Plafond : on retire d'abord les plus grandes listes (une liste retiree = ecart non restaure, jamais une liste coupee a moitie).
+  let tronque = false;
+  if (total > ETAT_ENTITES_PLAFOND) {
+    Object.values(parMaquette).forEach((sortie) => {
+      ["masques", "xray", "selection", "surlignes"].forEach((cat) => { if (sortie[cat]) grandes.push({ liste: sortie[cat], retirer: () => { delete sortie[cat]; } }); });
+      (sortie.couleurs || []).forEach((c) => grandes.push({ liste: c.ids, retirer: () => { sortie.couleurs.splice(sortie.couleurs.indexOf(c), 1); } }));
+      (sortie.opacites || []).forEach((o) => grandes.push({ liste: o.ids, retirer: () => { sortie.opacites.splice(sortie.opacites.indexOf(o), 1); } }));
+    });
+    grandes.sort((x, y) => y.liste.ids.length - x.liste.ids.length);
+    for (const g of grandes) {
+      if (total <= ETAT_ENTITES_PLAFOND) break;
+      total -= g.liste.ids.length;
+      g.retirer();
+      tronque = true;
+    }
+  }
+  const mat = scene.xrayMaterial;
+  const materielModifie = mat.fillAlpha !== XRAY_MATERIAU_DEFAUT.fillAlpha || mat.edgeAlpha !== XRAY_MATERIAU_DEFAUT.edgeAlpha ||
+    Array.from(mat.fillColor).join() !== XRAY_MATERIAU_DEFAUT.fillColor.join() || Array.from(mat.edgeColor).join() !== XRAY_MATERIAU_DEFAUT.edgeColor.join();
+  return {
+    parMaquette,
+    xrayMat: materielModifie ? { fillAlpha: mat.fillAlpha, edgeAlpha: mat.edgeAlpha, fillColor: Array.from(mat.fillColor), edgeColor: Array.from(mat.edgeColor) } : null,
+    tronque
+  };
+}
+
+// Rejoue l'etat des entites : remise a l'etat par defaut de tout ecart courant, puis application de celui de la vue. Une entite absente
+// de la scene (id inconnu) est ignoree. Appelee APRES applyVisibility (qui remet la visibilite par niveaux et maquettes).
+function restaurerEtatEntites(entites) {
+  const scene = viewer.scene;
+  const courants = collecterEcartsEntites();
+  deselectEntity();
+  const decoder = (liste, maquette) => {
+    if (!liste || !Array.isArray(liste.ids)) return [];
+    if (!liste.sauf) return liste.ids.filter((id) => scene.objects[id]);
+    const exclus = new Set(liste.ids);
+    return entitesObjetsDeMaquette(maquette).map((e) => e.id).filter((id) => !exclus.has(id));
+  };
+  const modeles = MAQUETTES.filter((m) => m.model).map((m) => m.model);
+  const apres = []; // couleurs et opacites : hors ecriture groupee (setObjects* gere ses propres drapeaux)
+  ecritureGroupeeDrapeaux(modeles, () => {
+    courants.forEach((a, mid) => {
+      a.xray.forEach((id) => { const e = scene.objects[id]; if (e) { e.xrayed = false; e.pickable = true; } });
+      a.selection.forEach((id) => { const e = scene.objects[id]; if (e) e.selected = false; });
+      a.surlignes.forEach((id) => { const e = scene.objects[id]; if (e) e.highlighted = false; });
+      a.masques.forEach((id) => { const e = scene.objects[id]; if (e) { e.culled = false; e.visible = true; } });
+      const maquette = MAQUETTES.find((x) => x.id === mid);
+      a.couleurs.forEach((c) => apres.push(() => scene.setObjectsColorized(c.ids, maquette.colorize || null)));
+      a.opacites.forEach((ids) => apres.push(() => scene.setObjectsOpacity(ids, 1)));
+    });
+    Object.entries(entites.parMaquette || {}).forEach(([mid, cats]) => {
+      const maquette = MAQUETTES.find((x) => x.id === mid);
+      if (!maquette || !maquette.model) return;
+      decoder(cats.xray, maquette).forEach((id) => { const e = scene.objects[id]; if (e) { e.xrayed = true; e.pickable = false; } });
+      decoder(cats.masques, maquette).forEach((id) => { const e = scene.objects[id]; if (e) e.visible = false; });
+      decoder(cats.selection, maquette).forEach((id) => { const e = scene.objects[id]; if (e) e.selected = true; });
+      decoder(cats.surlignes, maquette).forEach((id) => { const e = scene.objects[id]; if (e) e.highlighted = true; });
+      (cats.couleurs || []).forEach((c) => {
+        const ids = decoder(c.ids, maquette);
+        const couleur = Array.isArray(c.rgb) ? c.rgb.map((v) => (v + 0.5) / 255) : null; // null = couleur d'origine
+        apres.push(() => scene.setObjectsColorized(ids, couleur));
+      });
+      (cats.opacites || []).forEach((o) => {
+        const ids = decoder(o.ids, maquette);
+        apres.push(() => scene.setObjectsOpacity(ids, (o.a + 0.5) / 255));
+      });
+    });
+  });
+  apres.forEach((appliquer) => appliquer());
+  const mat = scene.xrayMaterial;
+  const voulu = entites.xrayMat || XRAY_MATERIAU_DEFAUT;
+  mat.fillAlpha = voulu.fillAlpha;
+  mat.edgeAlpha = voulu.edgeAlpha;
+  mat.fillColor = voulu.fillColor;
+  mat.edgeColor = voulu.edgeColor;
+  const selectionnee = Object.values(scene.selectedObjects).find((e) => e.model && MAQUETTES.some((m) => m.id === e.model.id));
+  if (selectionnee) selectedEntity = selectionnee;
 }
 
 function capturedCoupeState() {
   const sectionPlane = viewer.scene.sectionPlanes[activeCoupeId];
   return {
-    pos: sectionPlane.pos.slice(),
-    dir: sectionPlane.dir.slice(),
+    pos: Array.from(sectionPlane.pos),
+    dir: Array.from(sectionPlane.dir),
     active: sectionPlane.active
   };
 }
@@ -2675,6 +3584,7 @@ function restoreViewerState(snapshot) {
   });
   applyVisibility();
   renderMaquetteRows(maquettesList, MAQUETTES);
+  if (snapshot.entites) restaurerEtatEntites(snapshot.entites);
 
   destroyActiveCoupe();
   if (snapshot.coupe) {
@@ -2706,24 +3616,142 @@ function restoreAllModelsVisible() {
 
 let pendingSnapshot = null;
 
-newDiscussionRecipients.innerHTML = "";
-KNOWN_PEOPLE.forEach((person) => {
-  const label = document.createElement("label");
-  const checkbox = document.createElement("input");
-  checkbox.type = "checkbox";
-  checkbox.value = person;
-  label.append(checkbox, document.createTextNode(person));
-  newDiscussionRecipients.appendChild(label);
-});
+// "Level 3 Ceiling", "Level 7A", "Niveau 2" -> "Niveau 3", "Niveau 7A", "Niveau 2" ; autre nom : tel quel.
+function libelleNiveau(nomIfc) {
+  if (!nomIfc) return null;
+  const m = nomIfc.match(/^\s*(?:level|niveau)\s*([0-9A-Za-z]+)/i);
+  return m ? "Niveau " + m[1] : nomIfc;
+}
+
+// Lieu d'une discussion DEDUIT DE LA VUE 3D, sans IA ni saisie (20/10) : le niveau vient de l'element de reference (l'element selectionne,
+// sinon l'element sous le centre de la vue) via l'arbre spatial IFC, les maquettes sont celles affichees. Aucun niveau trouve : null
+// (la discussion ira dans "Général").
+function lieuDepuis3D() {
+  let entite = selectedEntity;
+  if (!entite) {
+    const canevas = viewer.scene.canvas.canvas;
+    const touche = viewer.scene.pick({ canvasPos: [Math.round(canevas.clientWidth / 2), Math.round(canevas.clientHeight / 2)] });
+    entite = touche && touche.entity ? touche.entity : null;
+  }
+  const niveau = entite ? libelleNiveau(findNiveauIfc(entite.id)) : null;
+  const maquettes = MAQUETTES.filter((m) => m.shown).map((m) => COLLISION_TOGGLE_LABELS[m.id] || m.label);
+  return { niveau, maquettes };
+}
+
+// Vignette d'une discussion (20/10) : la VRAIE vue 3D au moment de la creation, en JPEG reduit (480 px de large, ~30 Ko), qui illustre la
+// carte dans la liste. Meme rapport largeur/hauteur que l'ecran. Un echec de capture n'empeche jamais la creation (pas de vignette).
+function capturerVignette() {
+  try {
+    const canevas = viewer.scene.canvas.canvas;
+    if (!canevas.clientWidth || !canevas.clientHeight) return null;
+    const largeur = 480;
+    const hauteur = Math.max(120, Math.round(largeur * canevas.clientHeight / canevas.clientWidth));
+    return viewer.getSnapshot({ width: largeur, height: hauteur, format: "jpeg" });
+  } catch (e) {
+    console.warn("[discussion] vignette impossible : " + e.message);
+    return null;
+  }
+}
+
+// Titre d'une discussion tire du premier message : premiere ligne non vide, 70 caracteres au plus, coupee a un mot. Remplace l'ancien champ
+// "Sujet" ; une IA proposera ensuite un titre plus parlant (thread.titreAuto signale que le titre n'a pas ete saisi).
+function titreDepuisMessage(texte) {
+  const ligne = (texte.split(/\r?\n/).map((l) => l.trim()).find(Boolean) || "Nouvelle discussion").replace(/\s+/g, " ");
+  if (ligne.length <= 70) return ligne;
+  const coupe = ligne.slice(0, 70);
+  return coupe.slice(0, Math.max(coupe.lastIndexOf(" "), 40)).trim() + "…";
+}
+
+// Vue du Viewer pour la messagerie (21/10) : la capture existante (capturerVignette, JPEG 480 px) et l'etat du Viewer (captureViewerState :
+// camera, niveaux, maquettes, coupe) pour rouvrir le Viewer au meme angle. Le « seed » ne sert qu'au schema de repli si la capture echoue.
+// Capture de la 3D en JPEG pour la recolte des vues : meme methode que capturerVignette (viewer.getSnapshot), mais 640 px de large au plus
+// et une qualite de 0,8 (getSnapshot n'en regle pas : on recompresse la capture dans un canvas 2D).
+function capturerVueJpeg(largeurMax) {
+  const canevas = viewer.scene.canvas.canvas;
+  if (!canevas.clientWidth || !canevas.clientHeight) return Promise.reject(new Error("Le canevas 3D n'est pas affiche."));
+  const largeur = Math.min(largeurMax, canevas.clientWidth);
+  const hauteur = Math.max(120, Math.round(largeur * canevas.clientHeight / canevas.clientWidth));
+  const source = viewer.getSnapshot({ width: largeur, height: hauteur, format: "jpeg" });
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => {
+      const cible = document.createElement("canvas");
+      cible.width = image.naturalWidth;
+      cible.height = image.naturalHeight;
+      cible.getContext("2d").drawImage(image, 0, 0);
+      resolve(cible.toDataURL("image/jpeg", 0.8));
+    };
+    image.onerror = () => reject(new Error("La capture de la 3D est illisible."));
+    image.src = source;
+  });
+}
+
+function capturerVuePourMessagerie() {
+  const lieu = lieuDepuis3D();
+  return {
+    seed: Date.now() % 100000,
+    niveau: lieu.niveau || "Vue libre",
+    modeles: lieu.maquettes.join(" + ") || "Aucune maquette",
+    image: capturerVignette(),
+    etat: captureViewerState()
+  };
+}
+
+// « Ouvrir dans le Viewer » depuis la messagerie : meme parcours que le clic sur l'onglet Viewer (transition, maquettes et niveaux
+// remis a plat), mais sans le vol de camera vers la vue d'accueil : la camera est posee directement sur celle de la vue.
+function ouvrirViewerSurVue(vue) {
+  if (!vue.etat || !vue.etat.camera) {
+    navLinks.find((l) => l.dataset.view === "viewer").click();
+    return;
+  }
+  transitionVue("viewer", () => {
+    ++transitionCibleId; // annule une sequence de dezoom en cours
+    fermerEchangesGrand(false);
+    restoreAllModelsVisible();
+    niveauxState.forEach((n) => {
+      n.checked = true;
+      if (n.checkboxEl) n.checkboxEl.checked = true;
+    });
+    // Rien d'asynchrone laisse par la page Collision (vol de camera, fondu, pose differee des transparences) ne doit passer apres la restauration.
+    viewer.cameraFlight.cancel();
+    clearTimeout(minuteurOpacitesCollision);
+    if (dissolutionActive) dissolutionActive.annuler();
+    activateView("viewer");
+    restoreViewerState(vue.etat);
+    viewerDepuisVueDiscussion = true;
+    viewer.camera.projection = "perspective"; // projection de la capture (la page Collision peut avoir laisse l'orthographique du plan)
+    viewer.cameraFlight.jumpTo({ eye: vue.etat.camera.eye, look: vue.etat.camera.look, up: vue.etat.camera.up });
+    navbarLinksEl.classList.remove("open");
+  });
+}
 
 newDiscussionBtn.addEventListener("click", () => {
   closeFicheSheet();
+  // Messagerie : « Nouvelle discussion » ouvre le dialogue « Nouveau sujet » avec la vue du Viewer deja jointe.
+  if (messagerie) {
+    messagerie.nouveauSujetDepuisViewer(capturerVuePourMessagerie());
+    return;
+  }
   pendingSnapshot = captureViewerState();
+  pendingSnapshot.lieu = lieuDepuis3D();
+  pendingSnapshot.vignette = capturerVignette();
   newDiscussionForm.reset();
+  document.getElementById("newDiscussionTitre").textContent = "Nouvelle discussion";
   newDiscussionModalOverlay.hidden = false;
-  // Curseur directement dans "Sujet" (20/10) : appele dans le geste du clic pour que le clavier s'ouvre aussi sur iPhone.
-  newDiscussionZone.focus();
+  // Curseur directement dans le champ (20/10) : appele dans le geste du clic pour que le clavier s'ouvre aussi sur iPhone.
+  newDiscussionComment.focus();
 });
+
+// Nouveau sujet GENERAL (20/10), depuis la zone "Général" de la page Discussions : meme formulaire a un seul champ, mais aucune capture de la 3D,
+// donc aucun lieu, ni camera, ni niveau : un sujet de projet n'est pas forcement lie a un endroit de la maquette.
+// Avec un niveau (bouton "+" d'un etage de la coupe) : sujet lie a ce niveau, sans lien avec un element de la maquette.
+function ouvrirNouveauSujetGeneral(niveau) {
+  pendingSnapshot = { general: !niveau, lieu: { niveau: niveau || null, maquettes: [] } };
+  newDiscussionForm.reset();
+  document.getElementById("newDiscussionTitre").textContent = niveau ? "Nouveau sujet · " + niveau : "Nouveau sujet";
+  newDiscussionModalOverlay.hidden = false;
+  newDiscussionComment.focus();
+}
 
 function closeNewDiscussionModal() {
   newDiscussionModalOverlay.hidden = true;
@@ -2738,13 +3766,16 @@ newDiscussionForm.addEventListener("submit", (e) => {
   e.preventDefault();
   if (!pendingSnapshot) return;
 
-  const tagged = Array.from(newDiscussionRecipients.querySelectorAll("input:checked")).map((el) => el.value);
-
+  const texte = newDiscussionComment.value.trim();
   const thread = {
     id: "disc-" + Date.now(),
-    zone: newDiscussionZone.value.trim(),
+    zone: titreDepuisMessage(texte),
+    titreAuto: true,
+    lieu: pendingSnapshot.lieu,
+    vignette: pendingSnapshot.vignette || null,
+    general: !!pendingSnapshot.general,
     auteur: CURRENT_USER,
-    tagged,
+    tagged: [],
     open: true,
     camera: pendingSnapshot.camera,
     niveaux: pendingSnapshot.niveaux,
@@ -2764,7 +3795,7 @@ newDiscussionForm.addEventListener("submit", (e) => {
 // inclus : prime sur le simple onglet "discussions" du hash.
 {
   const hashParts = initialHash.replace("#", "").split("/");
-  if (hashParts[0] === "discussions" && hashParts[1]) {
+  if (!DISCUSSIONS_MESSAGERIE && hashParts[0] === "discussions" && hashParts[1]) {
     const targetThread = [...CLASHES, ...DISCUSSIONS].find((t) => t.id === hashParts[1]);
     if (targetThread) {
       openThreadDetail(targetThread);
@@ -2787,7 +3818,8 @@ function remplirCouples(ul) {
     if (detection === detectionCourante) btn.classList.add("courant");
     btn.addEventListener("click", () => {
       memoriserDetection(detection.id);
-      openDetection(detection);
+      // Changer de maquettes en collision : dezoom vers le batiment complet (vue initiale), PUIS transition des maquettes.
+      openDetection(detection, { dezoomPuisTransition: true });
     });
 
     // Une pastille de couleur par maquette du couple, comme les boutons de la 3D.
@@ -2851,14 +3883,17 @@ let detectionCourante = null;
 
 // Une seule paire de maquettes : la page Collision s'ouvre directement sur sa liste. Plusieurs couples : le dernier
 // choix memorise, sinon la liste des couples dans le drawer (openDetection(null)). Aucun couple : message vide.
-function ouvrirPageCollision() {
+function ouvrirPageCollision(options = {}) {
   if (!collisionDetail.hidden || DETECTIONS.length === 0) return;
-  if (DETECTIONS.length === 1) openDetection(DETECTIONS[0]);
-  else openDetection(detectionMemorisee());
+  if (DETECTIONS.length === 1) openDetection(DETECTIONS[0], options);
+  else openDetection(detectionMemorisee(), options);
 }
 
 // detection = null : aucun couple choisi (20/10), la 3D montre toutes les maquettes et le drawer la liste des couples.
-function openDetection(detection) {
+// options.dezoomPuisTransition (choix d'une autre paire de maquettes) : la camera DEZOOME d'abord vers le batiment complet, et seulement
+// ensuite les maquettes se dissolvent et les bulles de la nouvelle paire apparaissent, pour que le changement de sujet se voie.
+function openDetection(detection, options = {}) {
+  if (!options.dezoomPuisTransition) ++transitionCibleId; // une ouverture directe annule une sequence de dezoom en cours
   detectionCourante = detection;
   renderDetections();
   collisionRecap.hidden = true;
@@ -2867,23 +3902,40 @@ function openDetection(detection) {
   collisionListTitle.setAttribute("aria-expanded", "false");
   sectionCollisionCouples.hidden = !!detection;
   sectionCollisionListe.hidden = !detection;
-  fermerEchangesGrand(false);
-
-  collisionViewerSlot.appendChild(viewerWrap);
-  collisionLeft.appendChild(collisionDiscussion);
-  // Zone de commentaires reduite par defaut a l'entree dans la page Collision
-  // (19/10, demande de Gilles) : seul le bandeau titre est visible, le bouton
-  // existant la deplie ; l'etat n'est pas reinitialise entre deux collisions.
-  collisionDiscussion.classList.add("collapsed");
-  // Meme etat que le drawer du Viewer (partage, 20/10).
-  setCollisionPanelCollapsed(infoPanel.classList.contains("collapsed"));
+  const canevasVue = document.getElementById("viewerCanvas");
+  if (canevasVue) { canevasVue.style.transition = ""; canevasVue.style.opacity = ""; }
+  // Mise en page des panneaux (taille de la 3D). Avec garderPanneaux, elle est
+  // differee a la fin du dezoom : la zone 3D garde exactement la meme taille pendant le vol (sinon le cadrage se decale).
+  // 3D deja dans la page Collision (changement de paire, clic sur Collision depuis une collision) ; sinon (venu du Viewer ou de Discussions) elle
+  // est deplacee tout de suite, la page cible n'ayant pas d'autre 3D a montrer.
+  const garderPanneaux = !!(options.dezoomPuisTransition && viewerWrap.parentNode === collisionViewerSlot);
+  const appliquerPanneaux = () => {
+    fermerEchangesGrand(false);
+    if (viewerWrap.parentNode !== collisionViewerSlot) collisionViewerSlot.appendChild(viewerWrap);
+    if (collisionDiscussion.parentNode !== collisionLeft) collisionLeft.appendChild(collisionDiscussion);
+    // Zone de commentaires reduite par defaut a l'entree dans la page Collision
+    // (19/10, demande de Gilles) : seul le bandeau titre est visible, le bouton
+    // existant la deplie ; l'etat n'est pas reinitialise entre deux collisions.
+    collisionDiscussion.classList.add("collapsed");
+    // Meme etat que le drawer du Viewer (partage, 20/10).
+    setCollisionPanelCollapsed(infoPanel.classList.contains("collapsed"));
+    collisionDiscussion.hidden = true;
+    window.dispatchEvent(new Event("resize"));
+  };
+  if (!garderPanneaux) {
+    fermerEchangesGrand(false);
+    collisionViewerSlot.appendChild(viewerWrap);
+    collisionLeft.appendChild(collisionDiscussion);
+    collisionDiscussion.classList.add("collapsed");
+    setCollisionPanelCollapsed(infoPanel.classList.contains("collapsed"));
+  }
   // A l'entree dans la page Collision, le contexte repart sur "Isole".
   collisionContexteNiveau = "isole";
   // Meme logique que dans un fil de discussion : ici on ne fait que
   // consulter une collision, pas de "Nouvelle discussion" ni de coupe.
   newDiscussionBtn.hidden = true;
   coupeToolbar.hidden = true;
-  window.dispatchEvent(new Event("resize"));
+  if (!garderPanneaux) window.dispatchEvent(new Event("resize"));
 
   // Ouvert par defaut (sans effet visuel sur desktop, le panneau y est deja
   // toujours visible) : sur mobile, arriver ici doit montrer tout de suite
@@ -2900,23 +3952,56 @@ function openDetection(detection) {
   // des cases a cocher, pour qu'elles refletent l'etat a jour des l'entree.
   const subset = detection ? MAQUETTES.filter((m) => detection.modeles.includes(m.id)) : [];
   // Nouvelle detection : fantome du contexte et transparence repartent de zero.
-  if (collisionContexteOn || collisionActiveClash || collisionOpacityTouched.length > 0) resetCollisionOpacityState();
-  changerVisibiliteAvecFondu(new Map(MAQUETTES.map((m) => [m.id, detection ? detection.modeles.includes(m.id) : true])));
+  // Avec dezoomPuisTransition, la remise a zero est differee a la fin du dezoom : l'ancienne mise en page est gardee pendant le vol.
+  if (!options.dezoomPuisTransition && (collisionContexteOn || collisionActiveClash || collisionOpacityTouched.length > 0)) resetCollisionOpacityState();
+  const etatsModeles = new Map(MAQUETTES.map((m) => [m.id, detection ? detection.modeles.includes(m.id) : true]));
+  const detectionClashes = detection ? CLASHES.filter((c) => c.detectionId === detection.id) : [];
+  const marqueursAPoser = detectionClashes.filter((c) => !c.factice);
+  if (options.dezoomPuisTransition) {
+    // Sequence unique : l'affichage courant est conserve pendant le dezoom, puis tout est applique en un passage a l'arrivee.
+    dezoomPuisAppliquer(() => {
+      if (detectionCourante !== detection || document.getElementById("view-collision").hidden) return;
+      if (garderPanneaux) appliquerPanneaux();
+      remettreA3DNeutre();
+      changerVisibiliteAvecFondu(etatsModeles, () => { if (detectionCourante === detection) renderClashMarkers(marqueursAPoser); });
+    });
+  } else {
+    changerVisibiliteAvecFondu(etatsModeles);
+  }
   renderMaquetteRows(collisionMaquettesList, subset);
   renderCollisionMaquetteToggles(subset);
 
-  const detectionClashes = detection ? CLASHES.filter((c) => c.detectionId === detection.id) : [];
   renderCollisionsList(detectionClashes);
   animerEntreeListe(detection ? collisionsList : collisionCouplesList);
-  renderClashMarkers(detectionClashes.filter((c) => !c.factice));
-  clearClashElementColors();
-  deselectEntity();
+  if (!options.dezoomPuisTransition) renderClashMarkers(marqueursAPoser);
+  if (!options.dezoomPuisTransition) {
+    clearClashElementColors();
+    deselectEntity();
+  }
 
-  collisionDiscussion.hidden = true;
+  if (!garderPanneaux) collisionDiscussion.hidden = true;
   discussionMessages.innerHTML = "";
   discussionReplyForm.hidden = true;
   currentDiscussionThread = null;
   recenterTarget = null;
+}
+
+// Cadrage du batiment entier, centre dans la zone 3D telle qu'elle est affichee (rapport largeur/hauteur du canvas actuel).
+// Meme direction de vue et meme haut que la vue d'accueil du Viewer ; seuls le centre (centre de la scene) et la distance
+// (sphere englobante dans le plus petit des deux angles de champ) sont calcules pour la zone courante.
+function cadrageBatimentDansZone() {
+  // Meme cadrage que l'accueil du Viewer (le batiment remplit la zone comme a la premiere arrivee) ; la camera ne s'eloigne que si la zone
+  // 3D est plus etroite que celle du Viewer (rapport largeur/hauteur inferieur a 1,6), pour que le batiment ne soit jamais coupe.
+  const base = initialCameraState || DEFAULT_CAMERA_STATE;
+  const canevas = viewer.scene.canvas.canvas;
+  if (!canevas || !canevas.clientWidth || !canevas.clientHeight) return Object.assign({}, base);
+  const facteur = Math.max(1, 1.6 / (canevas.clientWidth / canevas.clientHeight));
+  const dir = [base.eye[0] - base.look[0], base.eye[1] - base.look[1], base.eye[2] - base.look[2]];
+  return {
+    eye: [base.look[0] + dir[0] * facteur, base.look[1] + dir[1] * facteur, base.look[2] + dir[2] * facteur],
+    look: base.look,
+    up: base.up
+  };
 }
 
 // Boutons a bascule de la page Collision (19/10) : meme effet que la case de
@@ -2976,15 +4061,48 @@ function renderCollisionMaquetteToggles(subset) {
     });
     collisionMaquetteToggles.appendChild(group);
   } else if (collisionGhostMaquettes.length > 0) {
+    const conteneur = document.createElement("div");
+    conteneur.className = "collision-affichage";
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "collision-maquette-toggle collision-contexte-toggle";
-    btn.textContent = "Contexte";
-    btn.addEventListener("click", () => {
-      setCollisionContexte(!collisionContexteOn);
+    btn.setAttribute("aria-haspopup", "true");
+    btn.setAttribute("aria-expanded", "false");
+    const menu = document.createElement("ul");
+    menu.className = "collision-affichage-menu";
+    menu.hidden = true;
+    MODES_AFFICHAGE_COLLISION.forEach((mode) => {
+      const li = document.createElement("li");
+      const choix = document.createElement("button");
+      choix.type = "button";
+      choix.dataset.mode = mode.id;
+      const coche = document.createElement("span");
+      coche.className = "coche";
+      const textes = document.createElement("span");
+      textes.className = "textes";
+      const nom = document.createElement("b");
+      nom.textContent = mode.libelle;
+      const detail = document.createElement("small");
+      detail.textContent = mode.detail;
+      textes.append(nom, detail);
+      choix.append(coche, textes);
+      choix.addEventListener("click", () => {
+        menu.hidden = true;
+        btn.setAttribute("aria-expanded", "false");
+        setModeAffichageCollision(mode.id);
+      });
+      li.appendChild(choix);
+      menu.appendChild(li);
     });
-    collisionMaquetteToggles.appendChild(btn);
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      menu.hidden = !menu.hidden;
+      btn.setAttribute("aria-expanded", String(!menu.hidden));
+    });
+    conteneur.append(btn, menu);
+    collisionMaquetteToggles.appendChild(conteneur);
     collisionContexteBtn = btn;
+    collisionAffichageMenu = menu;
   }
   refreshCollisionMaquetteToggles();
 }
@@ -2997,8 +4115,16 @@ function refreshCollisionMaquetteToggles() {
     btn.setAttribute("aria-pressed", String(key === collisionContexteNiveau));
   });
   if (collisionContexteBtn) {
-    collisionContexteBtn.setAttribute("aria-pressed", String(collisionContexteOn));
-    collisionContexteBtn.classList.toggle("off", !collisionContexteOn);
+    const mode = MODES_AFFICHAGE_COLLISION.find((m) => m.id === collisionModeAffichage);
+    collisionContexteBtn.textContent = (mode ? mode.libelle : "Contexte") + " ▾";
+    collisionContexteBtn.classList.toggle("off", false);
+  }
+  if (collisionAffichageMenu) {
+    collisionAffichageMenu.querySelectorAll("button[data-mode]").forEach((b) => {
+      const actif = b.dataset.mode === collisionModeAffichage;
+      b.classList.toggle("actif", actif);
+      b.querySelector(".coche").textContent = actif ? "✓" : "";
+    });
   }
 }
 
@@ -3756,7 +4882,58 @@ function ensureClashMarkerAssets() {
   });
 }
 
+// Apparition des collisions l'une apres l'autre (20/10, demande de Gilles) : a la pose des marqueurs, pastilles numerotees, cercles jaunes et
+// spheres 3D apparaissent un par un, les plus urgentes d'abord (70 ms d'ecart, une seconde au plus pour 15). Instantane si le systeme demande
+// moins de mouvement. Les minuteurs sont annules des qu'on efface les marqueurs.
+const PAS_REVELATION_MS = 70;
+let clashRevelationTimers = [];
+function rangsRevelation(clashes) {
+  const rang = { urgente: 0, haute: 1, normale: 2, basse: 3 };
+  const tri = clashes.slice().sort((a, b) => (rang[clashPriorite(a)] - rang[clashPriorite(b)]) || (CLASHES.indexOf(a) - CLASHES.indexOf(b)));
+  return new Map(tri.map((c, i) => [c.id, i]));
+}
+function revelationProgressive() {
+  return !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+// Disparition des collisions l'une apres l'autre (21/10, demande de Gilles) : meme ordre que l'apparition (rangsRevelation), meme pas de
+// 70 ms mais resserre pour que l'ensemble tienne vers 1,2 s (fondu de 250 ms inclus). Joue en parallele de la navigation ; les minuteurs
+// sont ceux de clashRevelationTimers, donc tout nouvel effacement ou rendu de marqueurs (clearClashMarkers) les annule et nettoie sans fantome.
+// Effacement immediat si le systeme demande moins de mouvement ou s'il n'y a qu'une collision.
+const FONDU_SORTIE_MS = 250;
+const DUREE_SORTIE_MAX_MS = 950;
+function effacerClashMarkersProgressivement() {
+  const clashes = CLASHES.filter((c) => clashMarkers.has(c.id));
+  if (!revelationProgressive() || clashes.length < 2) {
+    clearClashMarkers();
+    return;
+  }
+  clashRevelationTimers.forEach(clearTimeout);
+  clashRevelationTimers = [];
+  const rangs = rangsRevelation(clashes);
+  const pas = Math.min(PAS_REVELATION_MS, DUREE_SORTIE_MAX_MS / (clashes.length - 1));
+  clashes.forEach((clash) => {
+    clashRevelationTimers.push(setTimeout(() => {
+      const mesh = clashMarkers.get(clash.id);
+      if (mesh) mesh.visible = false;
+      const pastille = clashPastilles.get(clash.id);
+      if (pastille && pastille.el) {
+        pastille.el.style.animationDelay = "0ms";
+        pastille.el.classList.add("sortie");
+      }
+      const bulle = clashBullesList.find((b) => b.id === clash.id);
+      if (bulle) {
+        bulle.revele = false;
+        scheduleClashBulles();
+      }
+    }, rangs.get(clash.id) * pas));
+  });
+  clashRevelationTimers.push(setTimeout(clearClashMarkers, (clashes.length - 1) * pas + FONDU_SORTIE_MS));
+}
+
 function clearClashMarkers() {
+  clashRevelationTimers.forEach(clearTimeout);
+  clashRevelationTimers = [];
   clashMarkers.forEach((mesh) => mesh.destroy());
   clashMarkers.clear();
   activeClashMarkerId = null;
@@ -3833,7 +5010,8 @@ function drawClashBulles() {
   const v = cam.viewMatrix;
   const m = cam.projMatrix;
   // La bulle de la collision selectionnee est dessinee en dernier : elle passe au-dessus des autres quand elles se superposent.
-  clashBullesList.slice().sort((a, b) => (a.id === clashBullesActiveId) - (b.id === clashBullesActiveId)).forEach(({ id, center }) => {
+  clashBullesList.slice().sort((a, b) => (a.id === clashBullesActiveId) - (b.id === clashBullesActiveId)).forEach(({ id, center, revele }) => {
+    if (revele === false) return;
     const [x, y, z] = center;
     const ex = v[0] * x + v[4] * y + v[8] * z + v[12];
     const ey = v[1] * x + v[5] * y + v[9] * z + v[13];
@@ -3866,7 +5044,7 @@ function drawClashBulles() {
   });
 }
 
-function renderClashBulles(clashes) {
+function renderClashBulles(clashes, rangs) {
   if (!COLLISION_BULLES_SURIMPRESSION) return;
   if (!clashBullesCanvas) {
     clashBullesCanvas = document.createElement("canvas");
@@ -3882,7 +5060,12 @@ function renderClashBulles(clashes) {
     window.addEventListener("resize", scheduleClashBulles);
   }
   clashBullesCanvas.hidden = false;
-  clashBullesList = clashes.map((clash) => ({ id: clash.id, center: clashCenter(clash) }));
+  clashBullesList = clashes.map((clash) => ({ id: clash.id, center: clashCenter(clash), revele: !rangs }));
+  if (rangs) {
+    clashBullesList.forEach((bulle) => {
+      clashRevelationTimers.push(setTimeout(() => { bulle.revele = true; scheduleClashBulles(); }, rangs.get(bulle.id) * PAS_REVELATION_MS));
+    });
+  }
   scheduleClashBulles();
 }
 
@@ -3907,7 +5090,7 @@ function highlightClashPastille(clashId) {
   clashPastilles.forEach((entry, id) => entry.el.classList.toggle("active", id === clashId));
 }
 
-function renderClashPastilles(clashes) {
+function renderClashPastilles(clashes, rangs) {
   if (!COLLISION_PASTILLES) return;
   if (!clashPastillesPlugin) {
     clashPastillesContainer = document.createElement("div");
@@ -3933,12 +5116,16 @@ function renderClashPastilles(clashes) {
     });
     const el = clashPastillesContainer.querySelector('[data-clash-id="' + clash.id + '"]');
     clashPastilles.set(clash.id, { annotation, el });
+    // Apparition decalee : l'animation CSS d'entree (.clash-pastille) attend son rang.
+    if (rangs && el) el.style.animationDelay = rangs.get(clash.id) * PAS_REVELATION_MS + "ms";
   });
 }
 
 function renderClashMarkers(clashes) {
   clearClashMarkers();
   ensureClashMarkerAssets();
+  const progressif = revelationProgressive() && clashes.length > 1;
+  const rangs = rangsRevelation(clashes);
   clashes.forEach((clash) => {
     const center = clashCenter(clash);
     const mesh = new Mesh(viewer.scene, {
@@ -3949,12 +5136,14 @@ function renderClashMarkers(clashes) {
       scale: [CLASH_MARKER_RADIUS, CLASH_MARKER_RADIUS, CLASH_MARKER_RADIUS],
       colorize: CLASH_MARKER_COLORS[clash.statut] || CLASH_MARKER_COLORS.nouveau,
       opacity: CLASH_MARKER_OPACITY,
-      pickable: true
+      pickable: true,
+      visible: !progressif
     });
     clashMarkers.set(clash.id, mesh);
+    if (progressif) clashRevelationTimers.push(setTimeout(() => { if (clashMarkers.get(clash.id) === mesh) mesh.visible = true; }, rangs.get(clash.id) * PAS_REVELATION_MS));
   });
-  renderClashPastilles(clashes);
-  renderClashBulles(clashes);
+  renderClashPastilles(clashes, progressif ? rangs : null);
+  renderClashBulles(clashes, progressif ? rangs : null);
 }
 
 // Grossit le marqueur du clash actuellement selectionne pour le reperer
@@ -4146,10 +5335,10 @@ function applyCollisionOpacities() {
   });
   const isolating = COLLISION_ISOLATION && !!collisionActiveClash;
   // En isolation, le contexte passe en X-ray (pas d'opacite 0,2 en plus).
-  if (COLLISION_CONTEXTE && collisionContexteOn && !isolating) {
+  if (COLLISION_CONTEXTE && collisionModeAffichage === "contexte" && !isolating) {
     collisionGhostMaquettes.forEach((m) => put(collisionEntityIds(m.id), COLLISION_CONTEXTE_OPACITY));
   }
-  if (COLLISION_REVELATION && !COLLISION_ISOLATION && collisionActiveClash) {
+  if (COLLISION_REVELATION && !COLLISION_ISOLATION && collisionActiveClash && (collisionModeAffichage === "conflit" || collisionModeAffichage === "contexte")) {
     // Les 2 elements en conflit gardent opacite 1 (rien n'est pose dessus). Tout le reste des 2 maquettes : fantome X-ray, jamais masque
     // (le contexte reste visible partout : pas de zone vide en passant d'une collision a l'autre).
     const autres = collisionMaskingIds(collisionActiveClash);
@@ -4158,8 +5347,8 @@ function applyCollisionOpacities() {
       fillAlpha: materiau.fillAlpha, edgeAlpha: materiau.edgeAlpha,
       fillColor: Array.from(materiau.fillColor), edgeColor: Array.from(materiau.edgeColor)
     };
-    materiau.fillAlpha = collisionContexteOn ? CLASH_FANTOME_CONTEXTE_FILL_ALPHA : CLASH_FANTOME_FILL_ALPHA;
-    materiau.edgeAlpha = collisionContexteOn ? CLASH_FANTOME_CONTEXTE_EDGE_ALPHA : CLASH_FANTOME_EDGE_ALPHA;
+    materiau.fillAlpha = collisionModeAffichage === "contexte" ? CLASH_FANTOME_CONTEXTE_FILL_ALPHA : CLASH_FANTOME_FILL_ALPHA;
+    materiau.edgeAlpha = collisionModeAffichage === "contexte" ? CLASH_FANTOME_CONTEXTE_EDGE_ALPHA : CLASH_FANTOME_EDGE_ALPHA;
     materiau.fillColor = CLASH_FANTOME_COLOR;
     materiau.edgeColor = CLASH_FANTOME_COLOR;
     collisionFantomes = autres;
@@ -4417,14 +5606,23 @@ function smallerLargerEntityIds(idA, idB) {
 
 // Bouton Contexte : affiche/masque les maquettes hors paire en fantome, non
 // cliquables tant qu'elles sont en fantome (setObjectsPickable).
-function setCollisionContexte(on) {
-  collisionContexteOn = on;
+document.addEventListener("click", () => { if (collisionAffichageMenu) collisionAffichageMenu.hidden = true; });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && collisionAffichageMenu) collisionAffichageMenu.hidden = true; });
+function setModeAffichageCollision(mode) {
+  if (mode === collisionModeAffichage) return;
+  collisionModeAffichage = mode;
+  const autres = mode === "contexte" || mode === "toutes";
+  collisionContexteOn = autres;
   collisionGhostMaquettes.forEach((m) => {
-    m.shown = on;
-    viewer.scene.setObjectsPickable(collisionEntityIds(m.id), !on);
+    // Hors couple : non cliquables en "contexte" (fantome colore), cliquables sinon.
+    viewer.scene.setObjectsPickable(collisionEntityIds(m.id), mode !== "contexte");
   });
-  applyVisibility();
-  applyCollisionOpacities();
+  refreshCollisionMaquetteToggles();
+  // Les maquettes hors couple apparaissent ou disparaissent en dissolution (ecriture groupee), puis la transparence est recalculee.
+  changerVisibiliteAvecFondu(new Map(collisionGhostMaquettes.map((m) => [m.id, autres])), () => {
+    refreshCollisionMaquetteToggles();
+    applyCollisionOpacities();
+  });
 }
 
 // Retour a l'etat normal, appelee a chaque sortie de la page Collision
@@ -4433,6 +5631,7 @@ function setCollisionContexte(on) {
 function resetCollisionOpacityState() {
   const wasOn = collisionContexteOn;
   collisionContexteOn = false;
+  collisionModeAffichage = "conflit";
   collisionActiveClash = null;
   if (wasOn) {
     collisionGhostMaquettes.forEach((m) => {
@@ -4768,7 +5967,13 @@ function ensureCollisionControles() {
   const wrap = document.createElement("div");
   wrap.id = "collisionControles";
   wrap.hidden = true;
-  const mk = (id, libelle, labels, champ) => {
+  const mk = (id, libelle, labels, champ) => creerControleMenu(id, libelle, labels, champ, changerChampCollision);
+  return finirControlesCollision(wrap, mk);
+}
+
+// Menu personnalise Priorite / Statut, partage par la page Collision (bandeau) et le panneau d'une discussion :
+// surChangement(champ, valeur) est appele a chaque changement de valeur.
+function creerControleMenu(id, libelle, labels, champ, surChangement) {
     const field = document.createElement("div");
     field.className = "collision-controle";
     const lab = document.createElement("label");
@@ -4792,7 +5997,7 @@ function ensureCollisionControles() {
     selectWrap.append(dot, sel);
     sel.addEventListener("change", () => {
       selectWrap.dataset.valeur = sel.value;
-      changerChampCollision(champ, sel.value);
+      surChangement(champ, sel.value);
     });
     // Menu personnalise (19/10) : le <select> reste la source de verite mais est masque ;
     // un bouton "Priorité / Haute" ouvre un menu titre avec pastilles et coche.
@@ -4890,7 +6095,9 @@ function ensureCollisionControles() {
     });
     field.append(lab, selectWrap);
     return { field, sel, selectWrap, maj };
-  };
+}
+
+function finirControlesCollision(wrap, mk) {
   const statutsProposes = { nouveau: STATUT_LABELS.nouveau, confirme: STATUT_LABELS.confirme, ecarte: STATUT_LABELS.ecarte, resolu: STATUT_LABELS.resolu };
   const p = mk("collisionPrioriteSelect", "Priorité", PRIORITE_LABELS, "priorité");
   const st = mk("collisionStatutSelect", "Statut", statutsProposes, "statut");
@@ -5020,7 +6227,8 @@ function appliquerOpacitesSiActive(clash) {
   // Pleine page ouverte : le plan du niveau de la nouvelle collision, une fois le contexte en fantome pose.
   if (collisionDiscussion.classList.contains("cb-grand")) majPlanCollision();
 }
-function selectClash(clash) {
+// surArrivee (optionnel, 21/10) : appelee une fois la camera arrivee et la transparence posee (recolte des vues, ?vues=1).
+function selectClash(clash, surArrivee) {
   clearTimeout(minuteurOpacitesCollision);
   opacitesAppliqueesPour = null;
   // Le contexte de la collision precedente est remis tel quel des le choix : la camera traverse la maquette complete pendant son vol, le
@@ -5030,6 +6238,7 @@ function selectClash(clash) {
   flyToClash(clash, true, () => {
     if (COLLISION_TRANSITION_VERROUILLEE) finirTransitionCollision();
     appliquerOpacitesSiActive(clash);
+    if (surArrivee) surArrivee();
   });
   minuteurOpacitesCollision = setTimeout(() => appliquerOpacitesSiActive(clash), 2500);
   highlightClashMarker(clash);
@@ -5049,13 +6258,13 @@ function selectClash(clash) {
 
 // Point d'entree commun pour selectionner un clash, que ce soit via la
 // ligne de la liste ou un clic direct sur sa bulle 3D dans le viewer.
-function activateClash(clash) {
+function activateClash(clash, surArrivee) {
   // Verrou pendant le vol de camera : le clic est ignore tant que la camera n'est pas arretee.
   if (COLLISION_TRANSITION_VERROUILLEE && collisionTransitionEnCours) return;
   collisionsList.querySelectorAll(".collision-item").forEach((el) => {
     el.classList.toggle("active", el.dataset.clashId === clash.id);
   });
-  selectClash(clash);
+  selectClash(clash, surArrivee);
   closeCollisionInfoPanelDrawer();
 }
 
@@ -5221,6 +6430,70 @@ function construireFicheCollision(wrap) {
     document.getElementById("collisionPlanModal").hidden = false;
   });
   wrap.append(ficheInfosEl, fichePlanBlocEl, resetAngleBtn);
+  // Carte "Info selection" de l'element clique dans la fiche (pleine page) : flottante, a droite de la colonne de gauche.
+  ficheElementEl = document.createElement("div");
+  ficheElementEl.id = "collisionElementCarte";
+  ficheElementEl.hidden = true;
+  ficheElementEl.setAttribute("role", "dialog");
+  ficheElementEl.setAttribute("aria-label", "Informations sur l'élément");
+  const entete = document.createElement("div");
+  entete.className = "coll-element-entete";
+  ficheElementTitreEl = document.createElement("span");
+  const fermer = document.createElement("button");
+  fermer.type = "button";
+  fermer.setAttribute("aria-label", "Fermer");
+  fermer.textContent = "✕";
+  fermer.addEventListener("click", fermerFicheElementCollision);
+  entete.append(ficheElementTitreEl, fermer);
+  ficheElementContenuEl = document.createElement("dl");
+  ficheElementContenuEl.className = "fiche-content";
+  ficheElementDocsEl = document.createElement("div");
+  ficheElementEl.append(entete, ficheElementContenuEl, ficheElementDocsEl);
+  collisionDiscussion.appendChild(ficheElementEl);
+  ficheInfosEl.addEventListener("click", (e) => {
+    const bouton = e.target.closest("button.coll-info-element");
+    if (!bouton) return;
+    if (bouton.classList.contains("actif")) fermerFicheElementCollision();
+    else afficherElementCollision(bouton.dataset.id, bouton.dataset.discipline);
+  });
+}
+let ficheElementEl = null;
+let ficheElementTitreEl = null;
+let ficheElementContenuEl = null;
+let ficheElementDocsEl = null;
+// Clic sur "Cloison" ou "Tuyau" dans la fiche : meme effet qu'un clic sur l'element dans la 3D (element selectionne, memes informations).
+function afficherElementCollision(id, discipline) {
+  const entite = viewer.scene.objects[id];
+  if (!entite || !ficheElementEl) return;
+  deselectEntity();
+  selectedEntity = entite;
+  entite.selected = true;
+  showFiche(entite);
+  const { rows, docs } = rowsFicheEntite(entite);
+  renderFicheInto(ficheElementContenuEl, ficheElementDocsEl, rows, docs);
+  ficheElementTitreEl.textContent = discipline;
+  ficheElementEl.hidden = false;
+  // Juste sous le trait qui separe les onglets Tout / Commentaires / Modifications de la liste des echanges, avec 12 px d'air : la carte a
+  // ainsi une marge au-dessus comme a gauche et a droite (16 px).
+  const trait = document.getElementById("discussionMessages").getBoundingClientRect().top - collisionDiscussion.getBoundingClientRect().top;
+  ficheElementEl.style.top = Math.round(trait + 12) + "px";
+  ficheInfosEl.querySelectorAll("button.coll-info-element").forEach((b) => b.classList.toggle("actif", b.dataset.id === id));
+}
+// Un clic n'importe ou en dehors de la carte ferme la carte (les lignes cliquables de la fiche gerent elles-memes leur ouverture et fermeture).
+// Phase de capture : un clic sur un element qui arrete la propagation (bouton, liste, canevas 3D) ferme aussi la carte, et ce clic garde son effet.
+// L'evenement qui a ferme la carte est memorise : un clic sur la photo de la 3D qui ferme la carte ne doit PAS en plus quitter la pleine page.
+let clicQuiAFermeLaCarte = null;
+document.addEventListener("click", (e) => {
+  if (!ficheElementEl || ficheElementEl.hidden) return;
+  if (ficheElementEl.contains(e.target) || e.target.closest(".coll-info-element")) return;
+  clicQuiAFermeLaCarte = e;
+  fermerFicheElementCollision();
+}, true);
+function fermerFicheElementCollision() {
+  if (!ficheElementEl || ficheElementEl.hidden) return;
+  ficheElementEl.hidden = true;
+  if (ficheInfosEl) ficheInfosEl.querySelectorAll("button.coll-info-element").forEach((b) => b.classList.remove("actif"));
+  deselectEntity();
 }
 document.getElementById("collisionPlanModal").addEventListener("click", () => { document.getElementById("collisionPlanModal").hidden = true; });
 document.addEventListener("keydown", (e) => {
@@ -5249,13 +6522,26 @@ function nomsBatiments() {
 }
 function majInfosCollision(clash) {
   if (!ficheInfosEl) return;
+  if (ficheElementEl && !ficheElementEl.hidden) { ficheElementEl.hidden = true; }
   ficheInfosEl.innerHTML = "";
   if (!clash) return;
-  const ajouter = (libelle, valeur, detail) => {
+  const ajouter = (libelle, valeur, detail, elementId) => {
     const dt = document.createElement("dt");
     dt.textContent = libelle;
     const dd = document.createElement("dd");
-    dd.textContent = valeur;
+    if (elementId) {
+      // Element de la collision : cliquable, affiche ses informations comme un clic dans la 3D.
+      const bouton = document.createElement("button");
+      bouton.type = "button";
+      bouton.className = "coll-info-element";
+      bouton.dataset.id = elementId;
+      bouton.dataset.discipline = libelle;
+      bouton.title = "Voir les informations de cet élément";
+      bouton.textContent = valeur;
+      dd.appendChild(bouton);
+    } else {
+      dd.textContent = valeur;
+    }
     if (detail) {
       const small = document.createElement("small");
       small.textContent = detail;
@@ -5268,8 +6554,8 @@ function majInfosCollision(clash) {
   // Un seul niveau (ligne du dessus) ; chaque element n'est donne que par son type, sans identifiant ni etage repete.
   const [partA, partB] = clash.zone.split(" ↔ ");
   const [idA, idB] = clash.entityIds;
-  ajouter(clash.disciplineA, collisionTypeFr(partA || ""));
-  ajouter(clash.disciplineB, collisionTypeFr((partB || "").split("·")[0]));
+  ajouter(clash.disciplineA, collisionTypeFr(partA || ""), null, idA);
+  ajouter(clash.disciplineB, collisionTypeFr((partB || "").split("·")[0]), null, idB);
   // Piece : seulement quand l'element est rattache a une piece (aucune dans les maquettes de l'hopital aujourd'hui).
   const pieces = [idA, idB].map((id) => ancetresIfc(id).IfcSpace).filter(Boolean).map((p) => p.name);
   if (pieces.length) ajouter("Pièce", [...new Set(pieces)].join(" / "));
@@ -5426,8 +6712,9 @@ function genererPlanCollision(clash) {
   return plan;
 }
 // Compose l'image finale : fond, plan, zone des deux elements en conflit et repere sur le point de collision.
-function composerPlanCollision(clash, plan, cible, quand) {
+function composerPlanCollision(clash, plan, cible, quand, apres) {
   const image = new Image();
+  image.onerror = () => { if (apres) apres(); };
   image.onload = () => {
     if (collisionActiveClash !== clash && quand === "ouverture") return;
     cible.width = plan.w;
@@ -5445,7 +6732,8 @@ function composerPlanCollision(clash, plan, cible, quand) {
     ctx.beginPath(); ctx.arc(px, py, 21, 0, Math.PI * 2); ctx.stroke();
     plan.url = cible.toDataURL("image/png");
     plan.pret = true;
-    if (fichePlanLegendeEl) fichePlanLegendeEl.textContent = "Plan du niveau, zone du conflit entourée";
+    if (fichePlanLegendeEl && quand === "ouverture") fichePlanLegendeEl.textContent = "Plan du niveau, zone du conflit entourée";
+    if (apres) apres();
   };
   image.src = plan.url;
 }
@@ -5594,6 +6882,7 @@ function ouvrirEchangesGrand() {
 
 function fermerEchangesGrand(rendreFocus) {
   if (!echangesGrandOuvert) return;
+  fermerFicheElementCollision();
   echangesGrandOuvert = false;
   basculerGrandAnime(false, echangesGrandEtaitReplie);
   discussionMessages.removeAttribute("tabindex");
@@ -5634,10 +6923,12 @@ function fermerEchangesGrand(rendreFocus) {
   collisionViewerSlot.addEventListener("click", (e) => {
     if (!echangesGrandOuvert || window.matchMedia("(max-width: 768px)").matches) return;
     e.stopPropagation();
+    if (clicQuiAFermeLaCarte === e) return; // ce clic vient de fermer la carte d'infos : on reste en pleine page
     fermerEchangesGrand(true);
   }, true);
   document.addEventListener("keydown", (e) => {
     if (e.key !== "Escape" || !echangesGrandOuvert) return;
+    if (ficheElementEl && !ficheElementEl.hidden) { fermerFicheElementCollision(); return; }
     if (e.target instanceof HTMLSelectElement) return;
     fermerEchangesGrand(true);
   });
@@ -6178,6 +7469,8 @@ function renderNiveaux() {
   });
 
   applyVisibility();
+  // La coupe de la page Discussions montre les niveaux du bâtiment : on la redessine dès qu'ils sont connus.
+  renderDiscussionsPage();
 }
 
 function soloNiveau(target) {
@@ -6236,6 +7529,9 @@ docModalDownload.addEventListener("click", () => {
   downloadModalOverlay.hidden = false;
 });
 downloadModalOk.addEventListener("click", closeAllModals);
+downloadModalOverlay.addEventListener("click", (e) => {
+  if (e.target === downloadModalOverlay) downloadModalOverlay.hidden = true;
+});
 
 function labelForMaquette(maquetteId) {
   const maquette = MAQUETTES.find((m) => m.id === maquetteId);
@@ -6355,7 +7651,9 @@ function findNiveauIfc(objectId) {
   return null;
 }
 
-function showFiche(entity) {
+// Lignes de la fiche "Info selection" d'un element (partagees entre le clic dans la 3D et le clic sur un element de la fiche de la
+// collision en pleine page).
+function rowsFicheEntite(entity) {
   const metaObject = viewer.metaScene.metaObjects[entity.id];
   const rows = [
     ["Nom", metaObject ? metaObject.name : entity.id],
@@ -6363,7 +7661,11 @@ function showFiche(entity) {
     ["Maquette", metaObject && metaObject.metaModels[0] ? labelForMaquette(metaObject.metaModels[0].id) : "n/a"],
     ["Niveau (IFC)", findNiveauIfc(entity.id) || "n/a"]
   ];
-  const docs = DOCS_BY_ELEMENT[entity.id] || [];
+  return { rows, docs: DOCS_BY_ELEMENT[entity.id] || [] };
+}
+
+function showFiche(entity) {
+  const { rows, docs } = rowsFicheEntite(entity);
   showSelection(rows, docs);
 
   // Meme fiche que le tiroir Viewer, dans le panneau Collision (section
@@ -6871,6 +8173,8 @@ function loadProject(projectKey) {
       // puis le logo s'ouvre sur la maquette. Affichage immediat en mode progressif.
       if (CHARGEMENT_PROGRESSIF) loadingOverlay.classList.add("hidden");
       else setTimeout(reveleMaquette, 1000);
+      // Toutes les maquettes sont chargees : la recolte automatique des vues 3D de la messagerie peut demarrer (serveur de dev seulement).
+      if (import.meta.env.DEV) planifierRecolteAuto(1500);
       // Arrivee directe sur #collision : la detection unique s'ouvre une fois
       // les maquettes chargees.
       if (!document.getElementById("view-collision").hidden) {
@@ -6920,6 +8224,7 @@ function loadProject(projectKey) {
       tempsParMaquette.push(maquette.label + " " + secondes + " s");
       window.__tempsChargement = tempsParMaquette.slice();
       majEtatMaquette(maquette, "✓ " + secondes + " s", "ok");
+      maquette.chargee = true;
       if (CHARGEMENT_PROGRESSIF && index === 0) premiereMaquetteAffichee();
       loadNextMaquette(index + 1);
     });
@@ -7055,3 +8360,22 @@ window.addEventListener("storage", (e) => {
   renderMaquetteRows(maquettesList, MAQUETTES);
   renderMaquetteRows(collisionMaquettesList, MAQUETTES);
 });
+
+// Recolte des vues pour la messagerie (21/10, serveur de dev seulement) : http://localhost:5173/?vues=1. Le module n'existe pas dans la
+// version construite (import.meta.env.DEV est faux, la branche est supprimee a la compilation).
+if (import.meta.env.DEV && new URLSearchParams(location.search).has("vues")) {
+  import("./messagerie/recolteVues.js").then(({ installerRecolteVues }) => installerRecolteVues({
+    nombre: 8,
+    chargementTermine: () => loadingOverlay.classList.contains("hidden") && MAQUETTES.length > 0 && MAQUETTES.every((m) => m.model),
+    collisions: () => CLASHES.filter((c) => c.detectionId === "hopital-arch-mep" && !c.factice),
+    ouvrirPageCollision: () => {
+      activateView("collision");
+      openDetection(DETECTIONS.find((d) => d.id === "hopital-arch-mep"));
+    },
+    // Le fondu des maquettes (dissolution par paquets) est termine quand plus aucune dissolution n'est active.
+    sceneStable: () => dissolutionActive === null,
+    selectionner: (clash, surArrivee) => activateClash(clash, surArrivee),
+    capturer: capturerVueJpeg,
+    decrire: decrireClashPourVue
+  }));
+}

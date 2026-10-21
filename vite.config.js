@@ -1,8 +1,11 @@
 import { defineConfig } from "vite";
 import { viteStaticCopy } from "vite-plugin-static-copy";
+import { recolteVues } from "./tools/viteRecolteVues.js";
 
 export default defineConfig({
   plugins: [
+    // Serveur de dev seulement : recolte des vues 3D de la messagerie (voir tools/viteRecolteVues.js).
+    recolteVues(),
     viteStaticCopy({
       targets: [
         {

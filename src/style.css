@@ -3083,7 +3083,10 @@ html.demarrage #splashLogo {
 /* Les bulles de collision apparaissent (leger grossissement depuis leur centre) au lieu de surgir. */
 .clash-pastille { animation: pastilleApparition 0.45s ease-out both; }
 @keyframes pastilleApparition { from { opacity: 0; transform: scale(0.2); } to { opacity: 1; transform: none; } }
-@media (prefers-reduced-motion: reduce) { .clash-pastille { animation: none; } }
+/* Disparition une a une (effacerClashMarkersProgressivement) : le contraire de l'apparition. */
+.clash-pastille.sortie { animation: pastilleSortie 0.25s ease-in both; pointer-events: none; }
+@keyframes pastilleSortie { from { opacity: 1; transform: none; } to { opacity: 0; transform: scale(0.2); } }
+@media (prefers-reduced-motion: reduce) { .clash-pastille, .clash-pastille.sortie { animation: none; } }
 
 /* Angle de vue enregistre d'une collision (20/10) : a gauche de Recentrer, qui garde sa place. */
 #viewerToolbar #saveAngleBtn { order: -2; }
@@ -3147,3 +3150,209 @@ html.demarrage #splashLogo {
   #collisionDiscussion.cb.cb-grand .coll-infos { margin-top: 2px; padding-top: 10px; gap: 6px 14px; }
   #collisionDiscussion.cb.cb-grand h3 { padding-left: 24px; }
 }
+
+/* Elements de la collision cliquables dans la fiche de la pleine page (20/10) et carte "Info selection" flottante. */
+.coll-info-element {
+  padding: 0; background: none; border: none; border-bottom: 1px dotted var(--muted); color: var(--text); font: inherit; font-weight: 600;
+  cursor: pointer; text-align: left;
+}
+.coll-info-element:hover, .coll-info-element.actif { color: var(--accent); border-bottom-color: var(--accent); }
+#collisionElementCarte { display: none; }
+@media (min-width: 769px) {
+  #collisionDiscussion.cb.cb-grand #collisionElementCarte:not([hidden]) {
+    display: block; position: absolute; left: calc(var(--fiche-l, 340px) + 16px); right: 16px; top: 72px; z-index: 12; width: auto;
+    padding: 12px 14px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+  }
+  #collisionElementCarte .coll-element-entete { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+  #collisionElementCarte .coll-element-entete button { background: none; border: none; color: var(--muted); font-size: 14px; cursor: pointer; padding: 2px 6px; }
+  #collisionElementCarte .coll-element-entete button:hover { color: var(--text); }
+}
+
+/* Menu des modes d'affichage de la vue 3D d'une collision (20/10) : le bouton "Contexte" ouvre une liste de choix. */
+.collision-affichage { position: relative; display: inline-flex; }
+.collision-affichage-menu {
+  position: absolute; top: calc(100% + 6px); left: 0; z-index: 30; min-width: 290px; margin: 0; padding: 6px; list-style: none;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+}
+.collision-affichage-menu[hidden] { display: none; }
+.collision-affichage-menu button {
+  display: flex; align-items: flex-start; gap: 10px; width: 100%; padding: 9px 10px; background: transparent; color: var(--text);
+  border: 1px solid transparent; border-radius: 8px; text-align: left; cursor: pointer; font: inherit;
+}
+.collision-affichage-menu button:hover { background: var(--bg); }
+.collision-affichage-menu button.actif { border-color: var(--accent); }
+.collision-affichage-menu .coche { width: 12px; flex: none; color: var(--accent); font-size: 13px; line-height: 1.3; }
+.collision-affichage-menu .textes { display: flex; flex-direction: column; gap: 2px; }
+.collision-affichage-menu b { font-size: 13px; font-weight: 700; }
+.collision-affichage-menu small { color: var(--muted); font-size: 11.5px; line-height: 1.3; }
+
+/* ============================================================================
+   Page Discussions en "coupe du bâtiment" (20/10, maquette ouvra-discussions-v3) : coupe des niveaux à gauche,
+   mur de cartes à droite. Fondus et décalages de 0,3 s / 8 px comme le reste de l'application.
+   ============================================================================ */
+#discussionsListPane { padding: 16px 20px; overflow: hidden; display: flex; flex-direction: column; min-height: 0; }
+#discussionsListPane[hidden] { display: none; }
+#discLayout { flex: 1; min-height: 0; display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 20px; }
+
+#discCoupe { display: flex; flex-direction: column; min-height: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
+.disc-panel-titre { margin: 0; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.disc-panel-sous { margin: 2px 0 10px; font-size: 12px; color: var(--muted); }
+.disc-ruban { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 7px 10px; border: 1px dashed var(--border); border-radius: 8px; font-size: 12px; color: var(--muted); margin-bottom: 8px; flex-shrink: 0; }
+/* Règle des niveaux (20/10) : une ligne par niveau réel du projet, réparties dans la hauteur du panneau (jamais sous --ligne-min ;
+   en dessous, le JS replie les niveaux vides en tranches, puis la règle défile en interne, barre fine). */
+#discEtages { --ligne-min: 18px; flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; scrollbar-width: thin; display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: 4px; background: var(--bg); }
+/* Une ligne par niveau : étiquette à gauche, fine piste, compteur rond (couleur = priorité la plus haute), "+" au survol. */
+.disc-etage { flex: 1 1 0; min-height: var(--ligne-min, 18px); box-sizing: border-box; display: flex; flex-direction: row; align-items: center; gap: 8px; padding: 0 8px 0 10px; border-top: 1px solid var(--border); transition: background 0.3s; }
+@media (min-width: 769px) { .disc-etage:not(.disc-tranche) { max-height: 72px; } }
+.disc-piste { flex: 1 1 auto; min-width: 8px; height: 0; border-top: 1px dotted var(--border); }
+.disc-tranche { flex: 0 0 var(--ligne-min, 18px); }
+.disc-tranche-btn { flex: 1; min-width: 0; height: 100%; text-align: left; background: color-mix(in srgb, var(--border) 35%, transparent); border: none; padding: 0 0 0 2px; font: inherit; font-size: 11px; font-style: italic; color: var(--muted); cursor: pointer; transition: color 0.3s, background 0.3s; }
+.disc-tranche-btn::after { content: "  ▸"; }
+.disc-tranche-btn:hover { color: var(--text); background: color-mix(in srgb, var(--border) 60%, transparent); }
+.disc-etage.vide .disc-etage-label { opacity: 0.5; cursor: default; }
+.disc-etage.vide .disc-etage-label:hover { color: var(--muted); border-color: transparent; }
+.disc-etage:first-child { border-top: none; }
+.disc-etage.sel { background: color-mix(in srgb, var(--accent) 22%, transparent); }
+.disc-etage-label { flex: none; min-width: 66px; text-align: left; background: none; border: 1px solid transparent; border-radius: 6px; padding: 0 8px; margin-left: -8px; font: inherit; line-height: 16px; font-size: 12px; font-weight: 600; color: var(--muted); cursor: pointer; transition: color 0.3s, border-color 0.3s; }
+.disc-etage-label:hover { color: var(--text); border-color: var(--border); }
+.disc-etage-label[aria-pressed="true"] { color: var(--text); border-color: var(--accent); }
+.disc-coupe-vide { margin: 0; padding: 12px; font-size: 12px; color: var(--muted); }
+.disc-legende { display: flex; flex-direction: column; gap: 4px; margin-top: 10px; font-size: 12px; color: var(--muted); }
+.disc-legende-prio { display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.disc-legende span span { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.disc-legende i.tl-dot { width: 10px; height: 10px; }
+
+/* Compteur rond de la règle : couleur = priorité la plus haute parmi les discussions du niveau (--c, mêmes couleurs qu'une collision). */
+.disc-pin { --c: #6e8bb5; flex: none; box-sizing: border-box; min-width: 16px; height: 16px; border-radius: 8px; padding: 0 4px; border: none; background: var(--c); color: #14110e; font: inherit; font-weight: 700; font-size: 10px; line-height: 16px; display: grid; place-items: center; cursor: pointer; font-variant-numeric: tabular-nums; transition: transform 0.3s, box-shadow 0.3s, opacity 0.3s; }
+.disc-compteur[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--bg), 0 0 0 3px var(--text); }
+.disc-pin.prio-urgente { --c: #f85149; }
+.disc-pin.prio-haute { --c: #f0883e; }
+.disc-pin.prio-normale { --c: #6e8bb5; }
+.disc-pin.prio-basse { --c: #b4bcc6; }
+button.disc-pin:hover { transform: scale(1.18); box-shadow: 0 0 0 3px color-mix(in srgb, var(--c) 28%, transparent); }
+
+#discMain { display: flex; flex-direction: column; min-height: 0; min-width: 0; gap: 12px; }
+#discToolbar { display: flex; align-items: center; gap: 14px 18px; flex-wrap: wrap; flex-shrink: 0; }
+#discToolbar h2 { margin: 0 6px 0 0; font-size: 20px; letter-spacing: -0.01em; }
+.disc-seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--surface); }
+.disc-seg button { background: none; border: none; border-right: 1px solid var(--border); padding: 6px 12px; font: inherit; font-size: 13px; color: var(--muted); cursor: pointer; transition: background 0.3s, color 0.3s; }
+.disc-seg button:last-child { border-right: none; }
+.disc-seg button:hover { color: var(--text); }
+.disc-seg button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+.disc-seg .n { opacity: 0.75; margin-left: 4px; font-variant-numeric: tabular-nums; }
+.disc-personnes { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.disc-personnes-label { font-size: 12px; color: var(--muted); margin-right: 2px; }
+.disc-chip { display: inline-flex; align-items: center; gap: 6px; background: var(--surface); border: 1px solid var(--border); border-radius: 999px; padding: 2px 10px 2px 2px; font: inherit; font-size: 12px; color: var(--muted); cursor: pointer; transition: border-color 0.3s, color 0.3s, background 0.3s; }
+.disc-chip:hover { color: var(--text); border-color: var(--muted); }
+.disc-chip[aria-pressed="true"] { color: var(--text); border-color: var(--accent); background: color-mix(in srgb, var(--accent) 26%, transparent); }
+.disc-av { width: 24px; height: 24px; border-radius: 50%; display: inline-grid; place-items: center; font-size: 10px; font-weight: 700; color: #fff; background: var(--accent); flex-shrink: 0; }
+.disc-av.plus { background: var(--border); color: var(--muted); }
+
+/* Mur de cartes : défile à l'intérieur de sa zone, jamais la page. */
+#discussionsThreadsList { flex: 1; min-height: 0; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); grid-auto-rows: max-content; gap: 12px; align-content: start; }
+/* .thread-item (liste Todo) pose align-items: center et justify-content: space-between : neutralisés ici, sinon le contenu de la carte
+   se rétracte au centre et déborde des deux côtés (la vignette, en absolu, tombe à largeur nulle). */
+#discussionsThreadsList .disc-carte { position: relative; display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 0; font-size: 13px; overflow-wrap: anywhere; width: auto; min-height: 0; min-width: 0; margin: 0; padding: 0; text-align: left; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; font: inherit; color: var(--text); cursor: pointer; transition: border-color 0.3s, box-shadow 0.3s; }
+#discussionsThreadsList .disc-carte:hover, #discussionsThreadsList .disc-carte.eclaire { border-color: var(--muted); transform: none; box-shadow: 0 0 0 1px var(--muted); }
+/* Vignette : vue 3D enregistrée (img, recadrée sans déformation) ou pictogramme neutre + maquettes concernées. Hauteur fixe 110 à 130 px. */
+.disc-vignette { position: relative; flex: none; display: block; height: 130px; background: #0d0e10; border-bottom: 1px solid var(--border); overflow: hidden; border-radius: 11px 11px 0 0; }
+.disc-vignette-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+.disc-picto { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 30px 12px 8px; color: #5c6670; }
+.disc-picto svg { width: 44px; height: 40px; flex: none; display: block; }
+.disc-picto-legende { max-width: 100%; font-size: 11px; line-height: 1.3; color: #7d8791; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Haut de la vignette sur UNE ligne : lieu à gauche, numéro à droite. */
+.disc-badges { position: absolute; left: 10px; right: 10px; top: 10px; display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: nowrap; min-width: 0; }
+.disc-tag { min-width: 0; max-width: 100%; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: rgba(13, 14, 16, 0.82); border: 1px solid #2f3330; color: #d8d6d0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.disc-corps { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; align-items: stretch; gap: 6px; padding: 10px 12px 11px; text-align: left; }
+.disc-etiqs { display: flex; flex-wrap: wrap; gap: 4px 6px; min-width: 0; }
+.disc-etiq { display: inline-flex; align-items: center; gap: 5px; padding: 1px 8px; border: 1px solid var(--border); border-radius: 999px; font-size: 11px; font-weight: 600; line-height: 1.6; color: var(--text); white-space: nowrap; }
+.disc-etiq .tl-dot { flex: none; }
+.disc-titre { display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-width: 0; font-size: 14px; font-weight: 600; line-height: 1.3; overflow-wrap: anywhere; }
+.disc-dernier { display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-width: 0; font-size: 12px; line-height: 1.35; color: var(--muted); overflow-wrap: anywhere; }
+.disc-dernier b { color: var(--text); font-weight: 600; }
+.disc-pied { display: flex; align-items: center; justify-content: space-between; margin-top: auto; padding-top: 2px; min-width: 0; }
+.disc-avs { display: flex; }
+.disc-avs .disc-av { margin-left: -6px; border: 2px solid var(--surface); }
+.disc-avs .disc-av:first-child { margin-left: 0; }
+.disc-compte { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.disc-vide { grid-column: 1 / -1; grid-row: 1 / -1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; border: 1px dashed var(--border); border-radius: 12px; color: var(--muted); }
+.disc-vide button { background: var(--accent); color: #fff; border: none; border-radius: 8px; padding: 6px 14px; font: inherit; cursor: pointer; }
+#discussionsListPane :focus-visible { outline: 2px solid #e8935c; outline-offset: 2px; }
+
+/* Petits écrans en hauteur (laptop 700 px) : vignette plus basse pour que deux rangées de cartes tiennent sans défiler. */
+@media (min-width: 769px) and (max-height: 740px) {
+  .disc-vignette { height: 110px; }
+  .disc-picto svg { width: 36px; height: 33px; }
+}
+#discPriorite button { padding: 6px 9px; }
+.disc-seg .disc-retour { color: var(--text); }
+.disc-seg .tl-dot { display: inline-block; vertical-align: 0; margin-right: 6px; }
+
+/* Priorité et Statut dans la fiche du panneau (mêmes menus qu'une collision, cf .collision-trigger) : côte à côte, étiquette du champ
+   déjà dans le bouton. En pleine page ils vont dans la colonne de gauche, sous la photo, avec les participants. */
+.fil-controles-champs { display: flex; gap: 8px; }
+.fil-controles .collision-controle label { display: none; }
+.fil-controles .collision-controle { flex: 1 1 0; min-width: 0; }
+.fil-controles .collision-trigger { min-height: 40px; padding: 0 8px 0 10px; }
+.fil-controles .collision-trigger-val { overflow: hidden; text-overflow: ellipsis; }
+/* Changement de priorité / statut dans la conversation (comme la chronologie d'une collision). */
+.fil-journal { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; padding-left: 32px; font-size: 12px; color: var(--muted); }
+.fil-journal .fil-heure { flex-basis: 100%; }
+
+@media (prefers-reduced-motion: reduce) {
+  #discussionsListPane * { animation: none !important; transition: none !important; }
+}
+
+/* Mobile : une colonne, la page défile ; la coupe passe au-dessus en bandeau horizontal des niveaux. */
+@media (max-width: 768px) {
+  #discussionsListPane { overflow-y: auto; display: block; padding: 12px; }
+  #discLayout { display: flex; flex-direction: column; gap: 12px; }
+  #discCoupe { padding: 10px 12px; }
+  .disc-panel-sous { display: none; }
+  /* La règle reste verticale : lignes de 28 px (doigt), hauteur plafonnée, défilement interne au-delà. */
+  #discEtages { --ligne-min: 28px; flex: none; max-height: 240px; }
+  .disc-etage { flex: 0 0 var(--ligne-min); }
+  .disc-etage-ajout { opacity: 0.7; }
+  #discMain { min-height: auto; }
+  #discussionsThreadsList { display: flex; flex-direction: column; overflow: visible; }
+  #discussionsThreadsList .disc-carte { min-height: 0; flex: none; }
+  .disc-seg { flex-shrink: 0; max-width: 100%; overflow-x: auto; }
+}
+
+/* Zone "Général" de la coupe (20/10) : sous-titre "sans lieu" et bouton d'ajout d'un sujet non lie a un endroit de la maquette. */
+#discRuban { flex-wrap: wrap; row-gap: 8px; }
+#discRuban .disc-ruban-label small { display: block; font-size: 10.5px; font-weight: 500; color: var(--muted); letter-spacing: 0; text-transform: none; }
+.disc-ruban-ajout {
+  margin-left: auto; padding: 5px 10px; background: transparent; color: var(--text); border: 1px dashed var(--border); border-radius: 999px;
+  font-size: 12px; cursor: pointer; transition: border-color 0.15s, color 0.15s, transform 0.12s;
+}
+.disc-ruban-ajout:hover { border-color: var(--accent); color: var(--accent); }
+.disc-ruban-ajout:active { transform: scale(0.97); }
+
+/* Bouton "+" de chaque etage de la coupe (20/10) : cree un sujet lie a ce niveau, sans element de la maquette. Discret au repos, net au survol. */
+.disc-etage { position: relative; }
+.disc-etage-ajout {
+  flex: none; width: 16px; height: 16px; padding: 0; display: grid; place-items: center;
+  background: transparent; color: var(--muted); border: 1px dashed var(--border); border-radius: 50%; font-size: 12px; line-height: 1; cursor: pointer;
+  opacity: 0; transition: opacity 0.15s, border-color 0.15s, color 0.15s, transform 0.12s;
+}
+.disc-etage:hover .disc-etage-ajout, .disc-etage-ajout:focus-visible, .disc-etage-ajout:hover { opacity: 1; }
+.disc-etage-ajout:hover { border-color: var(--accent); color: var(--accent); }
+.disc-etage-ajout:active { transform: scale(0.92); }
+/* Sans survol possible (tactile), le "+" reste visible. */
+@media (hover: none) { .disc-etage-ajout { opacity: 0.7; } }
+
+/* Rendus de collision de la messagerie (21/10) : conteneur hors ecran qui accueille #viewerWrap le temps d'un rendu quand la 3D est
+   masquee. Taille reelle (sous 800 px de large pour que le plan soit rendu a 1200 px par getSnapshot), invisible, sans interaction. */
+#rendusHorsEcran {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 760px;
+  height: 475px;
+  visibility: hidden;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: -1;
+}
+#rendusHorsEcran #viewerWrap { position: absolute; inset: 0; }

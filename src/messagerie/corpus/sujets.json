@@ -1,0 +1,1270 @@
+{
+ "c1": [
+  [
+   "me",
+   "@claire sur la V3 le local technique R+2 (celui à côté de la gaine G4) a sa cloison côté couloir en CF 1h dans ta maquette. Le programme de sécurité parle de CF 2h pour les locaux techniques avec armoires HT. Tu confirmes laquelle est bonne ?"
+  ],
+  [
+   "claire",
+   "Je suis restée sur 1h parce que le local fait moins de 20 m² et qu'il n'y a que du courant faible dedans. Les armoires HT sont au R-1, pas au R+2."
+  ],
+  [
+   "me",
+   "Dans la maquette Électricité il y a une armoire de distribution 400 A dans ce local, repère TD-2.03. Donc pas que du courant faible."
+  ],
+  [
+   "claire",
+   "Ah, ça n'était pas dans ma note de synthèse. Elle date de quand cette armoire ?"
+  ],
+  [
+   "me",
+   "Elle apparaît en V3, Sophie ou son bureau l'a ajoutée la semaine dernière. Je te mets la capture de la coupe. [photo : coupe locale TD-2.03, armoire en rouge]"
+  ],
+  [
+   "claire",
+   "OK je vois. Mon avis reste que 1h suffit si on met un joint coupe-feu sur les passages de câbles. 2h me paraît surdimensionné pour un local de cette taille."
+  ],
+  [
+   "me",
+   "Je n'ai pas la compétence pour trancher, et le texte du programme est ambigu : il dit locaux techniques sans distinguer la puissance. Moi je pencherais pour 2h par prudence mais ça a un coût sur la cloison et sur la porte (EI2 60 vs EI2 120)."
+  ],
+  [
+   "claire",
+   "Exactement, la porte passe en 120 aussi, et le fournisseur annonce 3 semaines de délai de plus. C'est pour ça que je ne veux pas partir là-dessus sans avis officiel."
+  ],
+  [
+   "me",
+   "D'accord. On demande au bureau de contrôle ? Je peux leur envoyer la coupe + l'extrait du programme aujourd'hui."
+  ],
+  [
+   "claire",
+   "Oui fais-le, mets-moi en copie. Je leur précise la surface exacte (17,4 m²) dans le mail."
+  ],
+  [
+   "me",
+   "Envoyé à 9h50, avec la capture et la fiche de l'armoire. Ils annoncent une réponse sous 5 jours ouvrés."
+  ],
+  [
+   "claire",
+   "Ça nous mène à lundi prochain. Julien veut monter les ossatures R+2 la semaine du 26, on ne peut pas attendre sans rien faire."
+  ],
+  [
+   "me",
+   "Solution provisoire : on monte l'ossature et le premier parement en 2 plaques BA13 sur chaque face, ce qui est compatible avec 1h comme avec 2h (on rajoute des plaques si besoin). Le bloc-porte reste à commander après l'avis."
+  ],
+  [
+   "claire",
+   "Ça me va comme provisoire. Je préviens Julien et je note sur le plan que la cloison L2-14 est en attente de degré définitif. On se redit les choses dès que le contrôle répond."
+  ]
+ ],
+ "c2": [
+  [
+   "me",
+   "@claire je lance le plan de repérage des réservations pour la dalle R+1. Je te propose de partir sur un export à partir des maquettes V2 de Structure et Mécanique, avec un numéro unique par réservation. Ça te va ?"
+  ],
+  [
+   "claire",
+   "Oui. Par contre je voudrais que le numéro porte le niveau, sinon on va se perdre. Du genre R1-001, R1-002."
+  ],
+  [
+   "me",
+   "Bonne idée. On garde R1 pour R+1, et R0 pour le rez-de-chaussée, RM1 pour le R-1. Je mets la règle dans la légende."
+  ],
+  [
+   "claire",
+   "Et les dimensions ? Il me faut largeur x hauteur pour les rectangulaires et diamètre pour les rondes, avec la cote de l'axe par rapport au nu fini."
+  ],
+  [
+   "me",
+   "OK. Pour la cote d'axe, tu veux par rapport au nu fini du plancher ou à la sous-face de dalle ? Les entreprises ne raisonnent pas pareil."
+  ],
+  [
+   "claire",
+   "Sous-face de dalle, c'est la référence du plan de coffrage de Karim."
+  ],
+  [
+   "me",
+   "Parfait, on aligne sur lui. Premier jet dans l'après-midi."
+  ],
+  [
+   "me",
+   "Premier jet déposé. [fichier : repérage-reservations-R1-v0.pdf] 63 réservations, dont 41 rondes. Dis-moi si la lecture est correcte."
+  ],
+  [
+   "claire",
+   "Lecture bonne dans l'ensemble. Deux remarques : les numéros se chevauchent autour de l'axe D, et je vois des réservations qui se superposent au niveau du noyau ascenseur."
+  ],
+  [
+   "me",
+   "Les superpositions sont réelles : ce sont deux réservations quasi identiques, une posée par Sophie et une par le BET Électricité pour des fourreaux. On les fusionne ?"
+  ],
+  [
+   "claire",
+   "Si les dimensions sont compatibles, oui. Sinon on garde la plus grande et on décale l'autre. Regarde R1-038 et R1-039."
+  ],
+  [
+   "me",
+   "R1-038 fait 300x200, R1-039 fait 250x150 et il est à 40 cm du premier. Je les fusionne en une réservation 300x300 centrée entre les deux."
+  ],
+  [
+   "me",
+   "Bien vu. Je remets R1-038 et R1-039 en attente et je soumets les deux à Karim avant toute modification."
+  ],
+  [
+   "claire",
+   "Attention, 300x300 près de l'axe D ça touche la zone de la poutre. Karim doit valider avant de fusionner."
+  ],
+  [
+   "me",
+   "Tu as raison. Je ne fusionne pas, je demande à Karim de valider les deux. Je laisse un commentaire sur le plan."
+  ],
+  [
+   "claire",
+   "Ok. En attendant je corrige l'implantation des cloisons autour du noyau pour libérer de la place si besoin."
+  ],
+  [
+   "me",
+   "Karim valide la fusion si on garde 300x250 maximum et qu'on respecte 20 cm au nu de la poutre. J'ai ajusté : R1-038 devient 300x250, R1-039 supprimée."
+  ],
+  [
+   "claire",
+   "Parfait. Je reprends le plan avec ce nouveau jeu. Je regarde aussi la lisibilité : il faut une couleur par lot, sinon l'entreprise de plomberie ne retrouve pas ses trous."
+  ],
+  [
+   "me",
+   "Couleurs ajoutées : bleu plomberie, orange CVC, vert électricité, gris structure. Version 1 déposée. [fichier : repérage-reservations-R1-v1.pdf]"
+  ],
+  [
+   "claire",
+   "Lisible. J'ai encore une remarque sur la légende : ajoute la mention « cotes en cm » sinon quelqu'un va lire en mm."
+  ],
+  [
+   "me",
+   "Fait. Je dépose la V2 avec la légende corrigée et les 62 réservations finales. [fichier : repérage-reservations-R1-v2.pdf]"
+  ],
+  [
+   "claire",
+   "Plan validé de mon côté, V2 déposée sur le serveur, je clos le sujet. Je préviens Julien pour la diffusion aux entreprises."
+  ]
+ ],
+ "c3": [
+  [
+   "me",
+   "@claire j'ai passé la maquette Architecture V3 dans le contrôle. 14 collisions avec la Structure, dont 9 sur les cloisons du R+1 qui traversent des voiles. Tu veux que je t'envoie la liste BCF ?"
+  ],
+  [
+   "claire",
+   "Oui envoie. Je pense que beaucoup viennent d'un décalage d'altimétrie, j'ai changé les hauteurs sous plafond en V3."
+  ],
+  [
+   "me",
+   "[fichier : collisions-archi-V3.bcf] Les 9 du R+1 sont toutes entre l'axe B et l'axe D, ça colle avec ton explication."
+  ],
+  [
+   "claire",
+   "Je regarde. Effectivement le R+1 a pris 5 cm quand j'ai mis à jour le faux plafond. Je corrige les niveaux et je vous renvoie une V3.1."
+  ],
+  [
+   "me",
+   "Parfait. Pour les 5 autres, il y a 2 portes dans des voiles au R+2 et 3 allèges qui touchent un poteau. Ça c'est pas lié à l'altimétrie."
+  ],
+  [
+   "claire",
+   "Les portes dans les voiles, c'est normal : il y a des linteaux prévus par Karim, ils n'ont pas encore migré dans sa maquette. Les allèges je décale."
+  ],
+  [
+   "me",
+   "OK, je confirme avec Karim pour les linteaux, je lui fais suivre. Si tu corriges ces 3 allèges, on doit tomber à 2 collisions résiduelles."
+  ],
+  [
+   "claire",
+   "V3.1 déposée. [fichier : archi-V3.1.ifc] Tu peux relancer le contrôle ?"
+  ],
+  [
+   "me",
+   "Relancé : 0 collision sauf les 2 portes qui attendent les linteaux de Karim, et il me confirme qu'ils seront dans sa V4. Retours V3 terminés, je clos le fil."
+  ]
+ ],
+ "s1": [
+  [
+   "me",
+   "@sophie @karim point de collision détecté en V4 sur le R+1 : la gaine DN200 de soufflage (repère CVC-S-114) traverse la poutre de l'axe C, entre les axes 4 et 5. Altitude de passage 3,02 m sous-face de dalle. [photo : vue 3D de la collision]"
+  ],
+  [
+   "sophie",
+   "Je vois. La gaine descend là parce que le plenum est déjà saturé côté axe B avec les chemins de câbles. J'avais pas prévu la poutre en V3, elle n'y était pas."
+  ],
+  [
+   "karim",
+   "La poutre axe C a toujours été à cet endroit, elle apparaît dès la V1 de la Structure. Mais je comprends que la section a changé : elle passe de 30x60 à 30x70 en V4."
+  ],
+  [
+   "me",
+   "Oui c'est ça, le détail est dans le fil sur la reprise de section. Pour ici, la question : est-ce qu'on peut percer la poutre pour une gaine DN200 ?"
+  ],
+  [
+   "karim",
+   "Techniquement un percement de 200 de diamètre dans une poutre de 70 de haut est faisable s'il est dans le tiers central de la portée, à mi-hauteur, et avec des renforts. Mais il faut que je recalcule."
+  ],
+  [
+   "sophie",
+   "Ça tombe à environ 1,50 m de l'appui, donc pas au milieu."
+  ],
+  [
+   "karim",
+   "Alors c'est moins favorable. Près de l'appui l'effort tranchant est maximal, on évite de percer."
+  ],
+  [
+   "me",
+   "Donc option A : réservation dans la poutre à valider par Karim, option B : passage dessous, option C : décaler la gaine. Sophie, tu vois quoi comme possibilité côté fluides ?"
+  ],
+  [
+   "sophie",
+   "Décaler est compliqué : l'axe 4-5 est le seul corridor libre entre les deux cages. Passer dessous, ça fait descendre la gaine à 2,75 m, et le faux plafond du couloir est à 2,60 m."
+  ],
+  [
+   "me",
+   "Donc ça passe à 2,60 avec 15 cm de marge, sans le raccord ni l'isolant. L'isolant de la gaine ajoute 3 cm."
+  ],
+  [
+   "sophie",
+   "Oui, ça passe de justesse mais il reste 12 cm. C'est limite mais conforme à la hauteur minimale de circulation."
+  ],
+  [
+   "karim",
+   "Je précise que le couloir est aussi sous la contrainte de hauteur libre de Claire, à vérifier si on descend le plafond."
+  ],
+  [
+   "me",
+   "Noté Karim, je la tiens informée si on retient le passage dessous."
+  ],
+  [
+   "me",
+   "Noté Claire, mais cette discussion est entre Sophie et Karim pour l'instant, je te remets dans la boucle si ça touche le couloir."
+  ],
+  [
+   "karim",
+   "Pour ma part, je ne veux pas me prononcer sur le percement avant d'avoir la note de calcul de l'ancrage des armatures. Je dois demander à mon collègue qui gère le modèle de calcul."
+  ],
+  [
+   "me",
+   "Tu peux me donner une idée du délai ? La synthèse est le 28 et j'aimerais arriver avec une réponse."
+  ],
+  [
+   "karim",
+   "Je ne peux pas promettre avant vendredi. Si le calcul est défavorable, il faudra renforcer la poutre avec des cadres supplémentaires, ça change aussi le plan de coffrage."
+  ],
+  [
+   "me",
+   "Compris. Sophie, en attendant tu peux préparer le plan B (passage dessous) pour qu'on ne perde pas de temps ?"
+  ],
+  [
+   "sophie",
+   "Oui je commence. Je dois ajuster le DN200 en deux coudes à 45° pour contourner la poutre par dessous, donc un peu plus de pertes de charge."
+  ],
+  [
+   "me",
+   "Les pertes de charge sont acceptables ?"
+  ],
+  [
+   "sophie",
+   "J'ai fait un calcul rapide : +18 Pa sur le réseau, le ventilateur a la marge. Je confirme avec le calcul complet demain."
+  ],
+  [
+   "me",
+   "Parfait. Karim, de ton côté tu nous dis dès que tu as une réponse sur le percement."
+  ],
+  [
+   "karim",
+   "Bien reçu. Je reviens vers vous."
+  ],
+  [
+   "me",
+   "Je mets le sujet en attente jusqu'à ta réponse Karim. Merci Sophie pour la piste du passage dessous."
+  ],
+  [
+   "sophie",
+   "Je te mets la coupe avec le passage dessous, tu me dis si c'est lisible. [fichier : coupe-gaine-S114-passage-dessous.pdf]"
+  ],
+  [
+   "sophie",
+   "J'ai ajouté le raccord avec isolant : on est à 2,71 m sous-face de dalle, ça laisse 11 cm avant le faux plafond."
+  ],
+  [
+   "sophie",
+   "Je rappelle que sur ce passage, la trappe de visite doit rester accessible, j'ai prévu une trappe de 40x40 juste avant le premier coude."
+  ],
+  [
+   "sophie",
+   "@karim toujours pas de retour de ta part sur la possibilité de réservation dans la poutre, tu as pu avancer sur le calcul ?"
+  ],
+  [
+   "sophie",
+   "Je relance aussi parce que Marc doit figer la maquette Mécanique V4 demain, et il faut savoir quelle option on intègre."
+  ],
+  [
+   "sophie",
+   "Si je n'ai rien d'ici demain midi, je pars sur le passage dessous dans la V4 et on réétudiera le percement si Karim le valide plus tard."
+  ]
+ ],
+ "s2": [
+  [
+   "me",
+   "@sophie je regarde les passages en dalle du R+2 pour les colonnes d'eau. Dans la V3 Mécanique j'en compte 12, dans le plan Structure il n'y a que 9 réservations. Il en manque 3."
+  ],
+  [
+   "sophie",
+   "Lesquelles ? Je pensais que Marc avait tout transmis à Karim la semaine dernière."
+  ],
+  [
+   "me",
+   "Les trois manquantes sont sur l'axe F : colonne EF-F1, EF-F2 et le passage de la colonne sèche. Diamètres 110, 110 et 150."
+  ],
+  [
+   "sophie",
+   "La colonne sèche, c'est obligatoire pour le SDIS, on ne peut pas la décaler. Les deux EF peuvent bouger de 30 cm environ."
+  ],
+  [
+   "me",
+   "OK. Je les ajoute au plan de repérage sous les numéros R2-044 à R2-046. Je demande confirmation à Karim pour la structure."
+  ],
+  [
+   "sophie",
+   "Bien. Attention, pour la colonne sèche il faut un fourreau avec manchon coupe-feu, on ne fait pas juste un trou."
+  ],
+  [
+   "me",
+   "Compris. Je mentionne le manchon dans la fiche de réservation. Tu préfères un fourreau PVC ou acier ?"
+  ],
+  [
+   "sophie",
+   "Acier pour la colonne sèche. PVC pour les EF, avec collier coupe-feu en sous-face."
+  ],
+  [
+   "me",
+   "Noté. Karim a répondu : il valide R2-044 et R2-045, mais pour R2-046 il me demande de décaler de 20 cm vers l'axe E, à cause d'une armature dense."
+  ],
+  [
+   "sophie",
+   "20 cm vers E, ça tombe dans le gaine technique à côté, donc compatible. Mais la colonne sèche doit rester accessible au pompier depuis le palier."
+  ],
+  [
+   "me",
+   "Le palier est à 1,80 m de l'axe E, donc le raccord reste accessible. Je décale R2-046."
+  ],
+  [
+   "sophie",
+   "Ok, je mets à jour la maquette Mécanique avec le nouveau tracé de la colonne sèche."
+  ],
+  [
+   "me",
+   "Je te laisse la mise à jour. Je recale ensuite les 3 réservations dans le plan et je relance le contrôle de collision."
+  ],
+  [
+   "sophie",
+   "Maquette V3.2 déposée. [fichier : meca-V3.2.ifc]"
+  ],
+  [
+   "me",
+   "Contrôle relancé : plus d'écart entre réservations et passages. 12 passages, 12 réservations."
+  ],
+  [
+   "sophie",
+   "Je suis aussi d'accord pour que les EF R2-044 et R2-045 soient repérées en bleu, comme le reste du lot plomberie."
+  ],
+  [
+   "me",
+   "C'est fait. Plan de repérage R+2 mis à jour en V2."
+  ],
+  [
+   "sophie",
+   "Parfait, sujet traité pour moi. Passages en dalle validés, tu peux clore."
+  ]
+ ],
+ "k1": [
+  [
+   "me",
+   "@karim la poutre axe C passe de 30x60 à 30x70 en V4 sur ta maquette Structure, entre les axes 3 et 6 au R+1. Peux-tu m'expliquer la raison pour que je prévienne les autres lots ?"
+  ],
+  [
+   "karim",
+   "C'est suite à la note de calcul révisée : la charge d'exploitation du R+2 a été augmentée parce qu'on y prévoit un local d'imagerie avec un équipement lourd."
+  ],
+  [
+   "me",
+   "Le local imagerie, c'est celui qui est près de l'axe 4 ? Car Claire l'avait positionné plus à l'ouest il y a deux semaines."
+  ],
+  [
+   "karim",
+   "Oui, Claire l'a décalé vers l'axe 4, c'est lui qui rend la poutre plus chargée. Avant la charge reprenait par le voile de l'axe 2."
+  ],
+  [
+   "me",
+   "Donc la décision de déplacer le local imagerie vient d'elle. Elle est au courant que ça impacte la poutre ?"
+  ],
+  [
+   "karim",
+   "Je lui ai écrit hier, elle n'a pas encore répondu. Je préfère qu'elle valide que le local reste là, sinon on revient à 30x60."
+  ],
+  [
+   "me",
+   "Je lui en parle ce matin. En attendant, quelle est la hauteur libre sous la poutre avec la nouvelle section ?"
+  ],
+  [
+   "karim",
+   "Avec 70 on perd 10 cm : la sous-face passe de 3,25 m à 3,15 m par rapport au sol fini R+1, ce qui touche le passage de la gaine de Sophie."
+  ],
+  [
+   "me",
+   "C'est précisément l'objet du sujet sur la collision DN200. J'ai besoin de ta réponse sur la réservation dans la poutre, mais ça dépend de cette section."
+  ],
+  [
+   "karim",
+   "Oui, c'est lié. Avec 70 de haut, une réservation DN200 est plus facile à justifier, mais je dois quand même modifier le ferraillage."
+  ],
+  [
+   "me",
+   "Tu vois des moyens de garder 60 en ajoutant de l'acier ou un béton plus résistant, pour éviter de pénaliser les réseaux ?"
+  ],
+  [
+   "karim",
+   "On pourrait passer en C40/50 au lieu de C30/37 et ajouter des armatures de flexion. C'est faisable mais plus coûteux et il faut l'accord du maître d'ouvrage."
+  ],
+  [
+   "me",
+   "Je pose la question à Nadia, mais je ne veux pas lui envoyer sans une comparaison chiffrée. Tu peux me donner l'écart de volume d'acier entre les deux solutions ?"
+  ],
+  [
+   "karim",
+   "Je te prépare ça pour demain : en gros +45 kg d'acier par mètre linéaire pour le C40 avec section 60, contre +0 pour la solution 70. Mais le béton coûte plus cher."
+  ],
+  [
+   "me",
+   "Parfait, je prends ça demain pour le point avec Nadia. Je garde la section 70 comme hypothèse de travail dans la V4."
+  ],
+  [
+   "karim",
+   "OK. Je laisse 30x70 dans la V4, je te confirme dès que Claire valide l'implantation du local imagerie."
+  ]
+ ],
+ "j1": [
+  [
+   "me",
+   "@julien j'ai vu que l'accès grue de la semaine 44 passe par l'allée est, côté parking visiteurs. Est-ce que la livraison des prédalles du R+3 est bien confirmée pour mardi ?"
+  ],
+  [
+   "julien",
+   "Oui, 3 camions mardi matin entre 7h et 10h. Le grutier est réservé, il faut juste libérer l'allée."
+  ],
+  [
+   "me",
+   "Il y a le local de stockage des bacs d'étanchéité à l'entrée est, il bloque la manœuvre ?"
+  ],
+  [
+   "julien",
+   "Oui, on doit le déplacer lundi. J'ai demandé aux étancheurs de le vider avant 16h."
+  ],
+  [
+   "me",
+   "Bien. Autre point : les accès pompiers doivent rester libres sur l'allée ouest pendant la manœuvre ?"
+  ],
+  [
+   "julien",
+   "Exact, j'ai balisé l'allée ouest et le coordinateur sécurité a validé le plan d'installation modifié."
+  ],
+  [
+   "me",
+   "Parfait. J'ai mis à jour le plan d'installation dans la maquette avec la grue à son nouvel emplacement. [fichier : plan-installation-S44.pdf]"
+  ],
+  [
+   "julien",
+   "Reçu, c'est conforme. Accès grue semaine 44 validé, je clos."
+  ]
+ ],
+ "gg1": [
+  [
+   "me",
+   "@sophie @karim @claire je prépare la synthèse BIM du mercredi 28/10. Je propose un ordre du jour en 4 parties : 1) état des maquettes V4, 2) collisions ouvertes, 3) réservations, 4) planning des V5. Des remarques ?"
+  ],
+  [
+   "claire",
+   "Il faudrait ajouter un point sur les cloisons coupe-feu du R+2, j'attends l'avis du bureau de contrôle mais on peut en parler."
+  ],
+  [
+   "me",
+   "Oui je l'ajoute dans la partie 2. Karim, Sophie, vous présentez quoi chacun ?"
+  ],
+  [
+   "karim",
+   "Moi je peux présenter l'état de la Structure et la question de la poutre axe C."
+  ],
+  [
+   "sophie",
+   "Je présente la Mécanique et la gaine DN200. Je peux faire un point aussi sur le plan de passage des gaines au R+1."
+  ],
+  [
+   "me",
+   "Parfait. Claire, tu présentes l'Architecture et les cloisons ?"
+  ],
+  [
+   "claire",
+   "Oui, 10 minutes max car j'ai un rendez-vous maître d'ouvrage juste après à 11h30."
+  ],
+  [
+   "me",
+   "OK. Créneaux : 9h30 ouverture et état des maquettes (moi), 9h45 Structure, 10h10 Mécanique, 10h35 Architecture, 11h00 collisions et planning. Ça colle avec ton départ ?"
+  ],
+  [
+   "claire",
+   "Si je passe avant, oui. Mets-moi à 10h10 plutôt que 10h35."
+  ],
+  [
+   "me",
+   "Pas de problème : Claire 10h10, Sophie 10h35. Sophie ça te va ?"
+  ],
+  [
+   "sophie",
+   "Oui. Il me faudra par contre un peu plus de temps, 25 min plutôt que 20, à cause du passage des gaines."
+  ],
+  [
+   "me",
+   "Je décale la clôture à 11h15, c'est faisable pour tout le monde ?"
+  ],
+  [
+   "karim",
+   "Pour moi oui."
+  ],
+  [
+   "claire",
+   "Moi je suis partie avant donc OK."
+  ],
+  [
+   "me",
+   "Documents à envoyer la veille, donc mardi 27 avant 17h : maquettes V4 déposées sur le serveur, liste des collisions mise à jour par moi, plans de coupe pour Sophie, note de calcul pour Karim."
+  ],
+  [
+   "karim",
+   "La note de calcul de la poutre ne sera pas finie mardi, je peux envoyer un point d'étape à la place ?"
+  ],
+  [
+   "me",
+   "Oui, un point d'étape d'une page suffit. Tu me dis ce qui est connu et ce qui reste ouvert."
+  ],
+  [
+   "sophie",
+   "Je pense qu'il vaut mieux inviter Marc aussi, c'est lui qui fait les maquettes. Il pourra répondre aux questions de détail."
+  ],
+  [
+   "karim",
+   "Bonne idée pour Marc. Julien pourrait aussi venir pour la partie planning travaux, au moins en visio."
+  ],
+  [
+   "sophie",
+   "Je lui écris pour confirmer. Et Marc sera là, je lui ai déjà transmis la date."
+  ],
+  [
+   "claire",
+   "Julien est sur chantier le mercredi matin d'habitude, mais il pourrait suivre en visio."
+  ],
+  [
+   "karim",
+   "Pour la visio il faut qu'on ait le partage d'écran, on a eu des soucis la dernière fois."
+  ],
+  [
+   "sophie",
+   "Je propose qu'on fasse un test de connexion mardi à 16h30, ça évitera de perdre du temps."
+  ],
+  [
+   "claire",
+   "Pour moi 16h30 mardi c'est bon. J'envoie l'invitation visio avec le lien."
+  ]
+ ],
+ "gg2": [
+  [
+   "me",
+   "@karim @sophie @marc on prépare la remise des maquettes V4 pour vendredi. Je rappelle les règles de nommage : PROJET_LOT_NIVEAU_V4_AAAAMMJJ.ifc, par exemple HOP_STR_R1_V4_20261023.ifc. Pas d'espace, pas d'accent."
+  ],
+  [
+   "marc",
+   "Pour la Mécanique on a un fichier par lot (CVC et plomberie) ou un seul ?"
+  ],
+  [
+   "me",
+   "Un fichier par lot : HOP_CVC_R1_V4 et HOP_PLB_R1_V4. Ça simplifie les contrôles."
+  ],
+  [
+   "sophie",
+   "Ok. Et par niveau aussi ? Le R+2 est très lourd pour la CVC."
+  ],
+  [
+   "me",
+   "Oui un fichier par niveau, c'est ce qui est prévu depuis la V1. Tu dépasses quelle taille ?"
+  ],
+  [
+   "sophie",
+   "Le R+2 CVC fait 180 Mo."
+  ],
+  [
+   "me",
+   "Ça passe sur le serveur. Mais exporte sans les propriétés inutiles, tu pourras gagner pas mal."
+  ],
+  [
+   "karim",
+   "Pour la Structure c'est pareil, un fichier par niveau. Je dépose dans le dossier 03_Structure/V4."
+  ],
+  [
+   "me",
+   "Parfait, et en plus du dossier de dépôt je veux le fichier IFC4 pas IFC2x3. Vérifiez vos paramètres d'export."
+  ],
+  [
+   "marc",
+   "Notre logiciel exporte en IFC2x3 par défaut. Je dois changer le paramètre de vue de modèle."
+  ],
+  [
+   "me",
+   "Oui : vue de modèle Coordination View 2.0. Si tu ne la trouves pas dis-moi, je te donne la capture des paramètres."
+  ],
+  [
+   "marc",
+   "Je prends la capture, je ne suis pas sûr de bien choisir."
+  ],
+  [
+   "me",
+   "[photo : paramètres d'export IFC4, vue de modèle Coordination View 2.0 cochée] Tu cales les mêmes réglages pour les deux lots."
+  ],
+  [
+   "marc",
+   "Merci, c'est clair. Premier export de test déposé : HOP_PLB_R1_V4_20261021.ifc"
+  ],
+  [
+   "me",
+   "Je le passe au contrôle. Je regarde le référentiel de coordonnées, les niveaux, et les types IFC."
+  ],
+  [
+   "me",
+   "Retour : l'origine est décalée de 12 m en X par rapport à Architecture. Marc, tu as utilisé le point de base du projet ou le point de relevé ?"
+  ],
+  [
+   "marc",
+   "Le point de relevé, je crois. Je dois repasser en point de base du projet."
+  ],
+  [
+   "me",
+   "Oui, tous les lots doivent partager le même point de base. Sophie, vérifie que c'est la même chose pour la CVC."
+  ],
+  [
+   "sophie",
+   "Je viens de vérifier, la CVC est bonne, c'est seulement la plomberie."
+  ],
+  [
+   "marc",
+   "Corrigé et redéposé : HOP_PLB_R1_V4_20261021_b.ifc"
+  ],
+  [
+   "sophie",
+   "Les exports du R+2 CVC sont lancés, je dépose dès que c'est terminé."
+  ],
+  [
+   "me",
+   "Mieux. Reste une alerte : 14 éléments sans niveau d'affectation. Ce sont des supports, je pense. Tu peux les rattacher à R+1 ?"
+  ],
+  [
+   "marc",
+   "Oui, je corrige. Je note que les supports de colonne sont à rattacher au niveau en dessous."
+  ],
+  [
+   "me",
+   "Si le support est entre deux niveaux, il va au niveau où il est fixé. Pour les colonnes montantes, au niveau bas."
+  ],
+  [
+   "marc",
+   "Ok. Corrigé. Je redépose et je passe aux autres niveaux."
+  ],
+  [
+   "karim",
+   "Pour la Structure, j'ai fait le R-1 et le R+0. Dépôt fait : HOP_STR_RM1_V4 et HOP_STR_R0_V4."
+  ],
+  [
+   "me",
+   "Reçus et contrôlés : propres, juste un mur sans matériau au R+0. Tu corriges ?"
+  ],
+  [
+   "karim",
+   "C'est le voile V-14, il manquait le béton. Corrigé dans le fichier _b."
+  ],
+  [
+   "me",
+   "Parfait. Sophie, la CVC R+1 est déposée mais le R+2 ?"
+  ],
+  [
+   "sophie",
+   "Le R+2 sort demain matin, l'export est long. Je serai dans les temps."
+  ],
+  [
+   "me",
+   "Ok. Je note : jeudi soir limite pour tout le monde, je lance le contrôle global vendredi matin."
+  ],
+  [
+   "marc",
+   "Je relance les exports des R+2 et R+3 plomberie cet après-midi."
+  ],
+  [
+   "me",
+   "@sophie @marc tout est bien déposé sauf le R+3 CVC, vous confirmez que c'est pour demain ?"
+  ],
+  [
+   "sophie",
+   "Oui, il sort demain avant midi. J'ai eu un souci de licence."
+  ],
+  [
+   "me",
+   "Reçu, tous les fichiers sont là et vérifiés. Le contrôle global ne remonte rien de bloquant : 0 écart de coordonnées, 0 élément sans niveau, 3 collisions mineures déjà connues."
+  ],
+  [
+   "karim",
+   "Pour moi les maquettes V4 sont validées de mon côté. Je prépare le pack de livraison."
+  ],
+  [
+   "me",
+   "Remise des maquettes V4 validée pour tous les lots, je clos le sujet. Merci à tous pour la réactivité."
+  ]
+ ],
+ "gg3": [
+  [
+   "me",
+   "@julien @claire j'ai reçu le plan d'installation de chantier en révision C. Il y a un souci : la base-vie est positionnée sur l'emplacement du futur parvis, côté axe A. Est-ce provisoire ?"
+  ],
+  [
+   "julien",
+   "Oui, elle sera déplacée en fin de gros œuvre. Mais je peux la mettre côté parking sud si Claire veut préserver le parvis."
+  ],
+  [
+   "claire",
+   "Le parvis n'est pas terrassé avant le mois de mars, donc ça ne me gêne pas. Par contre il faut un cheminement piéton sécurisé jusqu'à l'entrée visiteurs."
+  ],
+  [
+   "julien",
+   "C'est prévu : un cheminement balisé de 1,50 m de large le long de la clôture ouest."
+  ],
+  [
+   "me",
+   "Et l'accès des camions toupies ? Le plan montre une seule entrée et ils doivent faire demi-tour dans l'enceinte."
+  ],
+  [
+   "julien",
+   "Il y a une aire de retournement de 18 m de diamètre devant le bâtiment. Je l'ai testée avec le gabarit d'un semi."
+  ],
+  [
+   "me",
+   "Parfait. Je mets le plan à jour dans la maquette de site pour que tout le monde voie les zones de stockage. Où sont les stockages de prédalles ?"
+  ],
+  [
+   "julien",
+   "Au nord, entre l'axe 8 et la clôture. La grue les atteint depuis sa position actuelle."
+  ],
+  [
+   "claire",
+   "Je vérifie que ça ne bloque pas l'issue de secours du bâtiment annexe. Sur mon plan elle débouche côté nord."
+  ],
+  [
+   "julien",
+   "Ah, bien vu. Je décale le stockage de 4 mètres vers l'ouest pour laisser l'issue libre."
+  ],
+  [
+   "me",
+   "Plan révision D intégré, avec le stockage décalé. Tout est cohérent pour moi, on clôt."
+  ]
+ ],
+ "gc1": [
+  [
+   "me",
+   "@julien @marc plusieurs réservations du R+2 ont été percées avec un décalage par rapport au plan de repérage : R2-012, R2-013 et R2-019 sont à 15 à 20 cm de leur position. Julien tu confirmes ce que tu vois sur place ?"
+  ],
+  [
+   "julien",
+   "Oui j'ai constaté ça hier. Les gars ont pris les cotes depuis le nu du voile au lieu de la sous-face, donc c'est décalé en hauteur surtout."
+  ],
+  [
+   "me",
+   "Donc en hauteur, de combien ? Il faut que Marc vérifie si le tracé des gaines tient encore."
+  ],
+  [
+   "julien",
+   "Environ 18 cm trop haut sur les trois. [photo : réservation R2-012 avec mètre]"
+  ],
+  [
+   "marc",
+   "Si c'est 18 cm trop haut, la gaine DN160 de R2-012 peut quand même passer, il me reste de la marge au-dessus. Par contre pour R2-019 c'est une colonne EF, elle ne tolère rien."
+  ],
+  [
+   "me",
+   "R2-019 est la colonne qui descend jusqu'au local technique ? Si elle doit se décaler il y a un impact sur le coude du R+1."
+  ],
+  [
+   "marc",
+   "Oui. Je regarde si je peux ajuster avec un coude à 30° au lieu de 45°."
+  ],
+  [
+   "julien",
+   "Si c'est un décalage de 18 cm, on peut aussi reboucher et recarotter. Je préfère éviter, ça coûte une demi-journée par trou."
+  ],
+  [
+   "me",
+   "Marc, tu me dis ce soir si le tracé tient ? Sinon Julien carotte demain."
+  ],
+  [
+   "marc",
+   "Je confirme ce soir. Dans tous les cas R2-012 et R2-013 sont OK."
+  ],
+  [
+   "julien",
+   "Ok, mais je te préviens, le carottier arrive vendredi seulement. Si c'est pas bon ce soir, on attend."
+  ],
+  [
+   "marc",
+   "Pour R2-019 je pense qu'on peut passer avec le coude, je vérifie la pente d'écoulement et je vous réponds dans l'heure."
+  ]
+ ],
+ "gc2": [
+  [
+   "me",
+   "@julien @claire pour la réception du lot cloisons, j'ai fait le relevé de la maquette V4 : 112 cloisons modélisées au R+1. Julien, combien sont posées ?"
+  ],
+  [
+   "julien",
+   "104 posées, les 8 restantes sont dans les gaines et seront faites après le passage des réseaux."
+  ],
+  [
+   "claire",
+   "Je passe demain pour le contrôle visuel. Je regarde les niveaux de finition et les hauteurs de cloisons."
+  ],
+  [
+   "julien",
+   "Parfait. Je vous mets le planning de levée de réserves sur le serveur. [fichier : planning-reserves-cloisons.pdf]"
+  ],
+  [
+   "me",
+   "J'ai vérifié les hauteurs sur la maquette scannée : tout est conforme à 1 cm près sauf la cloison L1-27 qui est 3 cm trop basse."
+  ],
+  [
+   "claire",
+   "Je l'ai vue, c'est une erreur de tracé de ma part. On valide quand même, un jeu de 3 cm sera comblé par le joint."
+  ],
+  [
+   "julien",
+   "Réception du lot cloisons prononcée avec réserve mineure sur L1-27, c'est noté. Je clos."
+  ]
+ ],
+ "gf1": [
+  [
+   "me",
+   "@sophie @marc je commence la nomenclature des équipements Mécanique pour la V4. Il me faut au minimum : repère, désignation, niveau, local, puissance ou débit, et lot. Vous avez déjà un format ?"
+  ],
+  [
+   "marc",
+   "On a un tableau issu du logiciel, mais les repères ne sont pas homogènes : CTA-01 pour certains, CTA1 pour d'autres."
+  ],
+  [
+   "me",
+   "Il faut homogénéiser. Je propose le format CTA-R1-01 : type, niveau, numéro. Ça évite les doublons entre niveaux."
+  ],
+  [
+   "sophie",
+   "Je préfère un repère sans niveau pour les équipements qui desservent plusieurs étages, genre CTA-01 pour la CTA du toit."
+  ],
+  [
+   "me",
+   "Bonne remarque. Règle : le niveau est dans le repère seulement si l'équipement dessert un seul niveau. Sinon on met TOIT ou GEN."
+  ],
+  [
+   "marc",
+   "OK donc CTA-TOIT-01 pour la centrale en toiture. Et pour les ventilo-convecteurs, on met le local dedans ?"
+  ],
+  [
+   "me",
+   "Non, le local est dans une colonne à part. Sinon les repères deviennent illisibles."
+  ],
+  [
+   "sophie",
+   "D'accord. Pour les puissances, on indique en kW pour le chaud et le froid, en m3/h pour le débit d'air."
+  ],
+  [
+   "me",
+   "Oui, deux colonnes séparées : puissance (kW) et débit (m3/h). Je laisse vide quand ça ne s'applique pas."
+  ],
+  [
+   "marc",
+   "Je te prépare un premier export avec cette structure. Il y aura environ 240 lignes."
+  ],
+  [
+   "me",
+   "Parfait. Pour les marques et modèles, tu les mets ou pas ? Le cahier des charges ne les impose pas."
+  ],
+  [
+   "sophie",
+   "Pas de marque dans la nomenclature, on met juste la désignation générique. Le choix de la marque revient à l'entreprise."
+  ],
+  [
+   "marc",
+   "Compris. Export déposé avec 243 lignes. [fichier : nomenclature-meca-V4-brouillon.xlsx]"
+  ],
+  [
+   "me",
+   "Je regarde cet après-midi."
+  ],
+  [
+   "marc",
+   "J'ai vu en le relisant que 12 lignes n'ont pas de local renseigné, ce sont les équipements en faux plafond. Je les complète avec le local situé en dessous ?"
+  ]
+ ],
+ "gx0": [
+  [
+   "me",
+   "@karim @sophie salle technique du R-1 : la dalle haute a 4 réservations dans la Structure V4 mais Sophie en a prévu 6 pour les départs de collecteurs. Il manque lesquelles ?"
+  ],
+  [
+   "sophie",
+   "Les deux manquantes sont les départs DN100 du collecteur chaud, côté axe H. Je les ai posées en V3, elles ont dû sauter dans l'export."
+  ],
+  [
+   "karim",
+   "Je ne les ai jamais reçues dans mon fichier de réservations. Je peux les ajouter si tu me donnes les coordonnées."
+  ],
+  [
+   "me",
+   "Je te les envoie dans la minute : axe H, 1,20 m et 1,90 m du voile ouest, ronds de 150 pour laisser le manchon."
+  ],
+  [
+   "karim",
+   "Ajoutées en V4.1, vérifiées contre les armatures du plancher : OK."
+  ],
+  [
+   "me",
+   "Je recontrôle : 6 réservations Structure, 6 passages Mécanique, 0 écart. Sujet clos."
+  ]
+ ],
+ "gx1": [
+  [
+   "me",
+   "@karim @sophie la cage d'ascenseur 2 est à 2,10 x 2,60 m dans la Structure et 2,00 x 2,50 m dans le plan Architecture. Laquelle est la bonne ?"
+  ],
+  [
+   "karim",
+   "Les 2,10 x 2,60 sont les dimensions brutes du voile, les 2,00 x 2,50 de l'archi sont les dimensions nettes. Il y a 5 cm d'enduit de chaque côté."
+  ],
+  [
+   "me",
+   "Donc rien d'anormal. Mais le fournisseur d'ascenseur demande 2,05 m de large minimum pour sa cabine standard."
+  ],
+  [
+   "sophie",
+   "Hors de ma compétence mais pour la machinerie en tête de gaine, j'ai besoin de savoir si la gaine reste accessible depuis le palier haut."
+  ],
+  [
+   "karim",
+   "Pour la cabine, on peut réduire l'enduit à 2,5 cm et retrouver 2,05 m nets. Ça implique un enduit projeté de précision."
+  ],
+  [
+   "me",
+   "Je valide avec Claire que 2,05 m est acceptable en architecture. Elle dit oui si les portes palières restent à 90 cm."
+  ],
+  [
+   "sophie",
+   "Les portes palières ne sont pas impactées. Je valide aussi côté machinerie."
+  ],
+  [
+   "me",
+   "Décision : cage 2 à 2,05 x 2,50 m nets avec enduit de 2,5 cm, Karim garde 2,10 x 2,60 brut. Je mets à jour la fiche et je clos."
+  ]
+ ],
+ "gx2": [
+  [
+   "me",
+   "@karim @sophie faux plafond du couloir R+1 : Claire a mis du plafond démontable 60x60 dans l'Architecture, Sophie a prévu un plénum de 45 cm pour les gaines. Il faut aussi des trappes de visite. Qu'est-ce qui est retenu ?"
+  ],
+  [
+   "sophie",
+   "Pour le plénum de 45 cm, j'ai besoin que le plafond soit démontable sur toute la longueur du couloir, sinon je ne peux pas accéder aux vannes."
+  ],
+  [
+   "karim",
+   "Côté structure, un faux plafond démontable ne pose pas de souci. Par contre les suspentes ne doivent pas être fixées dans les poutres sans mon accord."
+  ],
+  [
+   "me",
+   "Les suspentes sont fixées en dalle, d'après la fiche de Claire. Je vérifie la position des fixations."
+  ],
+  [
+   "sophie",
+   "Il y a aussi les sprinklers qui doivent être posés au centre des dalles de plafond, donc pas de découpe en travers."
+  ],
+  [
+   "me",
+   "Confirmé par la maquette : les têtes de sprinklers sont bien alignées sur la trame 60x60."
+  ],
+  [
+   "karim",
+   "Pour le poids, un plafond démontable standard fait environ 8 kg/m2, aucune reprise à prévoir."
+  ],
+  [
+   "sophie",
+   "Alors je valide : plafond démontable 60x60 sur tout le couloir, plénum 45 cm, trappes tous les 6 m environ au niveau des vannes."
+  ],
+  [
+   "me",
+   "Je mets la trappe tous les 6 m au plan et j'ajoute la nomenclature des vannes. C'est tout bon ?"
+  ],
+  [
+   "karim",
+   "Pour moi oui. Faux plafond du couloir R+1 : démontable 60x60, validé. Je clos le sujet."
+  ]
+ ],
+ "gx3": [
+  [
+   "me",
+   "@karim @sophie le plan de coffrage R+1 en V3 montre une dalle de 22 cm. En V4 ta maquette indique 25 cm entre les axes C et F. Tu peux m'expliquer la différence ?"
+  ],
+  [
+   "karim",
+   "J'ai augmenté l'épaisseur pour reprendre la charge d'une chape lourde dans le local de stérilisation. Ça ne concerne que la partie entre C et F."
+  ],
+  [
+   "sophie",
+   "Et nous on a prévu des passages à 18 cm de la sous-face. Avec 25 cm d'épaisseur ça ne change rien si les réservations restent traversantes."
+  ],
+  [
+   "me",
+   "Mais les fourreaux sont préparés pour 22 cm : s'ils sont coupés à longueur, ils seront trop courts de 3 cm."
+  ],
+  [
+   "sophie",
+   "Je demande à Marc de modifier la fiche des fourreaux. Les fourreaux PVC sont à 25 cm maintenant."
+  ],
+  [
+   "karim",
+   "Je reprends aussi le plan de coffrage pour que la dalle de 25 cm soit distinguée par une hachure."
+  ],
+  [
+   "me",
+   "Bonne idée. Il faut aussi vérifier que la hauteur sous plafond reste conforme, Claire avait 2,70 m minimum."
+  ],
+  [
+   "karim",
+   "La sous-face de dalle ne change pas, c'est la face supérieure qui monte de 3 cm, donc ça touche plutôt le niveau fini : il faudra que Claire ajuste la chape."
+  ],
+  [
+   "me",
+   "Je lui envoie le sujet. Elle répond : la chape passe de 7 à 4 cm, compatible avec le système prévu."
+  ],
+  [
+   "sophie",
+   "Ça me va. Je note que le fourreau de l'EF doit être décalé de 3 cm aussi."
+  ],
+  [
+   "karim",
+   "Nouvelle version du plan de coffrage déposée avec hachure et cotes mises à jour. [fichier : coffrage-R1-V4.pdf]"
+  ],
+  [
+   "me",
+   "Vérifié, tout est cohérent entre les trois maquettes. Reprise du plan de coffrage R+1 validée, je clos."
+  ]
+ ],
+ "gx4": [
+  [
+   "me",
+   "@karim @sophie le local de stockage chantier prévu au R-1 axes A-B a été supprimé dans la V4 de Claire, mais Julien l'utilise toujours pour les matériaux. On le garde ou on le déplace ?"
+  ],
+  [
+   "karim",
+   "Côté structure, il y a un voile dans ce local qui est provisoire. Si le local disparaît on n'a plus besoin du voile non plus."
+  ],
+  [
+   "sophie",
+   "Il y a une alimentation électrique et une arrivée d'eau dans ce local, côté Mécanique j'ai un point d'eau de chantier branché dessus."
+  ],
+  [
+   "me",
+   "Julien me dit qu'il en a besoin jusqu'à la fin du second œuvre, soit environ 4 mois."
+  ],
+  [
+   "karim",
+   "Alors on conserve le voile provisoire, et on le démolira à la fin. Je le mets dans le phasage."
+  ],
+  [
+   "sophie",
+   "Je garde l'alimentation et l'eau. Je dois juste me poser la question de la ventilation, car des produits chimiques y sont stockés."
+  ],
+  [
+   "me",
+   "Les produits sont-ils inflammables ? Il faudrait un extracteur."
+  ],
+  [
+   "sophie",
+   "Je pense que oui, notamment les colles. Je prévois un extracteur de 200 m3/h avec rejet en façade."
+  ],
+  [
+   "karim",
+   "Un percement du voile pour le rejet, je le valide si la section ne dépasse pas 300x300."
+  ],
+  [
+   "sophie",
+   "Ça rentre dans du 250x250. Je transmets les cotes."
+  ],
+  [
+   "me",
+   "Je mets à jour la maquette avec le voile maintenu, l'extracteur et le percement. Julien confirme que c'est conforme à ce qu'il stocke."
+  ],
+  [
+   "karim",
+   "Le phasage indique la démolition du voile en semaine 12 de l'année prochaine, après la réception des lots techniques."
+  ],
+  [
+   "sophie",
+   "OK pour moi. Aucune autre demande côté fluides."
+  ],
+  [
+   "me",
+   "Décision : local de stockage conservé jusqu'à la semaine 12 avec extracteur et rejet en façade. Je clos le sujet."
+  ]
+ ],
+ "gx5": [
+  [
+   "me",
+   "@karim @sophie nomenclature des portes : on a 186 portes dans la maquette Architecture, 183 dans le tableau de Julien. Il y a 3 portes de différence."
+  ],
+  [
+   "karim",
+   "Je n'ai que les baies dans mes voiles. J'en compte 71 au total en structure, avec les linteaux."
+  ],
+  [
+   "sophie",
+   "Pour la Mécanique, ce sont les portes de gaines techniques qui m'intéressent : elles ont besoin d'être coupe-feu."
+  ],
+  [
+   "me",
+   "Les trois en écart sont des portes de gaines au R+3. Elles existent dans la maquette mais pas dans le tableau. Sophie, ce sont bien des trappes ou des portes ?"
+  ],
+  [
+   "sophie",
+   "Ce sont des portes à un battant, 60x200, coupe-feu EI 60. Elles doivent être dans le tableau."
+  ],
+  [
+   "me",
+   "Je les ajoute. Karim, tu confirmes qu'il y a un linteau au-dessus de chacune ?"
+  ],
+  [
+   "karim",
+   "Oui, les linteaux sont prévus dans la V4, de 80 cm de long chacun."
+  ],
+  [
+   "me",
+   "Parfait. Autre point : les repères. Le tableau utilise P-01 et la maquette PO-001. On aligne sur PO-001 ?"
+  ],
+  [
+   "sophie",
+   "Oui, trois chiffres comme pour les autres nomenclatures."
+  ],
+  [
+   "karim",
+   "Aucune objection."
+  ],
+  [
+   "me",
+   "Je renomme les repères du tableau et j'ajoute une colonne degré coupe-feu : EI 30, 60, 90 ou sans exigence."
+  ],
+  [
+   "sophie",
+   "Ajoute aussi une colonne sens d'ouverture, c'est utile pour la pose des contacts de porte."
+  ],
+  [
+   "me",
+   "Ajouté. Il faudrait aussi savoir si la porte a une exigence acoustique. Tu veux cette colonne ?"
+  ],
+  [
+   "karim",
+   "Pas pour la Structure. Mais ça peut servir à Claire."
+  ],
+  [
+   "me",
+   "Je laisse la colonne vide pour que Claire la remplisse. Voici la version finale. [fichier : nomenclature-portes-V4.xlsx]"
+  ],
+  [
+   "sophie",
+   "Vérifié, 186 portes et les 3 de gaines sont bien là. Nomenclature des portes validée de mon côté, tu peux clore."
+  ]
+ ],
+ "gx6": [
+  [
+   "me",
+   "@karim @sophie trémies du noyau nord : la V4 Structure montre 5 trémies d'escalier et d'ascenseur au R+1, alors que Mécanique en prévoit 3 de plus pour les gaines techniques verticales. Il manque lesquelles ?"
+  ],
+  [
+   "sophie",
+   "Les 3 trémies de gaines sont TR-G1 à TR-G3, de 90x60 cm, regroupées entre les axes 3 et 4."
+  ],
+  [
+   "karim",
+   "Je les vois dans ton fichier de réservations mais je ne les avais pas traitées comme des trémies. Je les traitais comme des simples réservations."
+  ],
+  [
+   "me",
+   "La différence est importante : une trémie est une ouverture dans la dalle avec chevêtre, une réservation est un simple trou. Pour 90x60 il faut des chevêtres."
+  ],
+  [
+   "karim",
+   "Exact, il faut des armatures de renfort autour. Je dois les intégrer au plan de ferraillage."
+  ],
+  [
+   "sophie",
+   "Ça change leur position ? Je ne veux pas bouger les gaines, elles sont alignées avec le niveau du dessous."
+  ],
+  [
+   "karim",
+   "Si elles sont toutes alignées entre 3 et 4, je peux faire un chevêtre commun. C'est même plus économique."
+  ],
+  [
+   "me",
+   "Un chevêtre commun, ça donne une ouverture unique de combien ?"
+  ],
+  [
+   "karim",
+   "Environ 90x220 cm avec les trois gaines côte à côte et des cloisons de séparation."
+  ],
+  [
+   "sophie",
+   "Les cloisons de séparation doivent être coupe-feu EI 60 entre les gaines. Je peux les prévoir en carreaux de plâtre."
+  ],
+  [
+   "me",
+   "Il faut le préciser dans le descriptif. Karim, la dalle supporte une ouverture de 90x220 ?"
+  ],
+  [
+   "karim",
+   "Oui avec le chevêtre. Je modifie le ferraillage, il reste la validation de la note de calcul."
+  ],
+  [
+   "sophie",
+   "J'ai un doute sur l'accès pour la maintenance, il faut pouvoir passer entre les gaines."
+  ],
+  [
+   "me",
+   "Dans ce cas on laisse un espace libre de 60 cm côté couloir. Sophie, tu peux l'intégrer ?"
+  ],
+  [
+   "sophie",
+   "Oui, je repositionne les gaines pour laisser 60 cm d'accès."
+  ],
+  [
+   "karim",
+   "Alors l'ouverture passe à 150x220. Je recalcule le chevêtre."
+  ],
+  [
+   "karim",
+   "Calcul OK, le chevêtre de 150x220 est validé, V4.2 déposée. [fichier : STR-R1-V4.2.ifc]"
+  ],
+  [
+   "me",
+   "Contrôlé : 3 trémies fusionnées en une ouverture 150x220, gaines positionnées, accès maintenance de 60 cm. Trémies du noyau nord validées, je clos."
+  ]
+ ]
+}
