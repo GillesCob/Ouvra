@@ -4,11 +4,10 @@
 // Collision, attente de l'arrivee de la camera (callback existant du vol, pas de delai arbitraire), capture JPEG de la 3D, envoi au plugin
 // Vite « recolteVues » (vite.config.js) qui ecrit public/images/vues/<id>.jpg et met a jour index.json.
 //
-// hooks (fournis par main.js) : { nombre, chargementTermine(), collisions(), ouvrirPageCollision(), sceneStable(), selectionner(collision, surArrivee),
+// hooks (fournis par main.js) : { nombre, chargementTermine(), collisions(), ouvrirPageCollision(), selectionner(collision, surArrivee),
 //   capturer(largeurMax) -> Promise<dataUrl>, decrire(collision) -> metadonnees }
 const LARGEUR_MAX = 640;
 const DELAI_ARRIVEE_MS = 20000;
-const DELAI_SCENE_MS = 60000;
 
 const prochaineImage = () => new Promise((resolve) => requestAnimationFrame(() => resolve()));
 async function laisserRendre() {
@@ -106,7 +105,6 @@ export function installerRecolteVues(hooks) {
     try {
       message.textContent = "Ouverture de la page Collision…";
       hooks.ouvrirPageCollision();
-      await attendre(hooks.sceneStable, DELAI_SCENE_MS, "La page Collision n'a pas fini de s'afficher.");
       for (let i = 0; i < collisions.length; i++) {
         if (annulee) return;
         message.textContent = "Vue " + (i + 1) + " sur " + collisions.length;

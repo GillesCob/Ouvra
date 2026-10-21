@@ -2466,9 +2466,6 @@ body.acc-actif #appBody { height: 100%; }
 
 /* Liste des collisions : verrou pendant le vol de camera (19/10). La ligne
    active reste nette, les autres sont attenuees et inertes. */
-#collisionsList.en-transition { pointer-events: none; }
-#collisionsList.en-transition .collision-item:not(.active) { opacity: 0.55; }
-#collisionsList.en-transition .collision-item.active { cursor: progress; }
 
 /* Mention d'attribution du jeu de test (Autodesk), tout en bas du Viewer, au
    centre, discrete (19/10). */
@@ -2988,20 +2985,6 @@ html.demarrage #splashLogo {
   #collisionDiscussion.cb.cb-grand #collisionDiscussionHead h3 { cursor: default; padding: 24px 72px 0 24px; }
 }
 
-/* Transition de page (20/10), meme principe que le portfolio : fondu + decalage de 8 px, balayage d'accent sous la navbar. */
-#appBody { transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out; }
-#appBody.vue-sortie, #appBody.vue-entree { opacity: 0; transform: translateY(8px); }
-#navbar { position: relative; }
-#navTrait {
-  position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: var(--accent); opacity: 0; transform-origin: left; pointer-events: none;
-}
-#navTrait.balayage { animation: navTraitBalayage 0.7s ease-out; }
-@keyframes navTraitBalayage {
-  0% { transform: scaleX(0); opacity: 1; }
-  55% { transform: scaleX(1); opacity: 1; }
-  100% { transform: scaleX(1); opacity: 0; }
-}
-
 /* Collisions d'exemple (donnees fictives) : visibles dans la liste, non cliquables. */
 .collision-item.factice { cursor: default; opacity: 0.7; }
 .collision-item.factice:hover { border-color: var(--border); background: inherit; }
@@ -3052,41 +3035,23 @@ html.demarrage #splashLogo {
 @media (prefers-reduced-motion: reduce) {
   .liste-entree > *, #collisionDiscussion.bandeau-entree, #collisionDiscussion.bandeau-maj > *, .clash-pastille.active::before,
   .apparition, #filTagsNb.pulse, #discussionsDetailPane.detail-entree { animation: none; }
-  #appBody { transition: none; }
 }
 
 /* ============================================================================
-   Viewer <-> Collision sur laptop (20/10) : la page ne bouge pas, seul le contenu change.
+   Viewer <-> Collision sur laptop (20/10) : la structure de la page ne bouge pas, seul le contenu change.
    - meme largeur de drawer (300 px) et meme zone 3D (la bordure haute du Collision est retiree) ;
    - Recentrer reste en haut a droite dans les deux pages, "Nouvelle discussion" se place a sa gauche ;
-   - la bascule (portfolio : 0,3 s, fondu et 8 px) ne concerne que le contenu du drawer et les boutons propres a chaque page :
-     "Creer une coupe" et "Nouvelle discussion" s'effacent, les boutons de maquettes et le bandeau de collision apparaissent.
    ============================================================================ */
 @media (min-width: 769px) {
   #collisionViewerSlot { border-top: none; }
   #viewerToolbar #newDiscussionBtn { order: -1; }
 
-  #appBody.contenu-seul.vue-sortie, #appBody.contenu-seul.vue-entree { opacity: 1; transform: none; }
-  #appBody.contenu-seul :is(
-    #infoPanel > :not(#infoPanelCollapse), #collisionInfoPanel > :not(#collisionInfoPanelCollapse),
-    #newDiscussionBtn, #coupeToolbar, #collisionMaquetteToggles, #collisionDiscussion
-  ) { transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out; }
-  #appBody.contenu-seul.vue-sortie :is(
-    #infoPanel > :not(#infoPanelCollapse), #collisionInfoPanel > :not(#collisionInfoPanelCollapse),
-    #newDiscussionBtn, #coupeToolbar, #collisionMaquetteToggles, #collisionDiscussion
-  ), #appBody.contenu-seul.vue-entree :is(
-    #infoPanel > :not(#infoPanelCollapse), #collisionInfoPanel > :not(#collisionInfoPanelCollapse),
-    #newDiscussionBtn, #coupeToolbar, #collisionMaquetteToggles, #collisionDiscussion
-  ) { opacity: 0; transform: translateY(8px); }
 }
 
 /* Les bulles de collision apparaissent (leger grossissement depuis leur centre) au lieu de surgir. */
 .clash-pastille { animation: pastilleApparition 0.45s ease-out both; }
 @keyframes pastilleApparition { from { opacity: 0; transform: scale(0.2); } to { opacity: 1; transform: none; } }
-/* Disparition une a une (effacerClashMarkersProgressivement) : le contraire de l'apparition. */
-.clash-pastille.sortie { animation: pastilleSortie 0.25s ease-in both; pointer-events: none; }
-@keyframes pastilleSortie { from { opacity: 1; transform: none; } to { opacity: 0; transform: scale(0.2); } }
-@media (prefers-reduced-motion: reduce) { .clash-pastille, .clash-pastille.sortie { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .clash-pastille { animation: none; } }
 
 /* Angle de vue enregistre d'une collision (20/10) : a gauche de Recentrer, qui garde sa place. */
 #viewerToolbar #saveAngleBtn { order: -2; }

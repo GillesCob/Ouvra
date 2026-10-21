@@ -254,13 +254,6 @@ const APPAREIL_MOBILE = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ||
 // iPhone le 20/10 : aucun gain (16,5 s contre 16,7 s), desactive par defaut. ?v12=1 pour les essayer.
 const HOPITAL_V12_LEGER = reglageUrl("v12", false);
 const HOPITAL_CLASHES_ABSENTS_LEGERES = new Set(["hosp-clash-14"]);
-// COLLISION_TRANSITION_VERROUILLEE (19/10) : pendant le vol de camera vers une
-// collision, on ne peut pas en selectionner une autre (liste et bulles), et le
-// calcul lourd de l'isolation n'est fait qu'APRES l'arret de la camera (l'animation
-// tourne ainsi sur une scene legere). false = comportement d'avant.
-const COLLISION_TRANSITION_VERROUILLEE = false; // coupe le 19/10 (boutons bloques)
-let collisionTransitionEnCours = false;
-let collisionTransitionTimer = null;
 let collisionCulledIds = [];
 let echangesGrandOuvert = false;
 let echangesGrandEtaitReplie = false;
@@ -905,8 +898,7 @@ function planifierRecolteAuto(delai) {
 async function verifierRecolteAuto() {
   const r = recolteAuto;
   const pret = CLASHES.length > 0 && MAQUETTES.length > 0 && MAQUETTES.every((m) => m.chargee) && loadingOverlay.classList.contains("hidden") &&
-    !document.hidden && !viewer.cameraFlight.flying && dissolutionActive === null && !transitionVueEnCours &&
-    !["viewer", "collision"].includes(nomVueAffichee());
+    !document.hidden && !viewer.cameraFlight.flying && !["viewer", "collision"].includes(nomVueAffichee());
   if (!pret) {
     if (++r.essais <= 300) planifierRecolteAuto(4000);
     return;
@@ -957,11 +949,6 @@ async function executerRecolteAuto(cibles) {
       if (i === 119) throw new Error("la 3D hors écran n'a pas pris sa taille.");
       await imageSuivante();
     }
-    // Fondu des maquettes (dissolution par paquets) termine.
-    for (let i = 0; dissolutionActive !== null; i++) {
-      if (i > 240) throw new Error("le fondu des maquettes ne se termine pas.");
-      await attendreMs(250);
-    }
     for (const clash of cibles) {
       if (r.interrompue || viewerWrap.parentNode !== boite) break;
       await new Promise((resolve, reject) => {
@@ -993,7 +980,6 @@ async function executerRecolteAuto(cibles) {
       // Page non Viewer/Collision toujours affichee : on remet tout comme avant (equivalent de ce que fait la navigation).
       viewer.cameraFlight.cancel();
       resetCollisionOpacityState();
-      finirTransitionCollision();
       clearClashMarkers();
       clearClashElementColors();
       deselectEntity();
@@ -1026,8 +1012,8 @@ if (messagerie) {
   viewDiscussions.classList.add("msg-actif");
 }
 
-// options.garder3D (transition Viewer/Collision) : ni remise a zero de la collision ni fermeture des echanges agrandis au depart, ils sont
-// faits a l'arrivee du dezoom (transitionVersViewer / openDetection), pour que l'affichage 3D reste tel quel pendant le vol.
+// options.garder3D (navigation Viewer/Collision) : ni remise a zero de la collision ni fermeture des echanges agrandis au depart, ils sont
+// faits par la cible (appliquerCibleViewer / openDetection).
 function activateView(viewName, options = {}) {
   if (viewName !== "collision" && !options.garder3D) fermerEchangesGrand(false);
   if (PRESENTATION_MASQUEE && viewName === "presentation") viewName = "viewer";
@@ -1089,9 +1075,6 @@ function activateView(viewName, options = {}) {
   }
 }
 
-// Transition de page (20/10), calquee sur le portfolio (bascule Mode Dev / Mode Batiment) : la page s'efface en descendant de
-// 8 px (0,3 s), le contenu change, puis elle revient (0,3 s) ; un trait d'accent balaie le bas de la barre de navigation. Pas de
-// transition quand on clique sur la page deja ouverte ni si le systeme demande moins d'animations.
 // Aides d'animation (20/10). jouerClasse : (re)joue une animation CSS portee par une classe temporaire. animerEntreeListe : les
 // enfants directs d'une liste apparaissent l'un apres l'autre (decalage de 30 ms, plafonne a 9 pour rester court).
 function jouerClasse(el, classe, duree) {
@@ -1107,117 +1090,18 @@ function animerEntreeListe(ul) {
   jouerClasse(ul, "liste-entree", 700);
 }
 
-let transitionVueEnCours = false;
-const traitNavigation = document.createElement("div");
-traitNavigation.id = "navTrait";
-traitNavigation.setAttribute("aria-hidden", "true");
-document.getElementById("navbar").appendChild(traitNavigation);
-function transitionVue(vue, changer) {
-  const appBodyEl = document.getElementById("appBody");
-  const courant = navLinks.find((l) => l.classList.contains("active"));
-  if ((courant && courant.dataset.view === vue) || transitionVueEnCours || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-    changer();
-    return;
-  }
-  transitionVueEnCours = true;
-  // Viewer <-> Collision sur laptop : la structure de la page ne bouge pas (meme 3D, meme drawer de 300 px, Recentrer et Vitesse
-  // au meme endroit). Seul le contenu change : drawer, boutons propres a chaque page (voir .contenu-seul dans style.css).
-  const vues = ["viewer", "collision"];
-  const contenuSeul = window.matchMedia("(min-width: 769px)").matches && courant && vues.includes(courant.dataset.view) && vues.includes(vue);
-  appBodyEl.classList.toggle("contenu-seul", !!contenuSeul);
-  traitNavigation.classList.remove("balayage");
-  void traitNavigation.offsetWidth;
-  traitNavigation.classList.add("balayage");
-  appBodyEl.classList.add("vue-sortie");
-  setTimeout(() => {
-    changer();
-    appBodyEl.classList.remove("vue-sortie");
-    appBodyEl.classList.add("vue-entree");
-    void appBodyEl.offsetHeight;
-    appBodyEl.classList.remove("vue-entree");
-    window.dispatchEvent(new Event("resize"));
-    setTimeout(() => {
-      transitionVueEnCours = false;
-      appBodyEl.classList.remove("contenu-seul");
-    }, 300);
-  }, 300);
-}
-
-// Sequence UNIQUE (21/10) pour tout clic sur Viewer ou Collision, d'ou que l'on parte : 1. depart : l'affichage 3D courant est conserve tel quel ;
-// 2. une seule camera dezoome (1,1 s) vers la vue globale du batiment, les bulles de collision s'effacent pendant le vol ; 3. a l'arrivee, la cible
-// est appliquee en un seul passage (3D en fondu court : remise a plat puis apparition des seules maquettes voulues). Un compteur d'identifiant
-// annule la sequence precedente si un nouveau clic arrive pendant le vol ou le fondu.
-let transitionCibleId = 0;
-const FONDU_ARRIVEE_MS = 250;
-// Vrai quand on quitte une collision specifique (sa mise en page : X-ray, couleurs, transparence, bulles) : pose par le handler des onglets,
-// lu une seule fois par dezoomPuisAppliquer.
-let depuisMiseEnPageCollision = false;
-
-// La camera est deja (a tres peu pres) au cadrage global : pas besoin de dezoomer.
-function cameraAuCadrageGlobal() {
-  const cible = cadrageBatimentDansZone();
-  const eye = viewer.camera.eye;
-  const look = viewer.camera.look;
-  const distance = Math.hypot(cible.eye[0] - cible.look[0], cible.eye[1] - cible.look[1], cible.eye[2] - cible.look[2]) || 1;
-  const ecart = (u, v) => Math.hypot(u[0] - v[0], u[1] - v[1], u[2] - v[2]);
-  return ecart(eye, cible.eye) < distance * 0.03 && ecart(look, cible.look) < distance * 0.03;
-}
-
-function dezoomPuisAppliquer(appliquerCible) {
-  const id = ++transitionCibleId;
-  const actif = () => id === transitionCibleId;
-  const depuisCollision = depuisMiseEnPageCollision;
-  depuisMiseEnPageCollision = false;
-  const canevas = document.getElementById("viewerCanvas");
-  if (canevas) { canevas.style.transition = ""; canevas.style.opacity = ""; }
-  // cancel() et non stop() : voir flyToClash (pas de callback d'arrivee d'un vol annule).
+// Cadrage global du batiment : la camera est posee directement dessus, sans vol.
+function poserCameraCadrageGlobal() {
   viewer.cameraFlight.cancel();
-  if (dissolutionActive) dissolutionActive.annuler();
-  const reduit = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  // Deja au cadrage global et sans mise en page de collision a defaire (ex. Viewer vers Collision) : la maquette ne bouge pas, seules les
-  // maquettes apparaissent ou disparaissent en fondu (comportement d'origine).
-  if (!depuisCollision && cameraAuCadrageGlobal()) {
-    appliquerCible();
-    return;
-  }
-  effacerClashMarkersProgressivement();
-  const arriver = () => {
-    if (!actif()) return;
-    // Plus de fondu du canvas (il donnait un ecran noir) : la remise a plat de la mise en page de la collision et le fondu des maquettes
-    // voulues se font ensemble, a l'arrivee du dezoom.
-    appliquerCible();
-    // Une fois la zone 3D recalee sur sa taille finale, le cadrage est corrige s'il s'ecarte du cadrage de reference.
-    setTimeout(() => {
-      if (actif() && !cameraAuCadrageGlobal()) viewer.cameraFlight.jumpTo(cadrageBatimentDansZone());
-    }, 160);
-  };
-  // Cadrage sur la zone 3D ACTUELLE (apres le deplacement eventuel de viewerWrap vers la page cible).
-  const cadrage = cadrageBatimentDansZone();
-  if (reduit) {
-    viewer.cameraFlight.jumpTo(cadrage);
-    arriver();
-    return;
-  }
-  let fait = false;
-  let filet = null;
-  const suite = () => {
-    if (fait) return;
-    fait = true;
-    clearTimeout(filet);
-    arriver();
-  };
-  viewer.cameraFlight.flyTo(Object.assign(cadrage, { duration: 1.1 }), suite);
-  filet = setTimeout(suite, 2200); // si le vol est interrompu, la suite part quand meme
+  viewer.cameraFlight.jumpTo(cadrageBatimentDansZone());
 }
 
 // Remise a plat de l'affichage 3D a l'arrivee (sous le canvas masque) : transparence, fantome, couleurs, selection, marqueurs, coupe, X-ray,
-// niveaux coches. La visibilite des maquettes est laissee a changerVisibiliteAvecFondu.
+// niveaux coches. La visibilite des maquettes est reglee par definirMaquettesVisibles.
 function remettreA3DNeutre() {
   clearTimeout(minuteurOpacitesCollision);
-  if (dissolutionActive) dissolutionActive.annuler();
   fermerEchangesGrand(false);
   resetCollisionOpacityState();
-  finirTransitionCollision();
   clearClashMarkers();
   clearClashElementColors();
   deselectEntity();
@@ -1230,17 +1114,16 @@ function remettreA3DNeutre() {
 
 // Cible Viewer : toutes les maquettes visibles et tous les niveaux coches (pendant une prise de vue de la messagerie : les maquettes
 // que le Viewer avait avant de le quitter, memorisees dans memoMaquettesViewer).
-function transitionVersViewer(maquettesVoulues) {
-  dezoomPuisAppliquer(() => {
-    if (document.getElementById("view-viewer").hidden) return;
-    remettreA3DNeutre();
-    const etats = new Map(MAQUETTES.map((m) => [m.id, maquettesVoulues ? maquettesVoulues.get(m.id) !== false : true]));
-    changerVisibiliteAvecFondu(etats, () => renderMaquetteRows(maquettesList, MAQUETTES));
-  });
+function appliquerCibleViewer(maquettesVoulues) {
+  if (document.getElementById("view-viewer").hidden) return;
+  remettreA3DNeutre();
+  poserCameraCadrageGlobal();
+  definirMaquettesVisibles(new Map(MAQUETTES.map((m) => [m.id, maquettesVoulues ? maquettesVoulues.get(m.id) !== false : true])));
+  renderMaquetteRows(maquettesList, MAQUETTES);
 }
 
 navLinks.forEach((link) => {
-  link.addEventListener("click", () => transitionVue(link.dataset.view, () => {
+  link.addEventListener("click", () => {
     const page = link.dataset.view;
     const priseDeVue = !!(messagerie && messagerie.priseDeVueEnCours());
     const deja3D = !viewViewer.hidden;
@@ -1254,9 +1137,8 @@ navLinks.forEach((link) => {
     if (page === "viewer" || page === "collision") {
       viewerDepuisVueDiscussion = false;
       const maquettesPrise = priseDeVue && page === "viewer" ? memoMaquettesViewer : null;
-      depuisMiseEnPageCollision = !collisionDetail.hidden || collisionContexteOn || !!collisionActiveClash || collisionOpacityTouched.length > 0;
       // Une collision restee ouverte : on repasse au recap (sinon revenir sur Collision rouvrirait la meme detection avec viewerWrap deplace
-      // ailleurs : canvas vide). Aucun effacement ici : les bulles s'effacent pendant le vol (dezoomPuisAppliquer).
+      // ailleurs : canvas vide).
       if (!collisionDetail.hidden) {
         collisionDetail.hidden = true;
         collisionRecap.hidden = false;
@@ -1266,19 +1148,21 @@ navLinks.forEach((link) => {
         discussionsListPane.hidden = false;
       }
       activateView(page, { garder3D: true });
-      if (page === "viewer") transitionVersViewer(maquettesPrise);
-      else ouvrirPageCollision({ dezoomPuisTransition: true });
+      if (page === "viewer") appliquerCibleViewer(maquettesPrise);
+      else {
+        ouvrirPageCollision();
+        poserCameraCadrageGlobal();
+      }
       navbarLinksEl.classList.remove("open");
       return;
     }
-    // Autre page (sans 3D) : annule une sequence en cours, repart d'un etat sain (une detection ou un fil qui masquait des maquettes).
-    ++transitionCibleId;
+    // Autre page (sans 3D) : repart d'un etat sain (une detection ou un fil qui masquait des maquettes).
     fermerEchangesGrand(false);
     restoreAllModelsVisible();
     if (!collisionDetail.hidden) {
       collisionDetail.hidden = true;
       collisionRecap.hidden = false;
-      effacerClashMarkersProgressivement();
+      clearClashMarkers();
       clearClashElementColors();
       deselectEntity();
     }
@@ -1295,7 +1179,7 @@ navLinks.forEach((link) => {
       adminFrame.src = "/personas/admin-groupes.html?project=" + encodeURIComponent(projectSelect.value);
     }
     navbarLinksEl.classList.remove("open");
-  }));
+  });
 });
 
 // Menu navbar mobile (hamburger) : cache/affiche la liste des onglets sur
@@ -3704,25 +3588,21 @@ function ouvrirViewerSurVue(vue) {
     navLinks.find((l) => l.dataset.view === "viewer").click();
     return;
   }
-  transitionVue("viewer", () => {
-    ++transitionCibleId; // annule une sequence de dezoom en cours
-    fermerEchangesGrand(false);
-    restoreAllModelsVisible();
-    niveauxState.forEach((n) => {
-      n.checked = true;
-      if (n.checkboxEl) n.checkboxEl.checked = true;
-    });
-    // Rien d'asynchrone laisse par la page Collision (vol de camera, fondu, pose differee des transparences) ne doit passer apres la restauration.
-    viewer.cameraFlight.cancel();
-    clearTimeout(minuteurOpacitesCollision);
-    if (dissolutionActive) dissolutionActive.annuler();
-    activateView("viewer");
-    restoreViewerState(vue.etat);
-    viewerDepuisVueDiscussion = true;
-    viewer.camera.projection = "perspective"; // projection de la capture (la page Collision peut avoir laisse l'orthographique du plan)
-    viewer.cameraFlight.jumpTo({ eye: vue.etat.camera.eye, look: vue.etat.camera.look, up: vue.etat.camera.up });
-    navbarLinksEl.classList.remove("open");
+  fermerEchangesGrand(false);
+  restoreAllModelsVisible();
+  niveauxState.forEach((n) => {
+    n.checked = true;
+    if (n.checkboxEl) n.checkboxEl.checked = true;
   });
+  // Rien d'asynchrone laisse par la page Collision (vol de camera, pose differee des transparences) ne doit passer apres la restauration.
+  viewer.cameraFlight.cancel();
+  clearTimeout(minuteurOpacitesCollision);
+  activateView("viewer");
+  restoreViewerState(vue.etat);
+  viewerDepuisVueDiscussion = true;
+  viewer.camera.projection = "perspective"; // projection de la capture (la page Collision peut avoir laisse l'orthographique du plan)
+  viewer.cameraFlight.jumpTo({ eye: vue.etat.camera.eye, look: vue.etat.camera.look, up: vue.etat.camera.up });
+  navbarLinksEl.classList.remove("open");
 }
 
 newDiscussionBtn.addEventListener("click", () => {
@@ -3818,8 +3698,7 @@ function remplirCouples(ul) {
     if (detection === detectionCourante) btn.classList.add("courant");
     btn.addEventListener("click", () => {
       memoriserDetection(detection.id);
-      // Changer de maquettes en collision : dezoom vers le batiment complet (vue initiale), PUIS transition des maquettes.
-      openDetection(detection, { dezoomPuisTransition: true });
+      openDetection(detection);
     });
 
     // Une pastille de couleur par maquette du couple, comme les boutons de la 3D.
@@ -3890,10 +3769,7 @@ function ouvrirPageCollision(options = {}) {
 }
 
 // detection = null : aucun couple choisi (20/10), la 3D montre toutes les maquettes et le drawer la liste des couples.
-// options.dezoomPuisTransition (choix d'une autre paire de maquettes) : la camera DEZOOME d'abord vers le batiment complet, et seulement
-// ensuite les maquettes se dissolvent et les bulles de la nouvelle paire apparaissent, pour que le changement de sujet se voie.
-function openDetection(detection, options = {}) {
-  if (!options.dezoomPuisTransition) ++transitionCibleId; // une ouverture directe annule une sequence de dezoom en cours
+function openDetection(detection) {
   detectionCourante = detection;
   renderDetections();
   collisionRecap.hidden = true;
@@ -3902,40 +3778,18 @@ function openDetection(detection, options = {}) {
   collisionListTitle.setAttribute("aria-expanded", "false");
   sectionCollisionCouples.hidden = !!detection;
   sectionCollisionListe.hidden = !detection;
-  const canevasVue = document.getElementById("viewerCanvas");
-  if (canevasVue) { canevasVue.style.transition = ""; canevasVue.style.opacity = ""; }
-  // Mise en page des panneaux (taille de la 3D). Avec garderPanneaux, elle est
-  // differee a la fin du dezoom : la zone 3D garde exactement la meme taille pendant le vol (sinon le cadrage se decale).
-  // 3D deja dans la page Collision (changement de paire, clic sur Collision depuis une collision) ; sinon (venu du Viewer ou de Discussions) elle
-  // est deplacee tout de suite, la page cible n'ayant pas d'autre 3D a montrer.
-  const garderPanneaux = !!(options.dezoomPuisTransition && viewerWrap.parentNode === collisionViewerSlot);
-  const appliquerPanneaux = () => {
-    fermerEchangesGrand(false);
-    if (viewerWrap.parentNode !== collisionViewerSlot) collisionViewerSlot.appendChild(viewerWrap);
-    if (collisionDiscussion.parentNode !== collisionLeft) collisionLeft.appendChild(collisionDiscussion);
-    // Zone de commentaires reduite par defaut a l'entree dans la page Collision
-    // (19/10, demande de Gilles) : seul le bandeau titre est visible, le bouton
-    // existant la deplie ; l'etat n'est pas reinitialise entre deux collisions.
-    collisionDiscussion.classList.add("collapsed");
-    // Meme etat que le drawer du Viewer (partage, 20/10).
-    setCollisionPanelCollapsed(infoPanel.classList.contains("collapsed"));
-    collisionDiscussion.hidden = true;
-    window.dispatchEvent(new Event("resize"));
-  };
-  if (!garderPanneaux) {
-    fermerEchangesGrand(false);
-    collisionViewerSlot.appendChild(viewerWrap);
-    collisionLeft.appendChild(collisionDiscussion);
-    collisionDiscussion.classList.add("collapsed");
-    setCollisionPanelCollapsed(infoPanel.classList.contains("collapsed"));
-  }
+  fermerEchangesGrand(false);
+  collisionViewerSlot.appendChild(viewerWrap);
+  collisionLeft.appendChild(collisionDiscussion);
+  collisionDiscussion.classList.add("collapsed");
+  setCollisionPanelCollapsed(infoPanel.classList.contains("collapsed"));
   // A l'entree dans la page Collision, le contexte repart sur "Isole".
   collisionContexteNiveau = "isole";
   // Meme logique que dans un fil de discussion : ici on ne fait que
   // consulter une collision, pas de "Nouvelle discussion" ni de coupe.
   newDiscussionBtn.hidden = true;
   coupeToolbar.hidden = true;
-  if (!garderPanneaux) window.dispatchEvent(new Event("resize"));
+  window.dispatchEvent(new Event("resize"));
 
   // Ouvert par defaut (sans effet visuel sur desktop, le panneau y est deja
   // toujours visible) : sur mobile, arriver ici doit montrer tout de suite
@@ -3952,34 +3806,21 @@ function openDetection(detection, options = {}) {
   // des cases a cocher, pour qu'elles refletent l'etat a jour des l'entree.
   const subset = detection ? MAQUETTES.filter((m) => detection.modeles.includes(m.id)) : [];
   // Nouvelle detection : fantome du contexte et transparence repartent de zero.
-  // Avec dezoomPuisTransition, la remise a zero est differee a la fin du dezoom : l'ancienne mise en page est gardee pendant le vol.
-  if (!options.dezoomPuisTransition && (collisionContexteOn || collisionActiveClash || collisionOpacityTouched.length > 0)) resetCollisionOpacityState();
+  if ((collisionContexteOn || collisionActiveClash || collisionOpacityTouched.length > 0)) resetCollisionOpacityState();
   const etatsModeles = new Map(MAQUETTES.map((m) => [m.id, detection ? detection.modeles.includes(m.id) : true]));
   const detectionClashes = detection ? CLASHES.filter((c) => c.detectionId === detection.id) : [];
   const marqueursAPoser = detectionClashes.filter((c) => !c.factice);
-  if (options.dezoomPuisTransition) {
-    // Sequence unique : l'affichage courant est conserve pendant le dezoom, puis tout est applique en un passage a l'arrivee.
-    dezoomPuisAppliquer(() => {
-      if (detectionCourante !== detection || document.getElementById("view-collision").hidden) return;
-      if (garderPanneaux) appliquerPanneaux();
-      remettreA3DNeutre();
-      changerVisibiliteAvecFondu(etatsModeles, () => { if (detectionCourante === detection) renderClashMarkers(marqueursAPoser); });
-    });
-  } else {
-    changerVisibiliteAvecFondu(etatsModeles);
-  }
+  definirMaquettesVisibles(etatsModeles);
   renderMaquetteRows(collisionMaquettesList, subset);
   renderCollisionMaquetteToggles(subset);
 
   renderCollisionsList(detectionClashes);
   animerEntreeListe(detection ? collisionsList : collisionCouplesList);
-  if (!options.dezoomPuisTransition) renderClashMarkers(marqueursAPoser);
-  if (!options.dezoomPuisTransition) {
-    clearClashElementColors();
-    deselectEntity();
-  }
+  renderClashMarkers(marqueursAPoser);
+  clearClashElementColors();
+  deselectEntity();
 
-  if (!garderPanneaux) collisionDiscussion.hidden = true;
+  collisionDiscussion.hidden = true;
   discussionMessages.innerHTML = "";
   discussionReplyForm.hidden = true;
   currentDiscussionThread = null;
@@ -4869,7 +4710,7 @@ function ensureClashMarkerAssets() {
   // Mesh d'ancrage invisible, jamais detruit : xeokit compile le programme WebGL du Mesh de facon SYNCHRONE dans
   // le constructeur de Mesh (getShaderParameter), et le detruit des que le dernier Mesh qui l'utilise disparait.
   // Sans ancre, chaque retour a un couple avec marqueurs recompilait le shader, et cet appel attend toute la file
-  // GPU (14 000 bufferSubData de la dissolution precedente) : gel de 4 a 8 s. Avec l'ancre, le programme reste
+  // GPU (14 000 bufferSubData d'un changement de visibilite precedent) : gel de 4 a 8 s. Avec l'ancre, le programme reste
   // vivant et les marqueurs ne compilent plus rien.
   clashMarkerAnchor = new Mesh(viewer.scene, {
     id: CLASH_MARKER_ID_PREFIX + "ancre",
@@ -4896,41 +4737,6 @@ function revelationProgressive() {
   return !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
-// Disparition des collisions l'une apres l'autre (21/10, demande de Gilles) : meme ordre que l'apparition (rangsRevelation), meme pas de
-// 70 ms mais resserre pour que l'ensemble tienne vers 1,2 s (fondu de 250 ms inclus). Joue en parallele de la navigation ; les minuteurs
-// sont ceux de clashRevelationTimers, donc tout nouvel effacement ou rendu de marqueurs (clearClashMarkers) les annule et nettoie sans fantome.
-// Effacement immediat si le systeme demande moins de mouvement ou s'il n'y a qu'une collision.
-const FONDU_SORTIE_MS = 250;
-const DUREE_SORTIE_MAX_MS = 950;
-function effacerClashMarkersProgressivement() {
-  const clashes = CLASHES.filter((c) => clashMarkers.has(c.id));
-  if (!revelationProgressive() || clashes.length < 2) {
-    clearClashMarkers();
-    return;
-  }
-  clashRevelationTimers.forEach(clearTimeout);
-  clashRevelationTimers = [];
-  const rangs = rangsRevelation(clashes);
-  const pas = Math.min(PAS_REVELATION_MS, DUREE_SORTIE_MAX_MS / (clashes.length - 1));
-  clashes.forEach((clash) => {
-    clashRevelationTimers.push(setTimeout(() => {
-      const mesh = clashMarkers.get(clash.id);
-      if (mesh) mesh.visible = false;
-      const pastille = clashPastilles.get(clash.id);
-      if (pastille && pastille.el) {
-        pastille.el.style.animationDelay = "0ms";
-        pastille.el.classList.add("sortie");
-      }
-      const bulle = clashBullesList.find((b) => b.id === clash.id);
-      if (bulle) {
-        bulle.revele = false;
-        scheduleClashBulles();
-      }
-    }, rangs.get(clash.id) * pas));
-  });
-  clashRevelationTimers.push(setTimeout(clearClashMarkers, (clashes.length - 1) * pas + FONDU_SORTIE_MS));
-}
-
 function clearClashMarkers() {
   clashRevelationTimers.forEach(clearTimeout);
   clashRevelationTimers = [];
@@ -4953,8 +4759,8 @@ let clashBullesBound = false;
 let clashBullesDessine = false;
 
 // Contexte 2D des bulles en mode logiciel (willReadFrequently) : un canvas 2D accelere par le GPU se synchronise
-// avec le processus GPU a chaque setTransform/clearRect ; quand la file GPU est encombree par la dissolution
-// des maquettes (14 000 bufferSubData), le fil principal attendait 6 a 9 s. 15 cercles se dessinent tres bien au CPU.
+// avec le processus GPU a chaque setTransform/clearRect ; quand la file GPU est encombree par un changement de
+// visibilite des maquettes (14 000 bufferSubData), le fil principal attendait 6 a 9 s. 15 cercles se dessinent tres bien au CPU.
 function contexteBulles() {
   return clashBullesCanvas.getContext("2d", { willReadFrequently: true });
 }
@@ -5618,11 +5424,10 @@ function setModeAffichageCollision(mode) {
     viewer.scene.setObjectsPickable(collisionEntityIds(m.id), mode !== "contexte");
   });
   refreshCollisionMaquetteToggles();
-  // Les maquettes hors couple apparaissent ou disparaissent en dissolution (ecriture groupee), puis la transparence est recalculee.
-  changerVisibiliteAvecFondu(new Map(collisionGhostMaquettes.map((m) => [m.id, autres])), () => {
-    refreshCollisionMaquetteToggles();
-    applyCollisionOpacities();
-  });
+  // Les maquettes hors couple apparaissent ou disparaissent, puis la transparence est recalculee.
+  definirMaquettesVisibles(new Map(collisionGhostMaquettes.map((m) => [m.id, autres])));
+  refreshCollisionMaquetteToggles();
+  applyCollisionOpacities();
 }
 
 // Retour a l'etat normal, appelee a chaque sortie de la page Collision
@@ -6199,22 +6004,6 @@ function showThreadDiscussion(thread) {
   createInstructionBtn.hidden = personaSelect.value !== "be" || !!thread.isInstruction;
 }
 
-function debuterTransitionCollision() {
-  collisionTransitionEnCours = true;
-  collisionsList.classList.add("en-transition");
-  clearTimeout(collisionTransitionTimer);
-  // Securite : si le vol est interrompu (camera deplacee a la main), on deverrouille quand meme.
-  collisionTransitionTimer = setTimeout(finirTransitionCollision, 3000);
-}
-function finirTransitionCollision() {
-  if (!collisionTransitionEnCours) return;
-  collisionTransitionEnCours = false;
-  clearTimeout(collisionTransitionTimer);
-  collisionsList.classList.remove("en-transition");
-  // Calcul lourd differe : isolation / contexte appliques une fois la camera arretee.
-  if (collisionActiveClash) applyCollisionOpacities();
-}
-
 // Transparence de la collision (20/10) : appliquee une seule fois, a l'arrivee de la camera. Si l'on clique une autre collision en
 // cours de vol, le vol repart et le calcul de la precedente n'a jamais lieu (rien ne s'accumule, plus de gel). Filet : si le vol
 // est interrompu a la main (rotation), la callback d'arrivee n'est jamais appelee, un minuteur applique alors quand meme.
@@ -6234,9 +6023,7 @@ function selectClash(clash, surArrivee) {
   // Le contexte de la collision precedente est remis tel quel des le choix : la camera traverse la maquette complete pendant son vol, le
   // fantome de la nouvelle collision n'est pose qu'a l'arrivee (voir appliquerOpacitesSiActive).
   resetCollisionOpacities();
-  if (COLLISION_TRANSITION_VERROUILLEE) debuterTransitionCollision();
   flyToClash(clash, true, () => {
-    if (COLLISION_TRANSITION_VERROUILLEE) finirTransitionCollision();
     appliquerOpacitesSiActive(clash);
     if (surArrivee) surArrivee();
   });
@@ -6259,8 +6046,6 @@ function selectClash(clash, surArrivee) {
 // Point d'entree commun pour selectionner un clash, que ce soit via la
 // ligne de la liste ou un clic direct sur sa bulle 3D dans le viewer.
 function activateClash(clash, surArrivee) {
-  // Verrou pendant le vol de camera : le clic est ignore tant que la camera n'est pas arretee.
-  if (COLLISION_TRANSITION_VERROUILLEE && collisionTransitionEnCours) return;
   collisionsList.querySelectorAll(".collision-item").forEach((el) => {
     el.classList.toggle("active", el.dataset.clashId === clash.id);
   });
@@ -7159,13 +6944,6 @@ const niveauxState = [];
 // c'est ce qui evitait les bugs en cascade des versions precedentes (masquer
 // une maquette puis en montrer une autre pouvait rendre visibles des objets
 // d'une maquette pourtant encore decochee).
-// Changement de maquettes affichees en "dissolution" (20/10). Cause du gel mesuree (profil CPU Chromium, 4 a 20 s) : dans xeokit,
-// masquer ou afficher une maquette ecrit les drapeaux de chacun de ses objets dans la carte graphique un par un (bufferSubData),
-// soit ~14 000 appels pour l'Architecture. Faits d'un bloc, ils bloquent la page. Ici les objets a changer sont melanges puis
-// traites par paquets, image par image, avec un budget de temps (~9 ms par image) : la page ne gele jamais et on voit les maquettes
-// se dissoudre l'une dans l'autre (duree visee 0,35 s, plus longue seulement si la machine est lente). Un nouveau changement
-// pendant une dissolution reprend depuis l'etat reel des objets (rien n'est perdu ni double).
-// etats = Map id de maquette -> doit etre affichee ; apres : appele a la fin.
 // Ecriture GROUPEE des drapeaux de visibilite (20/10). Mesure (profil CPU Brave) : pour chaque objet dont la visibilite change, xeokit
 // fait un gl.bufferSubData ; 14 000 appels pour l'Architecture, dont la file attend 5 a 9 s dans le processus graphique (images
 // qui saccadent, fil principal gele des qu'un appel synchrone suit). Ici, pendant `changer`, l'ecriture graphique de chaque couche
@@ -7196,65 +6974,10 @@ function ecritureGroupeeDrapeaux(modeles, changer) {
   viewer.scene.glRedraw();
 }
 
-let dissolutionActive = null;
-const DISSOLUTION_DUREE = 350;
-const DISSOLUTION_BUDGET_MS = 9;
-function melanger(tableau) {
-  for (let i = tableau.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    const t = tableau[i]; tableau[i] = tableau[j]; tableau[j] = t;
-  }
-  return tableau;
-}
-function changerVisibiliteAvecFondu(etats, apres) {
-  if (dissolutionActive) dissolutionActive.annuler();
-  const appliquerFinal = () => {
-    MAQUETTES.forEach((m) => { if (etats.has(m.id)) m.shown = etats.get(m.id); });
-    applyVisibility();
-    if (apres) apres();
-  };
-  const animer = window.matchMedia("(min-width: 769px)").matches && !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  // Objets dont l'etat reel differe de l'etat voulu (les garde-corps mal places restent masques, cf applyVisibility).
-  const aChanger = [];
-  MAQUETTES.forEach((m) => {
-    if (!m.model || !etats.has(m.id)) return;
-    const veut = etats.get(m.id);
-    m.model.entityList.forEach((entite) => {
-      if (entite.visible === veut) return;
-      if (veut && HOSPITAL_MISPLACED_RAILING_IDS.includes(entite.id)) return;
-      aChanger.push([entite, veut]);
-    });
-  });
-  if (!animer || aChanger.length === 0) {
-    appliquerFinal();
-    return;
-  }
-  melanger(aChanger);
-  const modelesTouches = MAQUETTES.filter((m) => m.model && etats.has(m.id) && m.model.entityList.some((e) => e.visible !== etats.get(m.id))).map((m) => m.model);
-  const debut = performance.now();
-  let indice = 0;
-  let annule = false;
-  const etat = { annuler: () => { annule = true; dissolutionActive = null; } };
-  dissolutionActive = etat;
-  const pas = () => {
-    if (annule) return;
-    const t0 = performance.now();
-    const voulu = Math.max(indice + 1, Math.ceil(Math.min(1, (t0 - debut) / DISSOLUTION_DUREE) * aChanger.length));
-    const fin = Math.min(aChanger.length, voulu);
-    // Un seul envoi graphique par couche et par image, quel que soit le nombre d'objets de ce paquet.
-    ecritureGroupeeDrapeaux(modelesTouches, () => {
-      for (; indice < fin; indice++) {
-        const [entite, veut] = aChanger[indice];
-        entite.visible = veut;
-      }
-    });
-    if (indice < aChanger.length) requestAnimationFrame(pas);
-    else {
-      dissolutionActive = null;
-      appliquerFinal();
-    }
-  };
-  requestAnimationFrame(pas);
+// Applique d'un coup la visibilite voulue des maquettes (etats : id -> bool).
+function definirMaquettesVisibles(etats) {
+  MAQUETTES.forEach((m) => { if (etats.has(m.id)) m.shown = etats.get(m.id); });
+  applyVisibility();
 }
 
 function applyVisibility() {
@@ -8372,8 +8095,6 @@ if (import.meta.env.DEV && new URLSearchParams(location.search).has("vues")) {
       activateView("collision");
       openDetection(DETECTIONS.find((d) => d.id === "hopital-arch-mep"));
     },
-    // Le fondu des maquettes (dissolution par paquets) est termine quand plus aucune dissolution n'est active.
-    sceneStable: () => dissolutionActive === null,
     selectionner: (clash, surArrivee) => activateClash(clash, surArrivee),
     capturer: capturerVueJpeg,
     decrire: decrireClashPourVue
