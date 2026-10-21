@@ -1114,11 +1114,25 @@ function animerEntreeListe(ul) {
 }
 
 // Cadrage global du batiment : la camera est posee directement dessus, sans vol.
-// avecDezoom : la camera recule en vol (1,1 s) jusqu'a ce cadrage au lieu d'y etre posee.
-function poserCameraCadrageGlobal(avecDezoom) {
+// avecDezoom : la camera recule en vol (1,1 s) jusqu'a ce cadrage au lieu d'y etre posee ; apres (optionnel) est appelee a l'arrivee.
+function poserCameraCadrageGlobal(avecDezoom, apres) {
   viewer.cameraFlight.cancel();
-  if (avecDezoom) viewer.cameraFlight.flyTo(Object.assign(cadrageBatimentDansZone(), { duration: 1.1 }));
-  else viewer.cameraFlight.jumpTo(cadrageBatimentDansZone());
+  const cadrage = cadrageBatimentDansZone();
+  if (!avecDezoom || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    viewer.cameraFlight.jumpTo(cadrage);
+    if (apres) apres();
+    return;
+  }
+  let fait = false;
+  let filet = null;
+  const suite = () => {
+    if (fait) return;
+    fait = true;
+    clearTimeout(filet);
+    if (apres) apres();
+  };
+  viewer.cameraFlight.flyTo(Object.assign(cadrage, { duration: 1.1 }), suite);
+  filet = setTimeout(suite, 2200); // si le vol est interrompu, la suite part quand meme
 }
 
 // Remise a plat de l'affichage 3D a l'arrivee (sous le canvas masque) : transparence, fantome, couleurs, selection, marqueurs, coupe, X-ray,
@@ -1192,11 +1206,33 @@ function transitionVue(vue, changer) {
   }, 300);
 }
 
+let dezoomDejaFait = false; // vrai le temps du clic rejoue a l'arrivee du dezoom (voir le handler ci-dessous)
 navLinks.forEach((link) => {
   link.addEventListener("click", () => {
     placerPastilleNavbar(link);
+    // Clic sur Collision alors qu'une collision precise est ouverte : la camera dezoome d'abord, la mise en forme de la maquette
+    // (X-ray, fantomes, selection, bulles) ne change pas pendant le vol ; a l'arrivee, l'arrivee classique sur Collision se joue
+    // (remise au propre, dissolution progressive, apparition des lignes et des bulles) : le clic est rejoue avec dezoomDejaFait.
+    if (link.dataset.view === "collision" && !collisionDetail.hidden && collisionActiveClash && !dezoomDejaFait) {
+      // Le bandeau de la collision se ferme avant le vol : la zone 3D a sa taille finale, la maquette arrive au meme endroit qu'a l'arrivee
+      // « au propre » sur Collision.
+      collisionDiscussion.hidden = true;
+      window.dispatchEvent(new Event("resize"));
+      // Le verrou de la camera sur la bulle est libere : sinon, a chaque image, il recentre la bulle sur l'axe de vue et decale la maquette.
+      deverrouillerCamera();
+      poserCameraCadrageGlobal(true, () => {
+        dezoomDejaFait = true;
+        link.click();
+      });
+      navbarLinksEl.classList.remove("open");
+      return;
+    }
     transitionVue(link.dataset.view, () => {
     const page = link.dataset.view;
+    const dezoomFait = dezoomDejaFait;
+    dezoomDejaFait = false;
+    // Objets en fantome au moment ou l'arrivee classique se joue apres un dezoom : ils repasseront progressivement en rendu plein.
+    const xrayAvantDezoom = dezoomFait ? Array.from(viewer.scene.xrayedObjectIds) : null;
     // Passages Viewer vers Collision et Collision vers Viewer : les maquettes se dissolvent progressivement (voir openDetection et appliquerCibleViewer).
     const depuisViewer = !!navLinks.find((l) => l.classList.contains("active") && l.dataset.view === "viewer");
     const depuisCollision = !!navLinks.find((l) => l.classList.contains("active") && l.dataset.view === "collision");
@@ -1215,7 +1251,7 @@ navLinks.forEach((link) => {
       const maquettesPrise = priseDeVue && page === "viewer" ? memoMaquettesViewer : null;
       // Clic sur Viewer ou Collision alors qu'une collision precise ou une vue ouverte depuis une conversation est affichee : la camera
       // dezoome jusqu'au resultat final.
-      const depuisCollisionPrecise = (!collisionDetail.hidden && !!collisionActiveClash) || depuisVueDiscussion;
+      const depuisCollisionPrecise = ((!collisionDetail.hidden && !!collisionActiveClash) || depuisVueDiscussion) && !dezoomFait;
       // Une collision restee ouverte : on repasse au recap (sinon revenir sur Collision rouvrirait la meme detection avec viewerWrap deplace
       // ailleurs : canvas vide).
       if (!collisionDetail.hidden) {
@@ -1233,7 +1269,7 @@ navLinks.forEach((link) => {
         animerEntreeListe(maquettesList);
       } else {
         if (depuisVueDiscussion) remettreA3DNeutre();
-        ouvrirPageCollision({ fondu: depuisViewer && !depuisVueDiscussion });
+        ouvrirPageCollision({ fondu: depuisViewer && !depuisVueDiscussion, reveler: xrayAvantDezoom });
         poserCameraCadrageGlobal(depuisCollisionPrecise);
       }
       navbarLinksEl.classList.remove("open");
@@ -3855,6 +3891,7 @@ function ouvrirPageCollision(options = {}) {
 
 // detection = null : aucun couple choisi (20/10), la 3D montre toutes les maquettes et le drawer la liste des couples.
 // options.fondu (arrivee depuis le Viewer) : les maquettes hors paire se dissolvent progressivement, puis les bulles apparaissent.
+// options.reveler (ids des objets en fantome avant la remise au propre) : ils repassent progressivement en rendu plein, puis la liste et les bulles apparaissent.
 function openDetection(detection, options = {}) {
   detectionCourante = detection;
   renderDetections();
@@ -3910,6 +3947,7 @@ function openDetection(detection, options = {}) {
     renderClashMarkers(marqueursAPoser);
   };
   if (options.fondu) changerVisibiliteAvecFondu(etatsModeles, lancerApparition);
+  else if (options.reveler) degelerFantomesProgressivement(options.reveler, lancerApparition);
   else lancerApparition();
   clearClashElementColors();
   deselectEntity();
@@ -7130,6 +7168,40 @@ function changerVisibiliteAvecFondu(etats, apres) {
     else {
       dissolutionActive = null;
       appliquerFinal();
+    }
+  };
+  requestAnimationFrame(pas);
+}
+
+// Passage progressif du rendu fantome (X-ray) au rendu plein : les objets listes sont remis en fantome puis redeviennent pleins par
+// paquets aleatoires, meme principe et meme duree que la dissolution des maquettes. apres : appelee a la fin. Annulable via dissolutionActive.
+function degelerFantomesProgressivement(ids, apres) {
+  if (dissolutionActive) dissolutionActive.annuler();
+  const entites = ids.map((id) => viewer.scene.objects[id]).filter(Boolean);
+  const finir = () => { if (apres) apres(); };
+  if (entites.length === 0 || !window.matchMedia("(min-width: 769px)").matches || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    finir();
+    return;
+  }
+  const modeles = MAQUETTES.filter((maquette) => maquette.model).map((maquette) => maquette.model);
+  ecritureGroupeeDrapeaux(modeles, () => entites.forEach((entite) => { entite.xrayed = true; }));
+  melanger(entites);
+  const debut = performance.now();
+  let indice = 0;
+  let annule = false;
+  const etat = { annuler: () => { annule = true; dissolutionActive = null; } };
+  dissolutionActive = etat;
+  const pas = () => {
+    if (annule) return;
+    const voulu = Math.max(indice + 1, Math.ceil(Math.min(1, (performance.now() - debut) / DISSOLUTION_DUREE) * entites.length));
+    const fin = Math.min(entites.length, voulu);
+    ecritureGroupeeDrapeaux(modeles, () => {
+      for (; indice < fin; indice++) entites[indice].xrayed = false;
+    });
+    if (indice < entites.length) requestAnimationFrame(pas);
+    else {
+      dissolutionActive = null;
+      finir();
     }
   };
   requestAnimationFrame(pas);
