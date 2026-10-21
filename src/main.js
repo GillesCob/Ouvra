@@ -403,6 +403,24 @@ const docModalDownload = document.getElementById("docModalDownload");
 const downloadModalOverlay = document.getElementById("downloadModalOverlay");
 const downloadModalOk = document.getElementById("downloadModalOk");
 const navLinks = Array.from(document.querySelectorAll(".nav-link"));
+// Pastille qui glisse sous le lien actif de la barre (ordinateur), meme principe que la bascule Niveaux / Maquettes du drawer : position
+// et largeur mesurees sur le lien, 0,3 s. Elle se pose sans glisser la premiere fois (barre masquee jusque-la, sur l'accueil).
+const navbarThumb = document.getElementById("navbarThumb");
+let navbarThumbPosee = false;
+function placerPastilleNavbar(lien) {
+  const cible = lien || navLinks.find((l) => l.classList.contains("active"));
+  if (!navbarThumb || !cible || !cible.offsetWidth) return;
+  if (!navbarThumbPosee) navbarThumb.style.transition = "none";
+  navbarThumb.style.width = cible.offsetWidth + "px";
+  navbarThumb.style.transform = "translateX(" + cible.offsetLeft + "px)";
+  if (!navbarThumbPosee) {
+    void navbarThumb.offsetWidth;
+    navbarThumb.style.transition = "";
+    navbarThumbPosee = true;
+  }
+}
+const observateurNavbar = new ResizeObserver(() => placerPastilleNavbar());
+navLinks.forEach((l) => observateurNavbar.observe(l));
 const navbarLinksEl = document.getElementById("navbarLinks");
 const navbarEl = document.getElementById("navbar");
 const adminFrame = document.getElementById("adminFrame");
@@ -1028,6 +1046,7 @@ function activateView(viewName, options = {}) {
   // La vue est choisie : le logo de demarrage (#splashLogo) peut s'effacer.
   document.documentElement.classList.remove("demarrage");
   navLinks.forEach((l) => l.classList.toggle("active", l.dataset.view === viewName));
+  placerPastilleNavbar();
   document.querySelectorAll(".view").forEach((view) => {
     view.hidden = view.id !== "view-" + viewName;
   });
@@ -1122,8 +1141,43 @@ function appliquerCibleViewer(maquettesVoulues) {
   renderMaquetteRows(maquettesList, MAQUETTES);
 }
 
+// Transition de page (20/10), calquee sur le portfolio (bascule Mode Dev / Mode Batiment) : la page s'efface en descendant de
+// 8 px (0,3 s), le contenu change, puis elle revient (0,3 s) ; un trait d'accent balaie le bas de la barre de navigation. Pas de
+// transition quand on clique sur la page deja ouverte ni si le systeme demande moins d'animations.
+let transitionVueEnCours = false;
+const traitNavigation = document.createElement("div");
+traitNavigation.id = "navTrait";
+traitNavigation.setAttribute("aria-hidden", "true");
+document.getElementById("navbar").appendChild(traitNavigation);
+function transitionVue(vue, changer) {
+  const appBodyEl = document.getElementById("appBody");
+  const courant = navLinks.find((l) => l.classList.contains("active"));
+  if ((courant && courant.dataset.view === vue) || transitionVueEnCours || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    changer();
+    return;
+  }
+  transitionVueEnCours = true;
+  traitNavigation.classList.remove("balayage");
+  void traitNavigation.offsetWidth;
+  traitNavigation.classList.add("balayage");
+  appBodyEl.classList.add("vue-sortie");
+  setTimeout(() => {
+    changer();
+    appBodyEl.classList.remove("vue-sortie");
+    appBodyEl.classList.add("vue-entree");
+    void appBodyEl.offsetHeight;
+    appBodyEl.classList.remove("vue-entree");
+    window.dispatchEvent(new Event("resize"));
+    setTimeout(() => {
+      transitionVueEnCours = false;
+    }, 300);
+  }, 300);
+}
+
 navLinks.forEach((link) => {
   link.addEventListener("click", () => {
+    placerPastilleNavbar(link);
+    transitionVue(link.dataset.view, () => {
     const page = link.dataset.view;
     const priseDeVue = !!(messagerie && messagerie.priseDeVueEnCours());
     const deja3D = !viewViewer.hidden;
@@ -1182,6 +1236,7 @@ navLinks.forEach((link) => {
       adminFrame.src = "/personas/admin-groupes.html?project=" + encodeURIComponent(projectSelect.value);
     }
     navbarLinksEl.classList.remove("open");
+    });
   });
 });
 

@@ -58,7 +58,12 @@ html, body {
 #navbarBrandIcon { height: 22px; width: auto; }
 #navbarBrand:hover { color: var(--accent); }
 
-#navbarLinks { display: flex; gap: 4px; }
+#navbarLinks { display: flex; gap: 4px; position: relative; }
+#navbarThumb {
+  position: absolute; top: 0; bottom: 0; left: 0; width: 0; border-radius: 6px; z-index: 0; pointer-events: none; box-sizing: border-box;
+  background: color-mix(in srgb, var(--accent) 24%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 60%, transparent);
+  transition: transform 0.3s ease, width 0.3s ease;
+}
 
 .nav-link {
   background: none;
@@ -69,8 +74,16 @@ html, body {
   border-radius: 6px;
   cursor: pointer;
 }
+.nav-link { position: relative; z-index: 1; }
 .nav-link:hover { color: var(--text); }
 .nav-link.active { color: var(--text); background: var(--bg); }
+@media (min-width: 769px) {
+  .nav-link { transition: color 0.3s ease; }
+  .nav-link.active { background: none; }
+}
+@media (max-width: 768px) {
+  #navbarThumb { display: none; }
+}
 
 /* Selecteur de profil (porte depuis IES le 16/09) : simule 5 profils
    fictifs (BIM Manager, Responsable Synthese, Bureau d'etudes, Projeteur,
@@ -1892,15 +1905,14 @@ body.acc-actif #appBody { height: 100%; }
    qui s'efface en descendant de 8 px, change, puis revient (voir selectInfoTab dans main.js). */
 #infoPanel .tabs {
   position: relative; display: flex; flex: none; gap: 4px; margin: 8px 10px 4px; padding: 3px;
-  border: 1px solid var(--border); border-radius: 999px;
 }
 #infoPanel .tabs-thumb {
-  position: absolute; top: 3px; bottom: 3px; left: 0; width: 0; border-radius: 999px; z-index: 0; pointer-events: none;
+  position: absolute; top: 3px; bottom: 3px; left: 0; width: 0; border-radius: 6px; z-index: 0; pointer-events: none;
   background: color-mix(in srgb, var(--accent) 24%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 60%, transparent);
   box-sizing: border-box; transition: transform 0.3s ease, width 0.3s ease;
 }
 #infoPanel .tab {
-  position: relative; z-index: 1; flex: 1; background: none; border: none; border-radius: 999px; color: var(--muted);
+  position: relative; z-index: 1; flex: 1; background: none; border: none; border-radius: 6px; color: var(--muted);
   font: inherit; font-size: 12.5px; font-weight: 700; padding: 5px 6px; cursor: pointer; transition: color 0.3s ease;
 }
 #infoPanel .tab:hover { color: var(--text); }
@@ -2985,6 +2997,20 @@ html.demarrage #splashLogo {
   #collisionDiscussion.cb.cb-grand #collisionDiscussionHead h3 { cursor: default; padding: 24px 72px 0 24px; }
 }
 
+/* Transition de page (20/10), meme principe que le portfolio : fondu + decalage de 8 px, balayage d'accent sous la navbar. */
+#appBody { transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out; }
+#appBody.vue-sortie, #appBody.vue-entree { opacity: 0; transform: translateY(8px); }
+#navbar { position: relative; }
+#navTrait {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: var(--accent); opacity: 0; transform-origin: left; pointer-events: none;
+}
+#navTrait.balayage { animation: navTraitBalayage 0.7s ease-out; }
+@keyframes navTraitBalayage {
+  0% { transform: scaleX(0); opacity: 1; }
+  55% { transform: scaleX(1); opacity: 1; }
+  100% { transform: scaleX(1); opacity: 0; }
+}
+
 /* Collisions d'exemple (donnees fictives) : visibles dans la liste, non cliquables. */
 .collision-item.factice { cursor: default; opacity: 0.7; }
 .collision-item.factice:hover { border-color: var(--border); background: inherit; }
@@ -3035,6 +3061,7 @@ html.demarrage #splashLogo {
 @media (prefers-reduced-motion: reduce) {
   .liste-entree > *, #collisionDiscussion.bandeau-entree, #collisionDiscussion.bandeau-maj > *, .clash-pastille.active::before,
   .apparition, #filTagsNb.pulse, #discussionsDetailPane.detail-entree { animation: none; }
+  #appBody { transition: none; }
 }
 
 /* ============================================================================

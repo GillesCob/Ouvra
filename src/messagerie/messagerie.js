@@ -46,6 +46,7 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
     racine.innerHTML =
       '<aside class="msg-lateral" aria-label="Conversations">' +
         '<div class="msg-onglets" role="tablist" aria-label="Type de conversation">' +
+          '<span class="msg-onglets-thumb" aria-hidden="true"></span>' +
           '<button type="button" role="tab" id="msgOngletIndividuel" data-act="onglet" data-v="individuel" aria-selected="true" aria-controls="msgListe">Individuel <span class="msg-badge" id="msgBadgeIndividuel" hidden></span></button>' +
           '<button type="button" role="tab" id="msgOngletGroupe" data-act="onglet" data-v="groupe" aria-selected="false" aria-controls="msgListe">Groupes <span class="msg-badge" id="msgBadgeGroupe" hidden></span></button>' +
         "</div>" +
@@ -58,6 +59,8 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
       "</aside>" +
       '<section class="msg-volet" id="msgVolet" aria-label="Conversation"><p class="msg-volet-vide">Choisissez une conversation.</p></section>' +
       '<div class="msg-dialogue" id="msgDialogue" hidden></div>';
+    const observateurOnglets = new ResizeObserver(placerPastilleOnglets);
+    racine.querySelectorAll('.msg-onglets [role="tab"]').forEach((b) => observateurOnglets.observe(b));
     racine.addEventListener("click", surClic);
     racine.addEventListener("input", surSaisie);
     racine.addEventListener("keydown", surTouche);
@@ -210,6 +213,23 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
     majBadges();
   }
 
+  // Bascule Individuel / Groupes : meme fonctionnement que Niveaux / Maquettes du drawer du Viewer. La pastille glisse tout de suite sous
+  // l'onglet choisi (0,3 s, position et largeur mesurees sur le bouton), la liste s'efface en descendant de 8 px, change, puis revient.
+  let pastillePosee = false;
+  function placerPastilleOnglets() {
+    const thumb = racine.querySelector(".msg-onglets-thumb");
+    const actif = racine.querySelector('.msg-onglets [aria-selected="true"]');
+    if (!thumb || !actif || !actif.offsetWidth) return;
+    if (!pastillePosee) thumb.style.transition = "none";
+    thumb.style.width = actif.offsetWidth + "px";
+    thumb.style.transform = "translateX(" + actif.offsetLeft + "px)";
+    if (!pastillePosee) {
+      void thumb.offsetWidth;
+      thumb.style.transition = "";
+      pastillePosee = true;
+    }
+  }
+
   // Le nouveau sujet doit etre visible dans la liste : recherche et filtre « Non lus » remis a zero.
   function reinitialiserFiltres() {
     etat.q = "";
@@ -218,11 +238,27 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
     $("msgNonLus").setAttribute("aria-pressed", "false");
   }
 
+  let minuteurOnglet = null;
   function choisirOnglet(onglet) {
+    const change = onglet !== etat.onglet;
     etat.onglet = onglet;
     [["individuel", "msgOngletIndividuel"], ["groupe", "msgOngletGroupe"]].forEach(([cle, id]) => $(id).setAttribute("aria-selected", String(cle === onglet)));
     $("msgListe").setAttribute("aria-labelledby", onglet === "individuel" ? "msgOngletIndividuel" : "msgOngletGroupe");
-    rendreListe();
+    placerPastilleOnglets();
+    if (!change || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      rendreListe();
+      return;
+    }
+    const liste = $("msgListe");
+    liste.classList.add("msg-liste-sortie");
+    clearTimeout(minuteurOnglet);
+    minuteurOnglet = setTimeout(() => {
+      rendreListe();
+      liste.classList.remove("msg-liste-sortie");
+      liste.classList.add("msg-liste-entree");
+      void liste.offsetHeight;
+      liste.classList.remove("msg-liste-entree");
+    }, 300);
   }
 
   // ---------- Volet de conversation ----------
@@ -254,10 +290,29 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
       '<div class="msg-composer"><button type="button" class="msg-icone" id="msgBoutonVue" data-act="menu-vue" aria-label="Joindre une prise de vue" aria-haspopup="true" aria-expanded="false" title="Joindre une prise de vue">' + ICONE_APPAREIL + "</button>" +
         '<textarea id="msgSaisie" rows="1" placeholder="Écrire un message" aria-label="Écrire un message"></textarea>' +
         '<button type="button" class="msg-envoyer" id="msgEnvoyer" data-act="envoyer">Envoyer</button></div>';
+    new ResizeObserver(placerPastilleSujets).observe($("msgBande"));
     $("msgScroller").addEventListener("scroll", () => {
       if (racine.offsetParent !== null) defilementMemorise = $("msgScroller").scrollTop;
       synchroniserBoutonBas();
     }, { passive: true });
+  }
+
+  // Bascule entre sujets : meme fonctionnement que Niveaux / Maquettes du drawer du Viewer. La pastille glisse sous la puce active
+  // (0,3 s, position et largeur mesurees), le fil s'efface en descendant de 8 px, change, puis revient (voir ouvrirConversation).
+  function placerPastilleSujets() {
+    const bande = $("msgBande");
+    const thumb = bande && bande.querySelector(".msg-bande-thumb");
+    const actif = bande && bande.querySelector(".msg-pastille.actif");
+    if (!thumb || !actif || !actif.offsetWidth) return;
+    const premiere = !thumb.dataset.pose;
+    if (premiere) thumb.style.transition = "none";
+    thumb.style.width = actif.offsetWidth + "px";
+    thumb.style.transform = "translateX(" + actif.offsetLeft + "px)";
+    if (premiere) {
+      void thumb.offsetWidth;
+      thumb.style.transition = "";
+      thumb.dataset.pose = "1";
+    }
   }
 
   function rendreBande(c) {
@@ -270,7 +325,17 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
         (estUrgent(s) ? '<span class="msg-urgent">Urgent</span>' : "") +
         (s.nonLus ? '<span class="msg-badge" aria-label="' + s.nonLus + ' non lus">' + s.nonLus + "</span>" : "") + "</button>";
     });
-    $("msgBande").innerHTML = html;
+    const bande = $("msgBande");
+    let thumb = bande.querySelector(".msg-bande-thumb");
+    if (!thumb) {
+      thumb = document.createElement("span");
+      thumb.className = "msg-bande-thumb";
+      thumb.setAttribute("aria-hidden", "true");
+      bande.prepend(thumb);
+    }
+    bande.querySelectorAll(".msg-pastille").forEach((p) => p.remove());
+    thumb.insertAdjacentHTML("afterend", html);
+    placerPastilleSujets();
     const nbClos = c.sujets.filter((s) => s.statut === "clos").length;
     const bouton = $("msgHistorique");
     bouton.hidden = nbClos === 0;
@@ -443,6 +508,8 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
 
   // Ouvrir une conversation (et eventuellement un sujet) : les non lus passent a zero dans les listes, le repere reste dans le fil.
   function ouvrirConversation(convId, sujetId) {
+    clearTimeout(minuteurSujet);
+    racine.querySelectorAll(".msg-fil-sortie").forEach((z) => z.classList.remove("msg-fil-sortie"));
     const avant = filCourant();
     if (avant) fermerRepere(avant.fil);
     const memeConv = etat.convId === convId;
@@ -451,17 +518,38 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
     etat.recherche = "";
     const c = convParId(conversations, convId);
     if (!c) return;
-    if (!memeConv || !$("msgScroller")) batirVolet(c);
-    $("msgBarreRecherche").hidden = true;
-    $("msgChampRecherche").value = "";
-    const fil = filCourant().fil;
-    ouvrirFil(fil);
-    vuePendante = null;
-    rendreFilCourant(false);
-    rendreListe();
-    allerAuRepere();
+    const voletPret = memeConv && !!$("msgScroller");
+    if (!voletPret) batirVolet(c);
     racine.classList.add("volet-ouvert");
+    const afficher = () => {
+      $("msgBarreRecherche").hidden = true;
+      $("msgChampRecherche").value = "";
+      const fil = filCourant().fil;
+      ouvrirFil(fil);
+      vuePendante = null;
+      rendreFilCourant(false);
+      rendreListe();
+      allerAuRepere();
+    };
+    const zones = voletPret ? [$("msgNoteSujet"), racine.querySelector(".msg-zone-fil")] : [];
+    if (!voletPret || avant === null || window.matchMedia("(prefers-reduced-motion: reduce)").matches || (avant && avant.sujet === filCourant().sujet)) {
+      afficher();
+      return;
+    }
+    // Meme conversation, autre sujet : la pastille glisse tout de suite, le fil attend (sortie 0,3 s, changement, retour 0,3 s).
+    rendreBande(c);
+    zones.forEach((z) => z.classList.add("msg-fil-sortie"));
+    minuteurSujet = setTimeout(() => {
+      afficher();
+      zones.forEach((z) => {
+        z.classList.remove("msg-fil-sortie");
+        z.classList.add("msg-fil-entree");
+        void z.offsetHeight;
+        z.classList.remove("msg-fil-entree");
+      });
+    }, 300);
   }
+  let minuteurSujet = null;
 
   // ---------- Envoi ----------
   function envoyerMessage() {
