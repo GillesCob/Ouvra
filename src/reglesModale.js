@@ -91,9 +91,23 @@ export function creerReglesModale({ libellesPriorite, libellesStatut, numero, cr
     return niveaux.join(" / ");
   }
 
-  // Valeur de priorite ou de statut, en texte seul (retour de Gilles du 22/10 : les pastilles de couleur ne disaient rien ici).
+  // Valeur de priorite ou de statut, precedee de sa pastille de couleur (celles de la liste des collisions) : la pastille de l'ancienne valeur et
+  // celle de la nouvelle, collees a leur nom (retour de Gilles du 22/10).
   function valeurChamp(champ, cle, classe) {
-    return creer("span", "regles-valeur " + classe, libellesDe(champ)[cle] || cle);
+    const val = creer("span", "regles-valeur " + classe);
+    const libelle = libellesDe(champ)[cle] || cle;
+    if (champ === "priorite") {
+      const groupe = creer("span", "collision-groupe-titre prio-" + cle);
+      const point = creer("i", "collision-groupe-dot");
+      point.setAttribute("aria-hidden", "true");
+      groupe.appendChild(point);
+      val.append(groupe, libelle);
+    } else {
+      const point = creer("i", "collision-statut-dot " + cle);
+      point.setAttribute("aria-hidden", "true");
+      val.append(point, libelle);
+    }
+    return val;
   }
 
   // Ligne « Priorite : Normale → Haute » : le nom du champ en clair, l'ancienne valeur grisee, la nouvelle mise en valeur.
