@@ -2374,7 +2374,8 @@ function sauverEtatCollisions() {
   try {
     const etat = {};
     HOSPITAL_CLASHES.forEach((c) => {
-      etat[c.id] = { priorite: clashPriorite(c), statut: c.statut, historique: c.historique || [] };
+      // Seules les modifications de l'utilisateur sont gardees : les entrees de demonstration (demo: true) viennent des donnees.
+      etat[c.id] = { priorite: clashPriorite(c), statut: c.statut, historique: (c.historique || []).filter((h) => !h.demo) };
     });
     window.localStorage.setItem(COLLISIONS_ETAT_CLE, JSON.stringify(etat));
   } catch (e) {
@@ -2389,9 +2390,12 @@ function restaurerEtatCollisions() {
   HOSPITAL_CLASHES.forEach((c) => {
     const e = etat[c.id];
     if (!e || typeof e !== "object") return;
+    // Sans modification de l'utilisateur, les donnees (priorite, statut, historique de demonstration) font foi.
+    const perso = Array.isArray(e.historique) ? e.historique.filter((h) => h && typeof h === "object" && !h.demo) : [];
+    if (!perso.length) return;
     if (PRIORITE_ORDRE.includes(e.priorite)) c.priorite = e.priorite;
     if (typeof e.statut === "string" && STATUT_LABELS[e.statut]) c.statut = e.statut;
-    if (Array.isArray(e.historique)) c.historique = e.historique.filter((h) => h && typeof h === "object");
+    c.historique = (c.historique || []).concat(perso);
   });
 }
 restaurerEtatCollisions();
@@ -5739,22 +5743,7 @@ function renderDiscussionMessages(thread) {
 // COLLISION_PRIORITES : commentaires + journal des changements (priorite,
 // statut), melanges chronologiquement (plus recent en haut). Les messages sans
 // date (anciens) passent avant les entrees datees.
-let journalNoteOuverte = null;
-function fermerJournalNote() {
-  if (!journalNoteOuverte) return;
-  journalNoteOuverte.note.hidden = true;
-  journalNoteOuverte.btn.setAttribute("aria-expanded", "false");
-  journalNoteOuverte = null;
-}
-document.addEventListener("click", (e) => {
-  if (journalNoteOuverte && !journalNoteOuverte.li.contains(e.target)) fermerJournalNote();
-});
-document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") fermerJournalNote();
-});
-
 function renderDiscussionMessagesAvecJournal(thread) {
-  journalNoteOuverte = null;
   discussionMessages.innerHTML = "";
   const temps = (x) => { const t = Date.parse(x.quand); return isNaN(t) ? 0 : t; };
   const items = thread.discussion.map((m) => ({ type: "message", data: m, t: temps(m) }))
@@ -5778,25 +5767,9 @@ function renderDiscussionMessagesAvecJournal(thread) {
       icone.className = "discussion-journal-icone";
       icone.setAttribute("aria-hidden", "true");
       icone.textContent = "↻";
-      const qui = document.createElement("button");
-      qui.type = "button";
+      const qui = document.createElement("span");
       qui.className = "discussion-journal-qui";
       qui.textContent = h.qui || CLASH_UTILISATEUR_HISTORIQUE;
-      qui.setAttribute("aria-expanded", "false");
-      const note = document.createElement("span");
-      note.className = "discussion-journal-note";
-      note.hidden = true;
-      note.setAttribute("role", "status");
-      note.textContent = "Nom de l'utilisateur quand les comptes seront en place";
-      qui.addEventListener("click", (e) => {
-        e.stopPropagation();
-        const wasOpen = journalNoteOuverte && journalNoteOuverte.btn === qui;
-        fermerJournalNote();
-        if (wasOpen) return;
-        note.hidden = false;
-        qui.setAttribute("aria-expanded", "true");
-        journalNoteOuverte = { li, btn: qui, note };
-      });
       const labels = h.champ === "priorité" ? PRIORITE_LABELS : STATUT_LABELS;
       const texte = document.createElement("span");
       texte.textContent = " a changé " + (h.champ === "priorité" ? "la priorité" : "le statut") + " de " + (labels[h.de] || h.de) + " à " + (labels[h.vers] || h.vers);
@@ -5804,7 +5777,7 @@ function renderDiscussionMessagesAvecJournal(thread) {
       quand.className = "discussion-journal-quand";
       const d = formatHistoriqueDate(h.quand);
       quand.textContent = d ? " · " + d : "";
-      li.append(icone, qui, texte, quand, note);
+      li.append(icone, qui, texte, quand);
     }
     discussionMessages.appendChild(li);
   });
@@ -5951,7 +5924,6 @@ function puceValeur(champ, valeur, labels) {
 }
 
 function renderChronologieCollision(thread) {
-  journalNoteOuverte = null;
   discussionMessages.innerHTML = "";
   const temps = (x) => { const t = Date.parse(x.quand); return isNaN(t) ? 0 : t; };
   let items = thread.discussion.map((m) => ({ type: "message", data: m, t: temps(m) }))
@@ -5977,25 +5949,9 @@ function renderChronologieCollision(thread) {
     avatar.className = "tl-avatar";
     avatar.setAttribute("aria-hidden", "true");
     avatar.textContent = initiales(nom);
-    const qui = document.createElement("button");
-    qui.type = "button";
+    const qui = document.createElement("span");
     qui.className = "tl-qui";
     qui.textContent = nom;
-    qui.setAttribute("aria-expanded", "false");
-    const note = document.createElement("span");
-    note.className = "discussion-journal-note";
-    note.hidden = true;
-    note.setAttribute("role", "status");
-    note.textContent = "Nom de l'utilisateur quand les comptes seront en place";
-    qui.addEventListener("click", (e) => {
-      e.stopPropagation();
-      const wasOpen = journalNoteOuverte && journalNoteOuverte.btn === qui;
-      fermerJournalNote();
-      if (wasOpen) return;
-      note.hidden = false;
-      qui.setAttribute("aria-expanded", "true");
-      journalNoteOuverte = { li, btn: qui, note };
-    });
     const quand = document.createElement("span");
     quand.className = "tl-quand";
     quand.textContent = formatHistoriqueDate(item.data.quand);
@@ -6017,7 +5973,7 @@ function renderChronologieCollision(thread) {
       corps.classList.add("tl-puce");
       corps.append(lib, puceValeur(h.champ, h.de, labels), fleche, puceValeur(h.champ, h.vers, labels));
     }
-    li.append(entete, corps, note);
+    li.append(entete, corps);
     discussionMessages.appendChild(li);
   });
   defilerChronologieBas();

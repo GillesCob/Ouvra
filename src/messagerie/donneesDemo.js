@@ -88,6 +88,7 @@ export function construireDemo(maintenant) {
     return sortie;
   }
 
+  // 22/10 : non lus limites a 8 sur l'ensemble de la demonstration (demande de Gilles), le reste est marque comme lu.
   // Non lus : messages recus depuis ma derniere reponse, plafonnes.
   function nonLusDepuis(messages, plafond) {
     let n = 0;
@@ -103,19 +104,19 @@ export function construireDemo(maintenant) {
 
   // id : [titre, tagues, non lus, minutes depuis le dernier message, statut]
   const META_SUJETS = {
-    c1: ["Cloison coupe-feu niveau 2", ["claire"], 2, 40, "encours"],
+    c1: ["Cloison coupe-feu niveau 2", ["claire"], 0, 40, "encours"],
     c2: ["Plan de repérage des réservations", ["claire"], 0, 2900, "clos"],
     c3: ["Maquette V3 : retours", ["claire"], 0, 6200, "clos"],
-    s1: ["Collision gaine DN200 / poutre axe C", ["sophie"], 5, 12, "attente"],
+    s1: ["Collision gaine DN200 / poutre axe C", ["sophie"], 2, 12, "attente"],
     s2: ["Passages en dalle", ["sophie"], 0, 4300, "clos"],
-    k1: ["Poutre axe C : reprise de section", ["karim"], 1, 700, "encours"],
+    k1: ["Poutre axe C : reprise de section", ["karim"], 0, 700, "encours"],
     j1: ["Accès grue semaine 44", ["julien"], 0, 5000, "clos"],
-    gg1: ["Planning synthèse du 28/10", ["sophie", "karim", "claire"], 6, 30, "encours"],
+    gg1: ["Planning synthèse du 28/10", ["sophie", "karim", "claire"], 1, 30, "encours"],
     gg2: ["Remise des maquettes V4", ["karim", "sophie", "marc"], 0, 3100, "clos"],
     gg3: ["Accès chantier et plan d'installation", ["julien", "claire"], 0, 7800, "clos"],
-    gc1: ["Réservations décalées R+2", ["julien", "marc"], 3, 150, "ouvert"],
+    gc1: ["Réservations décalées R+2", ["julien", "marc"], 0, 150, "ouvert"],
     gc2: ["Réception du lot cloisons", ["julien"], 0, 6200, "clos"],
-    gf1: ["Nomenclature des équipements", ["sophie", "marc"], 1, 900, "ouvert"],
+    gf1: ["Nomenclature des équipements", ["sophie", "marc"], 0, 900, "ouvert"],
     gx0: ["Réservations de la salle technique", ["karim", "sophie"], 0, 9000, "clos"],
     gx1: ["Cotes de la cage d'ascenseur", ["karim", "sophie"], 0, 10800, "clos"],
     gx2: ["Type de faux plafond du couloir", ["karim", "sophie"], 0, 12600, "clos"],
@@ -137,23 +138,23 @@ export function construireDemo(maintenant) {
   const sujetsCoordination = corpusCoordination.subjects.map((s, i) => {
     const messages = horodater(s.msgs, ilYaDansLaJournee(s.status === "clos" ? 4000 + i * 700 : 40 + i * 160, 900 + i), 900 + i);
     ajouterVues(messages, 900 + i, true, 2, s.title);
-    return Object.assign(creerFil(messages, Math.min(s.unread || 0, messages.length), 0), { id: s.id, titre: s.title, tagues: s.tagged, statut: s.status, urgent: false });
+    return Object.assign(creerFil(messages, 0, 0), { id: s.id, titre: s.title, tagues: s.tagged, statut: s.status, urgent: false });
   });
 
   const TOUS = ["me", "claire", "karim", "sophie", "julien", "marc", "nadia"];
   const conv = (id, type, nom, membres, sousTitre, principal, sujets) => ({ id, type, nom, membres, sousTitre, principal, sujets });
   const conversations = [
-    conv("claire", "individuel", "Claire Martin", ["me", "claire"], "Architecte", filPrincipal(corpusDm.claire, 95, 11, 30), sujetsDe(["c1", "c2", "c3"], 120)),
-    conv("sophie", "individuel", "Sophie Lambert", ["me", "sophie"], "BET Fluides", filPrincipal(corpusDm.sophie, 12, 21, 40), sujetsDe(["s1", "s2"], 220)),
+    conv("claire", "individuel", "Claire Martin", ["me", "claire"], "Architecte", filPrincipal(corpusDm.claire, 95, 11, 0), sujetsDe(["c1", "c2", "c3"], 120)),
+    conv("sophie", "individuel", "Sophie Lambert", ["me", "sophie"], "BET Fluides", filPrincipal(corpusDm.sophie, 12, 21, 2), sujetsDe(["s1", "s2"], 220)),
     conv("karim", "individuel", "Karim Benali", ["me", "karim"], "BET Structure", filPrincipal(corpusDm.karim, 1500, 31, 0), sujetsDe(["k1"], 320)),
     conv("julien", "individuel", "Julien Roux", ["me", "julien"], "Conducteur de travaux", filPrincipal(corpusDm.julien, 2900, 51, 0), sujetsDe(["j1"], 420)),
 
-    conv("g-general", "groupe", "Projet Hôpital : général", TOUS, "7 participants", filPrincipal(corpusGroupes["g-general"], 25, 71, 80, 2),
+    conv("g-general", "groupe", "Projet Hôpital : général", TOUS, "7 participants", filPrincipal(corpusGroupes["g-general"], 25, 71, 2, 2),
       sujetsDe(["gg1", "gg2", "gg3", "gx0", "gx1", "gx2", "gx3", "gx4", "gx5", "gx6"], 520)),
-    conv("g-coord", "groupe", "Coordination tous lots", TOUS, "7 participants", filPrincipal(corpusCoordination.main, 55, 81, 20), sujetsCoordination),
-    conv("g-chantier", "groupe", "Chantier : terrain", ["me", "julien", "claire", "marc"], "4 participants", filPrincipal(corpusGroupes["g-chantier"], 140, 91, 15),
+    conv("g-coord", "groupe", "Coordination tous lots", TOUS, "7 participants", filPrincipal(corpusCoordination.main, 55, 81, 0), sujetsCoordination),
+    conv("g-chantier", "groupe", "Chantier : terrain", ["me", "julien", "claire", "marc"], "4 participants", filPrincipal(corpusGroupes["g-chantier"], 140, 91, 1),
       sujetsDe(["gc1", "gc2"], 620)),
-    conv("g-structure", "groupe", "Lot Structure", ["me", "karim", "claire", "marc"], "4 participants", filPrincipal(corpusGroupes["g-structure"], 410, 101, 10), []),
+    conv("g-structure", "groupe", "Lot Structure", ["me", "karim", "claire", "marc"], "4 participants", filPrincipal(corpusGroupes["g-structure"], 410, 101, 0), []),
     conv("g-fluides", "groupe", "Lots fluides", ["me", "sophie", "marc", "julien"], "4 participants", filPrincipal(corpusGroupes["g-fluides"], 1700, 111, 0),
       sujetsDe(["gf1"], 720)),
     conv("g-synthese", "groupe", "Synthèse hebdomadaire", ["me", "claire", "karim", "sophie"], "4 participants", filPrincipal(corpusGroupes["g-synthese"], 5400, 121, 0), [])

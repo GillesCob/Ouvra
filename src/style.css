@@ -2240,15 +2240,9 @@ body.acc-actif #appBody { height: 100%; }
 }
 .discussion-journal-icone { margin-right: 4px; }
 .discussion-journal-qui {
-  background: none; border: none; padding: 0; margin: 0; font: inherit; font-weight: 700;
-  color: var(--text); text-decoration: underline dotted; cursor: pointer;
+  font-weight: 700; color: var(--text);
 }
 .discussion-journal-quand { white-space: nowrap; }
-.discussion-journal-note {
-  display: block; margin-top: 3px; padding: 4px 8px; border-radius: 6px;
-  background: var(--bg); border: 1px solid var(--border); color: var(--text);
-}
-.discussion-journal-note[hidden] { display: none; }
 
 /* Liste Collision, design affine (19/10) : plus fin et plus compact, sans
    encadre ni pastille lourde. Numero discret, types sur une ligne, filet de
@@ -2398,10 +2392,7 @@ body.acc-actif #appBody { height: 100%; }
   flex: 0 0 auto; width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center;
   justify-content: center; background: rgba(92, 122, 95, 0.3); color: var(--text); font-size: 9px; font-weight: 700;
 }
-.tl-qui {
-  background: none; border: none; padding: 0; margin: 0; font: inherit; font-weight: 700; color: var(--text);
-  text-decoration: underline dotted; cursor: pointer;
-}
+.tl-qui { font-weight: 700; color: var(--text); }
 .tl-quand { margin-left: auto; font-size: 11px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .tl-corps { margin: 2px 0 0 26px; color: var(--text); }
 .tl-puce { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; color: var(--muted); font-size: 12px; }

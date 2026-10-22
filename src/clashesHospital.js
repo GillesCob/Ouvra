@@ -1,3 +1,5 @@
+import { ECHANGES_HOSPITAL } from "./clashesHospitalEchanges.js";
+
 // Echantillon de collisions de l'hopital (19/10), pour la page Collision.
 //
 // Source : sortie brute d'un vrai run IfcClash (mode "collision") entre
@@ -31,7 +33,8 @@
 //
 // Memes champs que DEMO_CLASHES (src/main.js). ifcPoint = milieu de p1/p2 en
 // repere IFC Z-up (converti en Y-up a l'affichage par ifcPointToViewer).
-// Aucune discussion simulee : IfcClash ne produit que de la geometrie.
+// IfcClash ne produit que de la geometrie : les echanges (discussion) et les modifications de priorite / statut (historique)
+// viennent de clashesHospitalEchanges.js (22/10, donnees de demonstration fictives, a retirer avant tout usage reel).
 
 export const HOSPITAL_DETECTIONS = [
   { id: "hopital-arch-mep", modeles: ["hosp-arch", "hosp-mep"], label: "Architecture ↔ Mécanique (CVC)" },
@@ -46,7 +49,7 @@ export const HOSPITAL_DETECTIONS = [
 // 1, 5, 6, 15, normales 3, 4, 9, 11, 12, 13, basses 7, 8 (ecartees) et 14.
 // Statut (ou en est la collision) et priorite (urgence) sont deux notions
 // separees.
-export const HOSPITAL_CLASHES = [
+const CLASHES_BRUTS = [
   // Level 1 : IfcWallStandardCase (Architecture) contre IfcDuctSegment (Mecanique)
   {
     id: "hosp-clash-1",
@@ -303,6 +306,8 @@ export const HOSPITAL_CLASHES = [
     discussion: []
   }
 ];
+
+export const HOSPITAL_CLASHES = CLASHES_BRUTS.map((c) => ({ ...c, ...ECHANGES_HOSPITAL[c.id] }));
 
 // Collisions FICTIVES du couple Structure / Mecanique (20/10), pour voir la mise en page d'un second jeu de collisions. Noms et
 // identifiants inventes, aucun IfcClash derriere : pas de point 3D ni d'elements (entityIds), donc non cliquables dans la liste
