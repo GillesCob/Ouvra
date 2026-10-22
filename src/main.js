@@ -2,6 +2,8 @@ import { Viewer, AnnotationsPlugin, WebIFCLoaderPlugin, XKTLoaderPlugin, Section
 import * as WebIFC from "web-ifc";
 import { HOSPITAL_DETECTIONS, HOSPITAL_CLASHES, HOSPITAL_CLASHES_FACTICES } from "./clashesHospital.js";
 import { creerMessagerie } from "./messagerie/messagerie.js";
+import { descripteurElement, validerRegle, appliquerRegle } from "./reglesCollision.js";
+import { creerReglesModale } from "./reglesModale.js";
 
 // ============================================================================
 // INTERRUPTEURS DE MASQUAGE : base propre du 19/10
@@ -1026,6 +1028,8 @@ const messagerie = DISCUSSIONS_MESSAGERIE ? creerMessagerie({
   ouvrirDansViewer: ouvrirViewerSurVue,
   glisserPourFermer: enableDrawerSwipeToClose
 }) : null;
+// Modale « Regle a valider » des regles de collision (etapes 2 et 3), creee plus bas une fois les libelles de priorite et de statut definis.
+let reglesModale = null;
 if (messagerie) {
   document.getElementById("msgRoot").hidden = false;
   viewDiscussions.classList.add("msg-actif");
@@ -1052,6 +1056,8 @@ function activateView(viewName, options = {}) {
     view.hidden = view.id !== "view-" + viewName;
   });
   if (messagerie) messagerie.surVueActivee(viewName);
+  // Quitter la vue Collision pendant une visite 3D depuis la modale de regle : le bandeau de retour disparait, la regle est oubliee.
+  if (viewName !== "collision" && reglesModale) reglesModale.oublier();
   if (import.meta.env.DEV) {
     // Changement de page pendant la recolte automatique : elle s'interrompt et remet tout en place ; sinon elle (re)verifie son point de depart.
     if (recolteAuto.enCours) recolteAuto.interrompue = true;
@@ -1282,6 +1288,7 @@ navLinks.forEach((link) => {
     const page = link.dataset.view;
     // Tout changement de page par la navbar met fin a l'etat « vue de conversation » (bandeau de retour).
     if (messagerie) messagerie.vueDeConversation(false);
+    if (reglesModale) reglesModale.oublier();
     const dezoomFait = dezoomDejaFait;
     dezoomDejaFait = false;
     // Objets en fantome au moment ou l'arrivee classique se joue apres un dezoom : ils repasseront progressivement en rendu plein.
@@ -6153,21 +6160,75 @@ function majCollisionControles(thread) {
   c.majStatut();
 }
 
-function changerChampCollision(champ, vers) {
-  const clash = currentDiscussionThread;
-  if (!isHospitalClash(clash)) return;
+// Applique le changement a la collision et l'inscrit dans son historique, sans sauvegarde ni rafraichissement. Rend vrai si quelque chose a change.
+function modifierChampCollision(clash, champ, vers) {
+  if (!isHospitalClash(clash)) return false;
   const cle = champ === "priorité" ? "priorite" : "statut";
   const de = cle === "priorite" ? clashPriorite(clash) : clash.statut;
-  if (de === vers) return;
+  if (de === vers) return false;
   clash[cle] = vers;
   if (!Array.isArray(clash.historique)) clash.historique = [];
   clash.historique.push({ qui: CLASH_UTILISATEUR_HISTORIQUE, quand: new Date().toISOString(), champ, de, vers });
+  return true;
+}
+
+function changerChampCollision(champ, vers) {
+  const clash = currentDiscussionThread;
+  if (!modifierChampCollision(clash, champ, vers)) return;
   sauverEtatCollisions();
   renderCollisionsList(CLASHES.filter((c) => c.detectionId === clash.detectionId));
   renderDiscussionMessages(clash);
   majFormulaireReponse(isThreadOpen(clash));
   majCollisionControles(clash);
 }
+
+// ---- Regles de collision en langage naturel (etapes 2 et 3) : modale de validation, voir src/reglesModale.js ----
+// selection : [{ clash, champ: "priorite"|"statut", vers }] (champ du moteur de regles, sans accent).
+function appliquerSelectionRegle(selection) {
+  const modifiees = selection.filter((s) => modifierChampCollision(s.clash, s.champ === "priorite" ? "priorité" : "statut", s.vers));
+  if (!modifiees.length) return;
+  sauverEtatCollisions();
+  new Set(modifiees.map((s) => s.clash.detectionId)).forEach((detectionId) => renderCollisionsList(CLASHES.filter((c) => c.detectionId === detectionId)));
+  // Collision ouverte et modifiee : echanges, formulaire et menus Priorite / Statut a jour.
+  const ouverte = currentDiscussionThread;
+  if (ouverte && modifiees.some((s) => s.clash === ouverte)) {
+    renderDiscussionMessages(ouverte);
+    majFormulaireReponse(isThreadOpen(ouverte));
+    majCollisionControles(ouverte);
+  }
+}
+
+reglesModale = creerReglesModale({
+  libellesPriorite: PRIORITE_LABELS,
+  libellesStatut: STATUT_LABELS,
+  numero: (clash) => CLASHES.indexOf(clash) + 1,
+  lireElement: (id) => descripteurElement(viewer.metaScene, id, MAQUETTES),
+  voirEn3D: (clash) => activateClash(clash),
+  appliquer: appliquerSelectionRegle,
+  glisserPourFermer: enableDrawerSwipeToClose
+});
+
+// Declencheur PROVISOIRE (?diag=1 seulement, le vrai point d'entree viendra a l'etape 5) : window.ouvraRegles.ouvrir(regle) valide la regle,
+// la confronte aux collisions reelles de la detection courante (jamais les fictives) et ouvre la modale. Rend { ok } ou { ok: false, erreur }.
+function installerOuvertureReglesDiag() {
+  if (!/[?&]diag=1/.test(location.search)) return;
+  window.ouvraRegles = {
+    ouvrir(regle) {
+      const verdict = validerRegle(regle, { priorite: PRIORITE_ORDRE, statut: Object.keys(STATUT_LABELS) });
+      if (!verdict.ok) return verdict;
+      const clashes = detectionCourante ? CLASHES.filter((c) => c.detectionId === detectionCourante.id && !c.factice && isHospitalClash(c)) : [];
+      const touchees = appliquerRegle(
+        regle,
+        clashes,
+        (id) => descripteurElement(viewer.metaScene, id, MAQUETTES),
+        (clash) => ({ priorite: clashPriorite(clash), statut: clash.statut })
+      );
+      reglesModale.ouvrir(regle, touchees);
+      return { ok: true };
+    }
+  };
+}
+installerOuvertureReglesDiag();
 
 function isThreadOpen(thread) {
   return threadType(thread) === "collision" ? thread.statut !== "ecarte" : thread.open;
