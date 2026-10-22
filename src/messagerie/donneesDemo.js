@@ -146,9 +146,7 @@ export function construireDemo(maintenant) {
     conv("claire", "individuel", "Claire Martin", ["me", "claire"], "Architecte", filPrincipal(corpusDm.claire, 95, 11, 30), sujetsDe(["c1", "c2", "c3"], 120)),
     conv("sophie", "individuel", "Sophie Lambert", ["me", "sophie"], "BET Fluides", filPrincipal(corpusDm.sophie, 12, 21, 40), sujetsDe(["s1", "s2"], 220)),
     conv("karim", "individuel", "Karim Benali", ["me", "karim"], "BET Structure", filPrincipal(corpusDm.karim, 1500, 31, 0), sujetsDe(["k1"], 320)),
-    conv("marc", "individuel", "Marc Dubois", ["me", "marc"], "Projeteur", filPrincipal(corpusDm.marc, 190, 41, 3), []),
     conv("julien", "individuel", "Julien Roux", ["me", "julien"], "Conducteur de travaux", filPrincipal(corpusDm.julien, 2900, 51, 0), sujetsDe(["j1"], 420)),
-    conv("nadia", "individuel", "Nadia Faure", ["me", "nadia"], "Maître d'ouvrage", filPrincipal(corpusDm.nadia, 8600, 61, 0), []),
 
     conv("g-general", "groupe", "Projet Hôpital : général", TOUS, "7 participants", filPrincipal(corpusGroupes["g-general"], 25, 71, 80, 2),
       sujetsDe(["gg1", "gg2", "gg3", "gx0", "gx1", "gx2", "gx3", "gx4", "gx5", "gx6"], 520)),

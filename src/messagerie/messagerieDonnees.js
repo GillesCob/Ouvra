@@ -4,7 +4,7 @@
 // Fil (le principal d'une conversation) : { messages, nonLus, mentions, repereNb, reperePos, affiches }
 // Sujet : un Fil avec en plus { id, titre, tagues: [idPersonne], statut, urgent, closPar?, closLe? }
 //   urgent : booleen distinct du statut ; un sujet clos le perd (voir cloturer).
-// Message : { auteur, quand: Date, texte, vue? } ou evenement du journal :
+// Message : { auteur, quand: Date, texte, vue?, mentions?: [idPersonne] (personnes notifiees par un « @Nom » du texte) } ou evenement du journal :
 //   { systeme: true, genre: "ouverture" | "statut" | "cloture" | "reouverture" | "ajout" | "urgence", auteur, quand, statut?, sujetId?, titre?, tagues?, personne?, urgent? }
 // Vue (prise de vue jointe a un message) : { seed, niveau, modeles, image?, etat? }
 //   image : URL ou data URL JPEG ; etat : { camera, maquettes, ... } pour rouvrir le Viewer au meme angle ; sans image, schema de repli.
@@ -37,12 +37,18 @@ export function nonLusConv(conv) {
   return conv.principal.nonLus + nonLusSujets(conv);
 }
 export function activiteConv(conv) {
-  let t = dernierMessage(conv.principal).quand;
+  const dernier = dernierMessage(conv.principal);
+  let t = dernier ? dernier.quand : conv.creeLe;
   conv.sujets.forEach((s) => {
     const l = dernierMessage(s).quand;
     if (l > t) t = l;
   });
   return t;
+}
+
+// Conversation neuve, sans aucun message : 1 a 1 avec une personne ou groupe nomme par l'utilisateur (creeLe sert de date d'activite).
+export function creerConversation({ id, type, nom, membres, sousTitre, quand }) {
+  return { id, type, nom, membres, sousTitre, principal: creerFil([], 0, 0), sujets: [], creeLe: quand };
 }
 
 // Le fil actif d'une conversation : le sujet choisi, sinon le principal.

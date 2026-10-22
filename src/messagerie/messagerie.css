@@ -87,6 +87,9 @@
 .msg-conv-apercu { grid-column: 2; font-size: 12.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .msg-conv.non-lu .msg-conv-apercu { color: var(--text); }
 .msg-conv-droite { grid-column: 3; grid-row: 2; display: flex; gap: 4px; justify-content: flex-end; }
+/* Onglet Groupes (mobile et laptop, 22/10) : pas d'apercu du dernier message (on ne saurait pas de quel sujet il vient) ; le nom se centre sur la hauteur de la ligne. */
+.msg-conv-groupe .msg-conv-apercu { display: none; }
+.msg-conv-groupe .msg-conv-nom { grid-row: 1 / span 3; align-self: center; }
 
 .msg-av {
   width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;
@@ -97,6 +100,12 @@
 .msg-av.pt { width: 28px; height: 28px; font-size: 10.5px; }
 .msg-demo { flex-shrink: 0; padding: 8px 14px; border-top: 1px solid var(--border); font-size: 11.5px; color: var(--muted); text-align: center; }
 .msg-vide { padding: 24px 16px; color: var(--muted); text-align: center; }
+#msgGrDoublon.msg-vide { padding: 0; text-align: left; font-size: 13px; line-height: 1.4; }
+/* « + » en tete de la liste des conversations (22/10) : mobile et laptop (nouvelle conversation 1 a 1 / nouveau groupe). Clic neutre. */
+.msg-liste-tete { display: flex; justify-content: center; padding: 2px 14px 10px; }
+.msg-liste-plus { -webkit-tap-highlight-color: transparent; min-height: 40px; min-width: 56px; border: 1px dashed var(--border); background: none; color: var(--muted); border-radius: 999px; padding: 5px 18px; font-size: 18px; font-weight: 600; line-height: 1; }
+@media (hover: hover) and (pointer: fine) { .msg-liste-plus:hover { color: var(--msg-accent); border-color: var(--msg-accent); } }
+#msgNcListe button, #msgGrPersonnes button { -webkit-tap-highlight-color: transparent; }
 
 /* ---------- Volet de conversation ---------- */
 .msg-volet { position: relative; display: flex; flex-direction: column; min-height: 0; min-width: 0; }
@@ -192,6 +201,17 @@
   border-radius: 12px; padding: 9px 12px; font: inherit; font-size: 14px;
 }
 .msg-composer textarea:disabled, .msg-envoyer:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Mentions (@) : liste au-dessus du composeur, sans prendre le focus du champ. */
+.msg-composer { position: relative; }
+.msg-mentions {
+  position: absolute; left: 16px; right: 16px; bottom: 100%; z-index: 20; margin-bottom: 4px; max-height: 176px; overflow-y: auto; overscroll-behavior: contain;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+}
+.msg-mention-option { -webkit-tap-highlight-color: transparent; display: flex; align-items: baseline; gap: 8px; width: 100%; min-height: 44px; padding: 8px 12px; background: none; border: 0; text-align: left; }
+.msg-mention-option span { font-size: 12px; color: var(--muted); }
+.msg-mention-option.actif { background: var(--msg-releve); }
+@media (hover: hover) and (pointer: fine) { .msg-mention-option:hover { background: var(--msg-releve); } }
 .msg-envoyer { background: var(--msg-accent); color: var(--msg-sur-accent); border: 0; border-radius: 12px; min-height: 40px; padding: 0 16px; font-weight: 700; }
 
 /* ---------- Prises de vue ---------- */
@@ -210,7 +230,6 @@
 .msg-vue { display: block; width: 100%; max-width: 280px; margin: 0 0 6px; padding: 0; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--surface); text-align: left; }
 .msg-vue > :first-child { aspect-ratio: 16 / 10; }
 @media (hover: hover) and (pointer: fine) { .msg-vue:hover { border-color: var(--msg-accent); } }
-.msg-vue-legende { display: block; padding: 4px 8px; font-size: 11.5px; color: var(--muted); }
 .msg-vue-pendante { flex-shrink: 0; display: flex; align-items: center; gap: 10px; padding: 8px 16px 0; background: var(--surface); border-top: 1px solid var(--border); }
 .msg-puce-vue { display: flex; align-items: center; gap: 10px; background: var(--msg-releve); border: 1px solid var(--border); border-radius: 8px; padding: 4px 10px 4px 4px; font-size: 12.5px; color: var(--muted); min-width: 0; }
 .msg-puce-img { width: 72px; height: 45px; border-radius: 5px; overflow: hidden; display: block; flex-shrink: 0; }
@@ -246,8 +265,12 @@
 .msg-aide { margin: 0; font-size: 12px; color: var(--muted); }
 .msg-histo { max-height: 46vh; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; }
 .msg-histo-ligne { min-height: 44px; text-align: left; background: none; border: 0; border-radius: 8px; padding: 8px 10px; display: flex; flex-direction: column; gap: 1px; }
-.msg-histo-ligne:hover { background: var(--msg-releve); }
+/* Meme technique que la liste des conversations : pas de surbrillance au toucher (le :hover collant d'iOS et la teinte de tap), seulement a la souris. */
+.msg-histo-ligne { -webkit-tap-highlight-color: transparent; }
+@media (hover: hover) and (pointer: fine) { .msg-histo-ligne:hover { background: var(--msg-releve); } }
 .msg-histo-ligne span { font-size: 12px; color: var(--muted); }
+/* Sujets clôturés (22/10) : plus d'air entre les lignes sur mobile (2 px -> 10 px), ordinateur inchangé (a valider par Gilles). */
+@media (max-width: 768px) { .msg-histo { gap: 10px; } }
 
 /* ---------- Bandeau « prise de vue » affiche sur le Viewer ---------- */
 #msgBandeauVue, #msgBandeauRetour {
@@ -257,10 +280,10 @@
 #msgBandeauVue button, #msgBandeauRetour button { min-height: 40px; border-radius: 8px; padding: 6px 16px; font: inherit; font-weight: 700; cursor: pointer; border: 1px solid var(--border); background: none; color: var(--text); }
 #msgBandeauVue button[data-act="valider"] { background: #7fae84; color: #0f1612; border-color: #7fae84; }
 
-#msgBandeauRetour { flex-wrap: nowrap; justify-content: flex-start; padding: 2px 12px; height: 44px; box-sizing: border-box; }
+#msgBandeauRetour { flex-wrap: nowrap; justify-content: center; padding: 2px 12px; height: 44px; box-sizing: border-box; }
 #msgBandeauRetour button { flex: none; white-space: nowrap; }
 body.msg-retour-actif #viewerToolbar { top: 56px; }
-#msgBandeauRetour .msg-bandeau-lieu { min-width: 0; flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: var(--muted); font-weight: 600; }
+/* Retour a la conversation (mobile et laptop, aligne le 22/10) : le bouton seul, centre, aucun texte auteur / projet / sujet. */
 /* Mobile : titre centre, puis Valider et Annuler cote a cote, de meme largeur. */
 @media (max-width: 768px) {
   #msgBandeauVue { gap: 6px 10px; padding: 8px 12px; }
@@ -284,31 +307,46 @@ body.msg-retour-actif #viewerToolbar { top: 56px; }
   .msg-options { display: inline-flex; font-size: 22px; line-height: 1; padding-bottom: 6px; box-sizing: border-box; }
   .msg-menu { position: absolute; z-index: 20; top: calc(100% - 2px); right: 12px; min-width: 210px; max-width: calc(100vw - 24px); background: var(--surface); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18); padding: 4px; }
   .msg-menu:not([hidden]) { display: flex; flex-direction: column; }
-  .msg-menu > button { min-height: 40px; background: none; border: 0; border-radius: 6px; color: var(--text); font-size: 14px; font-weight: 600; text-align: left; padding: 0 12px; }
+  .msg-menu > button { min-height: 44px; background: none; border: 0; border-radius: 6px; color: var(--text); font-size: 14px; font-weight: 600; text-align: left; padding: 0 12px; }
   .msg-menu > button[hidden] { display: none; }
   .msg-menu > * { flex-shrink: 0; }
   .msg-menu { max-height: 70vh; max-height: 70dvh; overflow-y: auto; }
-  .msg-menu-sujet:not([hidden]) { display: flex; flex-direction: column; border-top: 1px solid var(--border); margin-top: 4px; padding-top: 4px; }
-  .msg-menu-titre { font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); padding: 4px 12px 2px; }
-  .msg-menu-sujet > button { min-height: 40px; background: none; border: 0; border-radius: 6px; color: var(--text); font-size: 14px; font-weight: 600; text-align: left; padding: 0 12px; display: flex; align-items: center; justify-content: space-between; }
-  .msg-menu-ligne { min-height: 40px; display: flex; align-items: center; gap: 8px; padding: 0 12px; font-size: 14px; font-weight: 600; color: var(--text); }
-  .msg-menu-ligne select { flex: 1; min-height: 40px; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 4px 8px; font: inherit; font-size: 16px; font-weight: 600; }
-  .msg-menu-coche { color: var(--msg-accent); font-weight: 700; }
-  .msg-menu-taguees { list-style: none; margin: 0; padding: 4px 12px 8px; font-size: 13px; color: var(--text); }
-  .msg-menu-taguees[hidden] { display: none; }
-  .msg-menu-taguees li { padding: 4px 0; }
-  .msg-menu-taguees li span { display: block; font-size: 11.5px; color: var(--muted); }
   .msg-note-sujet { display: none !important; }
-  .msg-menu-participants { list-style: none; margin: 0; padding: 4px 12px 8px; font-size: 13px; color: var(--text); }
-  .msg-menu-participants[hidden] { display: none; }
-  .msg-menu-participants li { padding: 4px 0; }
-  .msg-menu-participants li span { display: block; font-size: 11.5px; color: var(--muted); }
+  /* Carte « Infos du sujet » / « Participants » (21/10) : page entiere qui monte du bas, 0,28 s ease comme l'agrandissement des echanges de collision. */
+  .msg-feuille-fond { position: fixed; inset: 0; z-index: 60; display: flex; align-items: stretch; background: transparent; overflow: hidden; }
+  .msg-feuille { position: relative; width: 100%; height: 100vh; height: 100dvh; max-height: none; overflow: hidden; display: flex; flex-direction: column; gap: 12px; padding: calc(14px + env(safe-area-inset-top)) 16px calc(14px + env(safe-area-inset-bottom)); background: var(--surface); transform: translateY(100%); transition: transform 0.28s ease; }
+  .msg-feuille-fond.ouvert .msg-feuille { transform: translateY(0); }
+  /* Retour depuis un sous-ecran (« + Personne », « Vue d'origine ») : la carte reprend sa place sans animation. */
+  .msg-feuille-fond.sans-anim .msg-feuille { transition: none; }
+  .msg-feuille > * { flex-shrink: 0; }
+  .msg-feuille > .msg-feuille-corps { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: 14px; }
+  .msg-fiche-tete { display: flex; flex-direction: column; gap: 8px; padding-right: 44px; }
+  .msg-feuille h3 { margin: 0; font-size: 16px; line-height: 1.3; overflow-wrap: anywhere; }
+  .msg-feuille .msg-croix { top: calc(4px + env(safe-area-inset-top)); right: 4px; width: 44px; height: 44px; }
+  .msg-feuille-statut { width: 100%; height: 44px; min-height: 44px; box-sizing: border-box; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 0 10px; font: inherit; font-size: 16px; font-weight: 600; }
+  .msg-fiche-badges { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .msg-badge-statut { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border: 1px solid var(--border); border-radius: 12px; font-size: 12.5px; font-weight: 700; }
+  .msg-fiche-bloc { display: flex; flex-direction: column; gap: 8px; }
+  .msg-fiche-bloc .msg-etiquette { margin: 0; }
+  .msg-fiche-bloc .msg-origine { align-self: flex-start; min-height: 44px; }
+  .msg-fiche-liste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+  .msg-fiche-liste li { display: flex; align-items: center; gap: 10px; min-height: 36px; }
+  .msg-fiche-nom { min-width: 0; flex: 1; display: flex; flex-direction: column; font-size: 14px; font-weight: 600; color: var(--text); }
+  .msg-fiche-nom span { font-size: 12px; font-weight: 400; color: var(--muted); }
+  .msg-fiche-tag { flex: none; height: 20px; display: inline-flex; align-items: center; padding: 0 8px; border-radius: 10px; background: var(--msg-releve); border: 1px solid var(--msg-accent); color: var(--text); font-size: 11.5px; font-weight: 700; }
+  .msg-fiche-actions { display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--border); padding-top: 12px; }
+  .msg-feuille-btn { min-height: 44px; width: 100%; display: flex; align-items: center; justify-content: space-between; padding: 0 14px; background: none; border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 14px; font-weight: 600; text-align: left; }
+  .msg-interrupteur { position: relative; width: 40px; height: 22px; border-radius: 11px; background: var(--border); transition: background 0.2s; }
+  .msg-interrupteur::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: var(--text); transition: transform 0.2s; }
+  .msg-feuille-urgent[aria-checked="true"] .msg-interrupteur { background: var(--msg-mention); }
+  .msg-feuille-urgent[aria-checked="true"] .msg-interrupteur::after { transform: translateX(18px); }
   #msgHistorique, #msgAjoutSujet { display: none; }
   .msg-sujets { padding-top: 2px; padding-bottom: 2px; }
   .msg-note-retour, .msg-note-etat { display: none !important; }
   .msg-sujets, .msg-entete, .msg-note-sujet, .msg-defile, .msg-composer, .msg-barre-recherche, .msg-vue-pendante { padding-left: 12px; padding-right: 12px; }
   .msg-pastille, .msg-ajout { min-height: 40px; }
   .msg-composer textarea, .msg-barre-recherche input, .msg-carte :is(input, textarea, select) { font-size: 16px; }
+  .msg-mentions { left: 12px; right: 12px; }
   /* En-tete de sujet compact (21/10) : une rangee de 44 px, details repliables. */
   .msg-note-sujet { flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 0; padding-top: 0; padding-bottom: 0; }
   .msg-note-tete { display: flex; align-items: center; gap: 6px; height: 40px; }
@@ -329,6 +367,9 @@ body.msg-retour-actif #viewerToolbar { top: 56px; }
   .msg-note-int select { height: 40px; }
   .msg-note-int select, .msg-note-int .msg-bouton-petit { min-height: 40px; box-sizing: border-box; flex: 1 1 calc(50% - 4px); }
   .msg-bas { right: 12px; }
+}
+@media (max-width: 768px) and (prefers-reduced-motion: reduce) {
+  .msg-feuille-fond, .msg-feuille { transition: none; }
 }
 @media (prefers-reduced-motion: no-preference) {
   .msg-conv, .msg-pastille, .msg-badge, .msg-vue { transition: background 0.15s, border-color 0.15s; }

@@ -83,6 +83,9 @@ html, body {
 }
 @media (max-width: 768px) {
   #navbarThumb { display: none; }
+  /* Mobile : pas de :hover collant (iOS le laisse apres un appui, meme absorbe en clic neutre). */
+  #navbarBrand { -webkit-tap-highlight-color: transparent; }
+  #navbarBrand:hover, #navbarBrand:active, #navbarBrand:focus { color: var(--text); }
 }
 
 /* Selecteur de profil (porte depuis IES le 16/09) : simule 5 profils
@@ -223,6 +226,7 @@ html, body {
   text-decoration: none;
   white-space: nowrap;
 }
+/* Pas d'effet :active (scale) ici : il ecrasait le translateX(-50%) de centrage, le bouton sautait vers la droite au clic. */
 #navbarContact:hover { background: #f08a4b; }
 
 .view {
@@ -2524,7 +2528,7 @@ body.acc-actif #chargementSuite { display: none; }
 #messageOuvrirBtn:hover { border-color: var(--muted); }
 #messageOuvrirBtn[hidden] { display: none; }
 #collisionDiscussion.collapsed #messageOuvrirBtn { display: none; }
-@media (max-width: 768px) { #messageOuvrirBtn { min-height: 44px; } }
+@media (max-width: 768px) { #messageOuvrirBtn { min-height: 44px; white-space: nowrap; overflow: hidden; } }
 
 /* Echanges en pleine page (19/10) : bouton Message colle en bas. */
 #collisionDiscussion.cb.cb-grand #messageOuvrirBtn { width: 100%; max-width: 720px; margin: auto auto 0; box-sizing: border-box; }
@@ -2539,7 +2543,9 @@ body.acc-actif #chargementSuite { display: none; }
   min-height: 44px; padding: 0 10px 0 12px; background: transparent; color: var(--text);
   border: 1px solid var(--border); border-radius: 8px; font: inherit; cursor: pointer; text-align: left;
 }
-.collision-trigger:hover { border-color: var(--muted); }
+/* Menus Priorite / Statut : teinte de tap iOS retiree, survol limite aux pointeurs precis (22/10) : un doigt qui demarre un defilement dessus ne les met plus en surbrillance. */
+.collision-trigger, .collision-menu-option { -webkit-tap-highlight-color: transparent; }
+@media (hover: hover) and (pointer: fine) { .collision-trigger:hover { border-color: var(--muted); } }
 .collision-trigger[aria-expanded="true"] { border-color: var(--accent); }
 .collision-trigger:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .collision-trigger .collision-select-dot { position: static; margin: 0; flex-shrink: 0; }
@@ -2568,7 +2574,8 @@ body.acc-actif #chargementSuite { display: none; }
   background: transparent; color: inherit; border: 0; border-radius: 6px; font: inherit; font-size: 13.5px;
   cursor: pointer; text-align: left;
 }
-.collision-menu-option:hover, .collision-menu-option:focus-visible { background: rgba(127, 127, 127, 0.16); outline: none; }
+@media (hover: hover) and (pointer: fine) { .collision-menu-option:hover { background: rgba(127, 127, 127, 0.16); } }
+.collision-menu-option:focus-visible { background: rgba(127, 127, 127, 0.16); outline: none; }
 .collision-menu-option[aria-selected="true"] { font-weight: 700; }
 .collision-menu-option .collision-select-dot { position: static; margin: 0; flex-shrink: 0; }
 .collision-menu-texte { flex: 1; }
@@ -2711,11 +2718,28 @@ html.demarrage #splashLogo {
   #collisionDiscussion.cb:not(.collapsed) .collision-trigger-lib { display: none; }
   #collisionDiscussion.cb:not(.collapsed) #collisionGrandBtn { min-width: 36px; min-height: 36px; }
 
+  /* Fermeture du bandeau au glissement ou a l'appui (22/10) : titres et tailles du bandeau replie arrivent progressivement (--fp de 0 = ouvert
+     a 1 = replie, pilote par le doigt puis par l'animation) au lieu de surgir d'un coup a la fin. A --fp = 1 les valeurs sont celles de .collapsed. */
+  #collisionDiscussion.cb.cb-ferme #collisionDiscussionHead,
+  #collisionDiscussion.cb.cb-ferme #collisionDiscussionToggle,
+  #collisionDiscussion.cb.cb-ferme #collisionGrandBtn { min-height: calc(36px + 8px * var(--fp)); }
+  #collisionDiscussion.cb.cb-ferme .collision-trigger { min-height: calc(32px + 12px * var(--fp)); padding: 0 calc(8px + 2px * var(--fp)); }
+  #collisionDiscussion.cb.cb-ferme .cb-titre-lib,
+  #collisionDiscussion.cb.cb-ferme .collision-trigger-lib { display: block; height: calc(1.15em * var(--fp)); overflow: hidden; opacity: var(--fp); }
+
+  /* Bandeau replie : la page depasse d'1 px du bas de l'ecran (barre du haut de 52 px + 1 px de bordure, zone de 100 % - 52 px), ce qui rognait la
+     bordure basse des pilules. 1 px de marge basse la remet dans l'ecran. */
+  #collisionDiscussion.cb.collapsed { padding-bottom: 1px; }
+
   /* Echanges agrandis (double fleche) : plus d'air au-dessus des statuts et sous les onglets, et le bouton Message
      ne passe plus sous le bouton "Collisions" (il ne prend plus toute la largeur). */
   #collisionDiscussion.cb.cb-grand #collisionDiscussionHead { margin-top: 10px; }
   #collisionDiscussion.cb.cb-grand #collisionFiltre { margin-bottom: 10px; }
   #collisionDiscussion.cb.cb-grand #messageOuvrirBtn { width: calc(100% - 140px); margin: auto auto 0 0; }
+  /* Pleine page : le bouton "Collisions" (dans la photo 3D, ancre en bas a droite) se pose sur la ligne du bouton "Message"
+     (meme hauteur de 44 px, bas de la fiche moins 12 px de marge) au lieu de flotter au-dessus. --bas-fiche = hauteur du bandeau sous la
+     photo au moment de l'ouverture (posee par figerZone3dMobile : 46 px replie, plus s'il etait ouvert), 12 px - cette hauteur = bas de la fiche moins 12 px. */
+  #collisionLeft:has(> #collisionDiscussion.cb-grand) #collisionInfoPanelToggle { bottom: calc(12px - var(--bas-fiche, 46px)); right: 16px; height: 44px; padding-top: 0; padding-bottom: 0; }
 
   /* Bandeau de la collision : memes largeurs et memes positions replie, ouvert ou agrandi (20/10). */
   #collisionDiscussion.cb #collisionDiscussionHead { gap: 6px; }
@@ -3075,9 +3099,10 @@ html.demarrage #splashLogo {
   transition: transform 0.12s ease, box-shadow 0.18s ease, background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease;
 }
 .nav-link:active, .reset-btn:active, .fil-ajout:active, .fil-instruction:active, .fil-plein:active, #collisionGrandBtn:active,
-.collision-maquette-toggle:active, .collision-trigger:active, #navbarContact:active, .detection-item:not(:disabled):active, .thread-item:active {
+.collision-maquette-toggle:active, .detection-item:not(:disabled):active, .thread-item:active {
   transform: scale(0.97);
 }
+@media (hover: hover) and (pointer: fine) { .collision-trigger:active { transform: scale(0.97); } }
 .thread-item:hover, .detection-item:not(:disabled):hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(0, 0, 0, 0.32); }
 .collision-item { transition: background-color 0.18s ease, border-color 0.18s ease, opacity 0.18s ease; }
 
@@ -3214,6 +3239,11 @@ html.demarrage #splashLogo {
 .collision-affichage-menu .textes { display: flex; flex-direction: column; gap: 2px; }
 .collision-affichage-menu b { font-size: 13px; font-weight: 700; }
 .collision-affichage-menu small { color: var(--muted); font-size: 11.5px; line-height: 1.3; }
+@media (max-width: 768px) {
+  /* Menu d'affichage (21/10) : aligne a droite du bouton, borne a l'ecran, et au-dessus de Recentrer (#viewerToolbar z 6) : le menu vit dans le contexte d'empilement de la barre des bascules (z 5), qui passe donc a 7. */
+  #collisionMaquetteToggles { z-index: 7; }
+  .collision-affichage-menu { left: auto; right: 0; min-width: 0; width: 290px; max-width: calc(100vw - 16px); }
+}
 
 /* ============================================================================
    Page Discussions en "coupe du bâtiment" (20/10, maquette ouvra-discussions-v3) : coupe des niveaux à gauche,
@@ -3385,3 +3415,6 @@ button.disc-pin:hover { transform: scale(1.18); box-shadow: 0 0 0 3px color-mix(
   z-index: -1;
 }
 #rendusHorsEcran #viewerWrap { position: absolute; inset: 0; }
+
+/* Progression de la fermeture du bandeau de collision (mobile, 22/10) : variable animable par WAAPI. */
+@property --fp { syntax: "<number>"; inherits: true; initial-value: 0; }

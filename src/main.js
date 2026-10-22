@@ -1023,7 +1023,8 @@ const messagerie = DISCUSSIONS_MESSAGERIE ? creerMessagerie({
   lienNavbar: navLinks.find((l) => l.dataset.view === "discussions"),
   capturerVue: capturerVuePourMessagerie,
   allerA: (nomVue) => navLinks.find((l) => l.dataset.view === nomVue).click(),
-  ouvrirDansViewer: ouvrirViewerSurVue
+  ouvrirDansViewer: ouvrirViewerSurVue,
+  glisserPourFermer: enableDrawerSwipeToClose
 }) : null;
 if (messagerie) {
   document.getElementById("msgRoot").hidden = false;
@@ -5662,6 +5663,14 @@ function smallerLargerEntityIds(idA, idB) {
 // Bouton Contexte : affiche/masque les maquettes hors paire en fantome, non
 // cliquables tant qu'elles sont en fantome (setObjectsPickable).
 document.addEventListener("click", () => { if (collisionAffichageMenu) collisionAffichageMenu.hidden = true; });
+// Mobile : un appui hors du menu d'affichage le ferme en clic neutre (meme mecanisme que le hamburger), rien n'est selectionne dessous.
+document.addEventListener("pointerdown", (e) => {
+  if (!collisionAffichageMenu || collisionAffichageMenu.hidden) return;
+  if (collisionAffichageMenu.parentElement.contains(e.target)) return;
+  collisionAffichageMenu.hidden = true;
+  if (collisionContexteBtn) collisionContexteBtn.setAttribute("aria-expanded", "false");
+  absorberGesteNeutre();
+}, true);
 document.addEventListener("keydown", (e) => { if (e.key === "Escape" && collisionAffichageMenu) collisionAffichageMenu.hidden = true; });
 function setModeAffichageCollision(mode) {
   if (mode === collisionModeAffichage) return;
@@ -6357,6 +6366,9 @@ let bandeauEnAnimation = false;
 function basculerBandeauAnime(reduire) {
   const el = collisionDiscussion;
   if (bandeauEnAnimation) return;
+  const mobileMq = window.matchMedia("(max-width: 768px)").matches;
+  // Mobile, appui sur le numero : meme mouvement que le glissement (sans redimensionner la 3D a chaque image).
+  if (reduire && mobileMq && preparerFermetureBandeau()) { animerFermetureBandeau(0, 0); return; }
   const h0 = el.offsetHeight;
   el.classList.toggle("collapsed", reduire);
   const h1 = el.offsetHeight;
@@ -6366,7 +6378,10 @@ function basculerBandeauAnime(reduire) {
     el.classList.remove("collapsed");
     collisionDiscussionToggle.style.transform = "rotate(-90deg)";
   }
-  el.style.cssText += ";height:" + h0 + "px;min-height:0;max-height:none;overflow:hidden";
+  // box-sizing: la hauteur posee en pixels doit inclure padding et bordure (offsetHeight), sinon le bandeau gagne 5 px a la premiere image
+  // (saut de depart) et perd 5 px a la fin sur mobile.
+  // Ouverture sur ordinateur (22/10) : meme cause, le bandeau depassait de 9 px (padding bas 8 + bordure 1) puis redescendait a la fin.
+  el.style.cssText += ";height:" + h0 + "px;min-height:0;max-height:none;overflow:hidden" + (mobileMq || !reduire ? ";box-sizing:border-box" : "");
   void el.offsetHeight;
   el.style.transition = "height 0.28s ease";
   el.style.height = h1 + "px";
@@ -6376,6 +6391,7 @@ function basculerBandeauAnime(reduire) {
     el.style.minHeight = "";
     el.style.maxHeight = "";
     el.style.overflow = "";
+    el.style.boxSizing = "";
     if (reduire) el.classList.add("collapsed");
     collisionDiscussionToggle.style.transform = "";
     bandeauEnAnimation = false;
@@ -6385,6 +6401,105 @@ function basculerBandeauAnime(reduire) {
 collisionDiscussionToggle.addEventListener("click", () => {
   basculerBandeauAnime(!collisionDiscussion.classList.contains("collapsed"));
 });
+// Repli du bandeau sur mobile (glissement vers le bas ou appui sur le numero), 21/10. Le bandeau ne change JAMAIS de hauteur pendant le
+// mouvement : il passe en position absolue au bas de la zone (meme place, meme taille) et glisse par un simple transform. La zone 3D prend
+// sa taille FINALE des le debut (un seul recalage du canvas, pendant que le bandeau la recouvre), et le canvas est decale en CSS pour que
+// l'image reste celle d'avant : ce decalage (compositeur seul, aucun redimensionnement WebGL) se resorbe au meme rythme que le bandeau, donc
+// la maquette n'est jamais rognee et ne saute pas a la fin. Le decalage n'est pas qu'une translation : xeokit (fovAxis "min", portrait) fait
+// varier l'angle de champ avec la hauteur du canvas, donc l'image se dezoome aussi (x0,79 de 431 a 682 px) ; le facteur est calcule avec la
+// meme formule (echelle ecran = (H/2) / tan(fov(H)/2), fov(H) = fov * H / L) et applique en CSS autour du centre du canvas.
+function echelleEcran3d(hauteur, largeur) {
+  const cam = viewer.camera;
+  const fov = Math.min(cam.perspective.fov * hauteur / largeur, 120) * Math.PI / 180;
+  return (hauteur / 2) / Math.tan(fov / 2);
+}
+function transformFermeture(f, p) {
+  return "translateY(" + -f.decal * (1 - p) + "px) scale(" + (1 + (f.echelle - 1) * (1 - p)) + ")";
+}
+// Bouton « Collisions » (ancre en bas de la photo 3D) : la photo prend sa hauteur finale des le debut (+delta), le bouton est donc ramene
+// d'autant vers le haut puis suit le bord haut du bandeau qui descend (22/10), sans jamais sauter.
+function transformBoutonFermeture(f, p) {
+  return "translateY(" + -f.delta * (1 - p) + "px)";
+}
+let fermetureBandeau = null;
+function preparerFermetureBandeau() {
+  if (fermetureBandeau || bandeauEnAnimation || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return false;
+  const el = collisionDiscussion;
+  if (!el.classList.contains("cb") || el.classList.contains("collapsed")) return false;
+  const h0 = el.offsetHeight;
+  el.classList.add("collapsed");
+  const h1 = el.offsetHeight;
+  el.classList.remove("collapsed");
+  if (h0 <= h1) return false;
+  const toile = viewer.scene.canvas.canvas;
+  const calques = [toile, clashBullesCanvas, clashPastillesContainer].filter(Boolean);
+  const avant = toile.clientHeight;
+  bandeauEnAnimation = true;
+  const etat = { delta: h0 - h1, calques, decal: 0, echelle: 1, cssAvant: el.style.cssText, cssGaucheAvant: collisionLeft.style.cssText };
+  collisionLeft.style.cssText += ";position:relative;padding-bottom:" + h1 + "px"; // la zone 3D prend d'emblee sa hauteur finale (bandeau replie = h1)
+  el.style.cssText += ";position:absolute;left:0;right:0;bottom:0;box-sizing:border-box;height:" + h0 + "px;min-height:0;max-height:none";
+  collisionViewerSlot.style.overflow = "hidden";
+  const apres = toile.clientHeight;
+  etat.decal = (apres - avant) / 2;
+  if (viewer.camera.projection === "perspective" && viewer.camera.perspective.fovAxis === "min" && toile.clientWidth < Math.min(avant, apres)) {
+    etat.echelle = echelleEcran3d(avant, toile.clientWidth) / echelleEcran3d(apres, toile.clientWidth);
+  }
+  fermetureBandeau = etat;
+  calques.forEach((c) => { c.style.transform = transformFermeture(etat, 0); });
+  collisionInfoPanelToggle.style.transform = transformBoutonFermeture(etat, 0);
+  // Titres et tailles du bandeau replie : ils arrivent progressivement (--fp de 0 a 1) au lieu de surgir d'un coup a la fin.
+  el.style.setProperty("--fp", "0");
+  el.classList.add("cb-ferme");
+  return true;
+}
+function suivreFermetureBandeau(dy) {
+  const f = fermetureBandeau;
+  if (!f) return;
+  const p = Math.min(1, Math.max(0, dy / f.delta));
+  f.calques.forEach((c) => { c.style.transform = transformFermeture(f, p); });
+  collisionInfoPanelToggle.style.transform = transformBoutonFermeture(f, p);
+  collisionDiscussion.style.setProperty("--fp", String(p));
+}
+function nettoyerFermetureBandeau() {
+  const f = fermetureBandeau;
+  if (!f) return;
+  const el = collisionDiscussion;
+  f.calques.forEach((c) => { c.getAnimations().forEach((a) => a.cancel()); c.style.transform = ""; });
+  collisionInfoPanelToggle.getAnimations().forEach((a) => a.cancel());
+  collisionInfoPanelToggle.style.transform = "";
+  el.getAnimations().forEach((a) => a.cancel());
+  el.style.cssText = f.cssAvant;
+  el.classList.remove("cb-ferme");
+  collisionLeft.style.cssText = f.cssGaucheAvant;
+  collisionViewerSlot.style.overflow = "";
+  collisionDiscussionToggle.style.transform = "";
+  fermetureBandeau = null;
+  bandeauEnAnimation = false;
+}
+// Geste abandonne (relache trop tot) : retour a la mise en page d'origine.
+function annulerFermetureBandeau() { nettoyerFermetureBandeau(); window.dispatchEvent(new Event("resize")); }
+// Lance le mouvement depuis le decalage du doigt (dy, 0 pour un appui). Retourne true quand il est gere ici.
+function animerFermetureBandeau(dy, vitesse) {
+  const f = fermetureBandeau;
+  if (!f) { basculerBandeauAnime(true); return false; }
+  const el = collisionDiscussion;
+  const reste = Math.max(1, f.delta - dy);
+  // Courbe qui demarre a la vitesse du doigt (pente initiale = vitesse * duree / distance restante) ; appui : "ease" comme le reste.
+  const pente = Math.min(3.3, Math.max(0.5, (vitesse || 0) * 280 / reste));
+  const options = { duration: 280, easing: vitesse > 0 ? "cubic-bezier(0.3," + (pente * 0.3).toFixed(3) + ",0.5,1)" : "ease", fill: "forwards" };
+  const p0 = Math.min(1, dy / f.delta);
+  collisionDiscussionToggle.style.transform = "rotate(-90deg)";
+  const anim = el.animate([{ transform: "translateY(" + dy + "px)", "--fp": p0 }, { transform: "translateY(" + f.delta + "px)", "--fp": 1 }], options);
+  const anims = [anim].concat(f.calques.map((c) => c.animate([{ transform: transformFermeture(f, p0) }, { transform: transformFermeture(f, 1) }], options)));
+  anims.push(collisionInfoPanelToggle.animate([{ transform: transformBoutonFermeture(f, p0) }, { transform: transformBoutonFermeture(f, 1) }], options));
+  if (vitesse > 0) anims.forEach((a) => { a.currentTime = AVANCE_RELACHEMENT; });
+  anim.onfinish = () => {
+    el.classList.add("collapsed");
+    nettoyerFermetureBandeau();
+    window.dispatchEvent(new Event("resize"));
+  };
+  return true;
+}
 
 // Sections repliables des drawers (20/10) : meme animation que le bandeau de collision. La hauteur passe de l'ancienne a la
 // nouvelle valeur en 0,28 s (les sections voisines suivent car le drawer est en flex) et la fleche tourne. A la fermeture,
@@ -6805,11 +6920,44 @@ function majPlanCollision() {
 // L'animation fait glisser son bord haut (WAAPI sur "top") entre la place du bandeau et le haut de la zone, 0,28 s, comme
 // le depliement du bandeau : le contenu se reorganise a chaque image. A la fermeture, les classes ne changent qu'a la fin.
 let grandEnAnimation = false;
-function classesEchangesGrand(actif, etaitReplie) {
+// Au relachement le doigt s'arrete avant que l'animation ne demarre : sans avance, la premiere image peinte apres le relachement est
+// immobile (plateau d'une image mesure : position identique a l'image precedente). Les animations de fermeture au doigt partent donc a 16 ms.
+const AVANCE_RELACHEMENT = 16;
+let progressionDoigtGrand = 0; // avancement (0 a 1) de la fermeture au doigt de la pleine page, consomme une fois par basculerGrandAnime
+let decalageDoigtGrand = 0; // decalage (px) de la fiche au doigt au moment du relachement : sert a garder le bouton « Message » fixe a l'ecran
+let suiviBoutonGrand = null; // { parcours, delta } : course de la fiche et du bouton « Collisions » pendant la fermeture au doigt de la pleine page
+let glisseGrandPrise = false; // vrai quand basculerGrandAnime a pris en charge le decalage du doigt (animation de `top`), le crochet de relachement ne resorbe alors plus rien
+let easingGlisseGrand = null; // courbe de la fermeture au glissement (mobile), consommee une fois par basculerGrandAnime
+function classesEchangesGrand(actif, etaitReplie, recaler = true) {
   collisionDiscussion.classList.toggle("cb-grand", actif);
   collisionDiscussion.classList.toggle("collapsed", actif ? false : etaitReplie);
   // La 3D change de taille (photo a gauche / pleine zone) : le canvas doit se recaler.
-  requestAnimationFrame(() => window.dispatchEvent(new Event("resize")));
+  if (recaler) requestAnimationFrame(() => window.dispatchEvent(new Event("resize")));
+}
+// Mobile : la pleine page est un calque au-dessus de la 3D, qui ne doit jamais bouger. On fige la hauteur de la zone 3D pendant tout
+// le temps de la pleine page (sinon le bandeau sort du flux et le canvas passe de ~430 a ~730 px a l'ouverture, puis revient a la
+// fermeture) ; la hauteur figee est celle d'avant l'ouverture, donc identique a celle d'apres la fermeture.
+function figerZone3dMobile() {
+  const slot = collisionViewerSlot;
+  if (!window.matchMedia("(max-width: 768px)").matches || slot.dataset.fige) return;
+  const h = slot.getBoundingClientRect().height;
+  // Hauteur du bandeau sous la photo : le bouton « Collisions » s'en sert pour rejoindre la ligne du bouton « Message » (style.css, 22/10).
+  collisionLeft.style.setProperty("--bas-fiche", (collisionLeft.getBoundingClientRect().bottom - slot.getBoundingClientRect().bottom) + "px");
+  slot.style.flex = "none";
+  slot.style.minHeight = "0";
+  slot.style.boxSizing = "border-box";
+  slot.style.height = h + "px";
+  slot.dataset.fige = "1";
+}
+function liberer3dMobile() {
+  const slot = collisionViewerSlot;
+  if (!slot.dataset.fige) return;
+  collisionLeft.style.removeProperty("--bas-fiche");
+  slot.style.flex = "";
+  slot.style.minHeight = "";
+  slot.style.boxSizing = "";
+  slot.style.height = "";
+  delete slot.dataset.fige;
 }
 // Deplacement fluide des elements du bandeau (titre, bouton agrandir, gelules Priorite/Statut) entre leur place dans le
 // bandeau et leur place en pleine page (laptop, 20/10) : chaque element glisse (et la gelule change de largeur) au lieu de sauter.
@@ -6833,12 +6981,38 @@ function jouerDeplacements(init, fin, layout, decalInit, decalFin, options) {
     e.animate([frame(a, decalInit), frame(b, decalFin)], options);
   });
 }
+// Bouton « Message » (mobile) : sa largeur change avec la classe cb-grand (203 px en pleine page, largeur du bandeau sinon) ; elle est pilotee
+// en px (doigt puis animation) pour ne pas sauter (22/10). Largeur « bandeau » mesuree bandeau ouvert, meme si le bandeau est replie ensuite.
+function largeurMessageBandeau() {
+  const b = messageOuvrirBtn;
+  if (!b || b.hidden) return null;
+  const el = collisionDiscussion;
+  const grand = el.classList.contains("cb-grand"), replie = el.classList.contains("collapsed");
+  el.classList.remove("cb-grand", "collapsed");
+  const w = b.getBoundingClientRect();
+  el.classList.toggle("cb-grand", grand);
+  el.classList.toggle("collapsed", replie);
+  return w;
+}
 function basculerGrandAnime(actif, etaitReplie) {
   const el = collisionDiscussion;
   const reduit = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const visible = el.offsetParent !== null;
-  if (grandEnAnimation || reduit || !visible) { classesEchangesGrand(actif, etaitReplie); return; }
-  const options = { duration: 280, easing: "ease" };
+  const mobile = window.matchMedia("(max-width: 768px)").matches;
+  const btnCollisions = mobile ? collisionInfoPanelToggle : null;
+  const btnMessage = mobile && messageOuvrirBtn && !messageOuvrirBtn.hidden ? messageOuvrirBtn : null;
+  if (messageOuvrirBtn) { messageOuvrirBtn.style.width = ""; messageOuvrirBtn.style.transform = ""; } // le suivi du doigt laisse la main a l'animation
+  const avancement = progressionDoigtGrand;
+  const decalDoigt = decalageDoigtGrand;
+  progressionDoigtGrand = 0;
+  decalageDoigtGrand = 0;
+  suiviBoutonGrand = null;
+  if (btnCollisions) { btnCollisions.style.transform = ""; btnCollisions.style.height = ""; } // le suivi du doigt (pleine page) laisse la main a l'animation
+  if (actif) figerZone3dMobile();
+  if (grandEnAnimation || reduit || !visible) { classesEchangesGrand(actif, etaitReplie); if (!actif) liberer3dMobile(); return; }
+  const options = { duration: 280, easing: (!actif && easingGlisseGrand) || "ease" };
+  const glisse = !actif && !!easingGlisseGrand; // fermeture au doigt : le mouvement part avec 1 image d'avance (cf AVANCE_RELACHEMENT)
+  easingGlisseGrand = null;
   // Laptop : la 3D (#collisionViewerSlot) se reduit en meme temps jusqu'a sa place de photo, en haut a gauche.
   const laptop = window.matchMedia("(min-width: 769px)").matches;
   const slot = collisionViewerSlot;
@@ -6851,7 +7025,11 @@ function basculerGrandAnime(actif, etaitReplie) {
     const r0 = el.getBoundingClientRect();
     const s0 = relatif();
     const m0 = laptop ? mesurerBandeauGrand() : null;
+    const b0 = btnCollisions && btnCollisions.getBoundingClientRect();
+    const mr0 = btnMessage ? btnMessage.getBoundingClientRect() : null;
     classesEchangesGrand(true, etaitReplie);
+    const b1 = btnCollisions && btnCollisions.getBoundingClientRect();
+    const mr1 = btnMessage ? btnMessage.getBoundingClientRect() : null;
     const r1 = el.getBoundingClientRect();
     const s1 = relatif();
     const m1 = laptop ? mesurerBandeauGrand() : null;
@@ -6862,31 +7040,86 @@ function basculerGrandAnime(actif, etaitReplie) {
       slot.animate([s0, s1], options);
       jouerDeplacements(m0, m1, m1, decalage, 0, options);
     }
+    // Mobile : le bouton « Collisions » glisse de sa place sous la photo jusqu'a la ligne du bouton « Message » (translation, jamais de saut).
+    if (btnCollisions) btnCollisions.animate([{ transform: "translateY(" + (b0.top - b1.top) + "px)", height: b0.height + "px" }, { transform: "translateY(0px)", height: b1.height + "px" }], options);
+    if (mr0 && mr1 && mr0.width > 0 && mr1.width > 0) btnMessage.animate([{ width: mr0.width + "px", transform: "translateX(" + (mr0.left - mr1.left) + "px)" }, { width: mr1.width + "px", transform: "translateX(0px)" }], options); // largeur et abscisse du bandeau -> pleine page
     const anim = el.animate([{ top: decalage + "px" }, { top: "0px" }], options);
     anim.onfinish = anim.oncancel = () => { grandEnAnimation = false; window.dispatchEvent(new Event("resize")); };
   } else {
     const r1 = el.getBoundingClientRect();
     const sPhoto = relatif();
     const mGrand = laptop ? mesurerBandeauGrand() : null;
-    classesEchangesGrand(false, etaitReplie);
+    const bGrand = btnCollisions && btnCollisions.getBoundingClientRect();
+    const mrGrand = btnMessage ? btnMessage.getBoundingClientRect() : null;
+    const mrNormal = btnMessage && !etaitReplie ? largeurMessageBandeau() : null; // retour au bandeau replie : le bouton sort de l'ecran avec la fiche puis disparait, largeur laissee telle quelle (evite un chevauchement avec « Collisions »)
+    classesEchangesGrand(false, etaitReplie, !mobile);
     const r0 = el.getBoundingClientRect();
     const sNormal = relatif();
     const mNormal = laptop ? mesurerBandeauGrand() : null;
-    classesEchangesGrand(true, etaitReplie);
+    const bNormal = btnCollisions && btnCollisions.getBoundingClientRect();
+    classesEchangesGrand(true, etaitReplie, !mobile);
     const decalage = r0.top - r1.top;
-    if (decalage <= 0) { classesEchangesGrand(false, etaitReplie); return; }
+    if (decalage <= 0) { classesEchangesGrand(false, etaitReplie); liberer3dMobile(); return; }
     grandEnAnimation = true;
     if (laptop) {
       slot.animate([sPhoto, sNormal], options);
       jouerDeplacements(mGrand, mNormal, mGrand, 0, decalage, options);
     }
-    const anim = el.animate([{ top: "0px" }, { top: decalage + "px" }], options);
+    // Fermeture au doigt (mobile) : la fiche est ancree par le bas (inset: 0), seul `top` bouge. Le decalage du doigt est donc repris directement
+    // dans `top` (de decalDoigt a decalage) au lieu d'une resorption de `transform` en sens inverse : le bouton « Message », colle au bas de la fiche,
+    // ne depend plus de deux animations qui s'annulent (au flick, courbe tres raide, le moindre ecart de phase entre elles faisait balancer le bouton).
+    // Si le doigt a depasse la course de la fiche (decalDoigt > decalage), repli sur l'ancien chemin (resorption + compensation).
+    const prise = mobile && glisse && decalDoigt > 0 && decalDoigt <= decalage;
+    glisseGrandPrise = prise;
+    const anim = el.animate([{ top: (prise ? decalDoigt : 0) + "px" }, { top: decalage + "px" }], options);
+    if (glisse) anim.currentTime = AVANCE_RELACHEMENT;
+    // Mobile : le bouton « Message » passe de sa largeur de pleine page a celle du bandeau en continu (depart a l'avancement du doigt).
+    if (mrGrand && mrNormal && mrGrand.width > 0 && mrNormal.width > 0) {
+      const dl = mrNormal.left - mrGrand.left;
+      // Le bouton est colle au bas de la fiche : la fermeture ne le deplace pas (la fiche se raccourcit par le haut, `top`), seul le decalage du doigt
+      // (decalDoigt, resorbe vers 0 pendant l'animation) l'entraine. On le compense pour qu'il reste fixe a l'ecran, et on ne garde que l'ecart
+      // reel entre ses deux positions (dv), parcouru en continu avec la meme courbe.
+      const dv = mrNormal.top - mrGrand.top;
+      const animMsg = btnMessage.animate([{ width: (mrGrand.width + avancement * (mrNormal.width - mrGrand.width)) + "px", transform: "translate(" + avancement * dl + "px," + (avancement * dv - (prise ? 0 : decalDoigt)) + "px)" }, { width: mrNormal.width + "px", transform: "translate(" + dl + "px," + dv + "px)" }], options);
+      if (glisse) animMsg.currentTime = AVANCE_RELACHEMENT;
+    }
+    // Mobile : le bouton « Collisions » part de l'avancement de la fiche (meme proportion de sa course) puis rejoint sa place sous la photo, meme duree et meme courbe.
+    if (btnCollisions) {
+      const animBtn = btnCollisions.animate([{ transform: "translateY(" + avancement * (bNormal.top - bGrand.top) + "px)", height: (bGrand.height + avancement * (bNormal.height - bGrand.height)) + "px" }, { transform: "translateY(" + (bNormal.top - bGrand.top) + "px)", height: bNormal.height + "px" }], options);
+      if (glisse) animBtn.currentTime = AVANCE_RELACHEMENT;
+    }
     anim.onfinish = anim.oncancel = () => {
       classesEchangesGrand(false, etaitReplie);
+      liberer3dMobile();
       grandEnAnimation = false;
       window.dispatchEvent(new Event("resize"));
     };
   }
+}
+
+// Fermeture au doigt de la pleine page (mobile) : le bouton « Collisions » avance vers sa place sous la photo dans la meme proportion que la fiche
+// (sens constant, pas d'aller-retour au relachement : la fiche descend, le bouton remonte vers la photo).
+function preparerSuiviBoutonGrand() {
+  const btn = collisionInfoPanelToggle;
+  const avant = btn.getBoundingClientRect();
+  collisionDiscussion.classList.remove("cb-grand");
+  const apres = btn.getBoundingClientRect();
+  collisionDiscussion.classList.add("cb-grand");
+  const mw0 = messageOuvrirBtn && !messageOuvrirBtn.hidden ? messageOuvrirBtn.getBoundingClientRect() : null;
+  const mw1 = mw0 && mw0.width > 0 && !echangesGrandEtaitReplie ? largeurMessageBandeau() : null;
+  suiviBoutonGrand = { parcours: Math.max(1, collisionViewerSlot.getBoundingClientRect().height), delta: apres.top - avant.top, h0: avant.height, h1: apres.height, mw0: mw0 ? mw0.width : 0, mw1: mw1 ? mw1.width : 0, dl: mw1 && mw0 ? mw1.left - mw0.left : 0, dv: mw1 && mw0 ? mw1.top - mw0.top : 0 };
+}
+function suivreBoutonGrand(dy) {
+  const f = suiviBoutonGrand;
+  if (!f) return;
+  progressionDoigtGrand = Math.min(1, Math.max(0, dy / f.parcours));
+  decalageDoigtGrand = dy;
+  collisionInfoPanelToggle.style.transform = "translateY(" + progressionDoigtGrand * f.delta + "px)";
+  if (f.mw0 > 0 && f.mw1 > 0) {
+    messageOuvrirBtn.style.width = (f.mw0 + progressionDoigtGrand * (f.mw1 - f.mw0)) + "px";
+    messageOuvrirBtn.style.transform = "translate(" + progressionDoigtGrand * f.dl + "px," + (progressionDoigtGrand * f.dv - dy) + "px)"; // - dy : annule la descente de la fiche, le bouton reste fixe a l'ecran
+  }
+  collisionInfoPanelToggle.style.height = (f.h0 + progressionDoigtGrand * (f.h1 - f.h0)) + "px"; // 44 px en pleine page, hauteur normale sous la photo
 }
 
 function ouvrirEchangesGrand() {
@@ -7061,9 +7294,9 @@ if (collisionInfoPanelCloseBtn) collisionInfoPanelCloseBtn.addEventListener("cli
 // Fermeture des tiroirs mobiles (feuilles du bas) par glissement du doigt vers le bas (21/10). Partage entre "Afficher"
 // et "Collisions" : le tiroir suit le doigt seulement si tout contenu defilable sous le doigt est en haut ; au
 // relachement, on ferme via la fermeture existante (celle de la croix) si le geste est assez long ou rapide.
-function enableDrawerSwipeToClose(drawer, closeFn, isOpen = () => drawer.classList.contains("open"), ignoreSel = 'input[type="range"]') {
+function enableDrawerSwipeToClose(drawer, closeFn, isOpen = () => drawer.classList.contains("open"), ignoreSel = 'input[type="range"]', swipeUpFn = null, hooks = null) {
   const mobile = window.matchMedia("(max-width: 768px)");
-  let startX = 0, startY = 0, startT = 0, dy = 0, tracking = false, dragging = false, scrollers = [];
+  let startX = 0, startY = 0, startT = 0, dy = 0, tracking = false, dragging = false, scrollers = [], upOk = false, up = 0, replie = false, upFn = swipeUpFn;
   const scrollersFrom = (el) => {
     const list = [];
     for (let n = el; n && n !== drawer.parentElement; n = n.parentElement) {
@@ -7075,11 +7308,19 @@ function enableDrawerSwipeToClose(drawer, closeFn, isOpen = () => drawer.classLi
   };
   drawer.addEventListener("touchstart", (e) => {
     tracking = dragging = false;
-    if (!mobile.matches || !isOpen() || e.touches.length !== 1) return;
+    // Tiroir replie (hooks.replie) : seul un glissement vers le haut est suivi, il appelle hooks.ouvrirReplie.
+    replie = !!(hooks && hooks.replie && hooks.replie());
+    upFn = replie ? hooks.ouvrirReplie : swipeUpFn;
+    if (!mobile.matches || e.touches.length !== 1 || !(replie || isOpen())) return;
     if (e.target.closest && e.target.closest(ignoreSel)) return;
     const t = e.touches[0];
     startX = t.clientX; startY = t.clientY; startT = e.timeStamp; dy = 0;
     scrollers = scrollersFrom(e.target);
+    // Glissement vers le haut (pleine page) : par defaut seulement si rien ne defile sous le doigt ; hooks.hautPartout() (bandeau
+    // ouvert, hors pleine page) l'autorise depuis n'importe ou, zone d'echanges et historique compris (22/10).
+    const hautPartout = !!(hooks && hooks.hautPartout && hooks.hautPartout());
+    upOk = !!upFn && (hautPartout || (scrollers.length === 0 && !(e.target.closest && e.target.closest("#discussionMessages"))));
+    up = 0;
     tracking = true;
   }, { passive: true });
   drawer.addEventListener("touchmove", (e) => {
@@ -7088,25 +7329,60 @@ function enableDrawerSwipeToClose(drawer, closeFn, isOpen = () => drawer.classLi
     const mx = t.clientX - startX, my = t.clientY - startY;
     if (!dragging) {
       if (Math.abs(mx) > Math.abs(my) && Math.abs(mx) > 8) { tracking = false; return; }
-      if (my < -8) { tracking = false; return; }
+      // Geste vers le haut autorise : on bloque le defilement natif des les premiers pixels (sinon la zone d'echanges defile avant le seuil).
+      if (upOk && my < 0 && e.cancelable) e.preventDefault();
+      if (my < -8) {
+        if (!upOk) { tracking = false; return; }
+        up = -my;
+        if (e.cancelable) e.preventDefault();
+        return;
+      }
+      up = 0;
       if (my <= 8) return;
+      if (replie) { tracking = false; return; }
       if (scrollers.some((s) => s.scrollTop > 0)) { tracking = false; return; }
       dragging = true;
       drawer.style.transition = "none";
+      if (hooks && hooks.debut) hooks.debut();
     }
     dy = Math.max(0, my);
     drawer.style.transform = "translateY(" + dy + "px)";
+    if (hooks && hooks.suit) hooks.suit(dy);
     if (e.cancelable) e.preventDefault();
   }, { passive: false });
+  let easingResorption = "ease";
   const finish = (e) => {
-    if (!dragging) { tracking = false; return; }
+    if (!dragging) {
+      const monte = tracking && upOk && up > 0 && e.type === "touchend";
+      const dtUp = Math.max(1, e.timeStamp - startT);
+      const faitUp = monte && ((up > 30 && up / dtUp > 0.5) || up > 80 || (replie ? up > 40 : up > drawer.clientHeight * 0.25));
+      tracking = false; up = 0;
+      if (faitUp) upFn();
+      return;
+    }
     tracking = dragging = false;
     const dt = Math.max(1, e.timeStamp - startT);
     const fast = dy > 30 && dy / dt > 0.5;
     const far = dy > 80 || dy > drawer.clientHeight * 0.25;
     drawer.style.transition = "";
     drawer.style.transform = "";
-    if (fast || far) closeFn();
+    if (!(fast || far) && hooks && hooks.annule) hooks.annule();
+    if (fast || far) {
+      const retour = closeFn(dy, dy / dt);
+      if (retour === true) return; // la fermeture anime elle-meme a partir du decalage du doigt
+      easingResorption = typeof retour === "string" ? retour : "ease";
+      // Continuite : sans cela le panneau revient d'un coup a sa place avant de fermer (saut). Le decalage du doigt
+      // se resorbe pendant la fermeture, avec la meme duree et la meme courbe, en s'ajoutant au mouvement de fermeture.
+      // Tiroirs : la transition CSS de fermeture part deja de la position du doigt (dernier style calcule). Y ajouter le decalage
+      // le comptait deux fois (saut de la valeur du decalage au relachement, mesure du 21/10) : on ne le resorbe qu'en l'absence de transition.
+      if (drawer.getAnimations().some((an) => an.transitionProperty === "transform")) return;
+      const d = parseFloat(getComputedStyle(drawer).transitionDuration) * 1000;
+      const resorption = drawer.animate(
+        [{ transform: "translateY(" + dy + "px)" }, { transform: "translateY(0px)" }],
+        { duration: d > 0 ? d : 280, easing: easingResorption, composite: "add" }
+      );
+      if (easingResorption !== "ease") resorption.currentTime = AVANCE_RELACHEMENT; // meme avance que l'animation de fermeture (pleine page)
+    }
   };
   drawer.addEventListener("touchend", finish, { passive: true });
   drawer.addEventListener("touchcancel", finish, { passive: true });
@@ -7116,12 +7392,33 @@ enableDrawerSwipeToClose(collisionInfoPanel, closeCollisionInfoPanelDrawer);
 // Bandeau de collision (mobile) : grand ecran -> fermeture de la pleine page ; ouvert en partie -> repli.
 enableDrawerSwipeToClose(
   collisionDiscussion,
-  () => {
-    if (echangesGrandOuvert) fermerEchangesGrand(false);
-    else basculerBandeauAnime(true);
+  (dy, vitesse) => {
+    if (echangesGrandOuvert) {
+      // Pleine page : meme mouvement que la croix, mais la courbe demarre a la vitesse du doigt (pas de ralenti au relachement).
+      const reste = Math.max(1, collisionViewerSlot.offsetHeight - dy);
+      const pente = Math.min(3.3, Math.max(0.5, (vitesse || 0) * 280 / reste));
+      const courbe = "cubic-bezier(0.3," + (pente * 0.3).toFixed(3) + ",0.5,1)";
+      easingGlisseGrand = courbe;
+      suivreBoutonGrand(dy);
+      glisseGrandPrise = false;
+      fermerEchangesGrand(false);
+      return glisseGrandPrise ? true : courbe; // true : le decalage du doigt est deja repris par l'animation de `top` (basculerGrandAnime)
+    }
+    return animerFermetureBandeau(dy, vitesse);
   },
   () => !collisionDiscussion.hidden && collisionDiscussion.classList.contains("cb") && !collisionDiscussion.classList.contains("collapsed") && !bandeauEnAnimation,
-  'input[type="range"], select, textarea, input'
+  'input[type="range"], select, textarea, input',
+  () => { if (!echangesGrandOuvert) ouvrirEchangesGrand(); },
+  {
+    debut: () => { if (echangesGrandOuvert) preparerSuiviBoutonGrand(); else preparerFermetureBandeau(); },
+    // Pleine page : le bouton « Collisions » avance avec la fiche (22/10) ; bandeau ouvert : il suit le bord haut du bandeau qui descend.
+    suit: (dy) => { if (echangesGrandOuvert) suivreBoutonGrand(dy); else suivreFermetureBandeau(dy); },
+    annule: () => { suiviBoutonGrand = null; progressionDoigtGrand = 0; decalageDoigtGrand = 0; collisionInfoPanelToggle.style.transform = ""; collisionInfoPanelToggle.style.height = ""; if (messageOuvrirBtn) { messageOuvrirBtn.style.width = ""; messageOuvrirBtn.style.transform = ""; } annulerFermetureBandeau(); },
+    // Bandeau replie : un glissement vers le haut l'ouvre (comme un appui sur la fleche) ; un second, depuis le bandeau ouvert, le passe en pleine page (swipeUpFn).
+    hautPartout: () => !echangesGrandOuvert && !grandEnAnimation,
+    replie: () => !collisionDiscussion.hidden && collisionDiscussion.classList.contains("cb") && collisionDiscussion.classList.contains("collapsed") && !bandeauEnAnimation && !echangesGrandOuvert && !grandEnAnimation,
+    ouvrirReplie: () => collisionDiscussionToggle.click()
+  }
 );
 
 renderDetections();
