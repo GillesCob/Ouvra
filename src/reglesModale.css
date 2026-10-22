@@ -49,10 +49,9 @@
 .regles-contenu .collision-item-carte:hover { background: transparent; }
 /* « Priorite Normale → Haute » : sous la carte, alignee sur le texte de la carte (filet 2 + marge 9 + numero 20 + espace 8 = 39 px). */
 .regles-changement { padding: 0 8px 2px 39px; font-size: 11px; color: var(--muted); line-height: 1.35; overflow-wrap: anywhere; }
-.regles-valeur { display: inline-flex; align-items: center; gap: 5px; vertical-align: baseline; }
-.regles-avant { opacity: 0.8; }
-.regles-apres { color: var(--text); font-weight: 700; }
-.regles-valeur .collision-groupe-titre { display: inline-flex; margin: 0; padding: 0; font: inherit; letter-spacing: inherit; text-transform: none; color: inherit; }
+.regles-champ { color: var(--text); }
+.regles-avant { color: var(--muted); }
+.regles-apres { color: var(--msg-accent); font-weight: 700; }
 /* « Voir en 3D » : lien-bouton leger, a droite de la ligne, cible tactile de 44 px sur mobile. */
 .regles-voir {
   flex: 0 0 auto; white-space: nowrap; min-height: 36px; padding: 0 8px; border: 0; border-radius: 6px; background: none;

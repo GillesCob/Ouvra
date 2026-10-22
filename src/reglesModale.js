@@ -91,29 +91,17 @@ export function creerReglesModale({ libellesPriorite, libellesStatut, numero, cr
     return niveaux.join(" / ");
   }
 
-  // Valeur de priorite ou de statut avec sa pastille de couleur, celles de la liste des collisions (point de statut, point de groupe de priorite).
+  // Valeur de priorite ou de statut, en texte seul (retour de Gilles du 22/10 : les pastilles de couleur ne disaient rien ici).
   function valeurChamp(champ, cle, classe) {
-    const val = creer("span", "regles-valeur " + classe);
-    const libelle = libellesDe(champ)[cle] || cle;
-    if (champ === "priorite") {
-      const groupe = creer("span", "collision-groupe-titre prio-" + cle);
-      const point = creer("i", "collision-groupe-dot");
-      point.setAttribute("aria-hidden", "true");
-      groupe.appendChild(point);
-      val.append(groupe, libelle);
-    } else {
-      const point = creer("i", "collision-statut-dot " + cle);
-      point.setAttribute("aria-hidden", "true");
-      val.append(point, libelle);
-    }
-    return val;
+    return creer("span", "regles-valeur " + classe, libellesDe(champ)[cle] || cle);
   }
 
-  // Ligne « Priorite Normale → Haute » : l'ancienne valeur discrete, la nouvelle mise en valeur.
+  // Ligne « Priorite : Normale → Haute » : le nom du champ en clair, l'ancienne valeur grisee, la nouvelle mise en valeur.
   function ligneChangement(ligne) {
     const el = creer("span", "regles-changement");
     el.append(
-      nomChamp(ligne.champ) + " ",
+      creer("span", "regles-champ", nomChamp(ligne.champ) + " :"),
+      " ",
       valeurChamp(ligne.champ, ligne.de, "regles-avant"),
       " → ",
       valeurChamp(ligne.champ, ligne.vers, "regles-apres")
