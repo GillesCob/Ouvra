@@ -47,6 +47,8 @@
 /* La carte de la collision est celle de la liste (.collision-item-carte) ; ici elle ne porte ni survol ni curseur propres, la ligne entiere est une case. */
 .regles-contenu .collision-item { cursor: inherit; }
 .regles-contenu .collision-item-carte:hover { background: transparent; }
+/* Le point de statut de la carte (a droite) ne concerne pas la regle : seul le changement ci-dessous compte (retour de Gilles du 22/10). */
+.regles-contenu .collision-statut { display: none; }
 /* « Priorite Normale → Haute » : sous la carte, alignee sur le texte de la carte (filet 2 + marge 9 + numero 20 + espace 8 = 39 px). */
 .regles-changement { padding: 0 8px 2px 39px; font-size: 11px; color: var(--muted); line-height: 1.35; overflow-wrap: anywhere; }
 .regles-champ { color: var(--text); }
