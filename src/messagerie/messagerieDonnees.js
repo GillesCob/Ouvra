@@ -91,6 +91,12 @@ export function ajouterPersonne(sujet, personne, quand) {
   sujet.affiches += 1;
 }
 
+// Ajout de personnes au groupe (« + » des Participants) : elles deviennent membres et voient tout l'historique ; les sujets existants gardent leurs tags.
+export function ajouterAuGroupe(conv, personnes) {
+  personnes.forEach((p) => { if (!conv.membres.includes(p)) conv.membres.push(p); });
+  conv.sousTitre = conv.membres.length + " participants";
+}
+
 export function changerStatut(conv, sujet, statut, quand) {
   sujet.statut = statut;
   ajouterEvenement(conv, sujet, "statut", quand, statut);
@@ -127,7 +133,7 @@ export function rouvrir(conv, sujet, quand) {
 // Nouveau sujet : le premier message ouvre le fil, le principal garde la trace de l'ouverture.
 export function creerSujet(conv, { titre, texte, tagues, vue, quand, id, urgent }) {
   const sujet = Object.assign(creerFil([{ auteur: MOI, quand, texte, vue: vue || undefined }], 0, 0), {
-    id: id || "n" + quand.getTime(), titre, tagues, statut: "ouvert", urgent: !!urgent
+    id: id || "n" + quand.getTime(), titre, tagues, statut: "ouvert", urgent: !!urgent, creeEnSession: true
   });
   conv.sujets.push(sujet);
   conv.principal.messages.push({ systeme: true, genre: "ouverture", sujetId: sujet.id, quand, auteur: MOI, titre, tagues });
@@ -144,11 +150,13 @@ export function sujetsClos(conv) {
   return conv.sujets.filter((s) => s.statut === "clos").sort((a, b) => b.closLe - a.closLe);
 }
 
-// Pastilles de sujets : les sujets urgents d'abord, puis ceux avec des non lus, puis les plus recents. Le sujet actif (actifId) garde son rang
-// de « non lu » tant qu'il est ouvert : l'ouvrir ne le deplace pas dans la bande, il ne descend qu'une fois quitte.
+// Pastilles de sujets, ordre voulu par Gilles (22/10) : 1) sujets avec non lus (quel que soit leur caractere urgent), 2) sujets urgents, 3) sujets non urgents.
+// Dans chaque groupe, les plus recents d'abord. Un sujet cree en session se place toujours en dernier de son groupe urgent / non urgent (jamais dans le groupe des non lus),
+// dans l'ordre de creation. Le sujet actif (actifId) garde son rang de « non lu » tant qu'il est ouvert : l'ouvrir ne le deplace pas, il ne descend qu'une fois quitte.
 export function sujetsTries(conv, actifId) {
-  const aDuNeuf = (s) => s.nonLus > 0 || s.id === actifId;
-  return conv.sujets.slice().sort((x, y) => (!!estUrgent(y) - !!estUrgent(x)) || (aDuNeuf(y) - aDuNeuf(x)) || dernierMessage(y).quand - dernierMessage(x).quand);
+  const groupe = (s) => (!s.creeEnSession && (s.nonLus > 0 || s.id === actifId) ? 0 : estUrgent(s) ? 1 : 2);
+  return conv.sujets.slice().sort((x, y) => (groupe(x) - groupe(y)) || (!!x.creeEnSession - !!y.creeEnSession) ||
+    (x.creeEnSession ? 0 : dernierMessage(y).quand - dernierMessage(x).quand));
 }
 
 export function convParId(conversations, id) {

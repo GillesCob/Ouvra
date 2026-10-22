@@ -98,6 +98,16 @@
 }
 .msg-av.groupe { border-radius: 12px; }
 .msg-av.pt { width: 28px; height: 28px; font-size: 10.5px; }
+/* Dernier « acteur » des Participants d'un groupe : rond « + » en pointilles + libelle, meme gabarit qu'une personne. */
+.msg-acteur-plus { width: 100%; min-height: 36px; display: flex; align-items: center; gap: 10px; padding: 0; background: none; border: 0; border-radius: 8px; color: var(--muted); font: inherit; text-align: left; cursor: pointer; }
+.msg-av.msg-av-plus { background: none; border: 1.5px dashed var(--muted); color: var(--muted); font-size: 22px; font-weight: 600; line-height: 1; box-sizing: border-box; }
+.msg-av.pt.msg-av-plus { width: 36px; height: 36px; }
+.msg-acteur-plus { -webkit-tap-highlight-color: transparent; }
+.msg-acteur-plus .msg-fiche-nom { color: inherit; }
+.msg-acteur-plus:focus-visible { color: var(--text); }
+@media (hover: hover) and (pointer: fine) { .msg-acteur-plus:hover { color: var(--text); } }
+.msg-acteur-plus:focus-visible .msg-av-plus { border-color: var(--msg-accent); border-style: solid; color: var(--text); }
+@media (hover: hover) and (pointer: fine) { .msg-acteur-plus:hover .msg-av-plus { border-color: var(--msg-accent); border-style: solid; color: var(--text); } }
 .msg-demo { flex-shrink: 0; padding: 8px 14px; border-top: 1px solid var(--border); font-size: 11.5px; color: var(--muted); text-align: center; }
 .msg-vide { padding: 24px 16px; color: var(--muted); text-align: center; }
 #msgGrDoublon.msg-vide { padding: 0; text-align: left; font-size: 13px; line-height: 1.4; }
@@ -123,9 +133,9 @@
 .msg-sujets { flex-shrink: 0; display: flex; align-items: center; gap: 8px; padding: 8px 16px; background: var(--surface); border-bottom: 1px solid var(--border); }
 .msg-sujets-lbl { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
 .msg-bande { position: relative; flex: 1; min-width: 0; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
-.msg-note-sujet, .msg-zone-fil { transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out; }
-.msg-note-sujet.msg-fil-sortie, .msg-note-sujet.msg-fil-entree, .msg-zone-fil.msg-fil-sortie, .msg-zone-fil.msg-fil-entree { opacity: 0; transform: translateY(8px); }
-@media (prefers-reduced-motion: reduce) { .msg-note-sujet, .msg-zone-fil { transition: none; } }
+.msg-zone-fil { transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out; }
+.msg-zone-fil.msg-fil-sortie, .msg-zone-fil.msg-fil-entree { opacity: 0; transform: translateY(8px); }
+@media (prefers-reduced-motion: reduce) { .msg-zone-fil { transition: none; } }
 .msg-bande::-webkit-scrollbar { display: none; }
 .msg-pastille {
   flex-shrink: 0; min-height: 34px; display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border);
@@ -143,16 +153,6 @@
 .msg-point.st-attente { background: #e08a3c; }
 .msg-point.st-clos { background: var(--muted); }
 
-.msg-note-sujet { flex-shrink: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; padding: 6px 16px; font-size: 12.5px; color: var(--muted); border-bottom: 1px solid var(--border); background: var(--bg); }
-.msg-note-sujet.clos { background: var(--msg-releve); }
-.msg-note-sujet b { color: var(--text); }
-.msg-note-sujet .msg-note-texte { flex: 1; min-width: 160px; order: 1; }
-.msg-note-tete, .msg-note-details, .msg-note-int { display: contents; }
-.msg-note-retour, .msg-note-etat, .msg-note-chevron, .msg-note-personnes { display: none; }
-.msg-note-sujet .msg-origine { order: 0; }
-.msg-note-sujet .msg-note-int > :not(.msg-origine) { order: 2; }
-.msg-note-sujet .msg-lien-principal { order: 3; }
-.msg-note-sujet select { min-height: 34px; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 4px 8px; font: inherit; font-size: 12.5px; font-weight: 600; }
 .msg-bascule-urgent[aria-pressed="true"] { color: #1b1007; background: var(--msg-mention); border-color: var(--msg-mention); }
 .msg-lien { background: none; border: 0; color: var(--msg-accent); font-weight: 600; font-size: 12.5px; min-height: 34px; padding: 0 4px; }
 .msg-bouton-petit { min-height: 34px; background: none; border: 1px solid var(--border); border-radius: 8px; padding: 4px 10px; color: var(--text); font-size: 12.5px; font-weight: 600; }
@@ -253,6 +253,11 @@
 .msg-carte .msg-case { display: flex; align-items: center; gap: 8px; min-height: 40px; }
 .msg-carte .msg-case input { width: 18px; min-height: 0; height: 18px; padding: 0; flex-shrink: 0; accent-color: var(--msg-mention); }
 .msg-carte .msg-case label { margin: 0; display: inline; font-size: 13px; color: var(--text); cursor: pointer; }
+.msg-urgent-bouton { -webkit-tap-highlight-color: transparent; }
+:is(.msg-carte, .msg-feuille) .msg-urgent-bouton { min-height: 40px; display: inline-flex; align-items: center; border: 1px solid var(--border); background: var(--bg); color: var(--muted); border-radius: 999px; padding: 4px 16px; font-size: 12.5px; font-weight: 600; }
+:is(.msg-carte, .msg-feuille) .msg-urgent-bouton[aria-pressed="true"] { color: #1b1007; background: var(--msg-mention); border-color: var(--msg-mention); }
+@media (max-width: 768px) { :is(.msg-carte, .msg-feuille) .msg-urgent-bouton { min-height: 44px; } }
+:is(.msg-carte-infos, .msg-feuille) .msg-fiche-actions .msg-urgent-bouton { align-self: flex-start; }
 .msg-tags { display: flex; flex-wrap: wrap; gap: 6px; }
 .msg-tags button { min-height: 40px; display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--muted); border-radius: 999px; padding: 4px 12px 4px 5px; font-size: 12.5px; font-weight: 600; }
 .msg-tags button[aria-pressed="true"] { color: var(--text); border-color: var(--msg-accent); background: var(--msg-releve); }
@@ -263,14 +268,13 @@
 .msg-primaire { background: var(--msg-accent); color: var(--msg-sur-accent); border: 0; font-weight: 700; }
 .msg-primaire:disabled { opacity: 0.5; cursor: not-allowed; }
 .msg-aide { margin: 0; font-size: 12px; color: var(--muted); }
-.msg-histo { max-height: 46vh; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; }
+.msg-histo { max-height: 46vh; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
 .msg-histo-ligne { min-height: 44px; text-align: left; background: none; border: 0; border-radius: 8px; padding: 8px 10px; display: flex; flex-direction: column; gap: 1px; }
 /* Meme technique que la liste des conversations : pas de surbrillance au toucher (le :hover collant d'iOS et la teinte de tap), seulement a la souris. */
 .msg-histo-ligne { -webkit-tap-highlight-color: transparent; }
 @media (hover: hover) and (pointer: fine) { .msg-histo-ligne:hover { background: var(--msg-releve); } }
 .msg-histo-ligne span { font-size: 12px; color: var(--muted); }
 /* Sujets clôturés (22/10) : plus d'air entre les lignes sur mobile (2 px -> 10 px), ordinateur inchangé (a valider par Gilles). */
-@media (max-width: 768px) { .msg-histo { gap: 10px; } }
 
 /* ---------- Bandeau « prise de vue » affiche sur le Viewer ---------- */
 #msgBandeauVue, #msgBandeauRetour {
@@ -283,6 +287,32 @@
 #msgBandeauRetour { flex-wrap: nowrap; justify-content: center; padding: 2px 12px; height: 44px; box-sizing: border-box; }
 #msgBandeauRetour button { flex: none; white-space: nowrap; }
 body.msg-retour-actif #viewerToolbar { top: 56px; }
+/* Modale « Infos du sujet » (laptop, 22/10) : meme contenu que la carte mobile (htmlFeuille), dans la carte de dialogue centree. */
+.msg-carte-infos { width: min(600px, 100%); }
+.msg-carte-infos .msg-fiche-tete { display: flex; flex-direction: column; gap: 8px; padding-right: 44px; }
+.msg-carte-infos h3 { overflow-wrap: anywhere; }
+.msg-carte-infos .msg-feuille-corps { display: flex; flex-direction: column; gap: 14px; }
+.msg-carte-infos .msg-fiche-badges { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.msg-carte-infos .msg-badge-statut { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border: 1px solid var(--border); border-radius: 12px; font-size: 12.5px; font-weight: 700; }
+.msg-carte-infos .msg-fiche-bloc { display: flex; flex-direction: column; gap: 8px; }
+.msg-carte-infos .msg-fiche-bloc .msg-etiquette { margin: 0; }
+.msg-carte-infos .msg-fiche-bloc .msg-origine { align-self: flex-start; }
+.msg-carte-infos .msg-fiche-liste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.msg-carte-infos .msg-fiche-liste li { display: flex; align-items: center; gap: 10px; min-height: 36px; min-width: 0; }
+/* Personnes sur deux colonnes (22/10, laptop) : evite le defilement de la modale. */
+.msg-carte-infos .msg-fiche-liste { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 16px; }
+.msg-carte-infos .msg-fiche-nom, .msg-carte-infos .msg-fiche-nom span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.msg-carte-infos .msg-fiche-nom { min-width: 0; flex: 1; display: flex; flex-direction: column; font-size: 14px; font-weight: 600; color: var(--text); }
+.msg-carte-infos .msg-fiche-nom span { font-size: 12px; font-weight: 400; color: var(--muted); }
+.msg-carte-infos .msg-fiche-actions { display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--border); padding-top: 12px; }
+.msg-carte-infos .msg-feuille-btn { min-height: 40px; width: 100%; display: flex; align-items: center; justify-content: space-between; padding: 0 14px; background: none; border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 14px; font-weight: 600; text-align: left; }
+.msg-carte-infos .msg-feuille-btn:hover { border-color: var(--msg-accent); }
+/* Menu de statut (22/10) : bouton et menu de la page Collision (.collision-trigger / .collision-menu), pastilles de statut du module. */
+.collision-trigger.msg-statut-trigger { padding: 0 16px 0 14px; min-height: 40px; }
+.msg-statut-trigger .msg-point, .msg-statut-menu .msg-point { width: 10px; height: 10px; }
+.msg-statut-menu { min-width: 200px; }
+.msg-statut-separation { height: 1px; margin: 4px 6px; background: var(--border); }
+@media (max-width: 768px) { .collision-trigger.msg-statut-trigger { min-height: 44px; } }
 /* Retour a la conversation (mobile et laptop, aligne le 22/10) : le bouton seul, centre, aucun texte auteur / projet / sujet. */
 /* Mobile : titre centre, puis Valider et Annuler cote a cote, de meme largeur. */
 @media (max-width: 768px) {
@@ -311,7 +341,6 @@ body.msg-retour-actif #viewerToolbar { top: 56px; }
   .msg-menu > button[hidden] { display: none; }
   .msg-menu > * { flex-shrink: 0; }
   .msg-menu { max-height: 70vh; max-height: 70dvh; overflow-y: auto; }
-  .msg-note-sujet { display: none !important; }
   /* Carte « Infos du sujet » / « Participants » (21/10) : page entiere qui monte du bas, 0,28 s ease comme l'agrandissement des echanges de collision. */
   .msg-feuille-fond { position: fixed; inset: 0; z-index: 60; display: flex; align-items: stretch; background: transparent; overflow: hidden; }
   .msg-feuille { position: relative; width: 100%; height: 100vh; height: 100dvh; max-height: none; overflow: hidden; display: flex; flex-direction: column; gap: 12px; padding: calc(14px + env(safe-area-inset-top)) 16px calc(14px + env(safe-area-inset-bottom)); background: var(--surface); transform: translateY(100%); transition: transform 0.28s ease; }
@@ -323,7 +352,6 @@ body.msg-retour-actif #viewerToolbar { top: 56px; }
   .msg-fiche-tete { display: flex; flex-direction: column; gap: 8px; padding-right: 44px; }
   .msg-feuille h3 { margin: 0; font-size: 16px; line-height: 1.3; overflow-wrap: anywhere; }
   .msg-feuille .msg-croix { top: calc(4px + env(safe-area-inset-top)); right: 4px; width: 44px; height: 44px; }
-  .msg-feuille-statut { width: 100%; height: 44px; min-height: 44px; box-sizing: border-box; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 0 10px; font: inherit; font-size: 16px; font-weight: 600; }
   .msg-fiche-badges { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
   .msg-badge-statut { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border: 1px solid var(--border); border-radius: 12px; font-size: 12.5px; font-weight: 700; }
   .msg-fiche-bloc { display: flex; flex-direction: column; gap: 8px; }
@@ -331,41 +359,17 @@ body.msg-retour-actif #viewerToolbar { top: 56px; }
   .msg-fiche-bloc .msg-origine { align-self: flex-start; min-height: 44px; }
   .msg-fiche-liste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
   .msg-fiche-liste li { display: flex; align-items: center; gap: 10px; min-height: 36px; }
+  .msg-acteur-plus { min-height: 44px; }
   .msg-fiche-nom { min-width: 0; flex: 1; display: flex; flex-direction: column; font-size: 14px; font-weight: 600; color: var(--text); }
   .msg-fiche-nom span { font-size: 12px; font-weight: 400; color: var(--muted); }
-  .msg-fiche-tag { flex: none; height: 20px; display: inline-flex; align-items: center; padding: 0 8px; border-radius: 10px; background: var(--msg-releve); border: 1px solid var(--msg-accent); color: var(--text); font-size: 11.5px; font-weight: 700; }
   .msg-fiche-actions { display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--border); padding-top: 12px; }
   .msg-feuille-btn { min-height: 44px; width: 100%; display: flex; align-items: center; justify-content: space-between; padding: 0 14px; background: none; border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 14px; font-weight: 600; text-align: left; }
-  .msg-interrupteur { position: relative; width: 40px; height: 22px; border-radius: 11px; background: var(--border); transition: background 0.2s; }
-  .msg-interrupteur::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: var(--text); transition: transform 0.2s; }
-  .msg-feuille-urgent[aria-checked="true"] .msg-interrupteur { background: var(--msg-mention); }
-  .msg-feuille-urgent[aria-checked="true"] .msg-interrupteur::after { transform: translateX(18px); }
-  #msgHistorique, #msgAjoutSujet { display: none; }
+  #msgHistorique, #msgAjoutSujet, #msgInfosSujet { display: none; }
   .msg-sujets { padding-top: 2px; padding-bottom: 2px; }
-  .msg-note-retour, .msg-note-etat { display: none !important; }
-  .msg-sujets, .msg-entete, .msg-note-sujet, .msg-defile, .msg-composer, .msg-barre-recherche, .msg-vue-pendante { padding-left: 12px; padding-right: 12px; }
+  .msg-sujets, .msg-entete, .msg-defile, .msg-composer, .msg-barre-recherche, .msg-vue-pendante { padding-left: 12px; padding-right: 12px; }
   .msg-pastille, .msg-ajout { min-height: 40px; }
   .msg-composer textarea, .msg-barre-recherche input, .msg-carte :is(input, textarea, select) { font-size: 16px; }
   .msg-mentions { left: 12px; right: 12px; }
-  /* En-tete de sujet compact (21/10) : une rangee de 44 px, details repliables. */
-  .msg-note-sujet { flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 0; padding-top: 0; padding-bottom: 0; }
-  .msg-note-tete { display: flex; align-items: center; gap: 6px; height: 40px; }
-  .msg-note-retour, .msg-note-chevron { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 40px; height: 40px; background: none; border: 0; color: var(--msg-accent); font-size: 20px; font-weight: 600; padding: 0; }
-  .msg-note-chevron { color: var(--muted); margin-right: -8px; }
-  .msg-note-chevron svg { transition: transform 0.28s ease; }
-  .msg-note-sujet.details-ouverts .msg-note-chevron svg { transform: rotate(180deg); }
-  .msg-note-sujet .msg-note-texte { min-width: 0; flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 14px; }
-  .msg-note-texte .msg-urgent, .msg-note-suite { display: none; }
-  .msg-note-etat { display: inline-flex; align-items: center; gap: 5px; flex: none; font-size: 12px; font-weight: 600; color: var(--muted); }
-  .msg-note-details { display: block; overflow: hidden; height: 0; }
-  .msg-note-sujet.details-ouverts .msg-note-details { height: auto; }
-  .msg-note-int { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 2px 0 10px; }
-  .msg-note-int > * { order: 0 !important; }
-  .msg-note-int .msg-origine { flex: 0 0 100%; }
-  .msg-note-personnes { display: block; flex: 0 0 100%; }
-  .msg-note-int .msg-lien-principal { display: none; }
-  .msg-note-int select { height: 40px; }
-  .msg-note-int select, .msg-note-int .msg-bouton-petit { min-height: 40px; box-sizing: border-box; flex: 1 1 calc(50% - 4px); }
   .msg-bas { right: 12px; }
 }
 @media (max-width: 768px) and (prefers-reduced-motion: reduce) {

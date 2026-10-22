@@ -7201,6 +7201,69 @@ function fermerEchangesGrand(rendreFocus) {
   });
 })();
 
+// Laptop (22/10) : defiler au bord de la liste des echanges change l'etat du bandeau, avec les fonctions existantes (animations inchangees).
+// Ouvert : bas -> pleine page (ouvrirEchangesGrand), haut -> replie (basculerBandeauAnime) ; pleine page : haut -> ferme (fermerEchangesGrand),
+// qui revient a l'etat d'origine memorise a l'ouverture (echangesGrandEtaitReplie). Le conteneur defilant est #discussionMessages (les filtres
+// Tout / Commentaires / Modifications ne font que le re-remplir). Ecouteur pose seulement hors mobile (pointeur fin), jamais sur le tactile.
+(function initDefilementBordBandeau() {
+  if (!COLLISION_ECHANGES_GRAND || !COLLISION_BANDEAU) return;
+  const PAUSE_GESTE = 150; // ms sans wheel : le geste suivant est un nouveau geste (l'inertie d'un geste precedent n'en est pas un)
+  const SEUIL_CUMUL = 60; // px de deltaY cumules au bord, depuis un geste ayant commence au bord
+  const VERROU_APRES = 400; // ms de verrou apres la fin de l'animation (inertie du pave)
+  const mq = window.matchMedia("(min-width: 769px) and (pointer: fine)");
+  let dernier = 0, sens = 0, arme = false, cumul = 0, verrouJusqua = 0;
+  const auBord = (sensGeste) => {
+    const el = discussionMessages;
+    return sensGeste > 0 ? el.scrollTop + el.clientHeight >= el.scrollHeight - 1 : el.scrollTop <= 0;
+  };
+  // Element defilant interne (hors #discussionMessages) qui peut encore defiler dans ce sens : il garde la molette.
+  const defilableInterne = (cible, sensGeste) => {
+    for (let n = cible; n && n !== discussionMessages; n = n.parentElement) {
+      if (!(n instanceof HTMLElement)) continue;
+      const oy = getComputedStyle(n).overflowY;
+      if ((oy === "auto" || oy === "scroll") && n.scrollHeight > n.clientHeight) {
+        if (sensGeste > 0 ? n.scrollTop + n.clientHeight < n.scrollHeight - 1 : n.scrollTop > 0) return true;
+      }
+    }
+    return false;
+  };
+  const surWheel = (e) => {
+    const maintenant = performance.now();
+    const nouveauGeste = maintenant - dernier > PAUSE_GESTE;
+    dernier = maintenant; // mis a jour a chaque evenement, meme ignore : l'inertie garde le geste "en cours"
+    const px = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? discussionMessages.clientHeight : 1);
+    if (Math.abs(px) < Math.abs(e.deltaX) || px === 0) return;
+    const s = px > 0 ? 1 : -1;
+    if (nouveauGeste || s !== sens) {
+      sens = s;
+      cumul = 0;
+      arme = nouveauGeste && auBord(s); // le geste doit COMMENCER au bord ; un changement de sens en cours de geste ne l'arme pas
+    }
+    const actif = collisionDiscussion.classList.contains("cb") && !collisionDiscussion.hidden && !collisionDiscussion.classList.contains("collapsed");
+    if (!actif || grandEnAnimation || bandeauEnAnimation || maintenant < verrouJusqua || document.querySelector(".collision-menu") || defilableInterne(e.target, s)) { arme = false; return; }
+    if (!arme || !auBord(s)) { arme = false; return; }
+    e.preventDefault(); // geste consomme
+    cumul += Math.abs(px);
+    if (cumul < SEUIL_CUMUL) return;
+    arme = false;
+    cumul = 0;
+    verrouJusqua = maintenant + 300 + VERROU_APRES;
+    if (echangesGrandOuvert) {
+      if (s < 0) fermerEchangesGrand(false);
+    } else if (s > 0) {
+      ouvrirEchangesGrand();
+    } else {
+      basculerBandeauAnime(true);
+    }
+  };
+  const maj = () => {
+    if (mq.matches) discussionMessages.addEventListener("wheel", surWheel, { passive: false });
+    else discussionMessages.removeEventListener("wheel", surWheel);
+  };
+  maj();
+  mq.addEventListener("change", maj);
+})();
+
 discussionReplyForm.addEventListener("submit", (e) => {
   e.preventDefault();
   const texte = discussionReplyInput.value.trim();

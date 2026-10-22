@@ -10,9 +10,9 @@ import "./messagerie.css";
 import {
   MOI, LIBELLES_STATUT, STATUTS_ACTIFS, TAILLE_PAQUET,
   dernierMessage, nonLusConv, activiteConv, filActif, ouvrirFil, fermerRepere, ajouterMessage,
-  changerStatut, ajouterPersonne, basculerUrgence, estUrgent, convAUrgent, cloturer, rouvrir, creerSujet, creerConversation, vueOrigine, sujetsClos, sujetsTries, convParId
+  changerStatut, ajouterPersonne, ajouterAuGroupe, basculerUrgence, estUrgent, convAUrgent, cloturer, rouvrir, creerSujet, creerConversation, vueOrigine, sujetsClos, sujetsTries, convParId
 } from "./messagerieDonnees.js";
-import { echapper, heureMinute, cleJour, libelleJour, heureCourte, dateHeure, initiales, prenom } from "./format.js";
+import { echapper, heureMinute, cleJour, libelleJour, heureCourte, initiales, prenom } from "./format.js";
 import { imageVue, chargerBanque, attribuerBanque } from "./vuesMessagerie.js";
 import { requeteMention, filtrerPersonnes, occurrences } from "./mentions.js";
 
@@ -289,13 +289,16 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
     return fil ? { c, fil, sujet: etat.sujetId ? fil : null } : null;
   }
 
+  // Sous-titre de l'en-tete : prenoms des membres d'un groupe (mis a jour quand des personnes rejoignent), role de l'interlocuteur en 1 a 1.
+  const sousTitreEntete = (c) => c.type === "groupe" ? c.membres.map((m) => prenom(personne(m).nom)).join(", ") : c.sousTitre;
+
   function batirVolet(c) {
     $("msgVolet").innerHTML =
       '<div class="msg-entete">' +
         '<button type="button" class="msg-icone msg-retour" data-act="retour" aria-label="Retour à la liste des conversations">&larr;</button>' +
         avatarConv(c) +
         '<div class="msg-titre"><b>' + echapper(c.nom) + "</b><span>" +
-          (c.type === "groupe" ? echapper(c.membres.map((m) => prenom(personne(m).nom)).join(", ")) : echapper(c.sousTitre)) + "</span></div>" +
+          echapper(sousTitreEntete(c)) + "</span></div>" +
         '<button type="button" class="msg-icone" data-act="recherche-conv" aria-label="Rechercher dans la conversation" aria-expanded="false" aria-controls="msgBarreRecherche">' + ICONE_LOUPE + "</button>" +
         '<button type="button" class="msg-icone msg-options" id="msgOptions" data-act="options" aria-label="Options de la conversation" aria-haspopup="true" aria-expanded="false" aria-controls="msgMenu">&hellip;</button>' +
         '<div class="msg-menu" id="msgMenu" hidden>' +
@@ -306,9 +309,9 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
       "</div>" +
       '<div class="msg-barre-recherche" id="msgBarreRecherche" hidden><input id="msgChampRecherche" type="search" placeholder="Rechercher dans cette conversation" aria-label="Rechercher dans cette conversation" autocomplete="off" /><span id="msgNbResultats" aria-live="polite"></span></div>' +
       '<div class="msg-sujets"><span class="msg-sujets-lbl">Sujets</span><div class="msg-bande" id="msgBande"></div>' +
+        '<button type="button" class="msg-ajout" id="msgInfosSujet" data-act="infos-sujet" aria-haspopup="dialog" aria-label="Infos du sujet" title="Infos du sujet" hidden>&hellip;</button>' +
         '<button type="button" class="msg-ajout" id="msgHistorique" data-act="historique" hidden>Sujets clôturés</button>' +
         '<button type="button" class="msg-ajout" id="msgAjoutSujet" data-act="nouveau-sujet">+ Sujet</button></div>' +
-      '<div class="msg-note-sujet" id="msgNoteSujet" hidden></div>' +
       '<div class="msg-zone-fil"><div class="msg-defile" id="msgScroller" tabindex="-1"></div>' +
         '<button type="button" class="msg-bas" id="msgBas" data-act="bas" aria-label="Aller au dernier message" hidden>&darr;</button></div>' +
       '<div class="msg-vue-pendante" id="msgVuePendante" hidden></div>' +
@@ -490,77 +493,120 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
     return c.type !== "groupe" ? [] : c.membres.filter((p) => p !== MOI && !s.tagues.includes(p));
   }
 
-  let noteOuverteId = null;
+  // Personnes listees dans « Infos du sujet » : en groupe, seulement Vous et les tagues du sujet (jamais les autres membres) ; en 1 a 1, l'interlocuteur.
+  function participantsSujet(c, s) {
+    return c.type === "groupe" ? c.membres.filter((p) => p === MOI || s.tagues.includes(p)) : c.membres.filter((p) => p !== MOI);
+  }
 
-  // Bandeau du sujet ouvert : titre, taggues, statut, Cloturer / Rouvrir, vue d'origine.
+  // Personnes que le « + » des Participants peut ajouter au groupe : toutes celles qui n'en sont pas encore membres (jamais en 1 a 1).
+  function personnesAjoutablesGroupe(c) {
+    return c.type !== "groupe" ? [] : Object.keys(personnes).filter((p) => p !== MOI && !c.membres.includes(p));
+  }
+  // Un seul flux d'ajout (« Valider (n) »), deux cibles : le sujet ouvert (tags) ou, sans sujet, le groupe (membres).
+  const candidatsAjout = (cur) => cur.sujet ? membresAjoutables(cur.c, cur.sujet) : personnesAjoutablesGroupe(cur.c);
+
+  // Etat du sujet ouvert pour le composeur (sujet clos : saisie bloquee) et bouton « ... » de la barre « Sujets » (laptop, sujet ouvert seulement).
+  // Les infos du sujet vivent dans la carte mobile ou la modale laptop (meme rendu : htmlFeuille).
   function rendreNoteSujet() {
     const cur = filCourant();
-    const note = $("msgNoteSujet");
     const saisie = $("msgSaisie");
     const envoyer = $("msgEnvoyer");
     const boutonVue = $("msgBoutonVue");
     majMenuInfos();
-    if (!cur.sujet) {
-      note.hidden = true;
-      noteOuverteId = null;
-      saisie.disabled = false;
-      envoyer.disabled = false;
-      boutonVue.disabled = false;
-      saisie.placeholder = "Écrire un message";
-      return;
-    }
-    const s = cur.sujet;
-    const clos = s.statut === "clos";
-    const origine = vueOrigine(s);
-    const boutonOrigine = origine
-      ? '<button type="button" class="msg-origine" data-act="agrandir-origine" title="Ouvrir la vue d\'origine dans le Viewer"><span class="msg-origine-img">' + imageVue(origine.vue) + "</span><span>Vue d'origine</span></button>"
-      : "";
-    if (mobile()) {
-      // Mobile : plus de rangee sous la bande, les actions du sujet vivent dans le menu « ⋯ » (bloc « Ce sujet »).
-      note.hidden = true;
-      note.innerHTML = "";
-      noteOuverteId = null;
-      saisie.disabled = clos;
-      envoyer.disabled = clos;
-      boutonVue.disabled = clos;
-      saisie.placeholder = clos ? "Sujet clos : rouvrez-le pour répondre" : "Écrire un message";
-      return;
-    }
-    note.hidden = false;
-    if (noteOuverteId !== s.id) noteOuverteId = null;
-    const ouvert = noteOuverteId === s.id;
-    note.className = "msg-note-sujet" + (clos ? " clos" : "") + (ouvert ? " details-ouverts" : "");
-    const tagues = echapper(s.tagues.map((p) => personne(p).nom).join(", "));
-    const infoClos = clos ? "clos par " + echapper(personne(s.closPar).nom) + " le " + dateHeure(s.closLe) + " &middot; " + s.messages.length + " messages" : "";
-    // Mobile : une rangee compacte (retour, titre, statut, chevron) + des details repliables. Ordinateur : les memes elements, mise en page inchangee.
-    const tete = '<div class="msg-note-tete"><button type="button" class="msg-note-retour" data-act="vers-principal" aria-label="Retour à la conversation principale">&larr;</button>' +
-      "<span class=\"msg-note-texte\"><b># " + echapper(s.titre) + "</b>" + (clos ? "" : (s.urgent ? ' <span class="msg-urgent">Urgent</span>' : "")) +
-      '<span class="msg-note-suite"> &middot; ' + (clos ? infoClos : "tagués : " + tagues) + "</span></span>" +
-      '<span class="msg-note-etat"><span class="msg-point st-' + s.statut + '"></span>' + LIBELLES_STATUT[s.statut] + (s.urgent && !clos ? ' <span class="msg-urgent">Urgent</span>' : "") + "</span>" +
-      '<button type="button" class="msg-note-chevron" data-act="details-sujet" aria-label="Détails du sujet" aria-expanded="' + ouvert + '"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 6l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>';
-    const lignePersonnes = '<div class="msg-note-personnes">' + (clos ? infoClos : "tagués : " + tagues) + "</div>";
-    let actions;
-    if (clos) {
-      actions = '<button type="button" class="msg-bouton-petit" data-act="rouvrir">Rouvrir</button><button type="button" class="msg-lien msg-lien-principal" data-act="vers-principal">&larr; Principal</button>';
-    } else {
-      actions = '<select id="msgStatut" aria-label="Statut du sujet">' + STATUTS_ACTIFS.map((k) => '<option value="' + k + '"' + (s.statut === k ? " selected" : "") + ">" + LIBELLES_STATUT[k] + "</option>").join("") + "</select>" +
-        '<button type="button" class="msg-bouton-petit msg-bascule-urgent" data-act="urgence" aria-pressed="' + !!s.urgent + '">Urgent</button>' +
-        (membresAjoutables(cur.c, s).length ? '<button type="button" class="msg-bouton-petit" data-act="ouvrir-ajout">+ Personne</button>' : "") +
-        '<button type="button" class="msg-bouton-petit" data-act="cloturer">Clôturer</button><button type="button" class="msg-lien msg-lien-principal" data-act="vers-principal">&larr; Principal</button>';
-    }
-    note.innerHTML = tete + '<div class="msg-note-details" id="msgNoteDetails"><div class="msg-note-int">' + boutonOrigine + lignePersonnes + actions + "</div></div>";
+    // Bouton « ... » laptop : sujet ouvert (Infos du sujet) ou conversation de groupe sans sujet (Participants) ; masque en individuel sans sujet.
+    const boutonInfos = $("msgInfosSujet");
+    boutonInfos.hidden = !carteDisponible();
+    const libelleInfos = libelleCarteInfos();
+    boutonInfos.setAttribute("aria-label", libelleInfos);
+    boutonInfos.title = libelleInfos;
+    const clos = !!cur.sujet && cur.sujet.statut === "clos";
     saisie.disabled = clos;
     envoyer.disabled = clos;
     boutonVue.disabled = clos;
     saisie.placeholder = clos ? "Sujet clos : rouvrez-le pour répondre" : "Écrire un message";
   }
 
-  // Mobile : carte « Infos du sujet » (ou « Participants » hors sujet), feuille qui monte du bas. Les boutons gardent les data-act existants
-  // (urgence, cloturer, rouvrir, ouvrir-ajout, agrandir-origine) : surClic les traite comme avant.
-  function htmlPersonne(id, tague) {
+  // Carte « Infos du sujet » (ou « Participants » hors sujet) : feuille qui monte du bas sur mobile, modale centree sur laptop (meme rendu).
+  // Les boutons gardent les data-act existants (urgence, rouvrir, ouvrir-ajout, agrandir-origine) : surClic les traite pareil.
+  function htmlPersonne(id) {
     const p = personne(id);
-    return "<li>" + avatarPersonne(id, "pt") + '<span class="msg-fiche-nom">' + echapper(p.nom) + (p.role ? "<span>" + echapper(p.role) + "</span>" : "") + "</span>" +
-      (tague ? '<span class="msg-fiche-tag">Tagué</span>' : "") + "</li>";
+    return "<li>" + avatarPersonne(id, "pt") + '<span class="msg-fiche-nom">' + echapper(p.nom) + (p.role ? "<span>" + echapper(p.role) + "</span>" : "") + "</span></li>";
+  }
+  // Dernier element de la liste des personnes : rond « + » (meme composant pour un sujet et pour les Participants d'un groupe).
+  const htmlPlusPersonne = () => '<li class="msg-fiche-plus"><button type="button" class="msg-acteur-plus" data-act="ouvrir-ajout"><span class="msg-av pt msg-av-plus" aria-hidden="true">+</span><span class="msg-fiche-nom">Ajouter une personne</span></button></li>';
+  // Statut du sujet : bouton a deux lignes + menu personnalise (meme style que Priorite / Statut de la page Collision), « Clôturer » est une option du menu.
+  const htmlControleStatut = (statut) =>
+    '<button type="button" id="msgStatutFeuille" class="collision-trigger msg-statut-trigger" data-act="statut-menu" aria-haspopup="listbox" aria-expanded="false" aria-label="Statut du sujet : ' + LIBELLES_STATUT[statut] + '">' +
+    '<span class="msg-point st-' + statut + '" aria-hidden="true"></span><span class="collision-trigger-texte"><span class="collision-trigger-lib">Statut</span><span class="collision-trigger-val">' + LIBELLES_STATUT[statut] + '</span></span>' +
+    '<span class="collision-trigger-chevron" aria-hidden="true"></span></button>';
+  let menuStatut = null;
+  function fermerMenuStatut(rendreFocus) {
+    if (!menuStatut) return;
+    menuStatut.remove();
+    menuStatut = null;
+    document.removeEventListener("pointerdown", surClicHorsMenuStatut, true);
+    document.removeEventListener("keydown", surToucheMenuStatut, true);
+    const declencheur = $("msgStatutFeuille");
+    if (declencheur) { declencheur.setAttribute("aria-expanded", "false"); if (rendreFocus) declencheur.focus(); }
+  }
+  // Un appui sur le fond sombre qui ferme le menu ne ferme pas aussi la modale : le clic qui suit est absorbe (surClic).
+  let clicFondAbsorbe = false;
+  function surClicHorsMenuStatut(e) {
+    const declencheur = $("msgStatutFeuille");
+    if (!menuStatut || menuStatut.contains(e.target) || (declencheur && declencheur.contains(e.target))) return;
+    if (e.target === $("msgDialogue") || e.target === $("msgFeuille")) { clicFondAbsorbe = true; setTimeout(() => { clicFondAbsorbe = false; }, 500); }
+    fermerMenuStatut();
+  }
+  function surToucheMenuStatut(e) {
+    if (!menuStatut) return;
+    const options = Array.from(menuStatut.querySelectorAll(".collision-menu-option"));
+    const i = options.indexOf(document.activeElement);
+    if (e.key === "Escape") { e.stopPropagation(); fermerMenuStatut(true); }
+    else if (e.key === "Tab") fermerMenuStatut();
+    else if (e.key === "ArrowDown") { e.preventDefault(); options[(i + 1) % options.length].focus(); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); options[(i <= 0 ? options.length : i) - 1].focus(); }
+    else if (e.key === "Home") { e.preventDefault(); options[0].focus(); }
+    else if (e.key === "End") { e.preventDefault(); options[options.length - 1].focus(); }
+  }
+  function ouvrirMenuStatut(declencheur) {
+    if (menuStatut) { fermerMenuStatut(); return; }
+    const cur = filCourant();
+    if (!cur || !cur.sujet) return;
+    const menu = document.createElement("div");
+    menu.className = "collision-menu msg-statut-menu";
+    menu.setAttribute("role", "listbox");
+    menu.setAttribute("aria-label", "Statut du sujet");
+    const option = (valeur, libelle, classePoint, courant) =>
+      '<button type="button" class="collision-menu-option" role="option" data-act="choisir-statut" data-valeur="' + valeur + '" aria-selected="' + courant + '">' +
+      '<span class="msg-point ' + classePoint + '" aria-hidden="true"></span><span class="collision-menu-texte">' + libelle + '</span><span class="collision-menu-coche" aria-hidden="true">' + (courant ? "\u2713" : "") + "</span></button>";
+    menu.innerHTML = '<div class="collision-menu-titre">Statut</div>' +
+      STATUTS_ACTIFS.map((k) => option(k, LIBELLES_STATUT[k], "st-" + k, k === cur.sujet.statut)).join("") +
+      '<div class="msg-statut-separation" role="separator"></div>' + option("cloturer", "Clôturer", "st-clos", false);
+    menu.style.visibility = "hidden";
+    racine.appendChild(menu);
+    const r = declencheur.getBoundingClientRect();
+    const mh = menu.offsetHeight;
+    const mw = Math.max(menu.offsetWidth, r.width);
+    menu.style.top = (window.innerHeight - r.bottom >= mh + 8 ? r.bottom + 6 : Math.max(8, r.top - mh - 6)) + "px";
+    menu.style.left = Math.max(8, Math.min(r.left, window.innerWidth - mw - 8)) + "px";
+    menu.style.minWidth = mw + "px";
+    menu.style.visibility = "";
+    menuStatut = menu;
+    declencheur.setAttribute("aria-expanded", "true");
+    document.addEventListener("pointerdown", surClicHorsMenuStatut, true);
+    document.addEventListener("keydown", surToucheMenuStatut, true);
+    (menu.querySelector('[aria-selected="true"]') || menu.querySelector(".collision-menu-option")).focus({ preventScroll: true });
+  }
+  function choisirStatut(valeur) {
+    const cur = filCourant();
+    fermerMenuStatut();
+    if (!cur || !cur.sujet || cur.sujet.statut === "clos") return;
+    if (valeur === "cloturer") cloturer(cur.c, cur.sujet, instant());
+    else if (valeur !== cur.sujet.statut) changerStatut(cur.c, cur.sujet, valeur, instant());
+    else { $("msgStatutFeuille").focus(); return; }
+    rafraichirApresChangement();
+    const declencheur = $("msgStatutFeuille");
+    if (declencheur) declencheur.focus();
   }
   function htmlFeuille() {
     const cur = filCourant();
@@ -568,7 +614,9 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
     const c = cur.c;
     const membres = c.type === "groupe" ? c.membres : c.membres.filter((m) => m !== MOI);
     if (!cur.sujet) {
-      return '<div class="msg-fiche-tete"><h3>Participants</h3></div><div class="msg-feuille-corps"><ul class="msg-fiche-liste">' + membres.map((m) => htmlPersonne(m, false)).join("") + "</ul></div>";
+      // Dernier « acteur » factice d'un groupe : rond « + » qui ouvre l'ajout de personnes ; absent quand tout le monde est deja membre.
+      const plus = personnesAjoutablesGroupe(c).length ? htmlPlusPersonne() : "";
+      return '<div class="msg-fiche-tete"><h3>Participants</h3></div><div class="msg-feuille-corps"><ul class="msg-fiche-liste">' + membres.map((m) => htmlPersonne(m)).join("") + plus + "</ul></div>";
     }
     const s = cur.sujet;
     const clos = s.statut === "clos";
@@ -582,22 +630,18 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
         '<button type="button" class="msg-origine" data-act="agrandir-origine"><span class="msg-origine-img">' + imageVue(origine.vue) + "</span><span>Vue d'origine</span></button></div>";
     }
     corps += '<div class="msg-fiche-bloc"><span class="msg-etiquette">Personnes</span><ul class="msg-fiche-liste">' +
-      membres.map((m) => htmlPersonne(m, s.tagues.includes(m))).join("") + "</ul>" +
-      (!clos && membresAjoutables(c, s).length ? '<button type="button" class="msg-feuille-btn" data-act="ouvrir-ajout">+ Personne</button>' : "") + "</div>";
+      participantsSujet(c, s).map((m) => htmlPersonne(m)).join("") + (!clos && membresAjoutables(c, s).length ? htmlPlusPersonne() : "") + "</ul></div>";
     // Tete et actions restent fixes, seul le corps (lieu, personnes) defile si la liste est longue.
     let actions = '<div class="msg-fiche-actions">';
     if (clos) actions += '<button type="button" class="msg-feuille-btn" data-act="rouvrir">Rouvrir</button>';
     else {
-      actions += '<button type="button" class="msg-feuille-btn msg-feuille-urgent" data-act="urgence" role="switch" aria-checked="' + !!s.urgent + '">Urgent<span class="msg-interrupteur" aria-hidden="true"></span></button>' +
-        // Statut actuel de l'echange, en bas de la carte : « Clôturer » est une option de la liste (meme logique que l'ancien bouton).
-        '<select id="msgStatutFeuille" class="msg-feuille-statut" aria-label="Statut du sujet">' +
-        STATUTS_ACTIFS.map((k) => '<option value="' + k + '"' + (s.statut === k ? " selected" : "") + ">" + LIBELLES_STATUT[k] + "</option>").join("") +
-        '<option value="cloturer">Clôturer</option></select>';
+      actions += '<button type="button" class="msg-urgent-bouton" data-act="urgence" aria-pressed="' + !!s.urgent + '">Urgent</button>' + htmlControleStatut(s.statut);
     }
     return '<div class="msg-fiche-tete">' + tete + '</div><div class="msg-feuille-corps">' + corps + "</div>" + actions + "</div>";
   }
 
   let minuteurFeuille = 0;
+  const libelleCarteInfos = () => { const cur = filCourant(); return cur && cur.sujet ? "Infos du sujet" : "Participants"; };
   // La carte existe pour un sujet, ou pour les participants d'un groupe ; jamais pour une conversation individuelle sans sujet.
   function carteDisponible() {
     const cur = filCourant();
@@ -625,6 +669,7 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
     $("msgFeuilleCarte").querySelector(".msg-croix").focus({ preventScroll: true });
   }
   function fermerFeuille(immediat) {
+    fermerMenuStatut();
     const fond = $("msgFeuille");
     if (!fond || fond.hidden) return;
     fond.classList.remove("ouvert");
@@ -651,32 +696,38 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
       entree.hidden = !carteDisponible();
     }
     majFeuille();
+    majInfosLaptop();
   }
 
-  // Mobile : deplie / replie les details du sujet (hauteur 0,28 s ease, meme principe que le bandeau de collision).
-  function basculerDetailsSujet(bouton) {
-    const note = $("msgNoteSujet");
-    const zone = $("msgNoteDetails");
-    const cur = filCourant();
-    if (!zone || !cur || !cur.sujet) return;
-    const ouvrir = !note.classList.contains("details-ouverts");
-    noteOuverteId = ouvrir ? cur.sujet.id : null;
-    bouton.setAttribute("aria-expanded", String(ouvrir));
-    const reduit = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const h = zone.firstElementChild.offsetHeight;
-    if (reduit) { note.classList.toggle("details-ouverts", ouvrir); return; }
-    zone.style.height = (ouvrir ? 0 : h) + "px";
-    note.classList.toggle("details-ouverts", ouvrir);
-    void zone.offsetHeight;
-    zone.style.transition = "height 0.28s ease";
-    zone.style.height = (ouvrir ? h : 0) + "px";
-    setTimeout(() => { zone.style.transition = ""; zone.style.height = ""; }, 300);
+  // Laptop : modale « Infos du sujet » (meme contenu que la carte mobile, redessine sur place a chaque changement).
+  const infosLaptopOuverte = () => dialogueOuvert() && !!$("msgDialogue").querySelector(".msg-carte-infos");
+  function htmlCarteInfos() {
+    return htmlFeuille() + '<button type="button" class="msg-croix" data-act="fermer-dialogue" aria-label="Fermer">\u2715</button>';
+  }
+  function ouvrirInfosLaptop(declencheur) {
+    if (mobile() || !carteDisponible()) return;
+    ouvrirDialogue(htmlFeuille(), libelleCarteInfos(), declencheur);
+    $("msgDialogue").querySelector(".msg-carte").classList.add("msg-carte-infos");
+  }
+  function majInfosLaptop() {
+    if (!infosLaptopOuverte()) return;
+    if (mobile() || !carteDisponible()) { fermerDialogue(); return; }
+    const carte = $("msgDialogue").querySelector(".msg-carte");
+    carte.setAttribute("aria-label", libelleCarteInfos());
+    const y = carte.scrollTop;
+    const actif = document.activeElement && carte.contains(document.activeElement) ? document.activeElement.dataset.act || document.activeElement.id : "";
+    carte.innerHTML = htmlCarteInfos();
+    carte.scrollTop = y;
+    const retour = actif && carte.querySelector('[data-act="' + actif + '"], #' + actif);
+    if (retour) retour.focus({ preventScroll: true });
   }
 
   function rendreFilCourant(garderDefilement) {
     const cur = filCourant();
     if (!cur) return;
     rendreBande(cur.c);
+    const sousTitre = racine.querySelector(".msg-entete .msg-titre span");
+    if (sousTitre) sousTitre.textContent = sousTitreEntete(cur.c);
     rendreNoteSujet();
     rendreMessages(garderDefilement);
     rendreVuePendante();
@@ -714,7 +765,7 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
       rendreListe();
       allerAuRepere();
     };
-    const zones = voletPret ? [$("msgNoteSujet"), racine.querySelector(".msg-zone-fil")] : [];
+    const zones = voletPret ? [racine.querySelector(".msg-zone-fil")] : [];
     if (!voletPret || avant === null || window.matchMedia("(prefers-reduced-motion: reduce)").matches || (avant && avant.sujet === filCourant().sujet)) {
       afficher();
       sujetActifEnPremier();
@@ -726,6 +777,8 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
     zones.forEach((z) => z.classList.add("msg-fil-sortie"));
     minuteurSujet = setTimeout(() => {
       afficher();
+      // Le bouton « … » (laptop) apparait avec afficher() et retrecit la bande apres le calcul de la butee : on recale (sans effet si deja en place).
+      sujetActifEnPremier();
       zones.forEach((z) => {
         z.classList.remove("msg-fil-sortie");
         z.classList.add("msg-fil-entree");
@@ -841,13 +894,14 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
     if (premierChamp) premierChamp.focus();
   }
   function fermerDialogue() {
+    fermerMenuStatut();
     const boite = $("msgDialogue");
     if (boite.hidden) return;
     boite.hidden = true;
     boite.innerHTML = "";
     if (declencheurDialogue && document.contains(declencheurDialogue) && declencheurDialogue.focus) declencheurDialogue.focus();
     declencheurDialogue = null;
-    if (rouvrirFeuilleApresDialogue) { rouvrirFeuilleApresDialogue = false; ouvrirFeuille(true); }
+    if (rouvrirFeuilleApresDialogue) { rouvrirFeuilleApresDialogue = false; if (mobile()) ouvrirFeuille(true); else ouvrirInfosLaptop($("msgInfosSujet")); }
   }
   const dialogueOuvert = () => !!$("msgDialogue") && !$("msgDialogue").hidden;
 
@@ -862,7 +916,7 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
   }
 
   // On peut cocher plusieurs personnes puis « Valider » ; fermer (croix, Annuler, fond) ramene a la carte « Infos du sujet »
-  // quand l'ajout en vient (mobile seulement : la carte n'existe pas sur laptop).
+  // quand l'ajout en vient (carte sur mobile, modale « Infos du sujet » sur laptop).
   let rouvrirFeuilleApresDialogue = false;
   function majBoutonValiderAjout() {
     const n = $("msgDialogue").querySelectorAll('[data-act="choisir-ajout"][aria-pressed="true"]').length;
@@ -873,24 +927,26 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
   }
   function validerAjoutPersonnes() {
     const cur = filCourant();
-    if (!cur || !cur.sujet || cur.sujet.statut === "clos") return;
+    if (!cur || (cur.sujet && cur.sujet.statut === "clos")) return;
+    const candidats = candidatsAjout(cur);
     const choisis = Array.from($("msgDialogue").querySelectorAll('[data-act="choisir-ajout"][aria-pressed="true"]')).map((b) => b.dataset.p)
-      .filter((p) => membresAjoutables(cur.c, cur.sujet).includes(p));
+      .filter((p) => candidats.includes(p));
     if (!choisis.length) return;
-    choisis.forEach((p) => ajouterPersonne(cur.sujet, p, instant()));
+    if (cur.sujet) choisis.forEach((p) => ajouterPersonne(cur.sujet, p, instant()));
+    else ajouterAuGroupe(cur.c, choisis);
     rafraichirApresChangement();
     fermerDialogue();
   }
   function ouvrirDialogueAjout(declencheur, depuisFeuille) {
     const cur = filCourant();
-    if (!cur || !cur.sujet) return;
+    if (!cur || (!cur.sujet && cur.c.type !== "groupe")) return;
     // Mobile et laptop (aligne le 22/10) : sélection multiple puis « Valider (n) ».
     rouvrirFeuilleApresDialogue = !!depuisFeuille;
     ouvrirDialogue(
-      "<h3>Ajouter des personnes au sujet</h3>" +
-      '<div class="msg-tags">' + membresAjoutables(cur.c, cur.sujet).map((p) =>
+      "<h3>Ajouter des personnes " + (cur.sujet ? "au sujet" : "au groupe") + "</h3>" +
+      '<div class="msg-tags">' + candidatsAjout(cur).map((p) =>
         '<button type="button" data-act="choisir-ajout" data-p="' + echapper(p) + '" aria-pressed="false">' + avatarPersonne(p, "pt") + echapper(personne(p).nom) + "</button>").join("") + "</div>" +
-      '<p class="msg-aide">Les personnes ajoutées voient tout l\'historique du sujet et reçoivent les nouveaux messages.</p>' +
+      '<p class="msg-aide">Les personnes ajoutées verront tout l\'historique ' + (cur.sujet ? "de la conversation" : "du groupe") + " et recevront les nouveaux messages.</p>" +
       '<div class="msg-rangee"><button type="button" class="msg-fantome" data-act="fermer-dialogue">Annuler</button><button type="button" class="msg-envoyer" data-act="valider-ajout" disabled>Valider</button></div>',
       "Ajouter des personnes", declencheur);
   }
@@ -932,7 +988,7 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
         conversations.map((c) => '<option value="' + echapper(c.id) + '"' + (c.id === convId ? " selected" : "") + ">" + echapper(c.nom) + "</option>").join("") + "</select></div>" : "") +
       '<div><label for="msgNsTitre">Titre</label><input id="msgNsTitre" placeholder="Ex. Collision gaine / poutre axe C" autocomplete="off" /></div>' +
       '<div><label for="msgNsMessage">Premier message</label><textarea id="msgNsMessage"></textarea></div>' +
-      '<div class="msg-case"><input type="checkbox" id="msgNsUrgent" /><label for="msgNsUrgent">Urgent</label></div>' +
+      '<div class="msg-case"><button type="button" id="msgNsUrgent" class="msg-urgent-bouton" data-act="bascule-urgent-ns" aria-pressed="false">Urgent</button></div>' +
       htmlVueJointe(vue) +
       '<div id="msgNsTags"></div>' +
       '<div class="msg-rangee"><button type="button" class="msg-fantome" data-act="fermer-dialogue">Annuler</button><button type="button" class="msg-envoyer" data-act="creer-sujet">Créer le sujet</button></div>';
@@ -981,7 +1037,7 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
       .sort((x, y) => x.membres.length - y.membres.length)[0] || null;
   }
 
-  // Mobile et laptop (aligne le 22/10), depuis « + Sujet » ou le menu « ⋯ » : le sujet est toujours cree dans la conversation courante (groupe ou 1 a 1), aucun choix de personnes.
+  // Mobile et laptop (aligne le 22/10), depuis « + Sujet » ou le menu « ⋯ » : le sujet est toujours cree dans la conversation courante (groupe ou 1 a 1), aucun choix de personnes ni phrase de placement.
   // Depuis le Viewer (choix de la conversation proposé), la modale garde ses tags.
   function sujetDansConversationCourante() {
     return $("msgDialogue").dataset.choix !== "1";
@@ -996,10 +1052,6 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
     if (!zone) return;
     const c = convParId(conversations, $("msgDialogue").dataset.convId);
     const interlocuteur = personne(c.membres.find((p) => p !== MOI)).nom;
-    if (sujetDansConversationCourante()) {
-      zone.textContent = c.type === "groupe" ? "Le sujet s'ouvrira dans le groupe « " + c.nom + " »." : "Sujet avec " + interlocuteur + ". Il apparaît sous la conversation principale.";
-      return;
-    }
     const ajoutes = personnesTaguees();
     const groupe = ajoutes.length && groupePour(c, ajoutes);
     if (!ajoutes.length) zone.textContent = "Sujet avec " + interlocuteur + ". Il apparaît sous la conversation principale.";
@@ -1016,9 +1068,10 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
   function rendreTags(convId) {
     const c = convParId(conversations, convId);
     const autres = c.membres.filter((m) => m !== MOI);
+    // Sujet dans la conversation courante (22/10, laptop et mobile) : aucune phrase de placement, le conteneur est masque pour ne pas ajouter d'espace (gap de la carte).
     if (sujetDansConversationCourante()) {
-      $("msgNsTags").innerHTML = '<p class="msg-aide" id="msgNsOu"></p>';
-      majOuSujet();
+      $("msgNsTags").innerHTML = "";
+      $("msgNsTags").hidden = true;
       return;
     }
     if (c.type === "groupe") {
@@ -1046,7 +1099,7 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
     // Avec des personnes ajoutees depuis un 1 a 1, le sujet s'ouvre dans le groupe qui les reunit ; le 1 a 1 ne recoit rien.
     const cible = ajoutes.length ? groupePour(c, ajoutes) : c;
     if (!cible) return;
-    const sujet = creerSujet(cible, { titre, texte, tagues, vue: vueDialogue, quand: instant(), urgent: $("msgNsUrgent").checked });
+    const sujet = creerSujet(cible, { titre, texte, tagues, vue: vueDialogue, quand: instant(), urgent: $("msgNsUrgent").getAttribute("aria-pressed") === "true" });
     declencheurDialogue = null;
     fermerDialogue();
     choisirOnglet(cible.type);
@@ -1284,7 +1337,7 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
           ouvrirConversation(depart.convId, depart.sujetId);
           if (depart.message) montrerMessageDeVue(depart.message);
           else restaurerDefilement(depart.distanceBas);
-          if (depart.feuille) ouvrirFeuille(true);
+          if (depart.feuille) { if (mobile()) ouvrirFeuille(true); else ouvrirInfosLaptop($("msgInfosSujet")); }
         }
       });
       document.body.appendChild(bandeauRetour);
@@ -1345,6 +1398,7 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
   }
 
   function surClic(e) {
+    if (clicFondAbsorbe && (e.target === $("msgDialogue") || e.target === $("msgFeuille"))) { clicFondAbsorbe = false; return; }
     // Clic sur le fond sombre autour d'un dialogue : on le ferme (comme Échap)
     if (e.target === $("msgDialogue")) { fermerDialogue(); return; }
     // Clic sur le fond de la carte « Infos du sujet » : on la ferme.
@@ -1368,6 +1422,7 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
         break;
       }
       case "infos": ouvrirFeuille(); break;
+      case "infos-sujet": ouvrirInfosLaptop(cible); break;
       case "fermer-feuille": fermerFeuille(); $("msgOptions").focus(); break;
       case "recherche-conv": {
         const barre = $("msgBarreRecherche");
@@ -1383,17 +1438,25 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
       case "plus-ancien": cur.fil.affiches += TAILLE_PAQUET; rendreMessages(true); break;
       case "bas": allerAuDernier(); break;
       case "agrandir": { const m = vuesAffichees[Number(cible.dataset.vp)]; memoriserDepart(m); ouvrirDansViewer(m.vue); break; }
-      case "details-sujet": basculerDetailsSujet(cible); break;
-      case "agrandir-origine": fermerFeuille(true); memoriserDepart(null, !!cible.closest("#msgFeuille")); ouvrirDansViewer(vueOrigine(cur.sujet).vue); break;
-      case "cloturer": cloturer(cur.c, cur.sujet, instant()); rafraichirApresChangement(); break;
+      case "agrandir-origine": {
+        const depuisInfos = !!cible.closest("#msgFeuille, .msg-carte-infos");
+        fermerFeuille(true);
+        if (cible.closest(".msg-carte-infos")) { declencheurDialogue = null; fermerDialogue(); }
+        memoriserDepart(null, depuisInfos);
+        ouvrirDansViewer(vueOrigine(cur.sujet).vue);
+        break;
+      }
       case "urgence": {
         if (!cur.sujet || cur.sujet.statut === "clos") break;
+        const dansCarte = !!cible.closest("#msgFeuille, .msg-carte-infos");
         basculerUrgence(cur.sujet, instant());
         rafraichirApresChangement();
-        const bouton = cible.closest("#msgFeuille") ? $("msgFeuilleCarte").querySelector('[data-act="urgence"]') : $("msgNoteSujet").querySelector('[data-act="urgence"]');
+        const bouton = dansCarte ? racine.querySelector('#msgFeuilleCarte [data-act="urgence"], .msg-carte-infos [data-act="urgence"]') : null;
         if (bouton) bouton.focus();
         break;
       }
+      case "statut-menu": ouvrirMenuStatut(cible); break;
+      case "choisir-statut": choisirStatut(cible.dataset.valeur); break;
       case "rouvrir": rouvrir(cur.c, cur.sujet, instant()); rafraichirApresChangement(); break;
       case "historique": ouvrirHistorique(); break;
       case "ouvrir-clos": {
@@ -1405,17 +1468,19 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
       }
       case "nouveau-sujet": ouvrirDialogueSujet({ convId: etat.convId, declencheur: cible }); break;
       case "creer-sujet": creerSujetDepuisDialogue(); break;
+      case "bascule-urgent-ns": cible.setAttribute("aria-pressed", String(cible.getAttribute("aria-pressed") !== "true")); break;
       case "mode-dialogue": if (cible.getAttribute("aria-pressed") !== "true") changerModeDialogue(cible.dataset.v); break;
       case "ajouter-vue": ajouterVueDepuisDialogue(); break;
       case "tag": cible.setAttribute("aria-pressed", String(cible.getAttribute("aria-pressed") !== "true")); majOuSujet(); break;
       case "ouvrir-ajout": {
         const depuisFeuille = !!cible.closest("#msgFeuille");
+        const depuisInfos = !!cible.closest(".msg-carte-infos");
         if (depuisFeuille) {
           const corps = $("msgFeuilleCarte").querySelector(".msg-feuille-corps");
           defilementCorpsFeuille = corps ? corps.scrollTop : 0;
           fermerFeuille(true);
         }
-        ouvrirDialogueAjout(depuisFeuille ? $("msgOptions") : cible, depuisFeuille);
+        ouvrirDialogueAjout(depuisFeuille ? $("msgOptions") : depuisInfos ? $("msgInfosSujet") : cible, depuisFeuille || depuisInfos);
         break;
       }
       case "choisir-ajout": cible.setAttribute("aria-pressed", String(cible.getAttribute("aria-pressed") !== "true")); majBoutonValiderAjout(); break;
@@ -1445,12 +1510,7 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
   }
 
   function surChangement(e) {
-    if (e.target.id === "msgStatut" || e.target.id === "msgStatutFeuille") {
-      const cur = filCourant();
-      if (e.target.value === "cloturer") { cloturer(cur.c, cur.sujet, instant()); rafraichirApresChangement(); return; }
-      changerStatut(cur.c, cur.sujet, e.target.value, instant());
-      rafraichirApresChangement();
-    } else if (e.target.id === "msgNsConv") {
+    if (e.target.id === "msgNsConv") {
       $("msgDialogue").dataset.convId = e.target.value;
       rendreTags(e.target.value);
     } else if (e.target.id === "msgAjConv") {
