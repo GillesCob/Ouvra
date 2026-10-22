@@ -4,6 +4,8 @@ import { HOSPITAL_DETECTIONS, HOSPITAL_CLASHES, HOSPITAL_CLASHES_FACTICES } from
 import { creerMessagerie } from "./messagerie/messagerie.js";
 import { descripteurElement, validerRegle, appliquerRegle } from "./reglesCollision.js";
 import { creerReglesModale } from "./reglesModale.js";
+import { creerReglesIA } from "./reglesIA.js";
+import { EXEMPLES_REGLES } from "./reglesExemples.js";
 
 // ============================================================================
 // INTERRUPTEURS DE MASQUAGE : base propre du 19/10
@@ -6223,27 +6225,46 @@ reglesModale = creerReglesModale({
   glisserPourFermer: enableDrawerSwipeToClose
 });
 
-// Declencheur PROVISOIRE (?diag=1 seulement, le vrai point d'entree viendra a l'etape 5) : window.ouvraRegles.ouvrir(regle) valide la regle,
-// la confronte aux collisions reelles de la detection courante (jamais les fictives) et ouvre la modale. Rend { ok } ou { ok: false, erreur }.
+// Valide la regle, la confronte aux collisions reelles de la detection courante (jamais les fictives) et ouvre la modale « Regle a valider ».
+// Rend { ok } ou { ok: false, erreur }. Utilisee par le panneau « IA » de la page Collision et par le declencheur de diagnostic.
+function ouvrirRegleCollision(regle) {
+  const verdict = validerRegle(regle, { priorite: PRIORITE_ORDRE, statut: Object.keys(STATUT_LABELS) });
+  if (!verdict.ok) return verdict;
+  const clashes = detectionCourante ? CLASHES.filter((c) => c.detectionId === detectionCourante.id && !c.factice && isHospitalClash(c)) : [];
+  const touchees = appliquerRegle(
+    regle,
+    clashes,
+    (id) => descripteurElement(viewer.metaScene, id, MAQUETTES),
+    (clash) => ({ priorite: clashPriorite(clash), statut: clash.statut })
+  );
+  reglesModale.ouvrir(regle, touchees);
+  return { ok: true };
+}
+
+// Declencheur de diagnostic (?diag=1 seulement), conserve : window.ouvraRegles.ouvrir(regle).
 function installerOuvertureReglesDiag() {
   if (!/[?&]diag=1/.test(location.search)) return;
-  window.ouvraRegles = {
-    ouvrir(regle) {
-      const verdict = validerRegle(regle, { priorite: PRIORITE_ORDRE, statut: Object.keys(STATUT_LABELS) });
-      if (!verdict.ok) return verdict;
-      const clashes = detectionCourante ? CLASHES.filter((c) => c.detectionId === detectionCourante.id && !c.factice && isHospitalClash(c)) : [];
-      const touchees = appliquerRegle(
-        regle,
-        clashes,
-        (id) => descripteurElement(viewer.metaScene, id, MAQUETTES),
-        (clash) => ({ priorite: clashPriorite(clash), statut: clash.statut })
-      );
-      reglesModale.ouvrir(regle, touchees);
-      return { ok: true };
-    }
-  };
+  window.ouvraRegles = { ouvrir: ouvrirRegleCollision };
 }
 installerOuvertureReglesDiag();
+
+// Point d'entree visible (etape 5) : bouton « IA » de la page Collision et son panneau (src/reglesIA.js).
+function fermerMenusDeroulantsCollision() {
+  if (collisionAffichageMenu) collisionAffichageMenu.hidden = true;
+  if (collisionContexteBtn) collisionContexteBtn.setAttribute("aria-expanded", "false");
+  fermerMenuCouples();
+}
+creerReglesIA({
+  parent: collisionLeft,
+  slot: collisionViewerSlot,
+  boutonCollisions: collisionInfoPanelToggle,
+  masquerSurMobile: () => collisionDiscussion.classList.contains("cb-grand"),
+  observes: [collisionInfoPanelToggle, collisionDiscussion, collisionLeft, collisionViewerSlot, messageOuvrirBtn],
+  exemples: EXEMPLES_REGLES,
+  ouvrirRegle: ouvrirRegleCollision,
+  fermerAutres: fermerMenusDeroulantsCollision,
+  absorberGeste: absorberGesteNeutre
+});
 
 function isThreadOpen(thread) {
   return threadType(thread) === "collision" ? thread.statut !== "ecarte" : thread.open;
