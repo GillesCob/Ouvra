@@ -2243,6 +2243,9 @@ body.acc-actif #appBody { height: 100%; }
   font-weight: 700; color: var(--text);
 }
 .discussion-journal-quand { white-space: nowrap; }
+/* Entree issue d'une regle en langage naturel : la demande sur sa propre ligne, tronquee si longue (texte complet en infobulle). */
+.discussion-journal-regle, .tl-regle { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.discussion-journal-regle { margin-top: 1px; }
 
 /* Liste Collision, design affine (19/10) : plus fin et plus compact, sans
    encadre ni pastille lourde. Numero discret, types sur une ligne, filet de
@@ -2407,6 +2410,7 @@ body.acc-actif #appBody { height: 100%; }
 .tl-dot[data-champ="statut"][data-v="confirme"] { background: #f85149; }
 .tl-dot[data-champ="statut"][data-v="ecarte"] { background: #8b949e; }
 .tl-dot[data-champ="statut"][data-v="resolu"] { background: #3fb950; }
+.tl-regle { margin: 2px 0 0 26px; font-size: 11px; color: var(--muted); }
 .tl-vide { font-size: 12px; color: var(--muted); }
 #collisionDiscussion.cb #discussionReplyForm { margin-top: 6px; }
 #collisionDiscussion.cb #discussionReplyInput { height: 32px; min-height: 0; overflow: hidden; padding: 6px 8px; }

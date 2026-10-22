@@ -5747,6 +5747,15 @@ function renderDiscussionMessages(thread) {
   });
 }
 
+// Mention « via la regle » d'une entree d'historique issue d'une regle en langage naturel : une ligne tronquee (CSS), demande complete en infobulle.
+function ligneRegleHistorique(classe, demande) {
+  const el = document.createElement("div");
+  el.className = classe;
+  el.textContent = "via la règle : « " + demande + " »";
+  el.title = demande;
+  return el;
+}
+
 // COLLISION_PRIORITES : commentaires + journal des changements (priorite,
 // statut), melanges chronologiquement (plus recent en haut). Les messages sans
 // date (anciens) passent avant les entrees datees.
@@ -5785,6 +5794,7 @@ function renderDiscussionMessagesAvecJournal(thread) {
       const d = formatHistoriqueDate(h.quand);
       quand.textContent = d ? " · " + d : "";
       li.append(icone, qui, texte, quand);
+      if (h.regle) li.appendChild(ligneRegleHistorique("discussion-journal-regle", h.regle));
     }
     discussionMessages.appendChild(li);
   });
@@ -5981,6 +5991,7 @@ function renderChronologieCollision(thread) {
       corps.append(lib, puceValeur(h.champ, h.de, labels), fleche, puceValeur(h.champ, h.vers, labels));
     }
     li.append(entete, corps);
+    if (!estMessage && item.data.regle) li.appendChild(ligneRegleHistorique("tl-regle", item.data.regle));
     discussionMessages.appendChild(li);
   });
   defilerChronologieBas();
@@ -6161,14 +6172,17 @@ function majCollisionControles(thread) {
 }
 
 // Applique le changement a la collision et l'inscrit dans son historique, sans sauvegarde ni rafraichissement. Rend vrai si quelque chose a change.
-function modifierChampCollision(clash, champ, vers) {
+// regle (optionnel) : la demande validee par l'utilisateur quand le changement vient d'une regle en langage naturel.
+function modifierChampCollision(clash, champ, vers, regle) {
   if (!isHospitalClash(clash)) return false;
   const cle = champ === "priorité" ? "priorite" : "statut";
   const de = cle === "priorite" ? clashPriorite(clash) : clash.statut;
   if (de === vers) return false;
   clash[cle] = vers;
   if (!Array.isArray(clash.historique)) clash.historique = [];
-  clash.historique.push({ qui: CLASH_UTILISATEUR_HISTORIQUE, quand: new Date().toISOString(), champ, de, vers });
+  const entree = { qui: CLASH_UTILISATEUR_HISTORIQUE, quand: new Date().toISOString(), champ, de, vers };
+  if (regle) entree.regle = regle;
+  clash.historique.push(entree);
   return true;
 }
 
@@ -6183,9 +6197,10 @@ function changerChampCollision(champ, vers) {
 }
 
 // ---- Regles de collision en langage naturel (etapes 2 et 3) : modale de validation, voir src/reglesModale.js ----
-// selection : [{ clash, champ: "priorite"|"statut", vers }] (champ du moteur de regles, sans accent).
-function appliquerSelectionRegle(selection) {
-  const modifiees = selection.filter((s) => modifierChampCollision(s.clash, s.champ === "priorite" ? "priorité" : "statut", s.vers));
+// selection : [{ clash, champ: "priorite"|"statut", vers }] (champ du moteur de regles, sans accent) ; demande : la phrase validee par l'utilisateur,
+// inscrite dans l'historique de chaque collision modifiee (champ regle).
+function appliquerSelectionRegle(selection, demande) {
+  const modifiees = selection.filter((s) => modifierChampCollision(s.clash, s.champ === "priorite" ? "priorité" : "statut", s.vers, demande));
   if (!modifiees.length) return;
   sauverEtatCollisions();
   new Set(modifiees.map((s) => s.clash.detectionId)).forEach((detectionId) => renderCollisionsList(CLASHES.filter((c) => c.detectionId === detectionId)));
