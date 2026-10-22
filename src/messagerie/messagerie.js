@@ -533,7 +533,7 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
     return "<li>" + avatarPersonne(id, "pt") + '<span class="msg-fiche-nom">' + echapper(p.nom) + (p.role ? "<span>" + echapper(p.role) + "</span>" : "") + "</span></li>";
   }
   // Dernier element de la liste des personnes : rond « + » (meme composant pour un sujet et pour les Participants d'un groupe).
-  const htmlPlusPersonne = () => '<li class="msg-fiche-plus"><button type="button" class="msg-acteur-plus" data-act="ouvrir-ajout"><span class="msg-av pt msg-av-plus" aria-hidden="true">+</span><span class="msg-fiche-nom">Ajouter une personne</span></button></li>';
+  const htmlPlusPersonne = () => '<li class="msg-fiche-plus"><button type="button" class="msg-acteur-plus" data-act="ouvrir-ajout" aria-label="Ajouter"><span class="msg-av pt msg-av-plus" aria-hidden="true"></span></button></li>';
   // Statut du sujet : bouton a deux lignes + menu personnalise (meme style que Priorite / Statut de la page Collision), « Clôturer » est une option du menu.
   const htmlControleStatut = (statut) =>
     '<button type="button" id="msgStatutFeuille" class="collision-trigger msg-statut-trigger" data-act="statut-menu" aria-haspopup="listbox" aria-expanded="false" aria-label="Statut du sujet : ' + LIBELLES_STATUT[statut] + '">' +

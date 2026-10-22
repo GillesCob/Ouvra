@@ -97,11 +97,14 @@
   display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px;
 }
 .msg-av.groupe { border-radius: 12px; }
-.msg-av.pt { width: 28px; height: 28px; font-size: 10.5px; }
+.msg-av.pt { --msg-av-pt: 28px; width: var(--msg-av-pt); height: var(--msg-av-pt); font-size: 10.5px; }
 /* Dernier « acteur » des Participants d'un groupe : rond « + » en pointilles + libelle, meme gabarit qu'une personne. */
 .msg-acteur-plus { width: 100%; min-height: 36px; display: flex; align-items: center; gap: 10px; padding: 0; background: none; border: 0; border-radius: 8px; color: var(--muted); font: inherit; text-align: left; cursor: pointer; }
-.msg-av.msg-av-plus { background: none; border: 1.5px dashed var(--muted); color: var(--muted); font-size: 22px; font-weight: 600; line-height: 1; box-sizing: border-box; }
-.msg-av.pt.msg-av-plus { width: 36px; height: 36px; }
+.msg-av.msg-av-plus { background: none; border: 1.5px dashed var(--muted); color: var(--muted); box-sizing: border-box; position: relative; }
+/* « + » trace par deux barres centrees geometriquement (independant de la police). */
+.msg-av-plus::before, .msg-av-plus::after { content: ""; position: absolute; top: 50%; left: 50%; background: currentColor; border-radius: 1px; transform: translate(-50%, -50%); }
+.msg-av-plus::before { width: 12px; height: 2px; }
+.msg-av-plus::after { width: 2px; height: 12px; }
 .msg-acteur-plus { -webkit-tap-highlight-color: transparent; }
 .msg-acteur-plus .msg-fiche-nom { color: inherit; }
 .msg-acteur-plus:focus-visible { color: var(--text); }
