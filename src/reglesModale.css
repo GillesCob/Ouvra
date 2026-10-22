@@ -26,30 +26,44 @@
   margin: 0; padding-right: 44px; color: var(--muted); font-size: 13px;
   display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden; overflow-wrap: anywhere;
 }
-.regles-barre { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
-.regles-compteur { font-size: 13px; font-weight: 700; }
-.regles-outils { display: flex; flex-wrap: wrap; gap: 8px; }
+/* En-tete de la liste : case maitresse + compteur, meme typographie que les en-tetes de groupe de la liste des collisions (.collision-groupe-titre).
+   La case est alignee sur celles des lignes (bordure 1 + marge 4 + marge 8 = 13 px). */
+.regles-barre {
+  display: flex; align-items: center; gap: 10px; min-height: 36px; padding: 0 8px 0 13px; cursor: pointer;
+  font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted);
+}
+.regles-barre input { flex: 0 0 auto; width: 18px; height: 18px; margin: 0; accent-color: #e08a3c; cursor: pointer; }
+.regles-compteur { flex: 1 1 auto; min-width: 0; }
 .regles-corps {
   flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; list-style: none; margin: 0; padding: 0;
   display: flex; flex-direction: column; gap: 6px;
 }
 .regles-corps > * { flex-shrink: 0; }
 .regles-vide { margin: 0; color: var(--muted); font-size: 14px; }
-.regles-ligne { display: flex; align-items: center; gap: 8px; border: 1px solid var(--border); border-radius: 8px; padding: 4px 8px 4px 4px; }
+.regles-ligne { display: flex; align-items: center; gap: 4px; border: 1px solid var(--border); border-radius: 8px; padding: 4px 4px 4px 4px; }
 .regles-choix { flex: 1 1 auto; min-width: 0; min-height: 44px; display: flex; align-items: center; gap: 10px; padding: 4px 4px 4px 8px; cursor: pointer; }
 .regles-choix input { flex: 0 0 auto; width: 18px; height: 18px; margin: 0; accent-color: #e08a3c; }
-.regles-texte { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; font-size: 12.5px; }
-.regles-numero { font-size: 12px; font-weight: 700; color: var(--muted); }
-.regles-element { display: flex; gap: 6px; min-width: 0; }
-.regles-element strong { flex: 0 0 auto; max-width: 60%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.regles-nom { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); }
-.regles-changement { font-weight: 600; }
-.regles-voir { flex: 0 0 auto; white-space: nowrap; }
+.regles-contenu { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+/* La carte de la collision est celle de la liste (.collision-item-carte) ; ici elle ne porte ni survol ni curseur propres, la ligne entiere est une case. */
+.regles-contenu .collision-item { cursor: inherit; }
+.regles-contenu .collision-item-carte:hover { background: transparent; }
+/* « Priorite Normale → Haute » : sous la carte, alignee sur le texte de la carte (filet 2 + marge 9 + numero 20 + espace 8 = 39 px). */
+.regles-changement { padding: 0 8px 2px 39px; font-size: 11px; color: var(--muted); line-height: 1.35; overflow-wrap: anywhere; }
+.regles-valeur { display: inline-flex; align-items: center; gap: 5px; vertical-align: baseline; }
+.regles-avant { opacity: 0.8; }
+.regles-apres { color: var(--text); font-weight: 700; }
+.regles-valeur .collision-groupe-titre { display: inline-flex; margin: 0; padding: 0; font: inherit; letter-spacing: inherit; text-transform: none; color: inherit; }
+/* « Voir en 3D » : lien-bouton leger, a droite de la ligne, cible tactile de 44 px sur mobile. */
+.regles-voir {
+  flex: 0 0 auto; white-space: nowrap; min-height: 36px; padding: 0 8px; border: 0; border-radius: 6px; background: none;
+  color: var(--msg-accent); font-size: 12px; font-weight: 600; text-decoration: underline; text-underline-offset: 2px;
+}
 .regles-actions { margin-top: 2px; }
 .regles-carte :is(.msg-fantome, .msg-primaire) { min-height: 40px; }
 /* Survol : seulement a la souris (le :hover collant d'iOS et la teinte de tap sont evites). */
 @media (hover: hover) and (pointer: fine) {
   .regles-ligne:hover { background: var(--msg-releve); }
+  .regles-voir:hover { color: var(--text); }
 }
 
 @media not ((hover: hover) and (pointer: fine)) {
@@ -86,6 +100,8 @@ body.regles-retour-actif #collisionMaquetteToggles { top: 60px; }
   .regles-fond.sans-anim .regles-carte { transition: none; }
   .regles-carte .msg-croix { top: calc(4px + env(safe-area-inset-top)); right: 4px; width: 44px; height: 44px; }
   .regles-carte :is(.msg-fantome, .msg-primaire) { min-height: 44px; }
+  .regles-voir { min-height: 44px; min-width: 44px; }
+  .regles-barre { min-height: 44px; }
   .regles-actions { border-top: 1px solid var(--border); padding-top: 12px; margin-top: 0; }
   .regles-actions > * { flex: 1 1 0; }
 }

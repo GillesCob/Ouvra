@@ -8,6 +8,7 @@
 // Module sans dependance a main.js : tout passe par les parametres de creerReglesModale.
 //   libellesPriorite / libellesStatut : { cle: "Libelle" }
 //   numero(clash) : numero affiche de la collision
+//   creerCarte(clash) : carte de la collision, le meme rendu que la ligne de la liste des collisions (buildCollisionCard de main.js)
 //   lireElement(entityId) : descripteur { nom, typeIfc, niveau, ... } (descripteurElement de reglesCollision.js) ou null
 //   voirEn3D(clash) : ouvre la collision dans la vue Collision (comme un clic dans la liste)
 //   appliquer(selection, demande) : applique [{ clash, champ: "priorite"|"statut", vers }] et rafraichit l'interface
@@ -18,7 +19,7 @@ import "./reglesModale.css";
 const MOBILE = "(max-width: 768px)";
 const DUREE_FERMETURE_MS = 350;
 
-export function creerReglesModale({ libellesPriorite, libellesStatut, numero, lireElement, voirEn3D, appliquer, glisserPourFermer }) {
+export function creerReglesModale({ libellesPriorite, libellesStatut, numero, creerCarte, lireElement, voirEn3D, appliquer, glisserPourFermer }) {
   // Etat de session : { regle, lignes: [{ clash, champ, de, vers, coche }], defilement, enVisite }, ou null.
   let session = null;
   let fond = null;
@@ -90,13 +91,33 @@ export function creerReglesModale({ libellesPriorite, libellesStatut, numero, li
     return niveaux.join(" / ");
   }
 
-  function elementLigne(id) {
-    const d = lireElement(id);
-    const el = creer("span", "regles-element");
-    const type = creer("strong", null, d && d.typeIfc ? d.typeIfc : "Élément inconnu");
-    const nom = creer("span", "regles-nom", d && d.nom ? d.nom : "");
-    if (d && d.nom) nom.title = d.nom;
-    el.append(type, nom);
+  // Valeur de priorite ou de statut avec sa pastille de couleur, celles de la liste des collisions (point de statut, point de groupe de priorite).
+  function valeurChamp(champ, cle, classe) {
+    const val = creer("span", "regles-valeur " + classe);
+    const libelle = libellesDe(champ)[cle] || cle;
+    if (champ === "priorite") {
+      const groupe = creer("span", "collision-groupe-titre prio-" + cle);
+      const point = creer("i", "collision-groupe-dot");
+      point.setAttribute("aria-hidden", "true");
+      groupe.appendChild(point);
+      val.append(groupe, libelle);
+    } else {
+      const point = creer("i", "collision-statut-dot " + cle);
+      point.setAttribute("aria-hidden", "true");
+      val.append(point, libelle);
+    }
+    return val;
+  }
+
+  // Ligne « Priorite Normale → Haute » : l'ancienne valeur discrete, la nouvelle mise en valeur.
+  function ligneChangement(ligne) {
+    const el = creer("span", "regles-changement");
+    el.append(
+      nomChamp(ligne.champ) + " ",
+      valeurChamp(ligne.champ, ligne.de, "regles-avant"),
+      " → ",
+      valeurChamp(ligne.champ, ligne.vers, "regles-apres")
+    );
     return el;
   }
 
@@ -114,15 +135,13 @@ export function creerReglesModale({ libellesPriorite, libellesStatut, numero, li
     const changement = nomChamp(ligne.champ) + " " + (labels[ligne.de] || ligne.de) + " → " + (labels[ligne.vers] || ligne.vers);
     const niveau = niveauDe(ligne);
     caseEl.setAttribute("aria-label", "Collision n° " + numero(ligne.clash) + (niveau ? ", " + niveau : "") + " : " + changement);
-    const texte = creer("span", "regles-texte");
-    texte.append(
-      creer("span", "regles-numero", "n° " + numero(ligne.clash) + (niveau ? " · " + niveau : "")),
-      elementLigne(ligne.clash.entityIds[0]),
-      elementLigne(ligne.clash.entityIds[1]),
-      creer("span", "regles-changement", changement)
-    );
-    label.append(caseEl, texte);
-    const voir = creer("button", "msg-fantome regles-voir", "Voir en 3D");
+    // Meme carte que la liste des collisions ; son libelle d'accessibilite est porte par la case.
+    const carteClash = creerCarte(ligne.clash);
+    carteClash.removeAttribute("aria-label");
+    const contenu = creer("span", "regles-contenu");
+    contenu.append(carteClash, ligneChangement(ligne));
+    label.append(caseEl, contenu);
+    const voir = creer("button", "regles-voir", "Voir en 3D");
     voir.type = "button";
     voir.dataset.act = "voir";
     voir.dataset.i = String(index);
@@ -158,19 +177,18 @@ export function creerReglesModale({ libellesPriorite, libellesStatut, numero, li
       return;
     }
 
-    const barre = creer("div", "regles-barre");
+    // Case maitresse tri-etat (cochee, decochee, indeterminee) et compteur, alignes sur les cases des lignes.
+    const barre = creer("label", "regles-barre");
+    const maitre = creer("input");
+    maitre.type = "checkbox";
+    maitre.id = "reglesMaitre";
+    maitre.dataset.maitre = "1";
+    maitre.setAttribute("aria-label", "Sélectionner ou désélectionner toutes les collisions touchées par la règle");
     const compteur = creer("span", "regles-compteur", texteCompteur());
     compteur.id = "reglesCompteur";
     compteur.setAttribute("role", "status");
-    const outils = creer("span", "regles-outils");
-    const tout = creer("button", "msg-fantome", "Tout cocher");
-    tout.type = "button";
-    tout.dataset.act = "tout-cocher";
-    const rien = creer("button", "msg-fantome", "Tout décocher");
-    rien.type = "button";
-    rien.dataset.act = "tout-decocher";
-    outils.append(tout, rien);
-    barre.append(compteur, outils);
+    barre.htmlFor = maitre.id;
+    barre.append(maitre, compteur);
     tete.appendChild(barre);
 
     const corps = creer("ul", "regles-corps");
@@ -195,14 +213,25 @@ export function creerReglesModale({ libellesPriorite, libellesStatut, numero, li
     if (!compteur || !valider) return;
     const k = selectionnees().length;
     compteur.textContent = texteCompteur();
+    const maitre = carte.querySelector("#reglesMaitre");
+    const n = session.lignes.length;
+    maitre.checked = k === n;
+    maitre.indeterminate = k > 0 && k < n;
+    maitre.setAttribute("aria-checked", maitre.indeterminate ? "mixed" : String(maitre.checked));
     valider.textContent = "Valider (" + k + ")";
     valider.disabled = k === 0;
   }
 
   // ---------- Evenements ----------
   function surChangement(e) {
+    if (!session) return;
+    // Case maitresse : tout cocher si tout n'est pas coche, sinon tout decocher.
+    if (e.target.closest('input[data-maitre]')) {
+      cocherTout(selectionnees().length < session.lignes.length);
+      return;
+    }
     const caseEl = e.target.closest('input[type="checkbox"][data-i]');
-    if (!caseEl || !session) return;
+    if (!caseEl) return;
     session.lignes[Number(caseEl.dataset.i)].coche = caseEl.checked;
     majCompteur();
   }
@@ -218,8 +247,6 @@ export function creerReglesModale({ libellesPriorite, libellesStatut, numero, li
     if (!bouton || !session) return;
     switch (bouton.dataset.act) {
       case "annuler": fermer(); break;
-      case "tout-cocher": cocherTout(true); break;
-      case "tout-decocher": cocherTout(false); break;
       case "valider": valider(); break;
       case "voir": voir(Number(bouton.dataset.i)); break;
       default: break;

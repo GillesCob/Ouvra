@@ -4249,40 +4249,17 @@ function collisionTypeFr(name) {
   return hit ? hit[1] : name.split(":")[0].trim();
 }
 
-function buildCollisionItem(clash) {
-  const li = document.createElement("li");
-  li.className = "collision-item-row";
-
-  // Affiche/masque le marqueur 3D de ce clash precisement, independamment
-  // de la selection (bouton juste a cote) : utile pour ne garder visibles
-  // que les zones qui interessent quand on est sur la maquette, sans
-  // devoir passer par chaque clash un par un dans la vue 3D.
-  let markerShown = true;
-  const toggle = document.createElement("button");
-  toggle.type = "button";
-  toggle.className = "collision-marker-toggle";
-  toggle.innerHTML = EYE_OPEN_ICON;
-  toggle.title = "Masquer cette zone dans la maquette";
-  toggle.addEventListener("click", (e) => {
-    e.stopPropagation();
-    markerShown = !markerShown;
-    toggle.innerHTML = markerShown ? EYE_OPEN_ICON : EYE_CLOSED_ICON;
-    toggle.title = markerShown ? "Masquer cette zone dans la maquette" : "Afficher cette zone dans la maquette";
-    const marker = clashMarkers.get(clash.id);
-    if (marker) marker.visible = markerShown;
-    setClashPastilleShown(clash.id, markerShown);
-  });
-
-  const btn = document.createElement("button");
-  btn.type = "button";
+// Carte d'une collision de la liste (numero, types en francais, identifiants et niveau, point de statut, filet de priorite). Partagee entre la
+// liste (balise "button") et la modale « Regle a valider » (balise "span", 22/10, creerCarte) : un seul rendu pour les deux.
+function buildCollisionCard(clash, tag = "button") {
+  const btn = document.createElement(tag);
+  if (tag === "button") btn.type = "button";
   btn.className = "collision-item";
   btn.dataset.clashId = clash.id;
-  btn.addEventListener("click", () => activateClash(clash));
   // Collision fictive (exemple de mise en page) : visible dans la liste, mais ni cliquable ni marqueur 3D.
   if (clash.factice) {
     btn.disabled = true;
     btn.classList.add("factice");
-    toggle.hidden = true;
   }
 
   // Numero stable (position dans la liste complete, independante du groupe
@@ -4368,6 +4345,37 @@ function buildCollisionItem(clash) {
   }
 
   if (!carteMode) btn.append(numero, zone, meta);
+  return btn;
+}
+
+function buildCollisionItem(clash) {
+  const li = document.createElement("li");
+  li.className = "collision-item-row";
+
+  // Affiche/masque le marqueur 3D de ce clash precisement, independamment
+  // de la selection (bouton juste a cote) : utile pour ne garder visibles
+  // que les zones qui interessent quand on est sur la maquette, sans
+  // devoir passer par chaque clash un par un dans la vue 3D.
+  let markerShown = true;
+  const toggle = document.createElement("button");
+  toggle.type = "button";
+  toggle.className = "collision-marker-toggle";
+  toggle.innerHTML = EYE_OPEN_ICON;
+  toggle.title = "Masquer cette zone dans la maquette";
+  toggle.addEventListener("click", (e) => {
+    e.stopPropagation();
+    markerShown = !markerShown;
+    toggle.innerHTML = markerShown ? EYE_OPEN_ICON : EYE_CLOSED_ICON;
+    toggle.title = markerShown ? "Masquer cette zone dans la maquette" : "Afficher cette zone dans la maquette";
+    const marker = clashMarkers.get(clash.id);
+    if (marker) marker.visible = markerShown;
+    setClashPastilleShown(clash.id, markerShown);
+  });
+
+  const btn = buildCollisionCard(clash);
+  btn.addEventListener("click", () => activateClash(clash));
+  if (clash.factice) toggle.hidden = true;
+
   if (MASQUE_OEIL_COLLISION) li.append(btn);
   else li.append(toggle, btn);
   return li;
@@ -6219,6 +6227,7 @@ reglesModale = creerReglesModale({
   libellesPriorite: PRIORITE_LABELS,
   libellesStatut: STATUT_LABELS,
   numero: (clash) => CLASHES.indexOf(clash) + 1,
+  creerCarte: (clash) => buildCollisionCard(clash, "span"),
   lireElement: (id) => descripteurElement(viewer.metaScene, id, MAQUETTES),
   voirEn3D: (clash) => activateClash(clash),
   appliquer: appliquerSelectionRegle,
