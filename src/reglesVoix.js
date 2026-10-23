@@ -127,7 +127,7 @@ export function creerSaisie({ Reconnaissance, lire, ecrire, surMode, surEcoute, 
       motif = message; // permission refusee, service injoignable, pas de micro... : retour au mode Texte, Vocal desactive avec la raison
       retourTexte();
       surIndisponible(message);
-      surMessage(message, true);
+      surMessage("", false); // la raison s'affiche une seule fois, sous le choix du mode : on vide la zone d'etat (qui annoncait l'ecoute)
     }
   });
 

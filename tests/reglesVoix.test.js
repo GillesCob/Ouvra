@@ -303,7 +303,9 @@ test("permission refusee : retour automatique au mode Texte, champ restaure, Voc
   assert.equal(s.vocalDisponible(), false);
   assert.match(s.motifIndisponible(), /autoris/i);
   assert.match(j.indispo.at(-1), /autoris/i);
-  assert.equal(dernierMessage(j)[1], true);
+  // La raison n'est affichee qu'une fois (sous le choix du mode) : la zone d'etat est videe, jamais dupliquee.
+  assert.deepEqual(dernierMessage(j), ["", false]);
+  assert.ok(!j.messages.some(([texte]) => texte === j.indispo.at(-1)));
   s.choisirVocal();
   assert.equal(s.mode(), "texte");
 });
@@ -315,6 +317,7 @@ test("erreur reseau (Brave...) : meme repli, jamais muet", () => {
   assert.equal(s.mode(), "texte");
   assert.equal(s.vocalDisponible(), false);
   assert.ok(j.indispo.at(-1).length > 10);
+  assert.ok(!j.messages.some(([texte]) => texte === j.indispo.at(-1)), "la raison ne doit pas etre affichee deux fois");
 });
 
 test("start() qui leve : retour au mode Texte avec explication", () => {
