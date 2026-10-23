@@ -1,7 +1,7 @@
 // Point d'entree des regles de collision en langage naturel (22/10, etape 5), refait le 23/10 : le bouton « IA » de la page Collision ouvre un
 // petit choix a deux boutons, « Texte » et « Vocal » (meme principe que « Sur une surface » / « Coupe horizontale » de la coupe), puis une modale
 // centree, fermee d'un clic autour d'elle.
-//  - Texte : le champ et, dessous, « Valider ». Les propositions d'instruction (src/reglesExemples.js) sont tout en bas ; un clic remplit le champ.
+//  - Texte : le champ et, dessous, « Valider ». Les propositions d'instruction (src/reglesExemples.js) sont tout en bas, dans un menu deroulant ferme ; un clic remplit le champ.
 //  - Vocal : l'image d'un micro et « Appuyer pour parler ». Un clic demarre l'ecoute (le micro passe au vert), un second clic la termine et envoie
 //    (dictee de src/reglesVoix.js, sans bouton « Envoyer »). Les propositions, en bas, ne sont qu'a lire.
 //  - Dans les deux cas, apres l'envoi le logo Ouvra tourne pendant que le relais hebergé traduit la phrase (traduire), puis la modale « Regle a
@@ -139,22 +139,22 @@ export function creerReglesIA({ parent, slot, boutonCollisions, masquerSurMobile
   etat.setAttribute("role", "status");
   etat.hidden = true;
 
-  // Propositions d'instruction, tout en bas : cliquables en mode Texte (elles remplissent le champ), a lire seulement en mode Vocal.
-  const propositions = creer("section", "regles-ia-propositions");
-  const titreProps = creer("h3", null, "Proposition d'instruction");
-  titreProps.id = "reglesIATitreProps";
+  // Propositions d'instruction, tout en bas, dans un menu deroulant ferme par defaut (mise en page allegee) : cliquables en mode Texte (elles
+  // remplissent le champ), a lire seulement en mode Vocal. Un appui ailleurs dans la modale le referme.
+  const propositions = creer("details", "regles-ia-propositions");
+  const titreProps = creer("summary", null, "Proposition d'instruction");
   const liste = creer("ul");
-  liste.setAttribute("aria-labelledby", "reglesIATitreProps");
   exemples.forEach((regle) => {
     const li = creer("li");
     const choisie = creer("button", "regles-ia-exemple", regle.demande);
     choisie.type = "button";
-    choisie.addEventListener("click", () => { champ.value = regle.demande.slice(0, PHRASE_MAX); afficherEtat("", false); champ.focus({ preventScroll: true }); });
+    choisie.addEventListener("click", () => { champ.value = regle.demande.slice(0, PHRASE_MAX); propositions.open = false; afficherEtat("", false); champ.focus({ preventScroll: true }); });
     const lue = creer("span", "regles-ia-exemple-lu", "« " + regle.demande + " »");
     li.append(choisie, lue);
     liste.appendChild(li);
   });
   propositions.append(titreProps, liste);
+  carte.addEventListener("pointerdown", (e) => { if (propositions.open && !propositions.contains(e.target)) propositions.open = false; });
 
   carte.append(formulaire, vocal, chargement, etat, propositions);
   document.body.appendChild(fond);
@@ -223,6 +223,7 @@ export function creerReglesIA({ parent, slot, boutonCollisions, masquerSurMobile
     fermerChoix(false);
     afficherEtat("", false);
     texteVocal = "";
+    propositions.open = false;
     if (typeof phrase === "string") champ.value = phrase;
     fond.hidden = false;
     montrerVue(nom);
