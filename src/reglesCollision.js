@@ -15,7 +15,7 @@ export const PORTEES = ["un_des_deux", "a", "b", "les_deux"];
 export const CHAMPS_ACTION = ["priorite", "statut"];
 
 // Minuscules, sans accents, pour une recherche tolerante.
-function normaliser(texte) {
+export function normaliser(texte) {
   return String(texte == null ? "" : texte).normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 }
 
