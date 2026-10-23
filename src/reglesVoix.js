@@ -20,11 +20,12 @@ export function assemblerTexte(base, transcription, longueurMax) {
 }
 
 // Messages affiches a l'utilisateur : deux phrases au plus, tutoiement, sans jargon ni code d'erreur.
-// Chrome est le seul navigateur nomme car sa prise en charge est confirmee sans reglage (MDN browser-compat-data : SpeechRecognition des Chrome 33
-// avec le prefixe webkit, sans prefixe des Chrome 139 ; caniuse : Chrome partiel des 25). Safari depend de la dictee ou de Siri activee dans le systeme
-// (WebKit Bugzilla 225298) et Firefox n'a la reconnaissance que derriere un reglage ou en version de test (caniuse : « disabled by default », MDN : « preview ») :
-// ni l'un ni l'autre n'est nomme. Sur iPhone et iPad tous les navigateurs utilisent WebKit : proposer Chrome y serait faux.
-const MESSAGE_NAVIGATEUR = "Ce navigateur n'accepte pas la dictée vocale. Ouvre Ouvra dans Chrome pour l'utiliser.";
+// Chrome et Safari sont les deux navigateurs nommes (choix de Gilles du 23/10). Chrome : prise en charge confirmee sans reglage (MDN browser-compat-data :
+// SpeechRecognition des Chrome 33 avec le prefixe webkit, sans prefixe des Chrome 139 ; caniuse : Chrome partiel des 25). Safari : prise en charge avec le
+// prefixe webkit, mais elle depend de la dictee ou de Siri activee dans le systeme (WebKit Bugzilla 225298). Firefox n'a la reconnaissance que derriere un
+// reglage ou en version de test (caniuse : « disabled by default », MDN : « preview ») : pas nomme. Sur iPhone et iPad tous les navigateurs utilisent WebKit :
+// le message dedie renvoie aux reglages de l'appareil, jamais a un autre navigateur.
+const MESSAGE_NAVIGATEUR = "Ce navigateur n'accepte pas la dictée vocale.\nOuvre Ouvra dans Chrome ou Safari pour l'utiliser."; // deux lignes : le retour est rendu par white-space: pre-line (reglesIA.css)
 const MESSAGE_APPAREIL_IOS = "La dictée vocale n'est pas disponible. Vérifie qu'elle est activée dans les réglages de l'appareil.";
 
 // Message pour l'utilisateur, ou null pour un arret volontaire. Jamais d'echec muet.
