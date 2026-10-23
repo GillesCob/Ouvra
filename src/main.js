@@ -1034,6 +1034,7 @@ const messagerie = DISCUSSIONS_MESSAGERIE ? creerMessagerie({
 }) : null;
 // Modale « Regle a valider » des regles de collision (etapes 2 et 3), creee plus bas une fois les libelles de priorite et de statut definis.
 let reglesModale = null;
+let reglesIA = null; // cree plus bas ; « Reformuler » de la modale y rouvre le panneau
 if (messagerie) {
   document.getElementById("msgRoot").hidden = false;
   viewDiscussions.classList.add("msg-actif");
@@ -6233,6 +6234,7 @@ reglesModale = creerReglesModale({
   lireElement: (id) => descripteurElement(viewer.metaScene, id, MAQUETTES),
   voirEn3D: (clash) => activateClash(clash),
   appliquer: appliquerSelectionRegle,
+  reformuler: (phrase) => reglesIA && reglesIA.reformuler(phrase),
   glisserPourFermer: enableDrawerSwipeToClose
 });
 
@@ -6271,7 +6273,7 @@ function traduirePhraseParIA(phrase) {
   const valeurs = valeursPourIA(viewer.metaScene, MAQUETTES, phrase, { priorite: PRIORITE_ORDRE, statut: Object.keys(STATUT_LABELS) });
   return demanderRegle({ phrase, valeurs });
 }
-creerReglesIA({
+reglesIA = creerReglesIA({
   parent: collisionLeft,
   slot: collisionViewerSlot,
   boutonCollisions: collisionInfoPanelToggle,

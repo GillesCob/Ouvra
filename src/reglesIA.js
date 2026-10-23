@@ -121,7 +121,7 @@ export function creerReglesIA({ parent, slot, boutonCollisions, masquerSurMobile
       afficherEtat("", false);
       champ.value = "";
       fermer(true);
-      ouvrirRegle(reponse.regle);
+      ouvrirRegle({ ...reponse.regle, saisie: true }); // saisie : la modale propose « Reformuler »
       return;
     }
     if (reponse.ok) {
@@ -282,5 +282,13 @@ export function creerReglesIA({ parent, slot, boutonCollisions, masquerSurMobile
   ["pointerup", "touchend", "click", "transitionend"].forEach((type) => document.addEventListener(type, reveiller, { capture: true, passive: true }));
   reveiller();
 
-  return { fermer: () => fermer(false), ouvert };
+  // « Reformuler » de la modale « Regle a valider » : le panneau se rouvre avec la phrase envoyee, champ actif, curseur a la fin.
+  function reformuler(phrase) {
+    ouvrir();
+    champ.value = phrase;
+    champ.focus({ preventScroll: true });
+    champ.setSelectionRange(phrase.length, phrase.length);
+  }
+
+  return { fermer: () => fermer(false), ouvert, reformuler };
 }

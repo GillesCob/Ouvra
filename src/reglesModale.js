@@ -12,6 +12,8 @@
 //   lireElement(entityId) : descripteur { nom, typeIfc, niveau, ... } (descripteurElement de reglesCollision.js) ou null
 //   voirEn3D(clash) : ouvre la collision dans la vue Collision (comme un clic dans la liste)
 //   appliquer(selection, demande) : applique [{ clash, champ: "priorite"|"statut", vers }] et rafraichit l'interface
+//   reformuler(phrase) : optionnel ; « Reformuler » (regle venue d'une phrase saisie, regle.saisie) ferme la modale comme « Annuler » puis rouvre le
+//     panneau « IA » avec cette phrase pre-remplie, sans appel a l'IA
 //   glisserPourFermer(element, fermer, estOuvert) : fermeture par glissement vers le bas sur mobile (celle des tiroirs et de la carte « Infos du sujet »)
 
 import "./reglesModale.css";
@@ -19,7 +21,7 @@ import "./reglesModale.css";
 const MOBILE = "(max-width: 768px)";
 const DUREE_FERMETURE_MS = 350;
 
-export function creerReglesModale({ libellesPriorite, libellesStatut, numero, creerCarte, lireElement, voirEn3D, appliquer, glisserPourFermer }) {
+export function creerReglesModale({ libellesPriorite, libellesStatut, numero, creerCarte, lireElement, voirEn3D, appliquer, reformuler, glisserPourFermer }) {
   // Etat de session : { regle, lignes: [{ clash, champ, de, vers, coche }], defilement, enVisite }, ou null.
   let session = null;
   let fond = null;
@@ -36,6 +38,19 @@ export function creerReglesModale({ libellesPriorite, libellesStatut, numero, cr
     if (classe) el.className = classe;
     if (texte != null) el.textContent = texte;
     return el;
+  }
+
+  // Bouton d'action de la rangee du bas (meme composant pour Reformuler, Annuler, Fermer et Valider).
+  function creerAction(classe, act, texte) {
+    const bouton = creer("button", classe, texte);
+    bouton.type = "button";
+    bouton.dataset.act = act;
+    return bouton;
+  }
+
+  // « Reformuler » seulement pour une regle venue d'une phrase saisie dans le panneau « IA » (pas pour une phrase d'exemple).
+  function actionReformuler() {
+    return reformuler && session.regle.saisie ? [creerAction("msg-fantome", "reformuler", "Reformuler")] : [];
   }
 
   function libellesDe(champ) {
@@ -175,10 +190,7 @@ export function creerReglesModale({ libellesPriorite, libellesStatut, numero, cr
     if (!session.lignes.length) {
       const vide = creer("p", "regles-vide", "Aucune collision ne correspond à cette règle.");
       vide.setAttribute("role", "status");
-      const fermerBtn = creer("button", "msg-fantome", "Fermer");
-      fermerBtn.type = "button";
-      fermerBtn.dataset.act = "annuler";
-      actions.append(fermerBtn);
+      actions.append(...actionReformuler(), creerAction("msg-fantome", "annuler", "Fermer"));
       const corpsVide = creer("div", "regles-corps");
       corpsVide.appendChild(vide);
       carte.append(tete, corpsVide, actions, croix);
@@ -203,13 +215,7 @@ export function creerReglesModale({ libellesPriorite, libellesStatut, numero, cr
     corps.setAttribute("aria-label", "Collisions touchées par la règle");
     session.lignes.forEach((l, i) => corps.appendChild(creerLigne(l, i)));
 
-    const annuler = creer("button", "msg-fantome", "Annuler");
-    annuler.type = "button";
-    annuler.dataset.act = "annuler";
-    const valider = creer("button", "msg-primaire", "Valider");
-    valider.type = "button";
-    valider.dataset.act = "valider";
-    actions.append(annuler, valider);
+    actions.append(...actionReformuler(), creerAction("msg-fantome", "annuler", "Annuler"), creerAction("msg-primaire", "valider", "Valider"));
     carte.append(tete, corps, actions, croix);
     majCompteur();
   }
@@ -256,6 +262,7 @@ export function creerReglesModale({ libellesPriorite, libellesStatut, numero, cr
     switch (bouton.dataset.act) {
       case "annuler": fermer(); break;
       case "valider": valider(); break;
+      case "reformuler": reformulerPhrase(); break;
       case "voir": voir(Number(bouton.dataset.i)); break;
       default: break;
     }
@@ -334,6 +341,13 @@ export function creerReglesModale({ libellesPriorite, libellesStatut, numero, cr
         .map((t) => ({ clash: t.clash, champ: regle.action.champ, de: t.de, vers: t.vers, coche: true }))
     };
     afficher(false);
+  }
+
+  // Comme « Annuler » (regle et selection oubliees), puis le panneau « IA » se rouvre avec la phrase envoyee, a corriger et renvoyer.
+  function reformulerPhrase() {
+    const phrase = session.regle.demande;
+    fermer();
+    reformuler(phrase);
   }
 
   function valider() {
