@@ -109,3 +109,64 @@ test("performance : 30 000 elements, index reutilise a la 2e recherche", () => {
   assert.ok(premiere < 1500, "1ere recherche " + premiere);
   assert.ok(seconde < 100, "2e recherche " + seconde);
 });
+
+// ---- Tolerance aux fautes de frappe (distance d'edition) ----
+const sceneFautes = fabriquerScene([
+  { name: "M_Supply Diffuser:600 x 600 Face:1", type: "IfcBuildingElementProxy" },
+  { name: "M_Return Diffuser:300 x 300:2", type: "IfcBuildingElementProxy" },
+  { name: "Mur de refend:Standard:3", type: "IfcWallStandardCase" },
+  { name: "Compound Ceiling:Plafond acoustique:4", type: "IfcCovering" },
+  { name: "Gaine ronde:Standard:5", type: "IfcDuctSegment" }
+]);
+
+test("faute simple : « difuseur » (une lettre manquante) retrouve Diffuser", () => {
+  const n = nomsProches(sceneFautes, "ecarte les difuseurs", 15);
+  assert.equal(n[0], "Diffuser");
+  assert.ok(n.includes("M_Supply Diffuser:600 x 600 Face"));
+});
+
+test("faute double : « colisions avec les difuseurs » (mot de la phrase deux fautes, plus « collisions » mal ecrit) retrouve Diffuser", () => {
+  const n = nomsProches(sceneFautes, "écarte les colisions avec les difuseurs", 15);
+  assert.equal(n[0], "Diffuser");
+  assert.equal(n.some((x) => /Mur|Gaine|Ceiling/.test(x)), false);
+});
+
+test("faute double dans un seul mot long : « plafoond acoustik »", () => {
+  const n = nomsProches(sceneFautes, "plafoond acoustik", 15);
+  assert.ok(n.includes("Compound Ceiling:Plafond acoustique"));
+});
+
+test("mot trop court : aucune tolerance (« mus » ne retrouve pas « Mur »)", () => {
+  assert.deepEqual(nomsProches(sceneFautes, "mus", 15), []);
+});
+
+test("mot de 5 a 7 lettres : une faute tolerée, deux refusees", () => {
+  assert.ok(nomsProches(sceneFautes, "gaina", 15).length >= 1); // 1 faute sur « gaine » (5 lettres)
+  assert.deepEqual(nomsProches(sceneFautes, "gxixe", 15), []); // 3 fautes
+});
+
+test("pas de faux positif : des mots eloignes ne ramenent rien", () => {
+  for (const phrase of ["radiateur", "ventilateur", "extincteur", "tableau electrique"]) assert.deepEqual(nomsProches(sceneFautes, phrase, 15), [], phrase);
+});
+
+test("phrase sans faute : resultat identique a celui sans tolerance (aucun ajout flou)", () => {
+  const n = nomsProches(sceneFautes, "ecarte les diffuseurs", 15);
+  assert.equal(n[0], "Diffuser");
+  assert.equal(n.length, 3); // le mot + les deux noms Famille:Type, rien de plus
+});
+
+test("aucune valeur inventee : tout ce qui est renvoye est un mot ou un nom reel de la scene", () => {
+  const reels = new Set();
+  Object.values(sceneFautes.metaObjects).forEach((o) => {
+    const nom = o.name.replace(/:\d+$/, "");
+    reels.add(nom);
+    nom.split(/[\s:_\-.,()/]+/).forEach((m) => reels.add(m));
+  });
+  for (const phrase of ["colisions difuseurs", "plafoond acoustik", "gaina ronde", "mur de refand"]) {
+    for (const v of nomsProches(sceneFautes, phrase, 15)) assert.ok(reels.has(v), phrase + " -> " + v);
+  }
+});
+
+test("mots vides mal ecrits ignores : « colisions » seul ne ramene rien", () => {
+  assert.deepEqual(nomsProches(sceneFautes, "colisions", 15), []);
+});

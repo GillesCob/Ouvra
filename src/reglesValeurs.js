@@ -17,15 +17,36 @@ const MOTS_VIDES = new Set([
   "dont", "leur", "chaque", "ces", "cette", "quand", "elles", "ils"
 ]);
 
-// Index des noms « Famille:Type » (suffixe numerique de l'identifiant Revit retire, doublons fusionnes), refait seulement si le nombre
-// d'objets de la scene a change (chargement progressif des maquettes).
+// Index des noms « Famille:Type » (suffixe numerique de l'identifiant Revit retire, doublons fusionnes) et vocabulaire des mots qu'ils contiennent
+// (sert a la tolerance aux fautes de frappe), refait seulement si le nombre d'objets de la scene a change (chargement progressif des maquettes).
 const indexes = new WeakMap();
+const SEPARATEUR_MOTS = /[\s:_\-.,()/]+/;
+const FAUTE_LONGUEUR_MIN = 5; // en dessous, aucune tolerance : trop de faux positifs (« mus » / « Mur »)
+
+// Distance d'edition (Levenshtein) entre a et b, ou limite + 1 des qu'elle depasse la limite.
+function distanceBornee(a, b, limite) {
+  if (Math.abs(a.length - b.length) > limite) return limite + 1;
+  let ligne = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i += 1) {
+    const suivante = [i];
+    let minimum = i;
+    for (let j = 1; j <= b.length; j += 1) {
+      suivante[j] = Math.min(ligne[j] + 1, suivante[j - 1] + 1, ligne[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      if (suivante[j] < minimum) minimum = suivante[j];
+    }
+    if (minimum > limite) return limite + 1;
+    ligne = suivante;
+  }
+  return ligne[b.length];
+}
+// Fautes tolerees selon la longueur du mot : 1 faute de 5 a 7 lettres, 2 fautes a partir de 8, aucune en dessous de 5.
+const fautesPermises = (longueur) => (longueur < FAUTE_LONGUEUR_MIN ? 0 : longueur < 8 ? 1 : 2);
 
 function indexNoms(metaScene) {
-  if (!metaScene || typeof metaScene !== "object") return [];
+  if (!metaScene || typeof metaScene !== "object") return { noms: [], vocabulaire: [] };
   const objets = metaScene && metaScene.metaObjects ? Object.values(metaScene.metaObjects) : [];
   const memo = indexes.get(metaScene);
-  if (memo && memo.taille === objets.length) return memo.noms;
+  if (memo && memo.taille === objets.length) return memo.index;
   const vus = new Map();
   for (const mo of objets) {
     if (!mo || !mo.name || TYPES_SPATIAUX.has(mo.type)) continue;
@@ -34,15 +55,30 @@ function indexNoms(metaScene) {
     vus.set(nom, normaliser(nom));
   }
   const noms = Array.from(vus, ([brut, norme]) => ({ brut, norme }));
-  indexes.set(metaScene, { taille: objets.length, noms });
-  return noms;
+  const vocabulaire = new Set();
+  for (const norme of vus.values()) norme.split(SEPARATEUR_MOTS).forEach((mot) => { if (mot.length >= 4) vocabulaire.add(mot); });
+  const index = { noms, vocabulaire: Array.from(vocabulaire) };
+  indexes.set(metaScene, { taille: objets.length, index });
+  return index;
 }
 
-// Mots de la phrase utiles a la recherche, avec un radical raccourci pour tolerer pluriels et suffixes (« diffuseur » / « Diffuser »).
-function motsDe(phrase) {
-  const mots = normaliser(phrase).split(/[^a-z0-9]+/).filter((m) => m.length >= 3 && !MOTS_VIDES.has(m));
+// Mot de la phrase assez proche d'un mot vide ecrit avec une faute (« colisions » / « collision ») : ignore lui aussi.
+const estMotVide = (mot) => MOTS_VIDES.has(mot) || (mot.length >= FAUTE_LONGUEUR_MIN && Array.from(MOTS_VIDES).some((v) => v.length >= FAUTE_LONGUEUR_MIN && distanceBornee(mot, v, 1) <= 1));
+
+// Formes sous lesquelles chercher un mot dans les noms : le mot, un radical raccourci pour tolerer pluriels et suffixes (« diffuseur » / « Diffuser »)
+// et, SEULEMENT si ni l'un ni l'autre n'existe dans les noms, les mots reels du vocabulaire a une ou deux fautes de frappe (« difuseur »).
+function formesDe(mot, vocabulaire) {
+  const formes = mot.length >= 5 ? [mot, mot.slice(0, Math.max(4, mot.length - 2))] : [mot];
+  const limite = fautesPermises(mot.length);
+  if (limite === 0 || vocabulaire.some((m) => formes.some((f) => m.includes(f)))) return formes;
+  return [...formes, ...vocabulaire.filter((m) => distanceBornee(mot, m, limite) <= limite)];
+}
+
+// Mots de la phrase utiles a la recherche, avec leurs formes de recherche.
+function motsDe(phrase, vocabulaire) {
+  const mots = normaliser(phrase).split(/[^a-z0-9]+/).filter((m) => m.length >= 3 && !estMotVide(m));
   const singuliers = mots.map((mot) => (mot.length > 4 ? mot.replace(/[sx]$/, "") : mot));
-  return Array.from(new Set(singuliers)).map((mot) => (mot.length >= 5 ? [mot, mot.slice(0, Math.max(4, mot.length - 2))] : [mot]));
+  return Array.from(new Set(singuliers)).map((mot) => formesDe(mot, vocabulaire));
 }
 
 // Mots (separes par espace, deux-points, souligne, tiret...) des noms retenus qui contiennent un des mots de la phrase, du plus frequent au moins frequent.
@@ -51,7 +87,7 @@ function motsDesNoms(noms, mots) {
   const frequences = new Map(); // forme normalisee -> { mot (casse d'origine), n }
   for (const nom of noms) {
     const vus = new Set();
-    for (const mot of nom.split(/[\s:_\-.,()/]+/)) {
+    for (const mot of nom.split(SEPARATEUR_MOTS)) {
       const norme = normaliser(mot);
       if (norme.length < 3 || vus.has(norme) || !mots.some((formes) => formes.some((f) => norme.includes(f)))) continue;
       vus.add(norme);
@@ -65,10 +101,11 @@ function motsDesNoms(noms, mots) {
 
 // Au plus `max` valeurs pour le critere « nom » : d'abord quelques mots communs (au plus un tiers), puis les noms « Famille:Type » les mieux classes.
 export function nomsProches(metaScene, phrase, max = NOMS_MAX) {
-  const mots = motsDe(phrase);
+  const { noms: index, vocabulaire } = indexNoms(metaScene);
+  const mots = motsDe(phrase, vocabulaire);
   if (!mots.length) return [];
   const classes = [];
-  for (const { brut, norme } of indexNoms(metaScene)) {
+  for (const { brut, norme } of index) {
     const score = mots.reduce((total, formes) => total + (formes.some((f) => norme.includes(f)) ? 1 : 0), 0);
     if (score > 0) classes.push({ brut, score });
   }
