@@ -1,11 +1,14 @@
 import { defineConfig } from "vite";
 import { viteStaticCopy } from "vite-plugin-static-copy";
 import { recolteVues } from "./tools/viteRecolteVues.js";
+import { relaisIA } from "./tools/viteRelaisIA.js";
 
 export default defineConfig({
   plugins: [
     // Serveur de dev seulement : recolte des vues 3D de la messagerie (voir tools/viteRecolteVues.js).
     recolteVues(),
+    // Serveur de dev et de previsualisation seulement : monte api/regle.js (relais IA des regles de collision) sur /api/regle.
+    relaisIA(),
     viteStaticCopy({
       targets: [
         {
