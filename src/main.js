@@ -5,6 +5,8 @@ import { creerMessagerie } from "./messagerie/messagerie.js";
 import { descripteurElement, validerRegle, appliquerRegle } from "./reglesCollision.js";
 import { creerReglesModale } from "./reglesModale.js";
 import { creerReglesIA } from "./reglesIA.js";
+import { valeursPourIA } from "./reglesValeurs.js";
+import { demanderRegle } from "./reglesIAClient.js";
 import { EXEMPLES_REGLES } from "./reglesExemples.js";
 
 // ============================================================================
@@ -6263,6 +6265,12 @@ function fermerMenusDeroulantsCollision() {
   if (collisionContexteBtn) collisionContexteBtn.setAttribute("aria-expanded", "false");
   fermerMenuCouples();
 }
+// Phrase de l'utilisateur -> relais IA hebergé (api/regle.js). Seuls des mots partent : types IFC, niveaux, maquettes et quelques noms proches de
+// la phrase, lus sur les maquettes chargees ; jamais la geometrie. Ne rejette jamais (repli sur les phrases d'exemple en cas d'echec).
+function traduirePhraseParIA(phrase) {
+  const valeurs = valeursPourIA(viewer.metaScene, MAQUETTES, phrase, { priorite: PRIORITE_ORDRE, statut: Object.keys(STATUT_LABELS) });
+  return demanderRegle({ phrase, valeurs });
+}
 creerReglesIA({
   parent: collisionLeft,
   slot: collisionViewerSlot,
@@ -6271,6 +6279,7 @@ creerReglesIA({
   observes: [collisionInfoPanelToggle, collisionDiscussion, collisionLeft, collisionViewerSlot, messageOuvrirBtn],
   exemples: EXEMPLES_REGLES,
   ouvrirRegle: ouvrirRegleCollision,
+  traduire: traduirePhraseParIA,
   fermerAutres: fermerMenusDeroulantsCollision,
   absorberGeste: absorberGesteNeutre
 });

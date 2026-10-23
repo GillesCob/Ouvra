@@ -1,6 +1,7 @@
 // Point d'entree des regles de collision en langage naturel (22/10, etape 5) : le bouton « IA » de la page Collision et son petit panneau a
-// deux entrees. « Decrire avec l'IA » (champ et bouton « Traduire », inactifs : aucune IA n'est branchee ici) et « Choisir un filtre »
-// (phrases d'exemple de src/reglesExemples.js, un clic ouvre la modale « Regle a valider » par ouvrirRegle).
+// deux entrees. « Decrire avec l'IA » (champ et bouton « Traduire » : la phrase part vers le relais hebergé par traduire(phrase), la regle
+// proposee ouvre la modale « Regle a valider », jamais d'application directe) et « Choisir un filtre » (phrases d'exemple de
+// src/reglesExemples.js, sans IA : repli quand le budget est epuise ou que le reseau echoue, un clic ouvre la meme modale par ouvrirRegle).
 //
 // Placement (positionnement fixe, recalcule a partir des rectangles des boutons voisins, sans toucher a leur mise en page) :
 //  - ordinateur : en bas a droite de la vue 3D (#collisionViewerSlot), le panneau s'ouvre vers le haut et vers la gauche ;
@@ -12,6 +13,8 @@
 //   masquerSurMobile() : vrai quand le bouton ne doit pas etre affiche sur mobile (bandeau de collision en pleine page)
 //   observes : elements dont un changement de style / classe peut deplacer les boutons voisins
 //   exemples : [{ demande, filtre, action }] ; ouvrirRegle(regle) : valide la regle et ouvre la modale
+//   traduire(phrase) : promesse de { ok: true, resultat: "regle", regle } | { ok: true, resultat: "critere_introuvable" | "non_comprise", message }
+//     | { ok: false, code, message } (src/reglesIAClient.js) ; ne rejette jamais
 //   fermerAutres() : ferme les autres menus deroulants de la page ; absorberGeste() : appui hors du panneau en clic neutre (mobile)
 
 import "./reglesIA.css";
@@ -22,7 +25,9 @@ const ECART = 8;
 const MARGE = 16;
 const IMAGES_CALMES = 24; // images sans mouvement des boutons voisins avant d'arreter le suivi
 
-export function creerReglesIA({ parent, slot, boutonCollisions, masquerSurMobile, observes, exemples, ouvrirRegle, fermerAutres, absorberGeste }) {
+export const PHRASE_MAX = 200; // meme plafond que le relais (relais/entree.js)
+
+export function creerReglesIA({ parent, slot, boutonCollisions, masquerSurMobile, observes, exemples, ouvrirRegle, traduire, fermerAutres, absorberGeste }) {
   const racine = document.createElement("div");
   racine.id = "reglesIA";
   const bouton = document.createElement("button");
@@ -49,28 +54,82 @@ export function creerReglesIA({ parent, slot, boutonCollisions, masquerSurMobile
   const mobile = () => window.matchMedia(MOBILE).matches;
   const ouvert = () => !panneau.hidden;
 
+  let champ;
+  let boutonTraduire;
+  let etat;
+  let demandeEnCours = 0; // numero de la derniere demande : une reponse d'une demande abandonnee est ignoree
+
   function creerSectionDecrire() {
     const section = document.createElement("section");
     section.className = "regles-ia-section";
     const titre = document.createElement("h3");
     titre.id = "reglesIATitreDecrire";
     titre.textContent = "Décrire avec l'IA";
-    const ligne = document.createElement("div");
+    const ligne = document.createElement("form");
     ligne.className = "regles-ia-saisie";
-    const champ = document.createElement("input");
+    ligne.noValidate = true;
+    champ = document.createElement("input");
     champ.type = "text";
     champ.id = "reglesIAChamp";
-    champ.disabled = true;
-    champ.placeholder = "Bientôt : décris la règle à l'IA";
+    champ.maxLength = PHRASE_MAX;
+    champ.autocomplete = "off";
+    champ.enterKeyHint = "go";
+    champ.placeholder = "Ex. : écarte les collisions avec un diffuseur";
     champ.setAttribute("aria-labelledby", "reglesIATitreDecrire");
-    const traduire = document.createElement("button");
-    traduire.type = "button";
-    traduire.id = "reglesIATraduire";
-    traduire.disabled = true;
-    traduire.textContent = "Traduire";
-    ligne.append(champ, traduire);
-    section.append(titre, ligne);
+    champ.setAttribute("aria-describedby", "reglesIAEtat");
+    boutonTraduire = document.createElement("button");
+    boutonTraduire.type = "submit";
+    boutonTraduire.id = "reglesIATraduire";
+    boutonTraduire.textContent = "Traduire";
+    ligne.append(champ, boutonTraduire);
+    // Message de la derniere demande (chargement, critere introuvable, repli). Annonce aux lecteurs d'ecran par role="status".
+    etat = document.createElement("p");
+    etat.id = "reglesIAEtat";
+    etat.className = "regles-ia-etat";
+    etat.setAttribute("role", "status");
+    etat.hidden = true;
+    ligne.addEventListener("submit", (e) => { e.preventDefault(); envoyer(); });
+    section.append(titre, ligne, etat);
     return section;
+  }
+
+  function afficherEtat(texte, erreur) {
+    etat.textContent = texte || "";
+    etat.hidden = !texte;
+    etat.classList.toggle("erreur", !!erreur);
+  }
+
+  function occupe(oui) {
+    boutonTraduire.disabled = oui;
+    champ.readOnly = oui;
+    boutonTraduire.textContent = oui ? "Traduction…" : "Traduire";
+    champ.setAttribute("aria-busy", String(oui));
+  }
+
+  async function envoyer() {
+    if (boutonTraduire.disabled) return;
+    const phrase = champ.value.replace(/\s+/g, " ").trim();
+    if (!phrase) { afficherEtat("Écris la règle que tu veux, par exemple « écarte les collisions avec un diffuseur ».", true); champ.focus({ preventScroll: true }); return; }
+    const numero = ++demandeEnCours;
+    occupe(true);
+    afficherEtat("L'IA lit la phrase…", false);
+    const reponse = await traduire(phrase);
+    // Panneau ferme ou autre demande depuis : le resultat est abandonne, rien ne s'ouvre a l'insu de l'utilisateur.
+    if (numero !== demandeEnCours) return;
+    occupe(false);
+    if (reponse.ok && reponse.resultat === "regle") {
+      afficherEtat("", false);
+      champ.value = "";
+      fermer(true);
+      ouvrirRegle(reponse.regle);
+      return;
+    }
+    if (reponse.ok) {
+      afficherEtat((reponse.resultat === "critere_introuvable" ? "Critère introuvable. " : "") + reponse.message, true);
+    } else {
+      afficherEtat(reponse.message, true);
+    }
+    champ.focus({ preventScroll: true });
   }
 
   function creerSectionExemples() {
@@ -98,6 +157,7 @@ export function creerReglesIA({ parent, slot, boutonCollisions, masquerSurMobile
   // ---------- Ouverture / fermeture ----------
   function ouvrir() {
     fermerAutres();
+    if (!boutonTraduire.disabled) afficherEtat("", false);
     panneau.hidden = false;
     bouton.setAttribute("aria-expanded", "true");
     placer();
@@ -108,6 +168,7 @@ export function creerReglesIA({ parent, slot, boutonCollisions, masquerSurMobile
 
   function fermer(rendreFocus) {
     if (!ouvert()) return;
+    if (boutonTraduire.disabled) { demandeEnCours += 1; occupe(false); afficherEtat("", false); }
     panneau.hidden = true;
     bouton.setAttribute("aria-expanded", "false");
     if (rendreFocus) bouton.focus({ preventScroll: true });
