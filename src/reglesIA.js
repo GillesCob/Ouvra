@@ -41,6 +41,11 @@ export function creerReglesIA({ parent, slot, boutonCollisions, masquerSurMobile
   bouton.title = "Règles par l'IA";
   racine.appendChild(bouton);
 
+  let champ;
+  let boutonTraduire;
+  let etat;
+  let demandeEnCours = 0; // numero de la derniere demande : une reponse d'une demande abandonnee est ignoree
+
   const panneau = document.createElement("div");
   panneau.id = "reglesIAPanneau";
   panneau.setAttribute("role", "dialog");
@@ -53,11 +58,6 @@ export function creerReglesIA({ parent, slot, boutonCollisions, masquerSurMobile
 
   const mobile = () => window.matchMedia(MOBILE).matches;
   const ouvert = () => !panneau.hidden;
-
-  let champ;
-  let boutonTraduire;
-  let etat;
-  let demandeEnCours = 0; // numero de la derniere demande : une reponse d'une demande abandonnee est ignoree
 
   function creerSectionDecrire() {
     const section = document.createElement("section");
