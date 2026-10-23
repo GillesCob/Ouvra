@@ -36,7 +36,21 @@ test("valeurs : types sans les types spatiaux, niveaux des etages, maquettes cha
 
 test("noms : suffixe numerique retire, doublons fusionnes, proches de la phrase seulement", () => {
   const n = nomsProches(scene, "Ecarte les collisions avec un diffuseur", 15);
-  assert.deepEqual(n, ["Diffuser:Supply Diffuser"]);
+  assert.ok(n.includes("Diffuser:Supply Diffuser"));
+  assert.equal(n.filter((x) => x === "Diffuser:Supply Diffuser").length, 1);
+  assert.equal(n.some((x) => /Wall|Duct|Ceiling/.test(x)), false);
+});
+
+test("noms : le MOT present dans les noms est propose en premier (le critere « nom » cherche une sous-chaine : « Diffuser » vise tous les diffuseurs)", () => {
+  const variees = fabriquerScene([
+    { name: "M_Supply Diffuser:600 x 600 Face:1", type: "IfcBuildingElementProxy" },
+    { name: "M_Return Diffuser:300 x 300:2", type: "IfcBuildingElementProxy" },
+    { name: "M_Exhaust Diffuser:Round:3", type: "IfcBuildingElementProxy" }
+  ]);
+  const n = nomsProches(variees, "ecarte les diffuseurs", 15);
+  assert.equal(n[0], "Diffuser");
+  assert.ok(n.includes("M_Return Diffuser:300 x 300"));
+  assert.ok(n.length <= 15);
 });
 
 test("noms : un mot sans correspondance ne ramene rien", () => {
@@ -49,8 +63,8 @@ test("noms : phrase vide ou faite de mots vides", () => {
 });
 
 test("noms : accents et casse sans effet", () => {
-  assert.deepEqual(nomsProches(scene, "PLAFOND acoustique", 15), ["Compound Ceiling:Plafond acoustique"]);
-  assert.deepEqual(nomsProches(scene, "plafónd", 15), ["Compound Ceiling:Plafond acoustique"]);
+  assert.ok(nomsProches(scene, "PLAFOND acoustique", 15).includes("Compound Ceiling:Plafond acoustique"));
+  assert.ok(nomsProches(scene, "plafónd", 15).includes("Compound Ceiling:Plafond acoustique"));
 });
 
 test("noms : types spatiaux jamais proposes comme noms", () => {

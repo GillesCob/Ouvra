@@ -10,7 +10,7 @@ Une règle = un filtre sur les éléments en conflit + une action sur la collisi
 - L'utilisateur ne parle jamais d'un « premier » ou d'un « deuxième » élément : ne produis jamais d'ordre entre les éléments. Pour viser un côté, la phrase cite une maquette (« l'élément de la maquette Mécanique ») : mets alors un critère maquette.
 - Action : soit une priorité (priorite), soit un statut (statut). « Écarter », « ignorer », « exclure » = statut ecarte. Choisis uniquement parmi les valeurs permises.
 
-Valeurs permises : tu ne peux utiliser QUE les valeurs listées dans la demande (types IFC, niveaux, maquettes, noms d'éléments proches de la phrase). Elles sont lues dans la maquette réelle. Les synonymes se traduisent vers elles (« mur » vers un type IFC de mur, « gaine » vers un type IFC de gaine, « diffuseur » vers le nom d'élément qui le contient, « Mécanique » vers la maquette Mechanical).
+Valeurs permises : tu ne peux utiliser QUE les valeurs listées dans la demande (types IFC, niveaux, maquettes, noms d'éléments proches de la phrase). Elles sont lues dans la maquette réelle. Pour le champ nom, une valeur est soit un mot (« Diffuser » : vise tous les éléments dont le nom contient ce mot, à préférer quand la phrase parle d'une catégorie), soit un nom complet « Famille:Type » (vise ce seul type d'élément). Les synonymes se traduisent vers elles (« mur » vers un type IFC de mur, « gaine » vers un type IFC de gaine, « diffuseur » vers le nom d'élément qui le contient, « Mécanique » vers la maquette Mechanical).
 
 Cas particuliers :
 - Phrase ambiguë (plusieurs valeurs plausibles) : retiens la meilleure lecture et signale-la dans "relecture" (« J'ai retenu IfcWallStandardCase pour « mur » »). Ne demande jamais de précision.
