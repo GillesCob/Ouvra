@@ -2,6 +2,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { traduire, MODELE } from "../relais/traduire.js";
+import { CONSIGNE } from "../relais/consigne.js";
 
 const valeurs = {
   typesIfc: ["IfcDuctSegment", "IfcWallStandardCase"],
@@ -140,4 +141,11 @@ test("cle absente : ia_indisponible, aucun appel", async () => {
   const r = await traduire(entree, { client: null });
   assert.equal(r.ok, false);
   assert.equal(r.code, "ia_indisponible");
+});
+
+test("consigne : les messages destines a l'utilisateur sont courts, tutoyes et sans jargon de consigne", () => {
+  assert.match(CONSIGNE, /tutoi/i);
+  assert.match(CONSIGNE, /deux phrases au plus/i);
+  assert.match(CONSIGNE, /jamais « valeurs permises »/);
+  assert.equal(/—|–/.test(CONSIGNE), false, "tiret long dans la consigne");
 });
