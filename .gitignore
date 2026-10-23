@@ -5,3 +5,4 @@ tools/clash-test/venv
 .env
 .env.*
 .vercel
+!.env.example

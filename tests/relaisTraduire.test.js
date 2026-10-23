@@ -109,10 +109,10 @@ test("limite de debit Anthropic (429 sans code de depense) : trop_de_requetes", 
 
 test("erreurs serveur et authentification : ia_indisponible, sans fuite du message brut", async () => {
   for (const status of [500, 529, 401, 403, 404]) {
-    const r = await traduire(entree, { client: clientQui(() => { throw erreurAvecStatut(status, "secret-interne sk-ant-xxxx"); }) });
+    const r = await traduire(entree, { client: clientQui(() => { throw erreurAvecStatut(status, "secret-interne-xxxx"); }) });
     assert.equal(r.ok, false, String(status));
     assert.equal(r.code, "ia_indisponible", String(status));
-    assert.equal(JSON.stringify(r).includes("sk-ant"), false);
+    assert.equal(JSON.stringify(r).includes("secret-interne"), false);
   }
 });
 

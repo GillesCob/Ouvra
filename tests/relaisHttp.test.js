@@ -87,13 +87,13 @@ test("erreur reseau : 503 ia_indisponible", async () => {
 });
 
 test("la cle n'apparait jamais dans une reponse, succes comme erreur", async () => {
-  const cle = "sk-ant-api03-SECRET-DE-TEST";
+  const cle = "CLE-FACTICE-SECRETE-DE-TEST";
   const g = creerGestionnaire({ client: () => fauxClient(async () => { throw new Error("401 invalid x-api-key " + cle); }), cle });
   const erreur = JSON.stringify((await lire(await g(requete(corpsValide)))).json);
-  assert.equal(erreur.includes("SECRET-DE-TEST"), false);
+  assert.equal(erreur.includes("CLE-FACTICE-SECRETE"), false);
   const g2 = creerGestionnaire({ client: () => fauxClient(), cle });
   const ok = JSON.stringify((await lire(await g2(requete(corpsValide)))).json);
-  assert.equal(ok.includes("SECRET-DE-TEST"), false);
+  assert.equal(ok.includes("CLE-FACTICE-SECRETE"), false);
 });
 
 test("pas de client (cle absente) : 503 ia_indisponible", async () => {
