@@ -175,12 +175,6 @@ export function creerReglesModale({ libellesPriorite, libellesStatut, numero, cr
     const demande = creer("p", "regles-demande", "« " + session.regle.demande + " »");
     demande.title = session.regle.demande;
     tete.append(titre, demande);
-    // Phrase de relecture de l'IA (regle venue de « Decrire avec l'IA ») : elle redit la regle et signale la lecture retenue si la phrase etait ambigue.
-    if (session.regle.relecture) {
-      const relecture = creer("p", "regles-relecture", session.regle.relecture);
-      relecture.id = "reglesRelecture";
-      tete.appendChild(relecture);
-    }
     const croix = creer("button", "msg-croix", "✕");
     croix.type = "button";
     croix.dataset.act = "annuler";
