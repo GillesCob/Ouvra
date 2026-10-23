@@ -2,6 +2,9 @@
 // deux entrees. « Decrire avec l'IA » (champ et bouton « Traduire » : la phrase part vers le relais hebergé par traduire(phrase), la regle
 // proposee ouvre la modale « Regle a valider », jamais d'application directe) et « Choisir un filtre » (phrases d'exemple de
 // src/reglesExemples.js, sans IA : repli quand le budget est epuise ou que le reseau echoue, un clic ouvre la meme modale par ouvrirRegle).
+// Deux modes de saisie, « Texte » (defaut : champ + « Traduire ») et « Vocal » (dictee par la Web Speech API, src/reglesVoix.js : un clic sur
+// « Vocal » demarre l'ecoute, le texte reconnu s'affiche dans le champ, « Envoyer » arrete l'ecoute et envoie la phrase par le meme chemin que
+// « Traduire », « Annuler » ou Echap abandonnent sans rien envoyer). Sans l'API ou apres un refus du micro, « Vocal » est desactive avec la raison.
 //
 // Placement (positionnement fixe, recalcule a partir des rectangles des boutons voisins, sans toucher a leur mise en page) :
 //  - ordinateur : en bas a droite de la vue 3D (#collisionViewerSlot), le panneau s'ouvre vers le haut et vers la gauche ;
@@ -18,6 +21,7 @@
 //   fermerAutres() : ferme les autres menus deroulants de la page ; absorberGeste() : appui hors du panneau en clic neutre (mobile)
 
 import "./reglesIA.css";
+import { creerSaisie, detecterReconnaissance } from "./reglesVoix.js";
 
 const MOBILE = "(max-width: 768px)";
 const TAILLE_MOBILE = 44;
@@ -26,6 +30,8 @@ const MARGE = 16;
 const IMAGES_CALMES = 24; // images sans mouvement des boutons voisins avant d'arreter le suivi
 
 export const PHRASE_MAX = 200; // meme plafond que le relais (relais/entree.js)
+const PLACEHOLDER_TEXTE = "Ex. : écarte les collisions avec un diffuseur";
+const PLACEHOLDER_VOCAL = "Le texte reconnu s'affiche ici";
 
 export function creerReglesIA({ parent, slot, boutonCollisions, masquerSurMobile, observes, exemples, ouvrirRegle, traduire, fermerAutres, absorberGeste }) {
   const racine = document.createElement("div");
@@ -44,6 +50,11 @@ export function creerReglesIA({ parent, slot, boutonCollisions, masquerSurMobile
   let champ;
   let boutonTraduire;
   let etat;
+  let saisie;
+  let boutonTexte;
+  let boutonVocal;
+  let annulerVocal;
+  let noteVocal;
   let demandeEnCours = 0; // numero de la derniere demande : une reponse d'une demande abandonnee est ignoree
 
   const panneau = document.createElement("div");
@@ -65,6 +76,33 @@ export function creerReglesIA({ parent, slot, boutonCollisions, masquerSurMobile
     const titre = document.createElement("h3");
     titre.id = "reglesIATitreDecrire";
     titre.textContent = "Décrire avec l'IA";
+    saisie = creerSaisie({
+      Reconnaissance: detecterReconnaissance(window),
+      lire: () => champ.value,
+      ecrire: (texte) => { champ.value = texte; },
+      surMode: appliquerMode,
+      surEcoute: (ecoute) => etat.classList.toggle("ecoute", ecoute),
+      surMessage: afficherEtat,
+      surIndisponible: majVocal,
+      longueurMax: PHRASE_MAX
+    });
+
+    // Choix du mode : deux boutons a bascule (un seul actif), role et etat annonces par aria-pressed, clavier natif (Tab, Entree, Espace).
+    const modes = document.createElement("div");
+    modes.className = "tabs";
+    modes.setAttribute("role", "group");
+    modes.setAttribute("aria-label", "Mode de saisie");
+    boutonTexte = creerBoutonMode("Texte", () => saisie.choisirTexte());
+    boutonTexte.setAttribute("aria-pressed", "true"); // mode par defaut
+    boutonVocal = creerBoutonMode("Vocal", () => saisie.choisirVocal());
+    boutonVocal.id = "reglesIAVocal";
+    boutonVocal.setAttribute("aria-describedby", "reglesIANoteVocal");
+    modes.append(boutonTexte, boutonVocal);
+    noteVocal = document.createElement("p");
+    noteVocal.id = "reglesIANoteVocal";
+    noteVocal.className = "regles-ia-etat";
+    noteVocal.hidden = true;
+
     const ligne = document.createElement("form");
     ligne.className = "regles-ia-saisie";
     ligne.noValidate = true;
@@ -74,23 +112,61 @@ export function creerReglesIA({ parent, slot, boutonCollisions, masquerSurMobile
     champ.maxLength = PHRASE_MAX;
     champ.autocomplete = "off";
     champ.enterKeyHint = "go";
-    champ.placeholder = "Ex. : écarte les collisions avec un diffuseur";
+    champ.placeholder = PLACEHOLDER_TEXTE;
     champ.setAttribute("aria-labelledby", "reglesIATitreDecrire");
     champ.setAttribute("aria-describedby", "reglesIAEtat");
     boutonTraduire = document.createElement("button");
     boutonTraduire.type = "submit";
     boutonTraduire.id = "reglesIATraduire";
     boutonTraduire.textContent = "Traduire";
-    ligne.append(champ, boutonTraduire);
-    // Message de la derniere demande (chargement, critere introuvable, repli). Annonce aux lecteurs d'ecran par role="status".
+    annulerVocal = document.createElement("button");
+    annulerVocal.type = "button";
+    annulerVocal.id = "reglesIAAnnulerVocal";
+    annulerVocal.className = "regles-ia-annuler";
+    annulerVocal.textContent = "Annuler";
+    annulerVocal.hidden = true;
+    annulerVocal.addEventListener("click", () => saisie.choisirTexte());
+    ligne.append(champ, boutonTraduire, annulerVocal);
+    // Message de la derniere demande (ecoute, chargement, critere introuvable, repli). Annonce aux lecteurs d'ecran par role="status".
     etat = document.createElement("p");
     etat.id = "reglesIAEtat";
     etat.className = "regles-ia-etat";
     etat.setAttribute("role", "status");
     etat.hidden = true;
     ligne.addEventListener("submit", (e) => { e.preventDefault(); envoyer(); });
-    section.append(titre, ligne, etat);
+    section.append(titre, modes, noteVocal, ligne, etat);
+    majVocal();
     return section;
+  }
+
+  function creerBoutonMode(libelle, action) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "tab";
+    b.textContent = libelle;
+    b.setAttribute("aria-pressed", "false");
+    b.addEventListener("click", action);
+    return b;
+  }
+
+  // « Vocal » inutilisable (navigateur sans l'API, micro refuse, service injoignable) : bouton desactive et raison affichee sous le choix du mode.
+  function majVocal() {
+    const motif = saisie.motifIndisponible();
+    boutonVocal.disabled = !!motif || boutonTraduire.disabled;
+    noteVocal.textContent = motif || "";
+    noteVocal.hidden = !motif;
+  }
+
+  // Apparence des deux modes : le champ affiche le texte reconnu en lecture seule en Vocal, le bouton d'envoi devient « Envoyer ».
+  function appliquerMode(mode) {
+    const vocal = mode === "vocal";
+    boutonTexte.setAttribute("aria-pressed", String(!vocal));
+    boutonVocal.setAttribute("aria-pressed", String(vocal));
+    champ.readOnly = vocal;
+    champ.placeholder = vocal ? PLACEHOLDER_VOCAL : PLACEHOLDER_TEXTE;
+    boutonTraduire.textContent = vocal ? "Envoyer" : "Traduire";
+    annulerVocal.hidden = !vocal;
+    if (!vocal && ouvert()) champ.focus({ preventScroll: true });
   }
 
   function afficherEtat(texte, erreur) {
@@ -100,16 +176,21 @@ export function creerReglesIA({ parent, slot, boutonCollisions, masquerSurMobile
   }
 
   function occupe(oui) {
+    const vocal = saisie.mode() === "vocal";
     boutonTraduire.disabled = oui;
-    champ.readOnly = oui;
-    boutonTraduire.textContent = oui ? "Traduction…" : "Traduire";
+    boutonTexte.disabled = oui;
+    boutonVocal.disabled = oui || !!saisie.motifIndisponible();
+    annulerVocal.disabled = oui;
+    champ.readOnly = oui || vocal;
+    boutonTraduire.textContent = oui ? "Traduction…" : vocal ? "Envoyer" : "Traduire";
     champ.setAttribute("aria-busy", String(oui));
   }
 
   async function envoyer() {
     if (boutonTraduire.disabled) return;
-    const phrase = champ.value.replace(/\s+/g, " ").trim();
-    if (!phrase) { afficherEtat("Écris la règle que tu veux, par exemple « écarte les collisions avec un diffuseur ».", true); champ.focus({ preventScroll: true }); return; }
+    // Meme chemin pour « Traduire » et « Envoyer » : en Vocal l'ecoute s'arrete et la phrase reconnue (celle du champ) part ; rien de reconnu = aucun envoi.
+    const phrase = saisie.preparerEnvoi();
+    if (!phrase) { if (saisie.mode() === "texte") champ.focus({ preventScroll: true }); return; }
     const numero = ++demandeEnCours;
     occupe(true);
     afficherEtat("L'IA lit la phrase…", false);
@@ -168,8 +249,10 @@ export function creerReglesIA({ parent, slot, boutonCollisions, masquerSurMobile
 
   function fermer(rendreFocus) {
     if (!ouvert()) return;
-    if (boutonTraduire.disabled) { demandeEnCours += 1; occupe(false); afficherEtat("", false); }
     panneau.hidden = true;
+    saisie.fermer(); // micro coupe, mode Texte, champ restaure ; ni les modes ni l'ecoute ne survivent a la fermeture
+    majVocal();
+    if (boutonTraduire.disabled) { demandeEnCours += 1; occupe(false); afficherEtat("", false); }
     bouton.setAttribute("aria-expanded", "false");
     if (rendreFocus) bouton.focus({ preventScroll: true });
   }
@@ -196,8 +279,12 @@ export function creerReglesIA({ parent, slot, boutonCollisions, masquerSurMobile
     if (e.key !== "Escape" || !ouvert()) return;
     e.preventDefault();
     e.stopPropagation();
-    fermer(true);
+    if (saisie.mode() === "vocal") saisie.choisirTexte(); // Echap pendant la dictee : on abandonne la dictee, un second Echap ferme le panneau
+    else fermer(true);
   }, true);
+  // Page en arriere-plan ou quittee : le micro ne reste jamais ouvert.
+  document.addEventListener("visibilitychange", () => { if (document.hidden) { saisie.fermer(); majVocal(); } });
+  window.addEventListener("pagehide", () => saisie.fermer());
 
   // ---------- Placement ----------
   // Ordinateur : coin bas droite de la zone 3D. Mobile : a gauche de « ☰ Collisions », centre sur sa ligne. Rend une signature de la position.

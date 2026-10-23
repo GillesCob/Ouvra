@@ -43,6 +43,26 @@
 }
 .regles-ia-saisie :disabled { opacity: 0.5; cursor: default; }
 .regles-ia-saisie button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+/* Choix du mode Texte / Vocal : memes classes .tabs et .tab que la bascule Niveaux / Maquettes (src/style.css), le bouton actif porte la
+   couleur de la pastille de cette bascule (fond et bordure d'accent) ; l'etat est aussi annonce par aria-pressed. */
+#reglesIAPanneau .tabs { margin: 0 0 2px; padding: 0; }
+#reglesIAPanneau .tab { border: 1px solid transparent; min-height: 36px; }
+@media (max-width: 768px) { #reglesIAPanneau .tab { min-height: 44px; } }
+#reglesIAPanneau .tab[aria-pressed="true"] {
+  color: var(--text); background: color-mix(in srgb, var(--accent) 24%, transparent); border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+}
+#reglesIAPanneau .tab:disabled { opacity: 0.5; cursor: default; }
+.regles-ia-saisie { flex-wrap: wrap; }
+.regles-ia-saisie input[readonly] { color: var(--text); }
+.regles-ia-saisie .regles-ia-annuler { flex: 1 1 100%; }
+.regles-ia-saisie .regles-ia-annuler[hidden] { display: none; }
+/* Ecoute en cours : pastille d'accent qui pulse devant le message (le message dit aussi l'etat, la couleur ne suffit pas). */
+.regles-ia-etat.ecoute::before {
+  content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; background: var(--accent);
+  animation: regles-ia-ecoute 1.2s ease-in-out infinite;
+}
+@keyframes regles-ia-ecoute { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+@media (prefers-reduced-motion: reduce) { .regles-ia-etat.ecoute::before { animation: none; } }
 .regles-ia-etat { margin: 0 4px; font-size: 12.5px; line-height: 1.35; color: var(--muted); overflow-wrap: anywhere; }
 .regles-ia-etat[hidden] { display: none; }
 .regles-ia-etat.erreur { color: var(--text); }
