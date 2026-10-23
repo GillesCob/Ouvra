@@ -1907,7 +1907,7 @@ body.acc-actif #appBody { height: 100%; }
 /* Bascule Niveaux / Maquettes (20/10), meme principe que le bouton Mode Dev / Mode Batiment du portfolio : controle en
    pilule avec une pastille qui glisse sous l'onglet actif (0,3 s, position et largeur mesurees sur le bouton), et un contenu
    qui s'efface en descendant de 8 px, change, puis revient (voir selectInfoTab dans main.js). */
-#infoPanel .tabs, #reglesIAPanneau .tabs {
+#infoPanel .tabs {
   position: relative; display: flex; flex: none; gap: 4px; margin: 8px 10px 4px; padding: 3px;
 }
 #infoPanel .tabs-thumb {
@@ -1915,13 +1915,13 @@ body.acc-actif #appBody { height: 100%; }
   background: color-mix(in srgb, var(--accent) 24%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 60%, transparent);
   box-sizing: border-box; transition: transform 0.3s ease, width 0.3s ease;
 }
-#infoPanel .tab, #reglesIAPanneau .tab {
+#infoPanel .tab {
   position: relative; z-index: 1; flex: 1; background: none; border: none; border-radius: 6px; color: var(--muted);
   font: inherit; font-size: 12.5px; font-weight: 700; padding: 5px 6px; cursor: pointer; transition: color 0.3s ease;
 }
-#infoPanel .tab:hover, #reglesIAPanneau .tab:hover:not(:disabled) { color: var(--text); }
+#infoPanel .tab:hover { color: var(--text); }
 #infoPanel .tab[aria-selected="true"] { color: var(--text); }
-#infoPanel .tab:focus-visible, #reglesIAPanneau .tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+#infoPanel .tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 #infoPanel .tabpanel { transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out; }
 #infoPanel .tabpanel.tab-sortie, #infoPanel .tabpanel.tab-entree { opacity: 0; transform: translateY(8px); }
 #infoPanel .tabpanel { flex: 1; min-height: 0; overflow-y: auto; padding: 12px 14px; border-bottom: none; }

@@ -1,6 +1,6 @@
-/* Bouton « IA » de la page Collision et son panneau (22/10, etape 5 des regles en langage naturel). Classes prefixees regles-ia, positions
-   posees par src/reglesIA.js (position fixe, recalculee a partir des rectangles des boutons voisins). Memes variables et memes composants
-   que les menus voisins (.collision-affichage-menu pour le panneau, boutons de la barre d'outils de la 3D pour le bouton). */
+/* Bouton « IA » de la page Collision, son choix Texte / Vocal et sa modale (22/10, refaits le 23/10). Classes prefixees regles-ia, positions
+   posees par src/reglesIA.js (position fixe, recalculee a partir des rectangles des boutons voisins). Le choix reprend le style de #coupeChoixBar (« Sur une surface » / « Coupe horizontale »),
+   la modale celui des modales de la messagerie (fond sombre, carte centree). */
 
 #reglesIA {
   position: fixed; z-index: 31; display: flex; box-sizing: border-box; -webkit-tap-highlight-color: transparent;
@@ -19,77 +19,102 @@
   #reglesIABtn { padding: 0; font-size: 12.5px; }
 }
 
-#reglesIAPanneau {
-  position: fixed; z-index: 46; box-sizing: border-box; overflow-y: auto; overscroll-behavior: contain; padding: 10px;
-  display: flex; flex-direction: column; gap: 12px; background: var(--surface); color: var(--text);
-  border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+/* Choix Texte / Vocal : deux boutons comme #coupeChoixBar (src/style.css), poses au-dessus ou a gauche du bouton « IA » par src/reglesIA.js. */
+#reglesIAChoix {
+  position: fixed; z-index: 46; box-sizing: border-box; display: flex; flex-direction: column; gap: 6px; max-width: calc(100vw - 32px);
   -webkit-tap-highlight-color: transparent;
 }
-#reglesIAPanneau[hidden] { display: none; }
-#reglesIAPanneau *, #reglesIAPanneau *::before, #reglesIAPanneau *::after { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-.regles-ia-section { display: flex; flex-direction: column; gap: 6px; }
-.regles-ia-section[hidden] { display: none; }
-.regles-ia-section h3 { margin: 0 4px; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
-.regles-ia-section ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 2px; }
-.regles-ia-saisie { display: flex; gap: 8px; }
-.regles-ia-saisie input {
-  flex: 1 1 auto; min-width: 0; min-height: 44px; padding: 0 10px; background: var(--bg); color: var(--text);
+#reglesIAChoix[hidden] { display: none; }
+#reglesIAChoix *, #reglesIAChoix *::before, #reglesIAChoix *::after { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+.regles-ia-choix-rangee { display: flex; gap: 8px; }
+.regles-ia-choix-rangee button {
+  padding: 7px 12px; background: var(--surface); color: var(--text); border: 1px solid var(--border);
+  border-radius: 6px; font: inherit; font-size: 12.5px; cursor: pointer; white-space: nowrap;
+}
+.regles-ia-choix-rangee button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.regles-ia-choix-rangee button:disabled { opacity: 0.5; cursor: default; }
+@media (hover: hover) and (pointer: fine) {
+  .regles-ia-choix-rangee button:not(:disabled):hover { border-color: var(--accent); }
+}
+@media (max-width: 768px) {
+  .regles-ia-choix-rangee button { flex: 1 1 0; min-width: 0; min-height: 40px; padding: 6px 14px; font-size: 12px; }
+}
+#reglesIAChoix .regles-ia-etat { padding: 8px 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; max-width: 280px; }
+
+/* Modale : fond sombre, carte centree ; un clic sur le fond la ferme. Au-dessus de la barre du haut, comme la modale « Regle a valider ». */
+.regles-ia-fond {
+  position: fixed; inset: 0; z-index: 70; display: flex; align-items: center; justify-content: center; padding: 16px;
+  background: rgba(0, 0, 0, 0.5); -webkit-tap-highlight-color: transparent;
+}
+.regles-ia-fond[hidden] { display: none; }
+.regles-ia-fond *, .regles-ia-fond *::before, .regles-ia-fond *::after { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+.regles-ia-fond button { font: inherit; cursor: pointer; }
+.regles-ia-fond :is(button, input):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.regles-ia-carte {
+  width: min(480px, 100%); max-height: 100%; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: 14px;
+  padding: 18px; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 14px;
+}
+.regles-ia-carte > * { flex-shrink: 0; }
+.regles-ia-carte [hidden] { display: none; }
+@media (max-width: 768px) {
+  /* Le clavier de l'iPhone couvre le bas de l'ecran : la carte reste en haut. */
+  .regles-ia-fond { align-items: flex-start; padding-top: 12vh; }
+}
+
+.regles-ia-vue-texte { display: flex; flex-direction: column; gap: 10px; }
+.regles-ia-vue-texte input {
+  width: 100%; min-height: 48px; padding: 0 12px; background: var(--bg); color: var(--text);
   border: 1px solid var(--border); border-radius: 8px; font: inherit; font-size: 16px; /* 16 px minimum : Safari iOS zoome sinon au focus */
 }
-.regles-ia-saisie input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-.regles-ia-saisie input::placeholder { color: var(--muted); opacity: 1; }
-.regles-ia-saisie button {
-  flex: 0 0 auto; min-width: 44px; min-height: 44px; padding: 0 12px; background: transparent; color: var(--text);
-  border: 1px solid var(--border); border-radius: 8px; font: inherit; font-size: 13px; font-weight: 600;
+.regles-ia-vue-texte input::placeholder { color: var(--muted); opacity: 1; }
+.regles-ia-valider {
+  width: 100%; min-height: 46px; padding: 0 14px; background: var(--accent); color: var(--bg); border: 0; border-radius: 8px;
+  font-size: 14px; font-weight: 700;
 }
-.regles-ia-saisie :disabled { opacity: 0.5; cursor: default; }
-.regles-ia-saisie button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-/* Choix du mode Texte / Vocal : memes classes .tabs et .tab que la bascule Niveaux / Maquettes (src/style.css), le bouton actif porte la
-   couleur de la pastille de cette bascule (fond et bordure d'accent) ; l'etat est aussi annonce par aria-pressed. */
-#reglesIAPanneau .tabs { margin: 0 0 2px; padding: 0; }
-#reglesIAPanneau .tab { border: 1px solid transparent; min-height: 36px; }
-@media (max-width: 768px) { #reglesIAPanneau .tab { min-height: 44px; } }
-#reglesIAPanneau .tab[aria-pressed="true"] {
-  color: var(--text); background: color-mix(in srgb, var(--accent) 24%, transparent); border-color: color-mix(in srgb, var(--accent) 60%, transparent);
-}
-#reglesIAPanneau .tab:disabled { opacity: 0.5; cursor: default; }
-.regles-ia-saisie { flex-wrap: wrap; }
-.regles-ia-saisie input[readonly] { color: var(--text); }
-.regles-ia-saisie .regles-ia-annuler { flex: 1 1 100%; }
-.regles-ia-saisie .regles-ia-annuler[hidden] { display: none; }
-/* Mode Vocal : un micro, « Annuler » et « Envoyer », rien d'autre. Le micro est un disque comme les boutons du panneau (surface, bordure, texte) ;
-   en ecoute il prend la couleur d'accent et un halo discret pulse (aucun mouvement avec prefers-reduced-motion). */
-.regles-ia-saisie.vocal > .regles-ia-annuler, .regles-ia-saisie.vocal > button[type="submit"] { flex: 1 1 0; }
+
+/* Vue Vocal : un grand micro rond (gris au repos, couleur d'accent avec un halo qui pulse pendant l'ecoute) et sa legende dessous. */
+.regles-ia-vue-vocal { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 6px 0 2px; }
 .regles-ia-micro {
-  flex: 1 1 100%; display: flex; align-items: center; justify-content: center; padding: 6px 0 10px;
+  display: flex; align-items: center; justify-content: center; width: 96px; height: 96px; padding: 0; border-radius: 50%;
+  background: var(--bg); color: var(--muted); border: 1px solid var(--border); transition: color 0.18s ease, border-color 0.18s ease, background-color 0.18s ease;
 }
-.regles-ia-micro[hidden] { display: none; }
-.regles-ia-micro svg {
-  box-sizing: content-box; width: 28px; height: 28px; padding: 14px; border-radius: 50%; color: var(--muted);
-  background: var(--bg); border: 1px solid var(--border);
-}
-.regles-ia-micro.ecoute svg {
-  color: var(--accent); border-color: var(--accent); animation: regles-ia-halo 1.6s ease-in-out infinite;
+.regles-ia-micro:disabled { opacity: 0.5; cursor: default; }
+.regles-ia-micro.ecoute {
+  color: var(--accent); border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, var(--bg));
+  animation: regles-ia-halo 1.6s ease-in-out infinite;
 }
 @keyframes regles-ia-halo {
   0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 45%, transparent); }
-  50% { box-shadow: 0 0 0 9px color-mix(in srgb, var(--accent) 0%, transparent); }
+  50% { box-shadow: 0 0 0 14px color-mix(in srgb, var(--accent) 0%, transparent); }
 }
-@media (prefers-reduced-motion: reduce) { .regles-ia-micro.ecoute svg { animation: none; box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 25%, transparent); } }
+.regles-ia-legende { margin: 0; font-size: 14px; line-height: 1.35; color: var(--text); text-align: center; }
+
+/* Vue chargement : le logo Ouvra (.logo-spin, style.css) qui tourne, avec sa legende. */
+.regles-ia-vue-chargement { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 18px 0; }
+
 /* Libelle lu par les lecteurs d'ecran, jamais affiche. */
 .regles-ia-sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 .regles-ia-etat { margin: 0 4px; font-size: 12.5px; line-height: 1.35; color: var(--muted); overflow-wrap: anywhere; }
 .regles-ia-etat[hidden] { display: none; }
 .regles-ia-etat.erreur { color: var(--text); }
+.regles-ia-carte > .regles-ia-etat { margin: 0; text-align: center; }
+
+/* Propositions d'instruction, tout en bas de la modale. Texte : boutons qui remplissent le champ. Vocal : lignes a lire seulement. */
+.regles-ia-propositions { display: flex; flex-direction: column; gap: 6px; padding-top: 12px; border-top: 1px solid var(--border); }
+.regles-ia-propositions h3 { margin: 0 4px; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.regles-ia-propositions ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 2px; }
 .regles-ia-exemple {
   display: block; width: 100%; min-height: 44px; padding: 9px 10px; background: transparent; color: var(--text);
-  border: 1px solid transparent; border-radius: 8px; font: inherit; font-size: 13px; line-height: 1.3; text-align: left; cursor: pointer;
+  border: 1px solid transparent; border-radius: 8px; font-size: 13px; line-height: 1.3; text-align: left;
 }
-.regles-ia-exemple:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.regles-ia-exemple-lu { display: none; padding: 7px 10px; font-size: 13px; line-height: 1.3; color: var(--muted); }
+.regles-ia-propositions.lecture .regles-ia-exemple { display: none; }
+.regles-ia-propositions.lecture .regles-ia-exemple-lu { display: block; }
 @media (hover: hover) and (pointer: fine) {
   .regles-ia-exemple:hover { background: var(--bg); }
 }
 @media (prefers-reduced-motion: reduce) {
-  #reglesIABtn { transition: none; }
+  #reglesIABtn, .regles-ia-micro { transition: none; }
+  .regles-ia-micro.ecoute { animation: none; box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 25%, transparent); }
 }
 #reglesIA[style*="hidden"] { pointer-events: none; }

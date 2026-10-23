@@ -1,7 +1,7 @@
 // Regles de collision en langage naturel : dictee vocale du panneau « IA » (Web Speech API, aucun nouveau fournisseur).
 // Logique sans DOM, testee avec une fausse SpeechRecognition (tests/reglesVoix.test.js) : l'ecriture dans le champ et l'etat du bouton passent
-// par des rappels. Le texte reconnu remplit le champ (resultat provisoire en cours de dictee) mais ne part JAMAIS tout seul : l'utilisateur relit
-// puis appuie sur « Traduire ».
+// par des rappels. Le texte reconnu remplit le champ (resultat provisoire en cours de dictee) mais ne part JAMAIS tout seul : l'appelant decide
+// de l'envoi.
 // Sources : MDN SpeechRecognition (reconnaissance parfois via un service distant, lang, interimResults, continuous) et specification Web Speech
 // API (erreurs not-allowed, service-not-allowed, network, no-speech, audio-capture, language-not-supported, aborted ; interface SecureContext).
 
@@ -35,7 +35,7 @@ export function messageErreurVoix(code, { ios = false } = {}) {
     case "not-allowed": return "Le micro est refusé. Autorise-le pour ce site dans le navigateur."; // changer de navigateur n'y changerait rien
     case "service-not-allowed":
     case "network": return indisponible; // service de reconnaissance absent ou injoignable (Brave, hors ligne, dictee systeme desactivee)
-    case "no-speech": return "Je n'ai rien entendu. Parle puis appuie sur « Envoyer ».";
+    case "no-speech": return "Je n'ai rien entendu. Appuie sur le micro puis parle.";
     case "audio-capture": return "Aucun micro détecté. Branche un micro pour dicter.";
     case "language-not-supported": return "La dictée vocale en français n'est pas disponible ici. Tu peux taper la phrase.";
     default: return "La dictée vocale a échoué. Tu peux taper la phrase.";
@@ -44,8 +44,9 @@ export function messageErreurVoix(code, { ios = false } = {}) {
 
 // Contrôleur de dictée.
 //   Reconnaissance : constructeur (detecterReconnaissance) ou null ; lire() / ecrire(texte) : champ de saisie ;
-//   surEtat("ecoute" | "inactif") ; surErreur(message, codeErreur) ; longueurMax : longueur maximale de la phrase.
-export function creerDictee({ Reconnaissance, lire, ecrire, surEtat, surErreur, longueurMax, ios = false }) {
+//   surEtat("ecoute" | "inactif") ; surErreur(message, codeErreur) ; longueurMax : longueur maximale de la phrase ;
+//   continu : l'ecoute ne s'arrete pas d'elle-meme apres une pause (defaut faux).
+export function creerDictee({ Reconnaissance, lire, ecrire, surEtat, surErreur, longueurMax, ios = false, continu = false }) {
   let courante = null; // reconnaissance en cours (null : aucune, ou abandonnee)
 
   function terminer(reco) {
@@ -59,7 +60,7 @@ export function creerDictee({ Reconnaissance, lire, ecrire, surEtat, surErreur, 
     const base = lire();
     reco.lang = LANGUE_DICTEE;
     reco.interimResults = true; // texte provisoire affiche pendant que l'on parle
-    reco.continuous = false; // une phrase par appui
+    reco.continuous = continu; // faux : une phrase par appui ; vrai : l'ecoute dure jusqu'au second appui (modale Vocal)
     reco.maxAlternatives = 1;
     reco.onresult = (e) => {
       if (courante !== reco) return; // resultat tardif d'une dictee abandonnee
@@ -104,89 +105,9 @@ export function creerDictee({ Reconnaissance, lire, ecrire, surEtat, surErreur, 
   };
 }
 
-const MESSAGE_RIEN_RECONNU = "Rien n'a été reconnu. Parle puis appuie sur « Envoyer ».";
-const MESSAGE_PHRASE_VIDE = "Écris la règle que tu veux, par exemple « écarte les collisions avec un diffuseur ».";
-const nettoyerPhrase = (texte) => String(texte || "").replace(/\s+/g, " ").trim();
+export const MESSAGE_RIEN_RECONNU = "Rien n'a été reconnu. Appuie sur le micro puis parle.";
+export const MESSAGE_PHRASE_VIDE = "Écris la règle que tu veux, par exemple « écarte les collisions avec un diffuseur ».";
+export const nettoyerPhrase = (texte) => String(texte || "").replace(/\s+/g, " ").trim();
 
-// Ce que le panneau montre dans chaque mode (logique pure, testee). En Vocal : un micro, « Envoyer » et « Annuler », rien d'autre (ni champ, ni
-// transcription, ni phrases d'exemple, ni texte d'explication) ; le texte reconnu reste dans le champ masque et sert a l'envoi.
-export function affichageSaisie(mode) {
-  const vocal = mode === "vocal";
-  return { champ: !vocal, exemples: !vocal, micro: vocal, annuler: vocal, libelleEnvoi: vocal ? "Envoyer" : "Traduire" };
-}
-
-// Modes de saisie du panneau « Decrire avec l'IA » : Texte (champ + « Traduire ») et Vocal (ecoute + « Envoyer »).
-// Un seul chemin pour envoyer : preparerEnvoi() rend la phrase a envoyer (ou null, avec un message), le panneau envoie ensuite comme pour « Traduire ».
-//   surMode("texte" | "vocal") ; surEcoute(bool) ; surMessage(texte, estErreur) ; surIndisponible(motif) : Vocal devient inutilisable, avec explication.
-// Rien n'est envoye par la dictee elle-meme. Les modes et l'ecoute ne survivent pas a fermer().
-export function creerSaisie({ Reconnaissance, lire, ecrire, surMode, surEcoute, surMessage, surIndisponible, longueurMax, ios = false }) {
-  let mode = "texte";
-  let avantVocal = ""; // texte du champ avant l'entree en mode Vocal, restaure a l'annulation
-  let motif = Reconnaissance ? null : messageErreurVoix("network", { ios }); // non nul : Vocal indisponible
-
-  const dictee = creerDictee({
-    Reconnaissance,
-    lire,
-    ecrire,
-    longueurMax,
-    ios,
-    surEtat: (etat) => surEcoute(etat === "ecoute"), // l'ecoute n'est jamais ecrite a l'ecran : micro anime + libelle pour lecteur d'ecran (panneau)
-    surErreur: (message, code) => {
-      if (code === "no-speech") { surMessage(message, true); return; } // silence : on reste en Vocal, l'utilisateur reprend ou annule
-      motif = message; // permission refusee, service injoignable, pas de micro... : retour au mode Texte, Vocal desactive avec la raison
-      retourTexte();
-      surIndisponible(message);
-      surMessage("", false); // la raison s'affiche une seule fois, sous le choix du mode : on vide la zone d'etat (qui annoncait l'ecoute)
-    }
-  });
-
-  function retourTexte() {
-    dictee.arreter();
-    if (mode !== "vocal") return;
-    ecrire(avantVocal);
-    mode = "texte";
-    surMode("texte");
-  }
-
-  return {
-    mode: () => mode,
-    ecoute: dictee.ecoute,
-    vocalDisponible: () => !motif,
-    motifIndisponible: () => motif,
-    // A appeler dans le geste de l'utilisateur (clic sur « Vocal ») : c'est lui qui declenche la demande de permission du micro.
-    choisirVocal() {
-      if (mode === "vocal" || motif) return;
-      avantVocal = lire();
-      ecrire("");
-      surMessage("", false); // les messages d'une dictee precedente ne restent pas affiches
-      mode = "vocal";
-      surMode("vocal");
-      dictee.basculer();
-    },
-    // « Texte » ou « Annuler » : on coupe l'ecoute, rien n'est envoye, le champ retrouve ce qu'il contenait.
-    choisirTexte: retourTexte,
-    // Phrase a envoyer au relais, ou null (message affiche). En Vocal : coupe l'ecoute et garde le texte affiche, retour au mode Texte.
-    preparerEnvoi() {
-      if (mode === "vocal") {
-        dictee.arreter();
-        const phrase = nettoyerPhrase(lire());
-        if (!phrase) {
-          dictee.basculer(); // rien de reconnu : retour a l'ecoute
-          surMessage(MESSAGE_RIEN_RECONNU, true);
-          return null;
-        }
-        mode = "texte";
-        surMode("texte");
-        return phrase;
-      }
-      const phrase = nettoyerPhrase(lire());
-      if (!phrase) { surMessage(MESSAGE_PHRASE_VIDE, true); return null; }
-      return phrase;
-    },
-    // Panneau ferme, page en arriere-plan : micro coupe, mode Texte, refus oublie (sauf navigateur sans l'API).
-    fermer() {
-      retourTexte();
-      if (Reconnaissance) motif = null;
-    }
-  };
-}
+// Raison pour laquelle « Vocal » est inutilisable quand le navigateur n'a pas l'API de reconnaissance (meme message que le code d'erreur « network »).
+export const motifSansAPI = (ios = false) => messageErreurVoix("network", { ios });

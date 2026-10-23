@@ -1,319 +1,374 @@
-// Point d'entree des regles de collision en langage naturel (22/10, etape 5) : le bouton « IA » de la page Collision et son petit panneau a
-// deux entrees. « Decrire avec l'IA » (champ et bouton « Traduire » : la phrase part vers le relais hebergé par traduire(phrase), la regle
-// proposee ouvre la modale « Regle a valider », jamais d'application directe) et « Choisir un filtre » (phrases d'exemple de
-// src/reglesExemples.js, sans IA : repli quand le budget est epuise ou que le reseau echoue, un clic ouvre la meme modale par ouvrirRegle).
-// Deux modes de saisie, « Texte » (defaut : champ + « Traduire » + phrases d'exemple) et « Vocal » (dictee par la Web Speech API, src/reglesVoix.js :
-// un clic sur « Vocal » demarre l'ecoute, le panneau ne montre qu'un micro anime, « Envoyer » et « Annuler ». Le texte reconnu reste dans le champ masque
-// et part par le meme chemin que « Traduire » ; « Annuler » ou Echap abandonnent sans rien envoyer). L'ecoute est annoncee aux lecteurs d'ecran par un
-// libelle masque. Sans l'API ou apres un refus du micro, « Vocal » est desactive avec la raison, affichee une seule fois sous le choix du mode.
+// Point d'entree des regles de collision en langage naturel (22/10, etape 5), refait le 23/10 : le bouton « IA » de la page Collision ouvre un
+// petit choix a deux boutons, « Texte » et « Vocal » (meme principe que « Sur une surface » / « Coupe horizontale » de la coupe), puis une modale
+// centree, fermee d'un clic autour d'elle.
+//  - Texte : le champ et, dessous, « Valider ». Les propositions d'instruction (src/reglesExemples.js) sont tout en bas ; un clic remplit le champ.
+//  - Vocal : l'image d'un micro et « Appuyer pour parler ». Un clic demarre l'ecoute (le micro passe au vert), un second clic la termine et envoie
+//    (dictee de src/reglesVoix.js, sans bouton « Envoyer »). Les propositions, en bas, ne sont qu'a lire.
+//  - Dans les deux cas, apres l'envoi le logo Ouvra tourne pendant que le relais hebergé traduit la phrase (traduire), puis la modale « Regle a
+//    valider » s'ouvre (ouvrirRegle). En cas d'echec, la modale revient a sa vue avec le message.
+// Sans l'API de dictee ou apres un refus du micro, « Vocal » est desactive avec la raison, affichee sous le choix.
 //
-// Placement (positionnement fixe, recalcule a partir des rectangles des boutons voisins, sans toucher a leur mise en page) :
-//  - ordinateur : en bas a droite de la vue 3D (#collisionViewerSlot), le panneau s'ouvre vers le haut et vers la gauche ;
+// Placement du choix (positionnement fixe, recalcule a partir des rectangles des boutons voisins, sans toucher a leur mise en page) :
+//  - ordinateur : en bas a droite de la vue 3D (#collisionViewerSlot), le choix s'ouvre vers le haut et vers la gauche ;
 //  - mobile : sur la ligne du bouton « Collisions », juste a sa gauche, en suivant tous ses deplacements (bandeau replie, ouvert, pleine page,
-//    glissements et animations de fermeture). Le panneau s'ouvre vers le haut.
+//    glissements et animations de fermeture). Le choix s'ouvre vers le haut.
 // Module sans dependance a main.js : tout passe par les parametres de creerReglesIA.
 //   parent : element qui porte le bouton (#collisionLeft, masque avec la page Collision)
 //   slot : zone 3D (#collisionViewerSlot) ; boutonCollisions : bouton « ☰ Collisions » (mobile)
 //   masquerSurMobile() : vrai quand le bouton ne doit pas etre affiche sur mobile (bandeau de collision en pleine page)
 //   observes : elements dont un changement de style / classe peut deplacer les boutons voisins
-//   exemples : [{ demande, filtre, action }] ; ouvrirRegle(regle) : valide la regle et ouvre la modale
+//   exemples : [{ demande }] (src/reglesExemples.js) ; ouvrirRegle(regle) : valide la regle et ouvre la modale « Regle a valider »
 //   traduire(phrase) : promesse de { ok: true, resultat: "regle", regle } | { ok: true, resultat: "critere_introuvable" | "non_comprise", message }
 //     | { ok: false, code, message } (src/reglesIAClient.js) ; ne rejette jamais
-//   fermerAutres() : ferme les autres menus deroulants de la page ; absorberGeste() : appui hors du panneau en clic neutre (mobile)
+//   fermerAutres() : ferme les autres menus deroulants de la page ; absorberGeste() : appui hors du choix en clic neutre (mobile)
 
 import "./reglesIA.css";
-import { creerSaisie, detecterReconnaissance, affichageSaisie } from "./reglesVoix.js";
+import { creerDictee, detecterReconnaissance, motifSansAPI, nettoyerPhrase, MESSAGE_PHRASE_VIDE, MESSAGE_RIEN_RECONNU } from "./reglesVoix.js";
 
 const MOBILE = "(max-width: 768px)";
 const LARGEUR_MOBILE = 44;
 const ECART = 8;
 const MARGE = 16;
 const IMAGES_CALMES = 24; // images sans mouvement des boutons voisins avant d'arreter le suivi
+const DELAI_ARRET_MS = 2500; // attente des derniers resultats apres le second appui sur le micro, avant d'envoyer ce qui est reconnu
 
 export const PHRASE_MAX = 200; // meme plafond que le relais (relais/entree.js)
-const ICONE_MICRO = '<svg viewBox="0 0 24 24" width="28" height="28" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>';
+const ICONE_MICRO = '<svg viewBox="0 0 24 24" width="40" height="40" focusable="false" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>';
 const PLACEHOLDER_TEXTE = "Ex. : écarte les collisions avec un diffuseur";
+const LEGENDE_MICRO = "Appuyer pour parler";
+const LEGENDE_ECOUTE = "Cliquer sur le micro une fois terminé";
+const LEGENDE_CHARGEMENT = "Prise en compte de ton instruction par l'IA…";
+
+function creer(tag, classe, texte) {
+  const el = document.createElement(tag);
+  if (classe) el.className = classe;
+  if (texte != null) el.textContent = texte;
+  return el;
+}
 
 export function creerReglesIA({ parent, slot, boutonCollisions, masquerSurMobile, observes, exemples, ouvrirRegle, traduire, fermerAutres, absorberGeste }) {
-  const racine = document.createElement("div");
+  const racine = creer("div");
   racine.id = "reglesIA";
-  const bouton = document.createElement("button");
+  const bouton = creer("button", null, "IA");
   bouton.type = "button";
   bouton.id = "reglesIABtn";
-  bouton.textContent = "IA";
   bouton.setAttribute("aria-label", "Règles par l'IA");
   bouton.setAttribute("aria-haspopup", "dialog");
   bouton.setAttribute("aria-expanded", "false");
-  bouton.setAttribute("aria-controls", "reglesIAPanneau");
+  bouton.setAttribute("aria-controls", "reglesIAChoix");
   bouton.title = "Règles par l'IA";
   racine.appendChild(bouton);
 
-  let champ;
-  let boutonTraduire;
-  let etat;
-  let saisie;
-  let boutonTexte;
-  let boutonVocal;
-  let annulerVocal;
-  let noteVocal;
-  let formulaire;
-  let microBloc;
-  let annonceEcoute;
-  let sectionExemples;
+  const Reconnaissance = detecterReconnaissance(window);
+  const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  let motifVocal = Reconnaissance ? null : motifSansAPI(ios); // non nul : « Vocal » inutilisable
   let demandeEnCours = 0; // numero de la derniere demande : une reponse d'une demande abandonnee est ignoree
+  let vue = null; // "texte" | "vocal" | "chargement" quand la modale est ouverte, sinon null
+  let vueAvantChargement = "texte";
+  let texteVocal = ""; // phrase reconnue pendant la dictee
+  let envoiApresArret = false; // second appui sur le micro : on envoie des que l'ecoute est terminee
+  let minuteurArret = 0;
 
-  const panneau = document.createElement("div");
-  panneau.id = "reglesIAPanneau";
-  panneau.setAttribute("role", "dialog");
-  panneau.setAttribute("aria-label", "Règles par l'IA");
-  panneau.hidden = true;
-  panneau.appendChild(creerSectionDecrire());
-  panneau.appendChild(creerSectionExemples());
-  document.body.appendChild(panneau);
+  // ---------- Choix Texte / Vocal ----------
+  const choix = creer("div");
+  choix.id = "reglesIAChoix";
+  choix.setAttribute("role", "group");
+  choix.setAttribute("aria-label", "Mode de saisie");
+  choix.hidden = true;
+  const rangee = creer("div", "regles-ia-choix-rangee");
+  const choixTexte = creer("button", null, "Texte");
+  choixTexte.type = "button";
+  const choixVocal = creer("button", null, "Vocal");
+  choixVocal.type = "button";
+  choixVocal.setAttribute("aria-describedby", "reglesIANoteVocal");
+  const noteVocal = creer("p", "regles-ia-etat");
+  noteVocal.id = "reglesIANoteVocal";
+  noteVocal.hidden = true;
+  rangee.append(choixTexte, choixVocal);
+  choix.append(rangee, noteVocal);
+
+  // ---------- Modale ----------
+  const fond = creer("div", "regles-ia-fond");
+  fond.id = "reglesIAFond";
+  fond.hidden = true;
+  const carte = creer("div", "regles-ia-carte");
+  carte.setAttribute("role", "dialog");
+  carte.setAttribute("aria-modal", "true");
+  carte.setAttribute("aria-label", "Règle par l'IA");
+  fond.appendChild(carte);
+
+  // Vue Texte : champ, « Valider », message d'erreur.
+  const formulaire = creer("form", "regles-ia-vue regles-ia-vue-texte");
+  formulaire.noValidate = true;
+  const champ = creer("input");
+  champ.type = "text";
+  champ.id = "reglesIAChamp";
+  champ.maxLength = PHRASE_MAX;
+  champ.autocomplete = "off";
+  champ.enterKeyHint = "go";
+  champ.placeholder = PLACEHOLDER_TEXTE;
+  champ.setAttribute("aria-label", "Ta règle, en une phrase");
+  const valider = creer("button", "regles-ia-valider", "Valider");
+  valider.type = "submit";
+  formulaire.append(champ, valider);
+
+  // Vue Vocal : micro, legende, annonce pour lecteur d'ecran.
+  const vocal = creer("div", "regles-ia-vue regles-ia-vue-vocal");
+  const micro = creer("button", "regles-ia-micro");
+  micro.type = "button";
+  micro.id = "reglesIAMicro";
+  micro.setAttribute("aria-label", LEGENDE_MICRO);
+  micro.innerHTML = ICONE_MICRO;
+  const legende = creer("p", "regles-ia-legende", LEGENDE_MICRO);
+  legende.id = "reglesIALegende";
+  const annonce = creer("span", "regles-ia-sr");
+  annonce.setAttribute("role", "status");
+  vocal.append(micro, legende, annonce);
+
+  // Vue chargement : le logo Ouvra qui tourne (meme SVG que l'ecran de chargement des maquettes).
+  const chargement = creer("div", "regles-ia-vue regles-ia-vue-chargement");
+  const logoSource = document.querySelector("#loadingOverlay .logo-spin");
+  if (logoSource) chargement.appendChild(logoSource.cloneNode(true));
+  const legendeChargement = creer("p", "regles-ia-legende", LEGENDE_CHARGEMENT);
+  legendeChargement.setAttribute("role", "status");
+  chargement.appendChild(legendeChargement);
+
+  // Message de la derniere demande (erreur, critere introuvable, rien reconnu).
+  const etat = creer("p", "regles-ia-etat erreur");
+  etat.id = "reglesIAEtat";
+  etat.setAttribute("role", "status");
+  etat.hidden = true;
+
+  // Propositions d'instruction, tout en bas : cliquables en mode Texte (elles remplissent le champ), a lire seulement en mode Vocal.
+  const propositions = creer("section", "regles-ia-propositions");
+  const titreProps = creer("h3", null, "Proposition d'instruction");
+  titreProps.id = "reglesIATitreProps";
+  const liste = creer("ul");
+  liste.setAttribute("aria-labelledby", "reglesIATitreProps");
+  exemples.forEach((regle) => {
+    const li = creer("li");
+    const choisie = creer("button", "regles-ia-exemple", regle.demande);
+    choisie.type = "button";
+    choisie.addEventListener("click", () => { champ.value = regle.demande.slice(0, PHRASE_MAX); afficherEtat("", false); champ.focus({ preventScroll: true }); });
+    const lue = creer("span", "regles-ia-exemple-lu", "« " + regle.demande + " »");
+    li.append(choisie, lue);
+    liste.appendChild(li);
+  });
+  propositions.append(titreProps, liste);
+
+  carte.append(formulaire, vocal, chargement, etat, propositions);
+  document.body.appendChild(fond);
+  document.body.appendChild(choix);
   parent.appendChild(racine);
 
   const mobile = () => window.matchMedia(MOBILE).matches;
-  const ouvert = () => !panneau.hidden;
+  const choixOuvert = () => !choix.hidden;
+  const modaleOuverte = () => !fond.hidden;
+  const ouvert = () => choixOuvert() || modaleOuverte();
 
-  function creerSectionDecrire() {
-    const section = document.createElement("section");
-    section.className = "regles-ia-section";
-    const titre = document.createElement("h3");
-    titre.id = "reglesIATitreDecrire";
-    titre.textContent = "Décrire avec l'IA";
-    saisie = creerSaisie({
-      Reconnaissance: detecterReconnaissance(window),
-      lire: () => champ.value,
-      ecrire: (texte) => { champ.value = texte; },
-      surMode: appliquerMode,
-      surEcoute: (ecoute) => { microBloc.classList.toggle("ecoute", ecoute); annonceEcoute.textContent = ecoute ? "Écoute en cours" : ""; },
-      ios: /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1),
-      surMessage: afficherEtat,
-      surIndisponible: majVocal,
-      longueurMax: PHRASE_MAX
-    });
+  // Dictee : le texte reconnu reste en memoire (texteVocal), il ne part qu'au second appui sur le micro.
+  const dictee = creerDictee({
+    Reconnaissance,
+    lire: () => texteVocal,
+    ecrire: (texte) => { texteVocal = texte; },
+    surEtat: (etatDictee) => {
+      const ecoute = etatDictee === "ecoute";
+      micro.classList.toggle("ecoute", ecoute);
+      micro.setAttribute("aria-pressed", String(ecoute));
+      legende.textContent = ecoute ? LEGENDE_ECOUTE : LEGENDE_MICRO;
+      annonce.textContent = ecoute ? "Écoute en cours" : "";
+      if (!ecoute) finDEcoute();
+    },
+    surErreur: (message, code) => {
+      afficherEtat(message, true);
+      if (code !== "no-speech") { motifVocal = message; micro.disabled = true; } // refus du micro, service injoignable... : « Vocal » desactive jusqu'a la fermeture
+    },
+    longueurMax: PHRASE_MAX,
+    ios,
+    continu: true
+  });
 
-    // Choix du mode : deux boutons a bascule (un seul actif), role et etat annonces par aria-pressed, clavier natif (Tab, Entree, Espace).
-    const modes = document.createElement("div");
-    modes.className = "tabs";
-    modes.setAttribute("role", "group");
-    modes.setAttribute("aria-label", "Mode de saisie");
-    boutonTexte = creerBoutonMode("Texte", () => saisie.choisirTexte());
-    boutonTexte.setAttribute("aria-pressed", "true"); // mode par defaut
-    boutonVocal = creerBoutonMode("Vocal", () => saisie.choisirVocal());
-    boutonVocal.id = "reglesIAVocal";
-    boutonVocal.setAttribute("aria-describedby", "reglesIANoteVocal");
-    modes.append(boutonTexte, boutonVocal);
-    noteVocal = document.createElement("p");
-    noteVocal.id = "reglesIANoteVocal";
-    noteVocal.className = "regles-ia-etat";
-    noteVocal.hidden = true;
-
-    const ligne = document.createElement("form");
-    formulaire = ligne;
-    ligne.className = "regles-ia-saisie";
-    ligne.noValidate = true;
-    // Micro de l'etat d'ecoute (decoratif : l'etat est annonce par le libelle masque ci-dessous).
-    microBloc = document.createElement("div");
-    microBloc.id = "reglesIAMicroBloc";
-    microBloc.className = "regles-ia-micro";
-    microBloc.setAttribute("aria-hidden", "true");
-    microBloc.hidden = true;
-    microBloc.innerHTML = ICONE_MICRO;
-    annonceEcoute = document.createElement("span");
-    annonceEcoute.id = "reglesIAEcoute";
-    annonceEcoute.className = "regles-ia-sr";
-    annonceEcoute.setAttribute("role", "status");
-    champ = document.createElement("input");
-    champ.type = "text";
-    champ.id = "reglesIAChamp";
-    champ.maxLength = PHRASE_MAX;
-    champ.autocomplete = "off";
-    champ.enterKeyHint = "go";
-    champ.placeholder = PLACEHOLDER_TEXTE;
-    champ.setAttribute("aria-labelledby", "reglesIATitreDecrire");
-    champ.setAttribute("aria-describedby", "reglesIAEtat");
-    boutonTraduire = document.createElement("button");
-    boutonTraduire.type = "submit";
-    boutonTraduire.id = "reglesIATraduire";
-    boutonTraduire.textContent = "Traduire";
-    annulerVocal = document.createElement("button");
-    annulerVocal.type = "button";
-    annulerVocal.id = "reglesIAAnnulerVocal";
-    annulerVocal.className = "regles-ia-annuler";
-    annulerVocal.textContent = "Annuler";
-    annulerVocal.hidden = true;
-    annulerVocal.addEventListener("click", () => saisie.choisirTexte());
-    ligne.append(microBloc, annonceEcoute, champ, annulerVocal, boutonTraduire); // ordre visuel et ordre de tabulation : Annuler puis Envoyer
-    // Message de la derniere demande (ecoute, chargement, critere introuvable, repli). Annonce aux lecteurs d'ecran par role="status".
-    etat = document.createElement("p");
-    etat.id = "reglesIAEtat";
-    etat.className = "regles-ia-etat";
-    etat.setAttribute("role", "status");
-    etat.hidden = true;
-    ligne.addEventListener("submit", (e) => { e.preventDefault(); envoyer(); });
-    section.append(titre, modes, noteVocal, ligne, etat);
-    majVocal();
-    return section;
+  // Arret sans envoi (fermeture, page quittee) : ce qui a ete reconnu est jete avant que l'etat « inactif » ne declenche finDEcoute.
+  function abandonnerDictee() {
+    texteVocal = "";
+    dictee.arreter();
   }
 
-  function creerBoutonMode(libelle, action) {
-    const b = document.createElement("button");
-    b.type = "button";
-    b.className = "tab";
-    b.textContent = libelle;
-    b.setAttribute("aria-pressed", "false");
-    b.addEventListener("click", action);
-    return b;
-  }
-
-  // « Vocal » inutilisable (navigateur sans l'API, micro refuse, service injoignable) : bouton desactive et raison affichee sous le choix du mode.
-  function majVocal() {
-    const motif = saisie.motifIndisponible();
-    boutonVocal.disabled = !!motif || boutonTraduire.disabled;
-    noteVocal.textContent = motif || "";
-    noteVocal.hidden = !motif;
-  }
-
-  // Apparence des deux modes (affichageSaisie) : en Vocal ni champ ni phrases d'exemple, un micro, « Envoyer » et « Annuler ».
-  function appliquerMode(mode) {
-    const a = affichageSaisie(mode);
-    boutonTexte.setAttribute("aria-pressed", String(!a.micro));
-    boutonVocal.setAttribute("aria-pressed", String(a.micro));
-    formulaire.classList.toggle("vocal", a.micro);
-    champ.hidden = !a.champ;
-    champ.readOnly = a.micro;
-    microBloc.hidden = !a.micro;
-    annulerVocal.hidden = !a.annuler;
-    sectionExemples.hidden = !a.exemples;
-    boutonTraduire.textContent = a.libelleEnvoi;
-    if (a.champ && ouvert()) champ.focus({ preventScroll: true });
+  function majChoixVocal() {
+    choixVocal.disabled = !!motifVocal;
+    micro.disabled = !!motifVocal;
+    noteVocal.textContent = motifVocal || "";
+    noteVocal.hidden = !motifVocal;
   }
 
   function afficherEtat(texte, erreur) {
     etat.textContent = texte || "";
     etat.hidden = !texte;
-    etat.classList.toggle("erreur", !!erreur);
+    etat.classList.toggle("erreur", erreur !== false);
   }
 
-  function occupe(oui) {
-    const vocal = saisie.mode() === "vocal";
-    boutonTraduire.disabled = oui;
-    boutonTexte.disabled = oui;
-    boutonVocal.disabled = oui || !!saisie.motifIndisponible();
-    annulerVocal.disabled = oui;
-    champ.readOnly = oui || vocal;
-    boutonTraduire.textContent = oui ? "Traduction…" : affichageSaisie(saisie.mode()).libelleEnvoi;
-    champ.setAttribute("aria-busy", String(oui));
+  // ---------- Vues de la modale ----------
+  function montrerVue(nom) {
+    vue = nom;
+    formulaire.hidden = nom !== "texte";
+    vocal.hidden = nom !== "vocal";
+    chargement.hidden = nom !== "chargement";
+    propositions.hidden = nom === "chargement";
+    propositions.classList.toggle("lecture", nom === "vocal");
+    carte.dataset.vue = nom;
+    carte.setAttribute("aria-busy", String(nom === "chargement"));
   }
 
-  async function envoyer() {
-    if (boutonTraduire.disabled) return;
-    // Meme chemin pour « Traduire » et « Envoyer » : en Vocal l'ecoute s'arrete et la phrase reconnue (celle du champ) part ; rien de reconnu = aucun envoi.
-    const phrase = saisie.preparerEnvoi();
-    if (!phrase) { if (saisie.mode() === "texte") champ.focus({ preventScroll: true }); return; }
+  function ouvrirModale(nom, phrase) {
+    fermerChoix(false);
+    afficherEtat("", false);
+    texteVocal = "";
+    if (typeof phrase === "string") champ.value = phrase;
+    fond.hidden = false;
+    montrerVue(nom);
+    if (nom === "texte") {
+      champ.focus({ preventScroll: true });
+      champ.setSelectionRange(champ.value.length, champ.value.length);
+    } else {
+      micro.focus({ preventScroll: true });
+    }
+  }
+
+  // Fermeture de la modale : l'ecoute est coupee, une demande en cours est abandonnee (sa reponse sera ignoree), le champ est vide.
+  function fermerModale(rendreFocus) {
+    if (!modaleOuverte()) return;
+    demandeEnCours += 1;
+    clearTimeout(minuteurArret);
+    envoiApresArret = false;
+    vue = null;
+    abandonnerDictee();
+    fond.hidden = true;
+    champ.value = "";
+    if (Reconnaissance) motifVocal = null; // un refus est oublie, comme un navigateur sans l'API reste sans Vocal
+    majChoixVocal();
+    if (rendreFocus) bouton.focus({ preventScroll: true });
+  }
+
+  // ---------- Envoi ----------
+  async function envoyer(phrase) {
     const numero = ++demandeEnCours;
-    occupe(true);
-    afficherEtat("L'IA lit la phrase…", false);
+    vueAvantChargement = vue === "vocal" ? "vocal" : "texte";
+    afficherEtat("", false);
+    montrerVue("chargement");
     const reponse = await traduire(phrase);
-    // Panneau ferme ou autre demande depuis : le resultat est abandonne, rien ne s'ouvre a l'insu de l'utilisateur.
+    // Modale fermee ou autre demande depuis : le resultat est abandonne, rien ne s'ouvre a l'insu de l'utilisateur.
     if (numero !== demandeEnCours) return;
-    occupe(false);
     if (reponse.ok && reponse.resultat === "regle") {
-      afficherEtat("", false);
-      champ.value = "";
-      fermer(true);
+      fermerModale(true);
       ouvrirRegle({ ...reponse.regle, saisie: true }); // saisie : la modale propose « Reformuler »
       return;
     }
-    if (reponse.ok) {
-      afficherEtat((reponse.resultat === "critere_introuvable" ? "Critère introuvable. " : "") + reponse.message, true);
-    } else {
-      afficherEtat(reponse.message, true);
+    montrerVue(vueAvantChargement);
+    afficherEtat(reponse.ok ? (reponse.resultat === "critere_introuvable" ? "Critère introuvable. " : "") + reponse.message : reponse.message, true);
+    if (vueAvantChargement === "texte") champ.focus({ preventScroll: true });
+    else micro.focus({ preventScroll: true });
+  }
+
+  formulaire.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const phrase = nettoyerPhrase(champ.value);
+    if (!phrase) { afficherEtat(MESSAGE_PHRASE_VIDE, true); champ.focus({ preventScroll: true }); return; }
+    envoyer(phrase);
+  });
+
+  // Micro : un appui demarre l'ecoute (dans le geste de l'utilisateur, ce qui declenche la permission du micro), le suivant la termine et envoie.
+  micro.addEventListener("click", () => {
+    if (!dictee.disponible) return;
+    if (dictee.ecoute()) {
+      envoiApresArret = true;
+      dictee.basculer(); // stop : les derniers resultats arrivent encore, puis l'etat devient « inactif » (finDEcoute)
+      minuteurArret = setTimeout(() => dictee.arreter(), DELAI_ARRET_MS); // filet : le service ne signale jamais la fin
+      return;
     }
-    champ.focus({ preventScroll: true });
+    texteVocal = "";
+    afficherEtat("", false);
+    dictee.basculer();
+  });
+
+  // Fin de l'ecoute (second appui, fin naturelle ou erreur). Envoi seulement si l'utilisateur a termine ou si le moteur s'est arrete avec du texte.
+  function finDEcoute() {
+    clearTimeout(minuteurArret);
+    const termine = envoiApresArret;
+    envoiApresArret = false;
+    if (vue !== "vocal") return;
+    const phrase = nettoyerPhrase(texteVocal);
+    texteVocal = "";
+    if (phrase) { envoyer(phrase); return; }
+    if (termine) afficherEtat(MESSAGE_RIEN_RECONNU, true);
   }
 
-  function creerSectionExemples() {
-    const section = document.createElement("section");
-    sectionExemples = section;
-    section.className = "regles-ia-section";
-    const titre = document.createElement("h3");
-    titre.id = "reglesIATitreFiltre";
-    titre.textContent = "Choisir un filtre";
-    const liste = document.createElement("ul");
-    liste.setAttribute("aria-labelledby", "reglesIATitreFiltre");
-    exemples.forEach((regle) => {
-      const li = document.createElement("li");
-      const choix = document.createElement("button");
-      choix.type = "button";
-      choix.className = "regles-ia-exemple";
-      choix.textContent = regle.demande;
-      choix.addEventListener("click", () => choisir(regle));
-      li.appendChild(choix);
-      liste.appendChild(li);
-    });
-    section.append(titre, liste);
-    return section;
-  }
-
-  // ---------- Ouverture / fermeture ----------
-  function ouvrir() {
+  // ---------- Ouverture / fermeture du choix ----------
+  function ouvrirChoix() {
     fermerAutres();
-    if (!boutonTraduire.disabled) afficherEtat("", false);
-    panneau.hidden = false;
+    majChoixVocal();
+    choix.hidden = false;
     bouton.setAttribute("aria-expanded", "true");
     placer();
-    const premier = panneau.querySelector(".regles-ia-exemple");
-    if (premier) premier.focus({ preventScroll: true });
+    choixTexte.focus({ preventScroll: true });
     reveiller();
   }
 
-  function fermer(rendreFocus) {
-    if (!ouvert()) return;
-    panneau.hidden = true;
-    saisie.fermer(); // micro coupe, mode Texte, champ restaure ; ni les modes ni l'ecoute ne survivent a la fermeture
-    majVocal();
-    if (boutonTraduire.disabled) { demandeEnCours += 1; occupe(false); afficherEtat("", false); }
+  function fermerChoix(rendreFocus) {
+    if (!choixOuvert()) return;
+    choix.hidden = true;
     bouton.setAttribute("aria-expanded", "false");
     if (rendreFocus) bouton.focus({ preventScroll: true });
   }
 
-  // Un clic sur une phrase ferme le panneau (le focus revient au bouton, qui redevient le declencheur de la modale) puis ouvre la modale.
-  function choisir(regle) {
-    fermer(true);
-    ouvrirRegle(regle);
-  }
-
-  bouton.addEventListener("click", () => { if (ouvert()) fermer(true); else ouvrir(); });
-  // Les clics du panneau et du bouton ne remontent pas : xeokit annule l'action par defaut d'un clic tant que le pointeur est reste sur le canevas 3D.
+  bouton.addEventListener("click", () => {
+    if (modaleOuverte()) return;
+    if (choixOuvert()) fermerChoix(true); else ouvrirChoix();
+  });
+  choixTexte.addEventListener("click", () => ouvrirModale("texte"));
+  choixVocal.addEventListener("click", () => { if (!motifVocal) ouvrirModale("vocal"); });
+  // Les clics du choix et du bouton ne remontent pas : xeokit annule l'action par defaut d'un clic tant que le pointeur est reste sur le canevas 3D.
   racine.addEventListener("click", (e) => e.stopPropagation());
-  panneau.addEventListener("click", (e) => e.stopPropagation());
+  choix.addEventListener("click", (e) => e.stopPropagation());
+  // Clic sur le fond autour de la carte : fermeture (annule aussi une demande en cours).
+  fond.addEventListener("click", (e) => { if (e.target === fond) fermerModale(true); });
 
-  // Appui en dehors du panneau (phase de capture : le canevas 3D capte les gestes avant le document) : il se ferme, et sur mobile l'appui ne
+  // Appui en dehors du choix (phase de capture : le canevas 3D capte les gestes avant le document) : il se ferme, et sur mobile l'appui ne
   // declenche rien dessous (meme mecanisme que le hamburger et le menu « Conflit seul »).
   document.addEventListener("pointerdown", (e) => {
-    if (!ouvert() || panneau.contains(e.target) || racine.contains(e.target)) return;
-    fermer(false);
+    if (!choixOuvert() || choix.contains(e.target) || racine.contains(e.target)) return;
+    fermerChoix(false);
     absorberGeste();
   }, true);
   document.addEventListener("keydown", (e) => {
-    if (e.key !== "Escape" || !ouvert()) return;
-    e.preventDefault();
-    e.stopPropagation();
-    if (saisie.mode() === "vocal") saisie.choisirTexte(); // Echap pendant la dictee : on abandonne la dictee, un second Echap ferme le panneau
-    else fermer(true);
+    if (e.key === "Escape" && ouvert()) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (modaleOuverte()) fermerModale(true); else fermerChoix(true);
+      return;
+    }
+    if (e.key === "Tab" && modaleOuverte()) boucleFocus(e);
   }, true);
+
+  // Tabulation gardee dans la modale (elle est modale : le reste de la page n'est pas atteignable au clavier).
+  function boucleFocus(e) {
+    const cibles = [...carte.querySelectorAll("button, input")].filter((el) => !el.disabled && el.offsetParent !== null);
+    if (!cibles.length) return;
+    const premier = cibles[0];
+    const dernier = cibles[cibles.length - 1];
+    if (e.shiftKey && (document.activeElement === premier || !carte.contains(document.activeElement))) { e.preventDefault(); dernier.focus(); }
+    else if (!e.shiftKey && document.activeElement === dernier) { e.preventDefault(); premier.focus(); }
+  }
+
   // Page en arriere-plan ou quittee : le micro ne reste jamais ouvert.
-  document.addEventListener("visibilitychange", () => { if (document.hidden) { saisie.fermer(); majVocal(); } });
-  window.addEventListener("pagehide", () => saisie.fermer());
+  document.addEventListener("visibilitychange", () => { if (document.hidden) abandonnerDictee(); });
+  window.addEventListener("pagehide", abandonnerDictee);
 
   // ---------- Placement ----------
   // Ordinateur : coin bas droite de la zone 3D. Mobile : a gauche de « ☰ Collisions », centre sur sa ligne. Rend une signature de la position.
   function placer() {
     const petit = mobile();
     const cible = (petit ? boutonCollisions : slot).getBoundingClientRect();
-    if (!cible.width || !cible.height || (petit && masquerSurMobile())) { racine.style.visibility = "hidden"; fermer(false); return "cache"; }
+    if (!cible.width || !cible.height || (petit && masquerSurMobile())) { racine.style.visibility = "hidden"; fermerChoix(false); return "cache"; }
     racine.style.visibility = "";
     let gauche;
     let haut;
@@ -334,33 +389,21 @@ export function creerReglesIA({ parent, slot, boutonCollisions, masquerSurMobile
     racine.style.top = haut + "px";
     racine.style.width = largeur + "px";
     racine.style.height = hauteur + "px";
-    if (ouvert()) placerPanneau(gauche, haut, largeur, hauteur, cible);
-    return [gauche, haut, largeur, hauteur, ouvert()].map((v) => Math.round(v * 10) / 10).join("/");
+    if (choixOuvert()) placerChoix(gauche, haut, largeur, hauteur);
+    return [gauche, haut, largeur, hauteur, choixOuvert()].map((v) => Math.round(v * 10) / 10).join("/");
   }
 
-  // Panneau fixe au-dessus (mobile) ou a gauche et vers le haut (ordinateur) du bouton, borne a l'ecran.
-  function placerPanneau(gauche, haut, largeur, hauteur, cible) {
+  // Choix fixe au-dessus du bouton (mobile : aligne a droite de l'ecran) ou a sa gauche (ordinateur), borne a l'ecran.
+  function placerChoix(gauche, haut, largeur, hauteur) {
     const vw = document.documentElement.clientWidth;
-    const bas = haut + hauteur;
-    panneau.style.maxHeight = "";
+    choix.style.left = "auto";
+    choix.style.top = "auto";
     if (mobile()) {
-      const w = Math.min(360, vw - 2 * MARGE);
-      panneau.style.width = w + "px";
-      panneau.style.left = Math.max(MARGE, vw - MARGE - w) + "px";
-      panneau.style.right = "auto";
-      panneau.style.top = "auto";
-      panneau.style.bottom = (window.innerHeight - haut + 6) + "px";
-      panneau.style.maxHeight = Math.max(160, haut - 6 - 60) + "px"; // sous la barre du haut (52 px) et son bandeau de retour eventuel
+      choix.style.right = MARGE + "px";
+      choix.style.bottom = (window.innerHeight - haut + 6) + "px";
     } else {
-      // A gauche du bouton s'il y a la place (cas normal), sinon (bouton pose sur la vignette de la pleine page) a sa droite.
-      const aGauche = gauche - ECART - MARGE >= 300;
-      const w = aGauche ? Math.min(360, gauche - ECART - MARGE) : Math.min(360, vw - (gauche + largeur + ECART) - MARGE);
-      panneau.style.width = w + "px";
-      panneau.style.left = (aGauche ? gauche - ECART - w : gauche + largeur + ECART) + "px";
-      panneau.style.right = "auto";
-      panneau.style.top = "auto";
-      panneau.style.bottom = (window.innerHeight - bas) + "px";
-      panneau.style.maxHeight = Math.max(160, bas - (aGauche ? cible.top : 60) - MARGE) + "px";
+      choix.style.right = Math.max(MARGE, vw - gauche + ECART) + "px";
+      choix.style.bottom = (window.innerHeight - (haut + hauteur)) + "px";
     }
   }
 
@@ -390,14 +433,13 @@ export function creerReglesIA({ parent, slot, boutonCollisions, masquerSurMobile
   // Fin d'un geste ou d'un clic : une animation a pu demarrer sans changement d'attribut.
   ["pointerup", "touchend", "click", "transitionend"].forEach((type) => document.addEventListener(type, reveiller, { capture: true, passive: true }));
   reveiller();
+  majChoixVocal();
+  montrerVue("texte");
 
-  // « Reformuler » de la modale « Regle a valider » : le panneau se rouvre avec la phrase envoyee, champ actif, curseur a la fin.
+  // « Reformuler » de la modale « Regle a valider » : la modale Texte se rouvre avec la phrase envoyee, curseur a la fin.
   function reformuler(phrase) {
-    ouvrir();
-    champ.value = phrase;
-    champ.focus({ preventScroll: true });
-    champ.setSelectionRange(phrase.length, phrase.length);
+    ouvrirModale("texte", phrase);
   }
 
-  return { fermer: () => fermer(false), ouvert, reformuler };
+  return { fermer: () => { fermerChoix(false); fermerModale(false); }, ouvert, reformuler };
 }
