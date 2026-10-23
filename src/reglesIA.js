@@ -24,7 +24,7 @@ import "./reglesIA.css";
 import { creerSaisie, detecterReconnaissance } from "./reglesVoix.js";
 
 const MOBILE = "(max-width: 768px)";
-const TAILLE_MOBILE = 44;
+const LARGEUR_MOBILE = 44;
 const ECART = 8;
 const MARGE = 16;
 const IMAGES_CALMES = 24; // images sans mouvement des boutons voisins avant d'arreter le suivi
@@ -298,8 +298,8 @@ export function creerReglesIA({ parent, slot, boutonCollisions, masquerSurMobile
     let largeur;
     let hauteur;
     if (petit) {
-      largeur = TAILLE_MOBILE;
-      hauteur = TAILLE_MOBILE;
+      largeur = LARGEUR_MOBILE;
+      hauteur = cible.height; // meme hauteur que « ☰ Collisions », quel que soit son etat (jamais une valeur fixe plus haute que ses voisins)
       gauche = cible.left - ECART - largeur;
       haut = cible.top + (cible.height - hauteur) / 2;
     } else {

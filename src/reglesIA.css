@@ -7,7 +7,7 @@
 }
 #reglesIABtn {
   flex: 1 1 auto; min-width: 0; padding: 7px 12px; background: var(--surface); color: var(--text); border: 1px solid var(--border);
-  border-radius: 6px; font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; white-space: nowrap;
+  border-radius: 6px; font: inherit; font-size: 12.5px; font-weight: 600; line-height: normal; cursor: pointer; white-space: nowrap;
   -webkit-tap-highlight-color: transparent; transition: border-color 0.18s ease, color 0.18s ease;
 }
 #reglesIABtn[aria-expanded="true"] { border-color: var(--accent); color: var(--accent); }
