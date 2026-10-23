@@ -41,3 +41,18 @@ test("memoire bornee : au-dela du plafond de visiteurs, les plus anciens sont ou
   ["a", "b", "c", "d"].forEach((ip) => { t += 1; l.autoriser(ip); });
   assert.ok(l.taille() <= 3);
 });
+
+test("attente : 0 si une place est libre, sinon le temps avant la prochaine place", () => {
+  let t = 0;
+  const l = creerLimiteur({ max: 2, fenetreMs: 60000, maintenant: () => t });
+  assert.equal(l.attente("a"), 0);
+  l.autoriser("a");
+  t = 10000;
+  l.autoriser("a");
+  assert.equal(l.attente("a"), 50000); // la plus ancienne requete (t = 0) sort de la fenetre a 60000
+  t = 30000;
+  assert.equal(l.attente("a"), 30000);
+  t = 60001;
+  assert.equal(l.attente("a"), 0);
+  assert.equal(l.attente("inconnu"), 0);
+});

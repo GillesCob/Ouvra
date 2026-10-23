@@ -9,6 +9,7 @@ export const DELAI_MS = 35000; // un peu plus que le delai du relais (25 s) pour
 const PORTEES_IA = ["un_des_deux", "les_deux"];
 const LISTE_DU_CHAMP = { typeIfc: "typesIfc", niveau: "niveaux", maquette: "maquettes", nom: "noms" };
 const MESSAGE_INDISPONIBLE = "L'IA est injoignable pour le moment. Choisis une phrase d'exemple.";
+const MESSAGE_DELAI = "L'IA met trop de temps à répondre. Réessaie ou choisis une phrase d'exemple.";
 const indisponible = () => ({ ok: false, code: "ia_indisponible", message: MESSAGE_INDISPONIBLE });
 
 function regleAcceptable(regle, valeurs) {
@@ -44,7 +45,8 @@ export async function demanderRegle({ phrase, valeurs }, { fetch: appel = (...a)
     if (corps.resultat === "regle" && regleAcceptable(corps.regle, valeurs)) return { ok: true, resultat: "regle", regle: corps.regle };
     return indisponible();
   } catch {
-    return indisponible();
+    // Delai depasse (notre minuteur a coupe la requete) : message distinct d'un reseau coupe.
+    return controleur.signal.aborted ? { ok: false, code: "delai", message: MESSAGE_DELAI } : indisponible();
   } finally {
     clearTimeout(minuteur);
   }

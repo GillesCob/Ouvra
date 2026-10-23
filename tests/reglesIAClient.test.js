@@ -55,11 +55,11 @@ test("reponse qui n'est pas du JSON, ou de forme inattendue : ia_indisponible", 
   assert.equal((await demanderRegle(entree, { fetch: json(200, null) })).code, "ia_indisponible");
 });
 
-test("delai depasse : ia_indisponible", async () => {
+test("delai depasse : code dedie et message humain", async () => {
   const fetchLent = (url, init) => new Promise((_, rejeter) => init.signal.addEventListener("abort", () => rejeter(Object.assign(new Error("aborted"), { name: "AbortError" }))));
   const r = await demanderRegle(entree, { fetch: fetchLent, delaiMs: 20 });
-  assert.equal(r.ok, false);
-  assert.equal(r.code, "ia_indisponible");
+  assert.deepEqual([r.ok, r.code], [false, "delai"]);
+  assert.equal(r.message, "L'IA met trop de temps à répondre. Réessaie ou choisis une phrase d'exemple.");
 });
 
 test("la regle recue est revalidee : une regle de forme invalide est refusee", async () => {

@@ -1,7 +1,7 @@
 // Tests de la couche HTTP du relais (relais/http.js) : Request/Response standard, faux client.
 import test from "node:test";
 import assert from "node:assert/strict";
-import { creerGestionnaire } from "../relais/http.js";
+import { creerGestionnaire, MESSAGES } from "../relais/http.js";
 
 const valeurs = {
   typesIfc: ["IfcDuctSegment"], niveaux: ["Level 1"], maquettes: ["Architecture"], noms: [],
@@ -106,4 +106,41 @@ test("pas de client (cle absente) : 503 ia_indisponible", async () => {
 test("reponses jamais mises en cache", async () => {
   const g = creerGestionnaire({ client: () => fauxClient() });
   assert.equal((await g(requete(corpsValide))).headers.get("cache-control"), "no-store");
+});
+
+test("limite atteinte : message humain qui dit quand reessayer, en secondes puis en minutes, et en-tete retry-after", async () => {
+  let t = 1000000;
+  const g = creerGestionnaire({ client: () => fauxClient(), limites: { parMinute: 1, parHeure: 100 }, maintenant: () => t });
+  await g(requete(corpsValide));
+  t += 20000;
+  let r = await g(requete(corpsValide));
+  const json = await r.json();
+  assert.equal(r.status, 429);
+  assert.equal(json.code, "trop_de_requetes");
+  assert.equal(json.message, "Tu as envoyé beaucoup de demandes. Réessaie dans 40 secondes.");
+  assert.equal(r.headers.get("retry-after"), "40");
+  // limite horaire : on parle en minutes
+  t = 5000000;
+  const h = creerGestionnaire({ client: () => fauxClient(), limites: { parMinute: 100, parHeure: 1 }, maintenant: () => t });
+  await h(requete(corpsValide));
+  t += 60000;
+  r = await h(requete(corpsValide));
+  assert.equal((await r.json()).message, "Tu as envoyé beaucoup de demandes. Réessaie dans environ 59 minutes.");
+  // une seconde restante : singulier
+  t = 9000000;
+  const u = creerGestionnaire({ client: () => fauxClient(), limites: { parMinute: 1, parHeure: 100 }, maintenant: () => t });
+  await u(requete(corpsValide));
+  t += 59000;
+  assert.equal((await (await u(requete(corpsValide))).json()).message, "Tu as envoyé beaucoup de demandes. Réessaie dans 1 seconde.");
+});
+
+test("tous les textes affiches par le relais : tutoiement, deux phrases au plus, sans tiret long ni jargon ni virgule avant et/ou ni deux-points", () => {
+  for (const [code, m] of Object.entries(MESSAGES)) {
+    assert.equal(/—|–/.test(m), false, code);
+    assert.equal(/, (et|ou) /.test(m), false, code + " : virgule avant et/ou");
+    assert.equal(m.includes(":"), false, code + " : deux-points");
+    assert.ok(m.split(/(?<=[.!?])\s+/).length <= 2, code + " : plus de deux phrases");
+    assert.equal(/\b(code|erreur \d|http|json|api|serveur|relais|budget_epuise)\b/i.test(m), false, code + " : jargon");
+    assert.equal(/\b(vous|votre|vos)\b/i.test(m), false, code + " : vouvoiement");
+  }
 });

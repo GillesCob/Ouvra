@@ -26,6 +26,12 @@ export function creerLimiteur({ max, fenetreMs, maintenant = Date.now, visiteurs
       while (parVisiteur.size > visiteursMax) parVisiteur.delete(parVisiteur.keys().next().value);
       return true;
     },
+    // Millisecondes avant qu'une place se libere pour ce visiteur (0 : il peut envoyer maintenant).
+    attente(cle) {
+      const t = maintenant();
+      const dates = (parVisiteur.get(cle) || []).filter((d) => t - d < fenetreMs);
+      return dates.length < max ? 0 : dates[dates.length - max] + fenetreMs - t;
+    },
     taille: () => parVisiteur.size
   };
 }

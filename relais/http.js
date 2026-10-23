@@ -6,9 +6,9 @@ import { validerEntree, CORPS_MAX } from "./entree.js";
 import { traduire } from "./traduire.js";
 import { creerLimiteur } from "./limite.js";
 
-const MESSAGES = {
+export const MESSAGES = {
   entree_invalide: "La demande n'est pas valide (phrase vide ou de plus de 200 caractères).",
-  trop_de_requetes: "Trop de demandes en peu de temps. Réessaie dans quelques minutes, ou choisis une phrase d'exemple.",
+  trop_de_requetes: "Tu as envoyé beaucoup de demandes. Réessaie dans quelques minutes.", // repli : le message reel precise la duree
   budget_epuise: "Le budget mis à disposition pour tester l'IA est épuisé. Choisis une phrase d'exemple.",
   ia_indisponible: "L'IA est injoignable pour le moment. Choisis une phrase d'exemple.",
   refus: "L'IA n'a pas voulu traiter cette phrase. Reformule-la ou choisis une phrase d'exemple.",
@@ -23,6 +23,13 @@ function reponse(statut, corps, extra = {}) {
   });
 }
 const echec = (code, statut = STATUT[code]) => reponse(statut, { ok: false, code, message: MESSAGES[code] });
+
+// Refus par la limite de requetes : le message dit quand reessayer (secondes, puis minutes) et l'en-tete retry-after le redit aux machines.
+function refusLimite(attenteMs) {
+  const secondes = Math.max(1, Math.ceil(attenteMs / 1000));
+  const duree = secondes <= 60 ? secondes + (secondes === 1 ? " seconde" : " secondes") : "environ " + Math.ceil(secondes / 60) + " minutes";
+  return reponse(429, { ok: false, code: "trop_de_requetes", message: "Tu as envoyé beaucoup de demandes. Réessaie dans " + duree + "." }, { "retry-after": String(secondes) });
+}
 
 // Sur Vercel, x-forwarded-for porte l'IP publique du client et est ecrase par la plateforme (pas d'usurpation par le client) :
 // https://vercel.com/docs/headers/request-headers. Sans IP, tous les inconnus partagent un seul compartiment (le plus prudent).
@@ -39,7 +46,7 @@ export function creerGestionnaire({ client, limites = {}, maintenant = Date.now 
     if (request.method !== "POST") return reponse(405, { ok: false, code: "methode", message: "Méthode non permise." }, { allow: "POST" });
 
     const qui = visiteur(request);
-    if (!parMinute.autoriser(qui) || !parHeure.autoriser(qui)) return echec("trop_de_requetes");
+    if (!parMinute.autoriser(qui) || !parHeure.autoriser(qui)) return refusLimite(Math.max(parMinute.attente(qui), parHeure.attente(qui)));
 
     const annonce = Number(request.headers.get("content-length"));
     if (annonce > CORPS_MAX) return echec("entree_invalide", 413);
