@@ -19,16 +19,25 @@ export function assemblerTexte(base, transcription, longueurMax) {
   return [base, transcription].map((t) => String(t || "").replace(/\s+/g, " ").trim()).filter(Boolean).join(" ").slice(0, longueurMax);
 }
 
+// Messages affiches a l'utilisateur : deux phrases au plus, tutoiement, sans jargon ni code d'erreur.
+// Chrome est le seul navigateur nomme car sa prise en charge est confirmee sans reglage (MDN browser-compat-data : SpeechRecognition des Chrome 33
+// avec le prefixe webkit, sans prefixe des Chrome 139 ; caniuse : Chrome partiel des 25). Safari depend de la dictee ou de Siri activee dans le systeme
+// (WebKit Bugzilla 225298) et Firefox n'a la reconnaissance que derriere un reglage ou en version de test (caniuse : « disabled by default », MDN : « preview ») :
+// ni l'un ni l'autre n'est nomme. Sur iPhone et iPad tous les navigateurs utilisent WebKit : proposer Chrome y serait faux.
+const MESSAGE_NAVIGATEUR = "Ce navigateur n'accepte pas la dictée vocale. Ouvre Ouvra dans Chrome pour l'utiliser.";
+const MESSAGE_APPAREIL_IOS = "La dictée vocale n'est pas disponible. Vérifie qu'elle est activée dans les réglages de l'appareil.";
+
 // Message pour l'utilisateur, ou null pour un arret volontaire. Jamais d'echec muet.
-export function messageErreurVoix(code) {
+export function messageErreurVoix(code, { ios = false } = {}) {
+  const indisponible = ios ? MESSAGE_APPAREIL_IOS : MESSAGE_NAVIGATEUR;
   switch (code) {
     case "aborted": return null;
-    case "not-allowed":
-    case "service-not-allowed": return "Le micro est refusé ou indisponible. Autorise le micro pour ce site dans le navigateur puis réessaie, ou tu peux taper la phrase.";
-    case "network": return "La dictée n'a pas pu joindre le service de reconnaissance vocale du navigateur (certains navigateurs ne le proposent pas, ou la connexion manque). Tu peux taper la phrase.";
-    case "no-speech": return "Je n'ai rien entendu. Appuie sur « Envoyer » pour reprendre l'écoute, ou sur « Annuler » pour revenir au texte.";
-    case "audio-capture": return "Aucun micro détecté. Branche un micro ou tu peux taper la phrase.";
-    case "language-not-supported": return "Le français n'est pas disponible pour la dictée dans ce navigateur. Tu peux taper la phrase.";
+    case "not-allowed": return "Le micro est refusé. Autorise-le pour ce site dans le navigateur."; // changer de navigateur n'y changerait rien
+    case "service-not-allowed":
+    case "network": return indisponible; // service de reconnaissance absent ou injoignable (Brave, hors ligne, dictee systeme desactivee)
+    case "no-speech": return "Je n'ai rien entendu. Parle puis appuie sur « Envoyer ».";
+    case "audio-capture": return "Aucun micro détecté. Branche un micro pour dicter.";
+    case "language-not-supported": return "La dictée vocale en français n'est pas disponible ici. Tu peux taper la phrase.";
     default: return "La dictée vocale a échoué. Tu peux taper la phrase.";
   }
 }
@@ -36,7 +45,7 @@ export function messageErreurVoix(code) {
 // Contrôleur de dictée.
 //   Reconnaissance : constructeur (detecterReconnaissance) ou null ; lire() / ecrire(texte) : champ de saisie ;
 //   surEtat("ecoute" | "inactif") ; surErreur(message, codeErreur) ; longueurMax : longueur maximale de la phrase.
-export function creerDictee({ Reconnaissance, lire, ecrire, surEtat, surErreur, longueurMax }) {
+export function creerDictee({ Reconnaissance, lire, ecrire, surEtat, surErreur, longueurMax, ios = false }) {
   let courante = null; // reconnaissance en cours (null : aucune, ou abandonnee)
 
   function terminer(reco) {
@@ -60,7 +69,7 @@ export function creerDictee({ Reconnaissance, lire, ecrire, surEtat, surErreur, 
     };
     reco.onerror = (e) => {
       if (courante !== reco) return;
-      const message = messageErreurVoix(e.error);
+      const message = messageErreurVoix(e.error, { ios });
       if (message) surErreur(message, e.error);
     };
     reco.onend = () => terminer(reco);
@@ -71,7 +80,7 @@ export function creerDictee({ Reconnaissance, lire, ecrire, surEtat, surErreur, 
     } catch {
       courante = null;
       surEtat("inactif");
-      surErreur(messageErreurVoix("inconnu"), "inconnu");
+      surErreur(messageErreurVoix("inconnu", { ios }), "inconnu");
     }
   }
 
@@ -95,34 +104,34 @@ export function creerDictee({ Reconnaissance, lire, ecrire, surEtat, surErreur, 
   };
 }
 
-const MESSAGE_ECOUTE = "Je t'écoute… Parle, puis appuie sur « Envoyer ».";
-const MESSAGE_RIEN_RECONNU = "Rien n'a été reconnu : parle, puis appuie sur « Envoyer ». L'écoute reprend.";
+const MESSAGE_RIEN_RECONNU = "Rien n'a été reconnu. Parle puis appuie sur « Envoyer ».";
 const MESSAGE_PHRASE_VIDE = "Écris la règle que tu veux, par exemple « écarte les collisions avec un diffuseur ».";
-const MOTIF_SANS_API = "La dictée vocale n'est pas disponible dans ce navigateur : tu peux taper la phrase.";
 const nettoyerPhrase = (texte) => String(texte || "").replace(/\s+/g, " ").trim();
+
+// Ce que le panneau montre dans chaque mode (logique pure, testee). En Vocal : un micro, « Envoyer » et « Annuler », rien d'autre (ni champ, ni
+// transcription, ni phrases d'exemple, ni texte d'explication) ; le texte reconnu reste dans le champ masque et sert a l'envoi.
+export function affichageSaisie(mode) {
+  const vocal = mode === "vocal";
+  return { champ: !vocal, exemples: !vocal, micro: vocal, annuler: vocal, libelleEnvoi: vocal ? "Envoyer" : "Traduire" };
+}
 
 // Modes de saisie du panneau « Decrire avec l'IA » : Texte (champ + « Traduire ») et Vocal (ecoute + « Envoyer »).
 // Un seul chemin pour envoyer : preparerEnvoi() rend la phrase a envoyer (ou null, avec un message), le panneau envoie ensuite comme pour « Traduire ».
 //   surMode("texte" | "vocal") ; surEcoute(bool) ; surMessage(texte, estErreur) ; surIndisponible(motif) : Vocal devient inutilisable, avec explication.
 // Rien n'est envoye par la dictee elle-meme. Les modes et l'ecoute ne survivent pas a fermer().
-export function creerSaisie({ Reconnaissance, lire, ecrire, surMode, surEcoute, surMessage, surIndisponible, longueurMax }) {
+export function creerSaisie({ Reconnaissance, lire, ecrire, surMode, surEcoute, surMessage, surIndisponible, longueurMax, ios = false }) {
   let mode = "texte";
   let avantVocal = ""; // texte du champ avant l'entree en mode Vocal, restaure a l'annulation
-  let motif = Reconnaissance ? null : MOTIF_SANS_API; // non nul : Vocal indisponible
-  let messageEcouteAffiche = false;
+  let motif = Reconnaissance ? null : messageErreurVoix("network", { ios }); // non nul : Vocal indisponible
 
   const dictee = creerDictee({
     Reconnaissance,
     lire,
     ecrire,
     longueurMax,
-    surEtat: (etat) => {
-      surEcoute(etat === "ecoute");
-      if (etat === "ecoute") { messageEcouteAffiche = true; surMessage(MESSAGE_ECOUTE, false); }
-      else if (messageEcouteAffiche) { messageEcouteAffiche = false; surMessage("", false); }
-    },
+    ios,
+    surEtat: (etat) => surEcoute(etat === "ecoute"), // l'ecoute n'est jamais ecrite a l'ecran : micro anime + libelle pour lecteur d'ecran (panneau)
     surErreur: (message, code) => {
-      messageEcouteAffiche = false;
       if (code === "no-speech") { surMessage(message, true); return; } // silence : on reste en Vocal, l'utilisateur reprend ou annule
       motif = message; // permission refusee, service injoignable, pas de micro... : retour au mode Texte, Vocal desactive avec la raison
       retourTexte();
@@ -149,6 +158,7 @@ export function creerSaisie({ Reconnaissance, lire, ecrire, surMode, surEcoute, 
       if (mode === "vocal" || motif) return;
       avantVocal = lire();
       ecrire("");
+      surMessage("", false); // les messages d'une dictee precedente ne restent pas affiches
       mode = "vocal";
       surMode("vocal");
       dictee.basculer();
@@ -162,7 +172,6 @@ export function creerSaisie({ Reconnaissance, lire, ecrire, surMode, surEcoute, 
         const phrase = nettoyerPhrase(lire());
         if (!phrase) {
           dictee.basculer(); // rien de reconnu : retour a l'ecoute
-          messageEcouteAffiche = false;
           surMessage(MESSAGE_RIEN_RECONNU, true);
           return null;
         }

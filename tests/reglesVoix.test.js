@@ -1,7 +1,7 @@
 // Tests de la logique pure de la dictee vocale (src/reglesVoix.js) avec une FAUSSE SpeechRecognition : aucun micro reel. Ecrits avant le code.
 import test from "node:test";
 import assert from "node:assert/strict";
-import { detecterReconnaissance, assemblerTexte, messageErreurVoix, creerDictee, creerSaisie } from "../src/reglesVoix.js";
+import { detecterReconnaissance, assemblerTexte, messageErreurVoix, creerDictee, creerSaisie, affichageSaisie } from "../src/reglesVoix.js";
 
 class FausseReconnaissance {
   static derniere = null;
@@ -49,15 +49,28 @@ test("assemblage : base + transcription, espaces propres, borne de longueur", ()
 
 test("messages d'erreur : jamais muets, sauf l'arret volontaire", () => {
   for (const code of ["not-allowed", "service-not-allowed", "network", "no-speech", "audio-capture", "language-not-supported", "inconnu-xyz"]) {
-    const m = messageErreurVoix(code);
-    assert.equal(typeof m, "string", code);
-    assert.ok(m.length > 10, code);
-    assert.equal(/—|–/.test(m), false, "tiret long dans " + code);
+    for (const ios of [false, true]) {
+      const m = messageErreurVoix(code, { ios });
+      assert.equal(typeof m, "string", code);
+      assert.ok(m.length > 10, code);
+      assert.equal(/—|–/.test(m), false, "tiret long dans " + code);
+      assert.equal(/, (et|ou) /.test(m), false, "virgule avant et/ou dans " + code);
+      assert.equal(m.includes(":"), false, "deux-points dans " + code);
+      assert.ok(m.split(/(?<=[.!?])\s+/).length <= 2, "plus de deux phrases dans " + code);
+      assert.equal(/\b(error|erreur|code|network|api|SpeechRecognition)\b/i.test(m), false, "jargon dans " + code);
+    }
   }
   assert.equal(messageErreurVoix("aborted"), null);
   assert.match(messageErreurVoix("not-allowed"), /autoris/i);
-  assert.match(messageErreurVoix("network"), /taper|saisis|écris/i);
+  assert.match(messageErreurVoix("network"), /Chrome/);
   assert.match(messageErreurVoix("no-speech"), /Envoyer/);
+  assert.equal(messageErreurVoix("network"), "Ce navigateur n'accepte pas la dictée vocale. Ouvre Ouvra dans Chrome pour l'utiliser.");
+  assert.equal(messageErreurVoix("service-not-allowed"), messageErreurVoix("network"));
+  assert.equal(messageErreurVoix("not-allowed"), "Le micro est refusé. Autorise-le pour ce site dans le navigateur.");
+  assert.doesNotMatch(messageErreurVoix("not-allowed"), /Chrome/); // ouvrir un autre navigateur n'y changerait rien
+  // iPhone : tous les navigateurs y utilisent WebKit, proposer Chrome serait trompeur.
+  assert.doesNotMatch(messageErreurVoix("network", { ios: true }), /Chrome/);
+  assert.match(messageErreurVoix("network", { ios: true }), /réglages/);
 });
 
 test("navigateur sans l'API : indisponible, basculer ne fait rien et ne leve rien", () => {
@@ -200,10 +213,12 @@ function saisie(extra = {}) {
     surEcoute: (e) => j.ecoutes.push(e),
     surMessage: (t, erreur) => j.messages.push([t, !!erreur]),
     surIndisponible: (t) => j.indispo.push(t),
+    ios: !!extra.ios,
     longueurMax: 200
   });
   return { s, j };
 }
+const messagesAffiches = (j) => j.messages.filter(([t]) => t);
 const dernierMessage = (j) => j.messages.at(-1);
 
 test("saisie : mode Texte par defaut, Vocal disponible si l'API existe", () => {
@@ -230,8 +245,8 @@ test("choisir Vocal : l'ecoute demarre tout de suite (geste utilisateur), champ 
   assert.equal(j.champ, "");
   assert.deepEqual(j.modes, ["vocal"]);
   assert.equal(s.ecoute(), true);
-  assert.match(dernierMessage(j)[0], /écoute/);
-  assert.equal(dernierMessage(j)[1], false);
+  assert.deepEqual(messagesAffiches(j), []); // l'ecoute n'est jamais affichee en texte : micro anime + libelle pour lecteur d'ecran seulement
+  assert.deepEqual(j.ecoutes, [true]);
 });
 
 test("choisir Vocal deux fois : une seule ecoute", () => {
@@ -334,6 +349,7 @@ test("silence (no-speech) : on reste en mode Vocal, message clair, ecoute arrete
   FausseReconnaissance.derniere.erreur("no-speech");
   assert.equal(s.mode(), "vocal");
   assert.equal(s.ecoute(), false);
+  assert.equal(messagesAffiches(j).length, 1); // une seule fois
   assert.match(dernierMessage(j)[0], /rien entendu/);
   assert.equal(dernierMessage(j)[1], true);
   assert.equal(s.vocalDisponible(), true);
@@ -347,7 +363,8 @@ test("fin naturelle de l'ecoute avec du texte : on reste en Vocal, le message d'
   r.onend();
   assert.equal(s.mode(), "vocal");
   assert.equal(s.ecoute(), false);
-  assert.equal(dernierMessage(j)[0], "");
+  assert.deepEqual(messagesAffiches(j), []);
+  assert.deepEqual(j.ecoutes, [true, false]);
   assert.equal(s.preparerEnvoi(), "gaines en urgent");
 });
 
@@ -388,4 +405,45 @@ test("la dictee n'envoie jamais toute seule : aucun rappel d'envoi n'existe, pre
   FausseReconnaissance.derniere.dire([{ texte: "a", final: true }]);
   FausseReconnaissance.derniere.onend();
   assert.equal(typeof s.envoyer, "undefined");
+});
+
+test("affichage : en Texte champ + exemples + « Traduire » ; en Vocal micro + « Envoyer » + « Annuler » et rien d'autre", () => {
+  assert.deepEqual(affichageSaisie("texte"), { champ: true, exemples: true, micro: false, annuler: false, libelleEnvoi: "Traduire" });
+  assert.deepEqual(affichageSaisie("vocal"), { champ: false, exemples: false, micro: true, annuler: true, libelleEnvoi: "Envoyer" });
+  assert.deepEqual(affichageSaisie("n'importe quoi"), affichageSaisie("texte"));
+});
+
+test("erreurs en Vocal affichees une seule fois chacune : rien reconnu, silence, refus, indisponible", () => {
+  // rien reconnu, deux appuis : le message est remplace, pas empile (une seule zone, meme texte)
+  let { s, j } = saisie();
+  s.choisirVocal();
+  s.preparerEnvoi();
+  s.preparerEnvoi();
+  assert.ok(new Set(messagesAffiches(j).map(([t]) => t)).size === 1);
+  // refus : aucun message dans la zone d'etat, la raison passe par surIndisponible une seule fois
+  ({ s, j } = saisie());
+  s.choisirVocal();
+  FausseReconnaissance.derniere.erreur("not-allowed");
+  assert.deepEqual(messagesAffiches(j), []);
+  assert.equal(j.indispo.length, 1);
+  assert.equal(j.indispo[0], "Le micro est refusé. Autorise-le pour ce site dans le navigateur.");
+  // service injoignable (Brave) : meme mecanique, message navigateur
+  ({ s, j } = saisie());
+  s.choisirVocal();
+  FausseReconnaissance.derniere.erreur("network");
+  assert.deepEqual(messagesAffiches(j), []);
+  assert.equal(j.indispo.length, 1);
+  assert.match(j.indispo[0], /Chrome/);
+});
+
+test("navigateur sans API : un seul motif, message navigateur ; sur iPhone, message sans Chrome", () => {
+  assert.equal(saisie({ Reconnaissance: null }).s.motifIndisponible(), "Ce navigateur n'accepte pas la dictée vocale. Ouvre Ouvra dans Chrome pour l'utiliser.");
+  assert.doesNotMatch(saisie({ Reconnaissance: null, ios: true }).s.motifIndisponible(), /Chrome/);
+});
+
+test("rien reconnu : message court sans deux-points", () => {
+  const { s, j } = saisie();
+  s.choisirVocal();
+  s.preparerEnvoi();
+  assert.equal(dernierMessage(j)[0], "Rien n'a été reconnu. Parle puis appuie sur « Envoyer ».");
 });

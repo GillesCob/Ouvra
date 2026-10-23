@@ -28,6 +28,7 @@
 #reglesIAPanneau[hidden] { display: none; }
 #reglesIAPanneau *, #reglesIAPanneau *::before, #reglesIAPanneau *::after { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 .regles-ia-section { display: flex; flex-direction: column; gap: 6px; }
+.regles-ia-section[hidden] { display: none; }
 .regles-ia-section h3 { margin: 0 4px; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
 .regles-ia-section ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 2px; }
 .regles-ia-saisie { display: flex; gap: 8px; }
@@ -56,13 +57,27 @@
 .regles-ia-saisie input[readonly] { color: var(--text); }
 .regles-ia-saisie .regles-ia-annuler { flex: 1 1 100%; }
 .regles-ia-saisie .regles-ia-annuler[hidden] { display: none; }
-/* Ecoute en cours : pastille d'accent qui pulse devant le message (le message dit aussi l'etat, la couleur ne suffit pas). */
-.regles-ia-etat.ecoute::before {
-  content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; background: var(--accent);
-  animation: regles-ia-ecoute 1.2s ease-in-out infinite;
+/* Mode Vocal : un micro, « Annuler » et « Envoyer », rien d'autre. Le micro est un disque comme les boutons du panneau (surface, bordure, texte) ;
+   en ecoute il prend la couleur d'accent et un halo discret pulse (aucun mouvement avec prefers-reduced-motion). */
+.regles-ia-saisie.vocal > .regles-ia-annuler, .regles-ia-saisie.vocal > button[type="submit"] { flex: 1 1 0; }
+.regles-ia-micro {
+  flex: 1 1 100%; display: flex; align-items: center; justify-content: center; padding: 6px 0 10px;
 }
-@keyframes regles-ia-ecoute { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
-@media (prefers-reduced-motion: reduce) { .regles-ia-etat.ecoute::before { animation: none; } }
+.regles-ia-micro[hidden] { display: none; }
+.regles-ia-micro svg {
+  box-sizing: content-box; width: 28px; height: 28px; padding: 14px; border-radius: 50%; color: var(--muted);
+  background: var(--bg); border: 1px solid var(--border);
+}
+.regles-ia-micro.ecoute svg {
+  color: var(--accent); border-color: var(--accent); animation: regles-ia-halo 1.6s ease-in-out infinite;
+}
+@keyframes regles-ia-halo {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 45%, transparent); }
+  50% { box-shadow: 0 0 0 9px color-mix(in srgb, var(--accent) 0%, transparent); }
+}
+@media (prefers-reduced-motion: reduce) { .regles-ia-micro.ecoute svg { animation: none; box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 25%, transparent); } }
+/* Libelle lu par les lecteurs d'ecran, jamais affiche. */
+.regles-ia-sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 .regles-ia-etat { margin: 0 4px; font-size: 12.5px; line-height: 1.35; color: var(--muted); overflow-wrap: anywhere; }
 .regles-ia-etat[hidden] { display: none; }
 .regles-ia-etat.erreur { color: var(--text); }
