@@ -7,7 +7,9 @@
 //   surCalibrer(p, q)                 : deux points cliques en mode « calibrer » (metres)
 //   surCote(murId)                    : clic sur une cote (la page place le curseur dans le champ de longueur)
 //   typeMurNeuf()                     : « exterieur » | « interieur » pour un mur trace
+//   surTrace(etat)                    : « mur » | « piece » tant qu'un trace est en cours (la page affiche alors « Terminer », seul moyen de finir au doigt), sinon null
 
+import { vueApresPincement } from "./pincement.js";
 import { placerEtiquette } from "./etiquettesPieces.js";
 import { mesurerTexte, surfaceAffichee } from "./texteSol.js";
 import {
@@ -42,7 +44,7 @@ function pointsMur(a, b, epaisseur) {
   return [[a.x + nx, a.y + ny], [b.x + nx, b.y + ny], [b.x - nx, b.y - ny], [a.x - nx, a.y - ny]].map((p) => p.join(",")).join(" ");
 }
 
-export function creerEditeur2d({ conteneur, surChangement, surSelection, surCalibrer, surCote, typeMurNeuf = () => "interieur" }) {
+export function creerEditeur2d({ conteneur, surChangement, surSelection, surCalibrer, surCote, surTrace = () => {}, typeMurNeuf = () => "interieur" }) {
   const svg = el("svg", { class: "p3d-svg", role: "img", "aria-label": "Plan 2D éditable", tabindex: 0 });
   conteneur.appendChild(svg);
 
@@ -59,6 +61,9 @@ export function creerEditeur2d({ conteneur, surChangement, surSelection, surCali
   let ajustee = true; // vrai tant que la vue est au dezoom maximal (plan entier, centre) : elle suit alors les changements de taille de la zone (en-tete et barre d'outils qui apparaissent)
   let brouillon = null; // trace en cours : { depart: {x, y}, curseur: {x, y} } ; calibration : { points: [{x,y}], curseur }
   let geste = null; // geste du pointeur en cours : { type, ... }
+  const doigts = new Map(); // pointeurs actifs (id -> position ecran) : deux doigts = pincement
+  let pincement = null; // { vueDepart, departA, departB, ids } tant que deux doigts sont poses
+  let traceSignale = null;
 
   const metresParPixel = () => vue.l / Math.max(svg.clientWidth, 1);
   const enMetres = (e) => {
@@ -114,7 +119,13 @@ export function creerEditeur2d({ conteneur, surChangement, surSelection, surCali
   }
 
   // ---- Dessin ----
+  function signalerTrace() {
+    const etat = mode === "mur" && brouillon && brouillon.depart ? "mur" : mode === "piece" && brouillon && brouillon.contour && brouillon.contour.length ? "piece" : null;
+    if (etat !== traceSignale) { traceSignale = etat; surTrace(etat); }
+  }
+
   function dessiner() {
+    signalerTrace();
     appliquerVue();
     svg.replaceChildren();
     if (!modele) return;
@@ -348,6 +359,15 @@ export function creerEditeur2d({ conteneur, surChangement, surSelection, surCali
   svg.addEventListener("pointerdown", (e) => {
     if (!modele || e.button > 0) return;
     svg.setPointerCapture(e.pointerId);
+    doigts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (doigts.size === 2) {
+      // deuxieme doigt : le geste en cours (clic, deplacement) est abandonne, le pincement prend le relais
+      const [a, b] = [...doigts.values()];
+      geste = null;
+      pincement = { vueDepart: { ...vue }, departA: a, departB: b };
+      return;
+    }
+    if (doigts.size > 2) return;
     const p = enMetres(e);
     const cible = sur(e);
     geste = { id: e.pointerId, depart: { x: e.clientX, y: e.clientY }, vueDepart: { ...vue }, deplace: false, cible, p0: p, noeud: null };
@@ -356,6 +376,16 @@ export function creerEditeur2d({ conteneur, surChangement, surSelection, surCali
 
   svg.addEventListener("pointermove", (e) => {
     if (!modele) return;
+    if (doigts.has(e.pointerId)) doigts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pincement) {
+      if (doigts.size < 2) return;
+      const [a, b] = [...doigts.values()];
+      const rect = svg.getBoundingClientRect();
+      vue = vueApresPincement({ vueDepart: pincement.vueDepart, rect, departA: pincement.departA, departB: pincement.departB, a, b, lMax: vueAjustee().l });
+      ajustee = vue.l >= vueAjustee().l - 1e-6;
+      dessiner();
+      return;
+    }
     const p = enMetres(e);
     if (!geste || geste.id !== e.pointerId) {
       if (mode === "mur" || mode === "calibrer" || mode === "piece") {
@@ -382,14 +412,20 @@ export function creerEditeur2d({ conteneur, surChangement, surSelection, surCali
     dessiner();
   });
 
+  const leverDoigt = (e) => {
+    doigts.delete(e.pointerId);
+    if (doigts.size < 2) pincement = null;
+  };
   svg.addEventListener("pointerup", (e) => {
-    if (!geste || geste.id !== e.pointerId) return;
+    const etaitPincement = pincement !== null;
+    leverDoigt(e);
+    if (etaitPincement || !geste || geste.id !== e.pointerId) return;
     const g = geste;
     geste = null;
     if (g.deplace || !modele) return;
     clic(enMetres(e), g.cible);
   });
-  svg.addEventListener("pointercancel", () => { geste = null; });
+  svg.addEventListener("pointercancel", (e) => { leverDoigt(e); geste = null; });
 
   function clic(p, cible) {
     if (mode === "selection") {
@@ -525,6 +561,7 @@ export function creerEditeur2d({ conteneur, surChangement, surSelection, surCali
     cadrer,
     zoomer,
     terminerTrace,
+    finirTrace() { if (mode === "piece") fermerPiece(); else terminerTrace(); },
     afficherCotes(v) { toutesCotes = Boolean(v); dessiner(); },
     opaciteFond(v) { opaciteFond = v; dessiner(); },
     definirVitesseZoom(pourcent) { if (Number.isFinite(pourcent) && pourcent > 0) vitesseZoom = pourcent / 100; },

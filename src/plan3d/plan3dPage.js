@@ -219,6 +219,11 @@ export function creerPlan3dPage({ racine, voirDansViewer = null }) {
   bandeauBoutons.append(boutonOui, boutonNon);
   bandeau.append(creer("p", "p3d-bandeau-question", "Est-ce bien votre demande ?"), bandeauTexte, bandeauBoutons);
 
+  // « Terminer » : le tracé d'un mur ou d'une pièce se finit d'ordinaire par double clic, Entrée ou Échap, qui n'existent pas au doigt.
+  const btnTerminer = bouton("Terminer", { classe: "p3d-btn p3d-btn-fort p3d-terminer" });
+  btnTerminer.hidden = true;
+  btnTerminer.addEventListener("click", () => editeur.finirTrace());
+
   const astuce = creer("p", "p3d-astuce");
   astuce.setAttribute("role", "status");
   astuce.setAttribute("aria-live", "polite");
@@ -232,7 +237,7 @@ export function creerPlan3dPage({ racine, voirDansViewer = null }) {
 
   const panneau = creer("aside", "p3d-carte p3d-carte-plan");
   panneau.setAttribute("aria-label", "Propriétés");
-  surface2d.append(outils, typeMur, vitesse, fondVolet, bandeau, astuce, vide, panneau);
+  surface2d.append(outils, typeMur, vitesse, fondVolet, bandeau, btnTerminer, astuce, vide, panneau);
   etagePlan.appendChild(surface2d);
   scene.appendChild(etagePlan);
   page.appendChild(scene);
@@ -248,6 +253,7 @@ export function creerPlan3dPage({ racine, voirDansViewer = null }) {
     },
     surCalibrer: (p, q) => { calibration = { p, q }; dessinerPanneau(); },
     surCote: () => { const i = panneau.querySelector("[data-champ='longueur']"); if (i) { i.focus(); i.select(); } },
+    surTrace: (etat) => { btnTerminer.hidden = !etat; btnTerminer.firstChild && (btnTerminer.querySelector("span").textContent = etat === "piece" ? "Fermer la pièce" : "Terminer"); },
     typeMurNeuf: () => typeChoisi
   });
   editeur.definirModele(modele);

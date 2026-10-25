@@ -27,6 +27,7 @@
 .p3d-btn:disabled { opacity: 0.45; cursor: default; }
 .p3d-btn[aria-pressed="true"]:not(.p3d-btn-carre) { border-color: var(--accent); }
 .p3d-btn-carre[aria-pressed="true"] { background: rgba(92, 122, 95, 0.3); border-color: var(--accent); }
+.p3d-terminer { position: absolute; right: 14px; bottom: 14px; z-index: 9; min-height: 44px; padding: 0 18px; font-size: 14px; box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35); }
 .p3d-lien { background: none; border: 0; padding: 6px 4px; color: var(--muted); font: inherit; font-size: 12.5px; text-decoration: underline; cursor: pointer; }
 .p3d-icone { width: 17px; height: 17px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .p3d-page button:focus-visible, .p3d-page select:focus-visible, .p3d-page input:focus-visible, .p3d-svg:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
