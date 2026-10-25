@@ -4,6 +4,17 @@
 
 export const TAILLE_MAX_OCTETS = 40 * 1024 * 1024;
 const LARGEUR_RENDU_PDF = 2400; // pixels : assez fin pour lire les cotes d'un plan A4 / A3 sans alourdir la page
+const PIXELS_MAX_ORDINATEUR = 16e6;
+const PIXELS_MAX_TELEPHONE = 6e6; // un canvas de plus de ~16 Mpx echoue sur iOS, et 6 Mpx (4 bytes chacun, 24 Mo) laisse de la marge a la page
+
+// Largeur de rendu d'une page PDF (pixels) : 2400 au plus, reduite si la page (grande ou tres allongee) depasserait le nombre de pixels permis.
+export function largeurRenduPdf(largeurPage, hauteurPage, { telephone = false, largeurMax = LARGEUR_RENDU_PDF } = {}) {
+  if (!(largeurPage > 0) || !(hauteurPage > 0)) return largeurMax;
+  const pixelsMax = telephone ? PIXELS_MAX_TELEPHONE : PIXELS_MAX_ORDINATEUR;
+  const l = telephone ? Math.min(largeurMax, 1800) : largeurMax;
+  const h = (l * hauteurPage) / largeurPage;
+  return l * h > pixelsMax ? Math.floor(Math.sqrt((pixelsMax * largeurPage) / hauteurPage)) : l;
+}
 
 // « image » | « pdf » | null selon le type MIME, a defaut l'extension (certains navigateurs ne donnent pas de type).
 export function typeFichier(fichier) {
@@ -52,7 +63,8 @@ async function depuisPdf(fichier, page) {
     const numero = Math.min(Math.max(Math.round(page) || 1, 1), doc.numPages);
     const p = await doc.getPage(numero);
     const base = p.getViewport({ scale: 1 });
-    const vue = p.getViewport({ scale: LARGEUR_RENDU_PDF / base.width });
+    const telephone = typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches;
+    const vue = p.getViewport({ scale: largeurRenduPdf(base.width, base.height, { telephone }) / base.width });
     const canvas = document.createElement("canvas");
     canvas.width = Math.round(vue.width);
     canvas.height = Math.round(vue.height);

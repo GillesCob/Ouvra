@@ -28,3 +28,13 @@ test("verifierFichier : format, fichier vide et fichier trop lourd", () => {
   assert.match(verifierFichier(f("plan.png", "image/png", TAILLE_MAX_OCTETS + 1)), /lourd/);
   assert.equal(verifierFichier(f("plan.png", "image/png", TAILLE_MAX_OCTETS)), null);
 });
+
+test("largeurRenduPdf : 2400 px au plus, reduite pour un telephone ou une page tres grande", async () => {
+  const { largeurRenduPdf } = await import("../src/plan3d/importPlan.js");
+  assert.equal(largeurRenduPdf(842, 595), 2400); // A4 paysage sur ordinateur
+  assert.equal(largeurRenduPdf(842, 595, { telephone: true }), 1800);
+  assert.equal(largeurRenduPdf(842, 5950), Math.floor(Math.sqrt((16e6 * 842) / 5950))); // page 10 fois plus haute : plafond de pixels
+  const l = largeurRenduPdf(842, 5950, { telephone: true });
+  assert.ok(l * ((l * 5950) / 842) <= 6e6 + 1e4);
+  assert.equal(largeurRenduPdf(0, 0), 2400);
+});

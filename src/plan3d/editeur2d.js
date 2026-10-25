@@ -19,6 +19,7 @@ import {
 
 const NS = "http://www.w3.org/2000/svg";
 const RAYON_ACCROCHE_PX = 14; // distance d'accroche a un noeud ou a un mur, en pixels ecran
+const COEF_TACTILE = 1.6; // au doigt (pointer: coarse) les zones d'accroche et de saisie des angles sont agrandies : 22 px de rayon, 44 px de large au minimum
 const SEUIL_CLIC_PX = 4;
 const MARGE_VUE = 1.5; // metres : marge fixe autour du plan, limite du dezoom
 const ZONE_MIN = { l: 12, h: 8 }; // metres : taille minimale de la zone de travail (un plan presque vide)
@@ -72,6 +73,8 @@ export function creerEditeur2d({ conteneur, surChangement, surSelection, surCali
     return { x: vue.x + (e.clientX - r.left) * k, y: vue.y + (e.clientY - r.top) * k };
   };
 
+  const tactile = typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches;
+  const rayonAccroche = () => RAYON_ACCROCHE_PX * (tactile ? COEF_TACTILE : 1);
   const rapportEcran = () => { const r = svg.getBoundingClientRect(); return r.width > 0 && r.height > 0 ? r.height / r.width : 0.7; };
 
   // Zone de travail : le plan (murs, pieces, image de fond) entoure d'une marge FIXE en metres, d'au moins ZONE_MIN. On ne peut ni dezoomer au-dela
@@ -202,7 +205,7 @@ export function creerEditeur2d({ conteneur, surChangement, surSelection, surCali
     for (const n of modele.noeuds) {
       const vu = visibles.has(n.id);
       const estSel = selection && selection.type === "noeud" && selection.id === n.id;
-      const cote = (vu ? (mode === "mur" ? 3 : 4.5) : 8) * px;
+      const cote = (vu ? (mode === "mur" ? 3 : 4.5) : 8) * px * (tactile && !vu ? COEF_TACTILE : 1);
       if (!vu) { el("circle", { cx: n.x, cy: n.y, r: cote, class: "p3d-noeud-zone", "data-kind": "noeud", "data-id": n.id }, svg); continue; }
       const r = el("rect", { x: n.x - cote, y: n.y - cote, width: cote * 2, height: cote * 2, class: `p3d-poignee${mode === "mur" ? " repere" : ""}${estSel ? " sel" : ""}`, "data-kind": "noeud", "data-id": n.id }, svg);
       r.setAttribute("rx", String(px));
@@ -297,7 +300,7 @@ export function creerEditeur2d({ conteneur, surChangement, surSelection, surCali
   // ---- Accroche (trace) ----
   // Point d'un clic, dans l'ordre : noeud proche, mur proche (jonction en T), puis point libre (aligne sur l'horizontale ou la verticale du depart si proche).
   function accrocher(p, depart) { // depart : point {x, y} du debut du mur en cours, ou null
-    const rayon = RAYON_ACCROCHE_PX * metresParPixel();
+    const rayon = rayonAccroche() * metresParPixel();
     let noeud = null;
     let dist = rayon;
     for (const n of modele.noeuds) {
@@ -442,7 +445,7 @@ export function creerEditeur2d({ conteneur, surChangement, surSelection, surCali
   // Tracé d'une pièce : un clic par sommet (faces interieures des murs), clic sur le premier point, double clic ou Entree pour fermer.
   function clicPiece(p) {
     const contour = (brouillon && brouillon.contour) || [];
-    const rayon = RAYON_ACCROCHE_PX * metresParPixel();
+    const rayon = rayonAccroche() * metresParPixel();
     if (contour.length >= 3 && Math.hypot(contour[0].x - p.x, contour[0].y - p.y) < rayon) return fermerPiece();
     brouillon = { contour: [...contour, { x: p.x, y: p.y }], curseur: { x: p.x, y: p.y } };
     dessiner();
