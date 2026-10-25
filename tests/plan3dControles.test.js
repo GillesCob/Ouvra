@@ -92,3 +92,12 @@ test("controlerPlan : les erreurs passent avant les alertes", () => {
   const i = r.findIndex((x) => x.gravite === "alerte");
   assert.ok(i === -1 || r.slice(i).every((x) => x.gravite === "alerte"));
 });
+
+test("controlerPlan : une ouverture qui ne donne dans aucune piece est signalee, une ouverture qui donne dans une piece non", () => {
+  const carre = (x, y, c) => [{ x, y }, { x: x + c, y }, { x: x + c, y: y + c }, { x, y: y + c }];
+  const loin = base({ ouvertures: [ouv("O1", 1.5, 0.9)], pieces: [{ id: "P1", nom: "A", contour: carre(0.2, 1.5, 2) }] }); // la piece commence a 1,5 m du mur
+  assert.ok(regles(loin).includes("alerte:ouverture-orpheline"));
+  const proche = base({ ouvertures: [ouv("O1", 1.5, 0.9)], pieces: [{ id: "P1", nom: "A", contour: carre(0.2, 0.1, 2) }] });
+  assert.ok(!regles(proche).includes("alerte:ouverture-orpheline"));
+  assert.ok(!regles(base({ ouvertures: [ouv("O1", 1.5, 0.9)] })).includes("alerte:ouverture-orpheline"), "sans piece, la regle ne s'applique pas");
+});

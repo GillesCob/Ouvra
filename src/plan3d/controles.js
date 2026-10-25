@@ -7,7 +7,7 @@
 //
 // Regles : ouverture-bout (l'ouverture entre dans l'epaisseur d'un mur perpendiculaire, ou laisse moins de 5 cm de mur plein), ouvertures-recouvrement,
 // battement (la porte ne peut s'ouvrir d'aucun cote, ou son battement dessine heurte un mur), dimensions (hauteur, largeur anormale), murs-croises,
-// mur-non-raccorde, pieces-recouvrement, mur-dans-piece.
+// mur-non-raccorde, pieces-recouvrement, mur-dans-piece, ouverture-orpheline (ouverture qui ne donne dans aucune piece : contour de piece mal place).
 
 import { extremites, longueurMur } from "./modele.js";
 import { pointDansPolygone } from "./etiquettesPieces.js";
@@ -177,6 +177,23 @@ function controlesPieces(modele, geo, sortie) {
   }
 }
 
+// Une ouverture dont aucun des deux cotes tombe dans une piece : le contour de la piece voisine est probablement trop loin du mur (la description envoyee a l'IA l'oublierait).
+function controlesOrphelines(modele, geo, sortie) {
+  const pieces = (modele.pieces || []).filter((p) => Array.isArray(p.contour) && p.contour.length >= 3);
+  if (!pieces.length) return;
+  for (const o of modele.ouvertures) {
+    const g = geo.find((x) => x.w.id === o.mur);
+    if (!g) continue;
+    const { u, n, depart } = axeOuverture(modele, o, g);
+    const milieu = { x: depart.x + u.x * o.largeur / 2, y: depart.y + u.y * o.largeur / 2 };
+    const d = g.w.epaisseur / 2 + 0.15;
+    const cotes = [1, -1].map((sens) => ({ x: milieu.x + n.x * d * sens, y: milieu.y + n.y * d * sens }));
+    if (!cotes.some((pt) => pieces.some((p) => pointDansPolygone(pt, p.contour)))) {
+      sortie.push({ gravite: "alerte", regle: "ouverture-orpheline", cibles: [o.id, g.w.id], texte: `${o.id} sur ${g.w.id} ne donne dans aucune pièce (à 15 cm du mur, des deux côtés) : le contour de la pièce voisine est sans doute trop loin du mur.` });
+    }
+  }
+}
+
 export function controlerPlan(modele) {
   const geo = mursGeometrie(modele);
   const sortie = [];
@@ -184,5 +201,6 @@ export function controlerPlan(modele) {
   controlesBattements(modele, geo, sortie);
   controlesMurs(modele, geo, sortie);
   controlesPieces(modele, geo, sortie);
+  controlesOrphelines(modele, geo, sortie);
   return sortie.sort((a, b) => (a.gravite === b.gravite ? 0 : a.gravite === "erreur" ? -1 : 1));
 }
