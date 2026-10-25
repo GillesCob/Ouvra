@@ -160,7 +160,10 @@
   .p3d-actions .p3d-btn:not(.p3d-btn-carre) { width: 36px; padding: 0; }
   .p3d-actions { gap: 6px; }
   .p3d-outils { max-width: calc(100% - 24px); }
-  .p3d-carte { top: auto; bottom: 12px; left: 12px; right: 12px; width: auto; max-height: 48%; }
+  .p3d-carte { top: auto; bottom: calc(12px + var(--p3d-clavier, 0px)); left: 12px; right: 12px; width: auto; max-height: 48%; }
+  /* Les volets (vitesse, visibilite) et « Terminer » se posent AU-DESSUS de la carte de proprietes (--p3d-carte-h, mesuree par la page) et du clavier virtuel (--p3d-clavier). */
+  .p3d-vitesse { bottom: calc(12px + var(--p3d-carte-h, 0px) + var(--p3d-clavier, 0px)); }
+  .p3d-terminer, .p3d-bandeau { bottom: calc(14px + var(--p3d-carte-h, 0px) + var(--p3d-clavier, 0px)); }
   .p3d-carte-plan[data-sel="non"] { display: none; }
   .p3d-astuce { top: 62px; bottom: auto; max-width: calc(100% - 24px); }
   .p3d-type-mur { top: 110px; }

@@ -236,6 +236,21 @@ export function creerPlan3dPage({ racine, voirDansViewer = null }) {
   vide.append(videImport, videExemple);
 
   const panneau = creer("aside", "p3d-carte p3d-carte-plan");
+
+  // Ecran etroit : la carte de proprietes occupe le bas de l'ecran ; les volets et « Terminer » se posent au-dessus (hauteur mesuree), et tout remonte quand le clavier
+  // virtuel s'ouvre (visualViewport : sur iOS le clavier ne reduit pas la page, seulement la partie visible).
+  const ecranEtroit = window.matchMedia ? window.matchMedia("(max-width: 820px)") : { matches: false };
+  const majDecalages = () => {
+    const carte = ecranEtroit.matches && !panneau.hidden && panneau.dataset.sel === "oui" ? panneau.getBoundingClientRect().height + 12 : 0;
+    surface2d.style.setProperty("--p3d-carte-h", `${Math.round(carte)}px`);
+    const vv = window.visualViewport;
+    const clavier = ecranEtroit.matches && vv ? Math.max(0, window.innerHeight - vv.height - vv.offsetTop) : 0;
+    surface2d.style.setProperty("--p3d-clavier", `${Math.round(clavier)}px`);
+  };
+  if (typeof ResizeObserver !== "undefined") new ResizeObserver(majDecalages).observe(panneau);
+  new MutationObserver(majDecalages).observe(panneau, { attributes: true, attributeFilter: ["data-sel", "hidden"] });
+  if (window.visualViewport) { window.visualViewport.addEventListener("resize", majDecalages); window.visualViewport.addEventListener("scroll", majDecalages); }
+
   panneau.setAttribute("aria-label", "Propriétés");
   surface2d.append(outils, typeMur, vitesse, fondVolet, bandeau, btnTerminer, astuce, vide, panneau);
   etagePlan.appendChild(surface2d);
