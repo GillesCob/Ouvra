@@ -56,6 +56,10 @@
 .regles-valeur .collision-groupe-titre { display: inline-flex; margin: 0; padding: 0; font: inherit; letter-spacing: inherit; text-transform: none; color: inherit; }
 .regles-avant { color: var(--muted); }
 .regles-apres { color: var(--msg-accent); font-weight: 700; }
+/* Image 3D de la collision (deja generee) : a droite du texte ; sans image, un espace vide de meme taille garde la colonne alignee. */
+.regles-vue { flex: 0 0 auto; width: 72px; height: 48px; border-radius: 6px; overflow: hidden; background: var(--msg-releve); }
+.regles-vue img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.regles-vue-vide { background: none; }
 /* « Voir en 3D » : lien-bouton leger, a droite de la ligne, cible tactile de 44 px sur mobile. */
 .regles-voir {
   flex: 0 0 auto; white-space: nowrap; min-height: 36px; padding: 0 8px; border: 0; border-radius: 6px; background: none;
@@ -103,6 +107,7 @@ body.regles-retour-actif #collisionMaquetteToggles { top: 60px; }
   .regles-fond.sans-anim .regles-carte { transition: none; }
   .regles-carte .msg-croix { top: calc(4px + env(safe-area-inset-top)); right: 4px; width: 44px; height: 44px; }
   .regles-carte :is(.msg-fantome, .msg-primaire) { min-height: 44px; }
+  .regles-vue { width: 56px; height: 42px; }
   .regles-voir { min-height: 44px; min-width: 44px; }
   .regles-barre { min-height: 44px; }
   .regles-actions { border-top: 1px solid var(--border); padding-top: 12px; margin-top: 0; }
