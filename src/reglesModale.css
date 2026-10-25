@@ -111,3 +111,7 @@ body.regles-retour-actif #collisionMaquetteToggles { top: 60px; }
 @media (max-width: 768px) and (prefers-reduced-motion: reduce) {
   .regles-carte { transition: none; }
 }
+
+/* Regle d'affichage (23/10) : pas de case a cocher, le compteur et les cartes se calent sur le bord gauche de la liste. */
+.regles-barre-simple { margin: 0; padding-left: 8px; cursor: default; }
+.regles-choix-simple { cursor: default; }

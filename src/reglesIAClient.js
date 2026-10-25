@@ -19,7 +19,7 @@ function regleAcceptable(regle, valeurs) {
   return regle.filtre.criteres.every((c) => (valeurs[LISTE_DU_CHAMP[c.champ]] || []).includes(c.contient));
 }
 
-export async function demanderRegle({ phrase, valeurs }, { fetch: appel = (...a) => globalThis.fetch(...a), delaiMs = DELAI_MS, url = "/api/regle" } = {}) {
+export async function demanderRegle({ phrase, valeurs, aujourdhui }, { fetch: appel = (...a) => globalThis.fetch(...a), delaiMs = DELAI_MS, url = "/api/regle" } = {}) {
   const controleur = new AbortController();
   const minuteur = setTimeout(() => controleur.abort(), delaiMs);
   try {
@@ -27,7 +27,7 @@ export async function demanderRegle({ phrase, valeurs }, { fetch: appel = (...a)
       method: "POST",
       headers: { "content-type": "application/json" },
       credentials: "omit",
-      body: JSON.stringify({ phrase, valeurs }),
+      body: JSON.stringify(aujourdhui ? { phrase, valeurs, aujourdhui } : { phrase, valeurs }),
       signal: controleur.signal
     });
     let corps;

@@ -4,6 +4,9 @@ import { recolteVues } from "./tools/viteRecolteVues.js";
 import { relaisIA } from "./tools/viteRelaisIA.js";
 
 export default defineConfig({
+  // Serveur de dev (24/10) : plus de rechargement automatique de la page quand un fichier change. Vite ne pousse plus rien au navigateur
+  // (hmr: false coupe le canal WebSocket), les fichiers modifies sont servis a jour au rafraichissement manuel de la page.
+  server: { hmr: false },
   plugins: [
     // Serveur de dev seulement : recolte des vues 3D de la messagerie (voir tools/viteRecolteVues.js).
     recolteVues(),

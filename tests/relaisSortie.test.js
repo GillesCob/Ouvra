@@ -109,3 +109,63 @@ test("sortie absente ou d'un autre type : rejetee", () => {
 test("relecture vide : rejetee (la relecture est obligatoire)", () => {
   assert.equal(convertirSortie(sortie({ relecture: "  " }), valeurs, phrase).ok, false);
 });
+
+// ---------- 23/10 : action « afficher », filtre par etat, criteres de date ----------
+const afficher = (surcharge = {}) => sortie({ action: { champ: "afficher" }, ...surcharge });
+const dateDepuis = (surcharge = {}) => ({ evenement: "message", presence: "aucun", periode: { type: "depuis", nombre: 3, unite: "jour" }, ...surcharge });
+
+test("afficher : regle sans valeur d'action, au format du moteur", () => {
+  const r = convertirSortie(afficher({ relecture: "Afficher les collisions qui impliquent une gaine." }), valeurs, phrase);
+  assert.equal(r.ok, true, r.message);
+  assert.deepEqual(r.regle.action, { champ: "afficher" });
+  assert.equal(validerRegle(r.regle, { priorite: valeurs.priorite, statut: valeurs.statut }).ok, true);
+});
+
+test("afficher : une valeur d'action eventuelle est ignoree, pas rejetee", () => {
+  const r = convertirSortie(afficher({ action: { champ: "afficher", valeur: "n'importe quoi" } }), valeurs, phrase);
+  assert.equal(r.ok, true);
+  assert.deepEqual(r.regle.action, { champ: "afficher" });
+});
+
+test("filtre par etat seul : accepte, valeurs canoniques, champs nuls retires", () => {
+  const r = convertirSortie(afficher({ criteres: [], etat: { priorite: "Urgente", statut: null } }), valeurs, phrase);
+  assert.equal(r.ok, true, r.message);
+  assert.deepEqual(r.regle.filtre.etat, { priorite: "urgente" });
+  assert.equal(r.regle.filtre.criteres.length, 0);
+  assert.equal(validerRegle(r.regle, { priorite: valeurs.priorite, statut: valeurs.statut }).ok, true);
+});
+
+test("etat avec une valeur inventee : rejete ; etat aux deux champs nuls compte pour rien", () => {
+  assert.equal(convertirSortie(afficher({ criteres: [], etat: { priorite: "critique", statut: null } }), valeurs, phrase).ok, false);
+  assert.equal(convertirSortie(afficher({ criteres: [], etat: { priorite: null, statut: null } }), valeurs, phrase).ok, false); // plus aucun filtre
+});
+
+test("filtre par date seul : accepte, rendu au format du moteur", () => {
+  const r = convertirSortie(afficher({ criteres: [], dates: [dateDepuis()] }), valeurs, phrase);
+  assert.equal(r.ok, true, r.message);
+  assert.deepEqual(r.regle.filtre.dates, [dateDepuis()]);
+  assert.equal(validerRegle(r.regle, { priorite: valeurs.priorite, statut: valeurs.statut }).ok, true);
+});
+
+test("date mal formee : rejetee (unite inconnue, date impossible, fin avant debut)", () => {
+  const mauvais = [
+    dateDepuis({ periode: { type: "depuis", nombre: 3, unite: "heure" } }),
+    dateDepuis({ periode: { type: "avant", date: "2026-02-30" } }),
+    dateDepuis({ periode: { type: "entre", du: "2026-10-18", au: "2026-10-15" } })
+  ];
+  for (const d of mauvais) assert.equal(convertirSortie(afficher({ criteres: [], dates: [d] }), valeurs, phrase).ok, false);
+});
+
+test("date, etat et criteres d'element se combinent", () => {
+  const r = convertirSortie(sortie({ etat: { priorite: null, statut: "nouveau" }, dates: [dateDepuis()] }), valeurs, phrase);
+  assert.equal(r.ok, true, r.message);
+  assert.equal(r.regle.filtre.criteres.length, 1);
+  assert.deepEqual(r.regle.filtre.etat, { statut: "nouveau" });
+  assert.equal(r.regle.filtre.dates.length, 1);
+});
+
+test("changement de priorite avec un filtre de date : accepte", () => {
+  const r = convertirSortie(sortie({ criteres: [], dates: [dateDepuis()], action: { champ: "priorite", valeur: "urgente" } }), valeurs, phrase);
+  assert.equal(r.ok, true, r.message);
+  assert.deepEqual(r.regle.action, { champ: "priorite", valeur: "urgente" });
+});

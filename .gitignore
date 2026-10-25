@@ -6,3 +6,7 @@ tools/clash-test/venv
 .env.*
 .vercel
 !.env.example
+.usage
+
+# Plans de test personnels (2D -> 3D) : jamais commites ni deployes
+public/plan3d-local/

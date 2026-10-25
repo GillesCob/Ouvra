@@ -28,7 +28,7 @@ export function codeDeErreur(erreur) {
   return "ia_indisponible";
 }
 
-export async function traduire({ phrase, valeurs }, { client }) {
+export async function traduire({ phrase, valeurs, aujourdhui }, { client }) {
   const aucunCritere = !(valeurs.typesIfc.length || valeurs.niveaux.length || valeurs.maquettes.length || valeurs.noms.length);
   if (aucunCritere) {
     return { ok: true, resultat: "critere_introuvable", message: "Aucune maquette chargée ne permet de définir un critère pour le moment." };
@@ -42,7 +42,7 @@ export async function traduire({ phrase, valeurs }, { client }) {
         model: MODELE,
         max_tokens: MAX_JETONS,
         system: CONSIGNE,
-        messages: [{ role: "user", content: messageUtilisateur(phrase, valeurs) }],
+        messages: [{ role: "user", content: messageUtilisateur(phrase, valeurs, aujourdhui) }],
         // Traduction courte : pas de reflexion (la latence compte), effort bas. between_tools est accepte a effort high ou moins.
         thinking: { type: "between_tools" },
         output_config: { effort: "low", format: jsonSchemaOutputFormat(construireSchemaJson(valeurs), { transform: false }) }

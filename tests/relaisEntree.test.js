@@ -105,3 +105,19 @@ test("aucun champ inconnu ne traverse (la geometrie ne passe jamais)", () => {
   assert.equal(r.valeurs.geometrie, undefined);
   assert.equal(r.points, undefined);
 });
+
+// ---------- 23/10 : date du jour envoyee par la page (sert a resoudre « depuis 3 jours », « le 15 octobre ») ----------
+test("date du jour valide : conservee", () => {
+  const r = validerEntree(corps({ aujourdhui: "2026-10-23" }));
+  assert.equal(r.ok, true);
+  assert.equal(r.aujourdhui, "2026-10-23");
+});
+
+test("date du jour absente ou invalide : repli sur la date du serveur, jamais un refus", () => {
+  const maintenant = new Date(Date.UTC(2026, 9, 24, 8, 0, 0));
+  for (const aujourdhui of [undefined, "", "23/10/2026", "2026-13-40", 12, "2026-02-30"]) {
+    const r = validerEntree(corps({ aujourdhui }), maintenant);
+    assert.equal(r.ok, true, String(aujourdhui));
+    assert.equal(r.aujourdhui, "2026-10-24", String(aujourdhui));
+  }
+});

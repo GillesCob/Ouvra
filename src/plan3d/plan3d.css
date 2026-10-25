@@ -1,0 +1,184 @@
+/* Page « 2D -> 3D » (25/10). Tout est prefixe p3d-. Une seule vue a la fois (Plan 2D ou Maquette 3D) qui occupe tout l'ecran, des cartes flottantes
+   par-dessus, aucun defilement de la page : tout est visible sans descendre. Langage visuel repris de l'application (variables de :root, couleurs d'etat
+   deja utilisees : orange #f0883e, rouge #f85149). Le plan est dessine sur un fond « papier » clair pour que le PDF importe, blanc, s'y fonde. */
+
+#view-plan3d { overflow: hidden; }
+#plan3dRoot { flex: 1; min-width: 0; min-height: 0; height: 100%; }
+
+.p3d-page { box-sizing: border-box; display: flex; flex-direction: column; width: 100%; height: 100%; color: var(--text); background: var(--bg); }
+.p3d-page *, .p3d-page *::before, .p3d-page *::after { box-sizing: border-box; }
+.p3d-page [hidden] { display: none !important; }
+
+/* ---- En-tete ---- */
+.p3d-entete { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; padding: 10px 16px; border-bottom: 1px solid var(--border); }
+.p3d-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+
+/* Boutons et champs */
+.p3d-btn, .p3d-select {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 36px; padding: 0 12px;
+  background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 8px;
+  font: inherit; font-size: 12.5px; font-weight: 600; line-height: 1; cursor: pointer; white-space: nowrap;
+  -webkit-tap-highlight-color: transparent; transition: border-color 0.18s ease, background-color 0.18s ease, color 0.18s ease;
+}
+.p3d-select { padding: 0 8px; }
+.p3d-btn-fort { background: var(--accent); border-color: var(--accent); color: #fff; }
+.p3d-btn-carre { width: 36px; padding: 0; }
+.p3d-btn-danger { color: #f85149; border-color: rgba(248, 81, 73, 0.5); margin-top: 10px; }
+.p3d-btn:disabled { opacity: 0.45; cursor: default; }
+.p3d-btn[aria-pressed="true"]:not(.p3d-btn-carre) { border-color: var(--accent); }
+.p3d-btn-carre[aria-pressed="true"] { background: rgba(92, 122, 95, 0.3); border-color: var(--accent); }
+.p3d-lien { background: none; border: 0; padding: 6px 4px; color: var(--muted); font: inherit; font-size: 12.5px; text-decoration: underline; cursor: pointer; }
+.p3d-icone { width: 17px; height: 17px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.p3d-page button:focus-visible, .p3d-page select:focus-visible, .p3d-page input:focus-visible, .p3d-svg:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+@media (hover: hover) and (pointer: fine) {
+  .p3d-btn:not(:disabled):hover, .p3d-select:hover { border-color: var(--accent); }
+}
+
+.p3d-champ { display: flex; flex-direction: column; gap: 4px; min-width: 0; font-size: 11.5px; color: var(--muted); }
+.p3d-champ input, .p3d-champ select { width: 100%; min-height: 34px; padding: 0 8px; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 8px; font: inherit; font-size: 13px; }
+.p3d-champs { display: grid; grid-template-columns: 1fr 1fr; align-items: end; gap: 10px; } /* align-items: les champs restent alignes par le bas meme si une etiquette passe sur deux lignes */
+.p3d-champs .p3d-champ:first-child:nth-last-child(odd) { grid-column: 1 / -1; }
+
+/* ---- Scene : une vue a la fois ---- */
+.p3d-scene { position: relative; flex: 1; min-height: 0; }
+.p3d-etage, .p3d-surface { position: absolute; inset: 0; }
+
+/* Cartes flottantes (proprietes du plan, informations de la maquette) */
+.p3d-carte {
+  position: absolute; top: 12px; right: 12px; z-index: 6; width: 300px; max-height: calc(100% - 24px); overflow-y: auto; overscroll-behavior: contain;
+  padding: 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+}
+.p3d-carte-titre { margin: 0 0 10px; font-size: 13px; font-weight: 700; }
+.p3d-note { margin: 10px 0 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
+
+/* Outils du plan, astuce, etat vide */
+.p3d-outils {
+  position: absolute; top: 12px; left: 12px; z-index: 5; display: flex; align-items: center; gap: 2px; max-width: calc(100% - 336px); overflow-x: auto;
+  padding: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 6px 24px rgba(0, 0, 0, 0.25); scrollbar-width: none;
+}
+.p3d-outils::-webkit-scrollbar { display: none; }
+.p3d-outil {
+  display: inline-flex; align-items: center; gap: 6px; flex: none; min-height: 34px; padding: 0 10px; background: none; color: var(--text); border: 0; border-radius: 8px;
+  font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: background-color 0.15s ease;
+}
+.p3d-outil-carre { width: 34px; padding: 0; justify-content: center; }
+.p3d-outil { position: relative; z-index: 1; }
+/* Outils exclusifs : la pastille (ci-dessous) montre le choix, le bouton ne change que de couleur de texte, comme les onglets des Discussions. */
+.p3d-outil-mode { color: var(--muted); transition: color 0.3s ease; }
+.p3d-outil-mode[aria-pressed="true"] { color: var(--text); }
+/* Bouton « IA » (meme format que sur les autres pages) : un libelle texte, a part des outils exclusifs. */
+.p3d-outil-ia { margin: 0 2px 0 6px; padding: 0 14px; border: 1px solid var(--border); font-weight: 700; }
+/* Bandeau de verification de la demande IA (plan deja modifie) */
+.p3d-bandeau { position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); z-index: 8; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; width: min(760px, calc(100% - 24px)); padding: 12px 16px; background: var(--surface); border: 1px solid var(--accent); border-radius: 12px; box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35); }
+.p3d-bandeau-question { margin: 0; font-size: 13px; font-weight: 700; }
+.p3d-bandeau-texte { margin: 0; flex: 1 1 260px; color: var(--muted); font-size: 13px; line-height: 1.5; }
+.p3d-bandeau-boutons { display: flex; gap: 8px; }
+.p3d-outils-thumb {
+  position: absolute; top: 0; left: 0; width: 0; height: 0; z-index: 0; border-radius: 8px; pointer-events: none; box-sizing: border-box;
+  background: color-mix(in srgb, var(--accent) 24%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 60%, transparent);
+  transition: transform 0.3s ease, width 0.3s ease, height 0.3s ease;
+}
+@media (prefers-reduced-motion: reduce) { .p3d-outils-thumb, .p3d-outil-mode { transition: none; } }
+/* Boutons a bascule (plan de base, vitesse) : etat actif en teinte douce, meme famille que la pastille. */
+.p3d-outil:not(.p3d-outil-mode)[aria-pressed="true"] { background: color-mix(in srgb, var(--accent) 24%, transparent); }
+.p3d-outil:disabled { opacity: 0.35; cursor: default; }
+@media (hover: hover) and (pointer: fine) { .p3d-outil:not(:disabled):not([aria-pressed="true"]):hover { background: rgba(255, 255, 255, 0.08); } }
+.p3d-separateur { width: 1px; height: 22px; margin: 0 4px; background: var(--border); flex: none; }
+.p3d-vitesse { position: absolute; left: 12px; bottom: 12px; z-index: 7; width: 240px; padding: 12px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35); }
+.p3d-vitesse-titre { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; font-size: 12.5px; font-weight: 600; }
+.p3d-vitesse-titre input { grid-column: 1 / -1; width: 100%; }
+.p3d-vitesse .p3d-vitesse-titre + .p3d-vitesse-titre { margin-top: 12px; }
+.p3d-vitesse-valeur { color: var(--muted); font-weight: 500; }
+.p3d-type-mur { position: absolute; top: 62px; left: 12px; z-index: 5; display: inline-flex; gap: 4px; padding: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; }
+.p3d-puce { min-height: 28px; padding: 0 12px; background: none; color: var(--muted); border: 0; border-radius: 7px; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+.p3d-puce[aria-pressed="true"] { background: var(--accent); color: #fff; }
+.p3d-astuce {
+  position: absolute; left: 12px; bottom: 12px; z-index: 5; max-width: min(560px, calc(100% - 336px)); margin: 0; padding: 8px 12px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 10px; color: var(--muted); font-size: 12.5px; line-height: 1.5; box-shadow: 0 6px 24px rgba(0, 0, 0, 0.25);
+}
+.p3d-astuce-erreur { color: #f85149; border-color: rgba(248, 81, 73, 0.5); }
+.p3d-vide { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 4; display: flex; flex-direction: column; align-items: center; gap: 8px; max-width: 360px; padding: 24px; text-align: center; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; box-shadow: 0 10px 32px rgba(0, 0, 0, 0.3); }
+.p3d-vide-titre { margin: 0; font-size: 16px; font-weight: 700; }
+.p3d-vide-texte { margin: 0 0 8px; color: var(--muted); font-size: 13px; line-height: 1.55; }
+
+/* Maquette 3D */
+
+/* Informations de l'element clique */
+.p3d-infos-sous-titre { margin: 14px 0 6px; padding-top: 12px; border-top: 1px solid var(--border); font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.p3d-info-ligne { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.3fr) auto; align-items: center; gap: 6px; margin-bottom: 6px; font-size: 12.5px; }
+.p3d-info-cle { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); }
+.p3d-info-ajout { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
+.p3d-info-ajout .p3d-btn { grid-column: 1 / -1; }
+.p3d-info-valeur, .p3d-info-nouvelle-cle, .p3d-info-nouvelle-valeur { min-width: 0; min-height: 32px; padding: 0 8px; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 8px; font: inherit; font-size: 12.5px; }
+.p3d-info-retirer { width: 28px; height: 28px; background: none; color: var(--muted); border: 0; border-radius: 6px; font-size: 18px; line-height: 1; cursor: pointer; }
+@media (hover: hover) and (pointer: fine) { .p3d-info-retirer:hover { color: #f85149; } }
+
+/* ---- Le plan : rendu d'architecte sur fond papier ---- */
+.p3d-svg { display: block; width: 100%; height: 100%; background: #f4f2ec; touch-action: none; user-select: none; -webkit-user-select: none; }
+.p3d-fond { pointer-events: none; }
+.p3d-piece { fill-opacity: 0.2; stroke: none; cursor: pointer; }
+.p3d-piece.sel { fill-opacity: 0.42; stroke: #f0883e; stroke-width: 2.5; vector-effect: non-scaling-stroke; }
+.p3d-piece-etiquette { pointer-events: none; }
+.p3d-piece-etiquette text { font-family: inherit; paint-order: stroke; stroke: #f4f2ec; stroke-linejoin: round; } /* epaisseur du halo : posee par editeur2d.js, en metres */
+.p3d-piece-nom { fill: #2a2a27; font-weight: 700; }
+.p3d-piece-surface { fill: #5d5d58; font-weight: 500; }
+.p3d-mur { stroke: none; cursor: pointer; }
+.p3d-mur.exterieur { fill: #1d1d1b; }
+.p3d-mur.interieur { fill: #4a4a46; }
+.p3d-mur.sel { stroke: #f0883e; stroke-width: 2.5; vector-effect: non-scaling-stroke; }
+.p3d-coupe { fill: #f4f2ec; stroke: none; pointer-events: none; }
+.p3d-trait { stroke: #1d1d1b; stroke-width: 1; vector-effect: non-scaling-stroke; pointer-events: none; }
+.p3d-vitrage { stroke: #5b8db8; }
+.p3d-coulissant { stroke-width: 1.4; }
+.p3d-vantail { stroke-width: 1.6; }
+.p3d-arc { stroke-width: 0.8; stroke-dasharray: 4 3; }
+.p3d-ouv { fill: transparent; stroke: none; cursor: pointer; }
+.p3d-ouv.sel { fill: rgba(240, 136, 62, 0.25); stroke: #f0883e; stroke-width: 2; vector-effect: non-scaling-stroke; }
+.p3d-noeud-zone { fill: transparent; cursor: grab; }
+.p3d-poignee { fill: #fff; stroke: #f0883e; stroke-width: 1.5; vector-effect: non-scaling-stroke; cursor: grab; }
+.p3d-poignee.repere { fill: #f0883e; stroke: none; }
+.p3d-poignee.sel { fill: #f0883e; }
+.p3d-cote { cursor: pointer; }
+.p3d-cote-zone { fill: transparent; }
+.p3d-cote-trait { stroke: #6b6b66; stroke-width: 0.8; vector-effect: non-scaling-stroke; }
+.p3d-cote text { fill: #3a3a36; font-family: inherit; font-weight: 600; paint-order: stroke; stroke: #f4f2ec; stroke-linejoin: round; }
+.p3d-brouillon { stroke: #f0883e; stroke-dasharray: 6 4; vector-effect: non-scaling-stroke; }
+.p3d-brouillon-piece { stroke-dasharray: 6 4; }
+.p3d-calibre { stroke: #d63384; vector-effect: non-scaling-stroke; }
+.p3d-calibre-pt { fill: #d63384; }
+.p3d-accroche { fill: none; stroke: #f0883e; stroke-width: 2; vector-effect: non-scaling-stroke; }
+
+/* ---- Ecrans etroits : les cartes deviennent des volets en bas, les outils passent en icones ---- */
+@media (max-width: 1100px) {
+  .p3d-outil:not(.p3d-outil-carre):not(.p3d-outil-ia) span { display: none; }
+  .p3d-outil:not(.p3d-outil-carre):not(.p3d-outil-ia) { width: 36px; padding: 0; justify-content: center; }
+}
+@media (max-width: 820px) {
+  .p3d-entete { padding: 8px 12px; }
+  .p3d-actions .p3d-btn span { display: none; }
+  .p3d-actions .p3d-btn:not(.p3d-btn-carre) { width: 36px; padding: 0; }
+  .p3d-actions { gap: 6px; }
+  .p3d-outils { max-width: calc(100% - 24px); }
+  .p3d-carte { top: auto; bottom: 12px; left: 12px; right: 12px; width: auto; max-height: 48%; }
+  .p3d-carte-plan[data-sel="non"] { display: none; }
+  .p3d-astuce { top: 62px; bottom: auto; max-width: calc(100% - 24px); }
+  .p3d-type-mur { top: 110px; }
+  .p3d-vide { left: 50%; width: calc(100% - 24px); }
+}
+
+/* ---- Mobile (a tester sur telephone) ----
+   Ecran etroit : la barre d'outils passe sur deux lignes au lieu de deborder (Recadrer et Vitesse sortaient de l'ecran). Les chips et l'erreur descendent sous les deux lignes.
+   Doigt (pointer: coarse) : cibles d'au moins 44 px (Apple HIG), et champs a 16 px, sinon iOS zoome la page a chaque focus. */
+@media (max-width: 820px) {
+  .p3d-outils { flex-wrap: wrap; overflow: visible; }
+  .p3d-type-mur { top: 112px; }
+  .p3d-astuce { top: 112px; }
+}
+@media (pointer: coarse) {
+  .p3d-btn, .p3d-select, .p3d-outil, .p3d-puce { min-height: 44px; }
+  .p3d-btn-carre, .p3d-outil-carre, .p3d-actions .p3d-btn, .p3d-outil:not(.p3d-outil-carre) { min-width: 44px; }
+  .p3d-actions .p3d-btn:not(.p3d-btn-carre), .p3d-outil:not(.p3d-outil-carre) { width: auto; }
+  .p3d-outils .p3d-outil { min-height: 44px; }
+  .p3d-champ input, .p3d-champ select, .p3d-info-valeur, .p3d-info-nouvelle-cle, .p3d-info-nouvelle-valeur { min-height: 44px; font-size: 16px; }
+  .p3d-info-retirer { width: 44px; height: 44px; }
+}

@@ -49,6 +49,8 @@
         <button type="button" class="nav-link" data-view="viewer" data-persona="presentation-globale bim-manager synthese be projeteur externe">Viewer</button>
         <button type="button" class="nav-link" data-view="collision" data-persona="presentation-globale bim-manager synthese be">Collision</button>
         <button type="button" class="nav-link" data-view="discussions" data-persona="presentation-globale bim-manager synthese be">Discussions</button>
+        <button type="button" class="nav-link" data-view="quantitatif" data-persona="presentation-globale bim-manager synthese be">Quantitatif</button>
+        <button type="button" class="nav-link" data-view="plan3d" data-persona="presentation-globale bim-manager synthese be">2D → 3D</button>
         <button type="button" class="nav-link" data-view="projeteur" data-persona="projeteur" hidden>Todo</button>
         <button type="button" class="nav-link" data-view="admin" data-persona="bim-manager" hidden>Admin</button>
       </nav>
@@ -287,13 +289,21 @@
             <!-- Angle de vue d'une collision (20/10) : visibles seulement en vue Collision, collision selectionnee. -->
             <button id="saveAngleBtn" hidden title="Enregistrer l'angle de vue actuel comme angle officiel de cette collision">Enregistrer cet angle</button>
             <button id="recenterBtn" title="Recentrer la caméra sur la maquette">Recentrer</button>
+            <!-- Plan 2D -> 3D (25/10) : vue de dessus sans perspective, visible seulement quand la maquette du plan est affichee (src/main.js, voirPlanDansViewer). -->
+            <button type="button" id="vueDessusBtn" hidden aria-pressed="false" title="Vue à plat, de dessus, sans perspective : le plan tel qu'il est dessiné">Vue à plat</button>
             <button id="newDiscussionBtn" title="Ouvrir une nouvelle discussion à partir de ce point de vue">Nouvelle discussion</button>
+            <!-- Viewer par commande (24/10) : « IA » pilote l'affichage par une phrase ecrite ou dictee (src/commandesIA.js). Visibles dans la page Viewer seulement (cf commandesIA.css). -->
+            <button type="button" id="commandesResetBtn" title="Remettre toute la maquette à l'affichage normal" hidden>Tout réafficher</button>
           </div>
 
           <div id="coupeToolbar">
             <button id="coupeBtn" title="Cliquez ensuite sur une surface de la maquette pour y créer une coupe">Créer une coupe</button>
             <button id="coupeInvertBtn" title="Inverser le côté coupé" hidden>Inverser la coupe</button>
             <button id="coupeToggleVisibilityBtn" title="Afficher ou masquer le rectangle/poignées du plan de coupe" hidden>Masquer le plan de coupe</button>
+            <!-- Viewer par commande (24/10) : « IA » a cote de « Creer une coupe », meme format (cf commandesIA.css). -->
+            <button type="button" id="commandesIABtn" aria-label="Commande par l'IA" title="Piloter l'affichage par une phrase, écrite ou dictée">IA</button>
+            <!-- Zones nommees (24/10) : un volume nomme que « Affiche la zone ... » isole ensuite (src/commandesZonesUI.js). -->
+            <button type="button" id="commandesZoneBtn" title="Définir une zone nommée (volume) que l'IA pourra afficher">Zone</button>
           </div>
           <!-- Choix apres "Creer une coupe" (20/10) : sur une surface de la maquette, ou horizontale. -->
           <div id="coupeChoixBar" hidden>
@@ -541,6 +551,16 @@
            synthese" cote Ouvra (hors perimetre, specifique aux donnees
            client d'IES) : les instructions sont creees directement depuis un
            fil Collision/Discussions ouvert, jamais depuis une reunion. -->
+      <!-- Quantitatif (24/10) : page construite par src/quantitatifPage.js dans #quantitatifRoot (demande en langage naturel, tableau de quantites). -->
+      <div id="view-quantitatif" class="view" hidden>
+        <div id="quantitatifRoot"></div>
+      </div>
+
+      <!-- 2D -> 3D (25/10) : page construite par src/plan3d/plan3dPage.js dans #plan3dRoot (import d'un plan PDF ou PNG, plan 2D editable, maquette 3D, export IFC). Chargee a la premiere ouverture. -->
+      <div id="view-plan3d" class="view" hidden>
+        <div id="plan3dRoot"></div>
+      </div>
+
       <div id="view-projeteur" class="view" hidden>
         <div id="projeteurListPane">
           <h2>Todo</h2>

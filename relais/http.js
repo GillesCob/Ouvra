@@ -4,6 +4,7 @@
 
 import { validerEntree, CORPS_MAX } from "./entree.js";
 import { traduire } from "./traduire.js";
+import { enregistrerUsage } from "./journalUsage.js";
 import { creerLimiteur } from "./limite.js";
 
 export const MESSAGES = {
@@ -38,9 +39,46 @@ function visiteur(request) {
   return brut.split(",")[0].trim() || "inconnu";
 }
 
-export function creerGestionnaire({ client, limites = {}, maintenant = Date.now } = {}) {
+// Journal d'usage durable (relais/journalUsage.js) : le client est enveloppe pour mesurer CHAQUE appel au modele (duree, jetons, y compris les refus et
+// sorties invalides qui consomment des jetons) sans modifier les modules traduire*. Une exception ici ne casse jamais la reponse.
+const ROUTES = { "ia-regles": "regles", "ia-commandes": "commande", "ia-discussions": "discussions", "ia-quantitatifs": "quantitatif", "ia-plan": "plan" };
+
+function clientMesure(base, appels) {
+  if (!base || !base.messages || typeof base.messages.parse !== "function") return base;
+  const messages = Object.create(base.messages);
+  messages.parse = async (parametres, options) => {
+    const debut = Date.now();
+    try {
+      const reponse = await base.messages.parse(parametres, options);
+      appels.push({ modele: parametres && parametres.model, dureeMs: Date.now() - debut, usage: reponse && reponse.usage ? { entree: reponse.usage.input_tokens, sortie: reponse.usage.output_tokens } : undefined });
+      return reponse;
+    } catch (erreur) {
+      appels.push({ modele: parametres && parametres.model, dureeMs: Date.now() - debut });
+      throw erreur;
+    }
+  };
+  return Object.create(base, { messages: { value: messages } });
+}
+
+// valider(corps) et traduire(entree, { client }) sont ceux de /api/regle par defaut ; /api/commande (api/commande.js) passe les siens.
+// etiquette : prefixe des lignes de journal (jamais la phrase de l'utilisateur).
+// etapeJournal(entree) : etape a inscrire au journal d'usage (Discussions : comprendre / analyser / rapport), null par defaut. journal : injecte par les tests.
+export function creerGestionnaire({ client, limites = {}, maintenant = Date.now, valider = validerEntree, traduire: traduireEntree = traduire, etiquette = "ia-regles", etapeJournal = () => null, journal = enregistrerUsage } = {}) {
   const parMinute = creerLimiteur({ max: limites.parMinute ?? 5, fenetreMs: 60 * 1000, maintenant });
   const parHeure = creerLimiteur({ max: limites.parHeure ?? 30, fenetreMs: 60 * 60 * 1000, maintenant });
+
+  function journaliser(appels, resultat, entree) {
+    try {
+      for (const appel of appels) {
+        journal({
+          route: ROUTES[etiquette] || etiquette, etape: etapeJournal(entree), resultat: resultat.ok ? resultat.resultat : null, usage: appel.usage, dureeMs: appel.dureeMs,
+          modele: appel.modele, code: resultat.ok ? null : resultat.code, phraseLongueur: typeof entree.phrase === "string" ? entree.phrase.length : null
+        });
+      }
+    } catch (erreur) {
+      console.warn("[usage] journal d'usage ignore (" + (erreur && erreur.code ? erreur.code : "erreur") + ")");
+    }
+  }
 
   return async function gerer(request) {
     if (request.method !== "POST") return reponse(405, { ok: false, code: "methode", message: "Méthode non permise." }, { allow: "POST" });
@@ -64,12 +102,14 @@ export function creerGestionnaire({ client, limites = {}, maintenant = Date.now 
       return echec("entree_invalide");
     }
 
-    const entree = validerEntree(corps);
+    const entree = valider(corps);
     if (!entree.ok) return echec("entree_invalide");
 
-    const resultat = await traduire(entree, { client: client() });
+    const appels = [];
+    const resultat = await traduireEntree(entree, { client: clientMesure(client(), appels) });
+    journaliser(appels, resultat, entree);
     if (!resultat.ok) return echec(resultat.code);
-    if (resultat.usage) console.log("[ia-regles] jetons entree " + resultat.usage.entree + " sortie " + resultat.usage.sortie + " resultat " + resultat.resultat);
+    if (resultat.usage) console.log("[" + etiquette + "] jetons entree " + resultat.usage.entree + " sortie " + resultat.usage.sortie + " resultat " + resultat.resultat);
     return reponse(200, resultat);
   };
 }
