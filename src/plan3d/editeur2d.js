@@ -373,7 +373,7 @@ export function creerEditeur2d({ conteneur, surChangement, surSelection, surCali
     if (doigts.size > 2) return;
     const p = enMetres(e);
     const cible = sur(e);
-    geste = { id: e.pointerId, depart: { x: e.clientX, y: e.clientY }, vueDepart: { ...vue }, deplace: false, cible, p0: p, noeud: null };
+    geste = { id: e.pointerId, depart: { x: e.clientX, y: e.clientY }, vueDepart: { ...vue }, deplace: false, cible, noeud: null };
     if (mode === "selection" && cible && cible.kind === "noeud") geste.noeud = cible.id;
   });
 
@@ -569,8 +569,7 @@ export function creerEditeur2d({ conteneur, surChangement, surSelection, surCali
     opaciteFond(v) { opaciteFond = v; dessiner(); },
     definirVitesseZoom(pourcent) { if (Number.isFinite(pourcent) && pourcent > 0) vitesseZoom = pourcent / 100; },
     opaciteMaquette(v) { opaciteMaquette = Math.min(Math.max(Number(v), 0), 1); dessiner(); },
-    afficherFond(v) { fondVisible = Boolean(v); dessiner(); },
-    detruire() { observateur.disconnect(); svg.remove(); }
+    afficherFond(v) { fondVisible = Boolean(v); dessiner(); }
   };
 }
 

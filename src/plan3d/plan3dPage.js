@@ -659,7 +659,7 @@ export function creerPlan3dPage({ racine, voirDansViewer = null }) {
   // Plan d'exemple : fichiers locaux de public/plan3d-local/ (ignores par git, donc absents d'un deploiement). Le lien n'apparait que s'ils repondent.
   fetch(EXEMPLE_JSON, { method: "HEAD" })
     .then((r) => { videExemple.hidden = !(r.ok && !(r.headers.get("content-type") || "").includes("text/html")); })
-    .catch(() => {});
+    .catch(() => { videExemple.hidden = true; }); // reseau coupe ou serveur sans ces fichiers : le lien reste cache
   videExemple.addEventListener("click", async () => {
     dire("Chargement de l'exemple…");
     try {
