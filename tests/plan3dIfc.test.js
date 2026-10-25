@@ -132,3 +132,11 @@ test("IFC : une porte coulissante est une IfcDoor SLIDING, sans changer le nombr
   assert.match(ifc, /IFCDOOR\([^\n]*\.DOOR\.,\.SLIDING_TO_LEFT\.,\$\)/);
   assert.equal(modifierOuverture(r.modele, r.id, { genre: "porte" }).ouvertures[0].genre, "porte");
 });
+
+test("revue 26/10 : texteStep encode un caractere hors plan de base en \\X4\\, reel refuse NaN et les valeurs astronomiques", () => {
+  assert.equal(texteStep("a\u{1F600}b"), "'a\\X4\\0001F600\\X0\\b'");
+  assert.equal(texteStep("é"), "'\\X2\\00E9\\X0\\'");
+  assert.throws(() => reel(NaN));
+  assert.throws(() => reel(1e21));
+  assert.equal(reel(2), "2.");
+});

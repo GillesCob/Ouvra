@@ -371,7 +371,6 @@ export function creerEditeur2d({ conteneur, surChangement, surSelection, surCali
       return;
     }
     if (doigts.size > 2) return;
-    const p = enMetres(e);
     const cible = sur(e);
     geste = { id: e.pointerId, depart: { x: e.clientX, y: e.clientY }, vueDepart: { ...vue }, deplace: false, cible, noeud: null };
     if (mode === "selection" && cible && cible.kind === "noeud") geste.noeud = cible.id;

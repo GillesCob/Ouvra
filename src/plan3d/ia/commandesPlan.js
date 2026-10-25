@@ -81,12 +81,13 @@ const ACTIONS = [
       P_PIECE, P_COTE, P_RANG,
       { nom: "largeur_cm", genre: "nombre", facultatif: true, description: "nouvelle largeur en centimètres, null si la phrase n'en parle pas" },
       { nom: "hauteur_cm", genre: "nombre", facultatif: true, description: "nouvelle hauteur en centimètres, null si la phrase n'en parle pas" },
-      { nom: "allege_cm", genre: "nombre", facultatif: true, description: "nouvelle allège (distance du sol au bas de l'ouverture) en centimètres, null si la phrase n'en parle pas" },
+      { nom: "allege_cm", genre: "nombre", facultatif: true, zeroPermis: true, description: "nouvelle allège (distance du sol au bas de l'ouverture) en centimètres, null si la phrase n'en parle pas" },
       { nom: "genre", genre: "enum", options: () => GENRES_OUVERTURE, facultatif: true, description: "porte, fenetre ou coulissante si la phrase change la nature de l'ouverture, sinon null" }
     ],
     resoudre: resoudreOuverture,
     appliquer(modele, cible, p) {
       const o = ouvertureDe(modele, cible.ouverture.id);
+      if (!o) return { ok: false, message: "Cette ouverture a déjà été retirée par une commande précédente." };
       const w = murDe(modele, o.mur);
       const L = longueurMur(modele, w);
       const genre = p.genre || o.genre;
@@ -170,6 +171,7 @@ const ACTIONS = [
     resoudre: resoudreOuverture,
     appliquer(modele, cible) {
       const o = ouvertureDe(modele, cible.ouverture.id);
+      if (!o) return { ok: false, message: "Cette ouverture a déjà été retirée par une commande précédente." };
       return { ok: true, modele: supprimerOuverture(modele, o.id), compteRendu: `${NOM_GENRE[o.genre]} n°${cible.ouverture.rang} supprimée, ${lieu(cible.piece, cible.cote)}.` };
     }
   },
@@ -181,7 +183,12 @@ const ACTIONS = [
     resoudre: resoudrePiece,
     appliquer(modele, cible, p) {
       if (cible.piece.nom === p.nouveau_nom) return { ok: false, message: "La pièce porte déjà ce nom." };
-      return { ok: true, modele: modifierPiece(modele, cible.piece.id, { nom: p.nouveau_nom }), compteRendu: `« ${cible.piece.libelle} » renommée « ${p.nouveau_nom} ».` };
+      const base = (nom) => nom.replace(/\s+\d+$/, "").toLowerCase();
+      const pris = (modele.pieces || []).find((x) => x.id !== cible.piece.id && base(x.nom) === base(p.nouveau_nom));
+      if (pris) return { ok: false, message: `Une autre pièce s'appelle déjà « ${pris.nom} ». Choisis un nom différent.` };
+      const apres = modifierPiece(modele, cible.piece.id, { nom: p.nouveau_nom });
+      const nom = apres.pieces.find((x) => x.id === cible.piece.id).nom;
+      return { ok: true, modele: apres, compteRendu: `« ${cible.piece.libelle} » renommée « ${nom} ».` };
     }
   },
   {
@@ -222,7 +229,7 @@ function verifierParametre(p, valeur, description) {
     case "piece": return typeof valeur === "string" && description.parLibelle.has(valeur) ? null : `Pièce inconnue : « ${valeur} ».`;
     case "cote": return COTES.includes(valeur) ? null : `Côté inconnu : « ${valeur} ».`;
     case "entier": return Number.isInteger(valeur) && valeur >= 1 ? null : "Le numéro d'ouverture doit être un entier à partir de 1.";
-    case "nombre": return typeof valeur === "number" && Number.isFinite(valeur) && valeur > 0 && valeur < 100000 ? null : `Le nombre « ${p.nom} » doit être positif.`;
+    case "nombre": return typeof valeur === "number" && Number.isFinite(valeur) && (valeur > 0 || (p.zeroPermis && valeur === 0)) && valeur < 100000 ? null : `Le nombre « ${p.nom} » doit être positif.`;
     case "texte": return typeof valeur === "string" && valeur.trim().length > 0 && valeur.trim().length <= 60 ? null : `Le texte « ${p.nom} » doit faire de 1 à 60 caractères.`;
     case "enum": return p.options().includes(valeur) ? null : `Valeur inconnue pour « ${p.nom} » : « ${valeur} ».`;
     default: return `Genre de paramètre inconnu : ${p.genre}.`;

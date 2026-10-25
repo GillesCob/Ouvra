@@ -23,7 +23,7 @@ function reponse(statut, corps, extra = {}) {
     headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", ...extra }
   });
 }
-const echec = (code, statut = STATUT[code]) => reponse(statut, { ok: false, code, message: MESSAGES[code] });
+const echec = (code, statut = STATUT[code], precision = null) => reponse(statut, { ok: false, code, message: precision || MESSAGES[code] });
 
 // Refus par la limite de requetes : le message dit quand reessayer (secondes, puis minutes) et l'en-tete retry-after le redit aux machines.
 function refusLimite(attenteMs) {
@@ -103,7 +103,8 @@ export function creerGestionnaire({ client, limites = {}, maintenant = Date.now,
     }
 
     const entree = valider(corps);
-    if (!entree.ok) return echec("entree_invalide");
+    // le validateur de chaque route sait pourquoi il refuse (plan trop grand, nom trop long...) : son message remplace le message generique
+    if (!entree.ok) return echec("entree_invalide", undefined, typeof entree.message === "string" && entree.message ? entree.message : null);
 
     const appels = [];
     const resultat = await traduireEntree(entree, { client: clientMesure(client(), appels) });

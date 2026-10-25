@@ -6632,7 +6632,7 @@ async function voirPlanDansViewer({ ifc, noms = [], surRetour }) {
     maquette.chargee = true;
     applyVisibility();
     renderMaquetteRows(maquettesList, MAQUETTES);
-    viewer.cameraFlight.jumpTo({ aabb: model.aabb });
+    if (planDansViewer && planDansViewer.maquette === maquette) viewer.cameraFlight.jumpTo({ aabb: model.aabb }); // l'utilisateur a pu quitter la vue pendant le chargement
   });
   model.on("error", (msg) => { console.warn("[plan 2D -> 3D] chargement de l'IFC : " + msg); });
   activateView("viewer");

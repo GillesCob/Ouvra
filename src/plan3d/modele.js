@@ -118,11 +118,26 @@ export function ajouterNoeud(modele, x, y) {
   return { modele: m, id };
 }
 
+// Apres un changement de geometrie (noeud deplace, mur raccourci) ou de mesure : toute ouverture reste DANS son mur. Largeur rognee a la longueur du mur, position
+// ramenee dans le mur. Sans cela, le modele devient invalide pour la 3D (« Ouverture hors du mur : O1 ») sans que rien ne dise comment corriger.
+const LARGEUR_OUVERTURE_MIN = 0.05;
+function recalerOuvertures(m, murIds = null) {
+  for (const o of m.ouvertures || []) {
+    if (murIds && !murIds.has(o.mur)) continue;
+    const w = murDe(m, o.mur);
+    const L = w ? longueurMur(m, w) : 0;
+    if (!(L > 0)) continue;
+    o.largeur = Math.max(Math.min(o.largeur, L), Math.min(LARGEUR_OUVERTURE_MIN, L));
+    o.decalage = Math.min(Math.max(o.decalage, 0), L - o.largeur);
+  }
+  return m;
+}
+
 export function deplacerNoeud(modele, id, x, y) {
   const m = copie(modele);
   const n = noeudDe(m, id);
   if (n) { n.x = x; n.y = y; }
-  return m;
+  return recalerOuvertures(m, new Set(m.murs.filter((w) => w.a === id || w.b === id).map((w) => w.id)));
 }
 
 // Ajoute un mur entre deux noeuds existants. Rend { modele, id } ou { modele, id: null } si le mur existe deja ou est degenere.
@@ -222,7 +237,7 @@ export function modifierOuverture(modele, id, champs) {
     if (nombreFini(champs[cle]) && champs[cle] >= (cle === "largeur" || cle === "hauteur" ? 0.05 : 0)) o[cle] = champs[cle];
   }
   if (GENRES.includes(champs.genre)) o.genre = champs.genre;
-  return m;
+  return recalerOuvertures(m, new Set([o.mur]));
 }
 
 export function supprimerOuverture(modele, id) {

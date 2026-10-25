@@ -324,7 +324,7 @@ export function creerPlan3dPage({ racine, voirDansViewer = null }) {
 
   // ---- Historique et diffusion du modele ----
   function enregistrer(m, fusion = false) {
-    if (m === modele) return;
+    if (m === modele || JSON.stringify(m) === JSON.stringify(modele)) return; // rien n'a change (valeur refusee, meme valeur ressaisie) : pas de pas d'historique vide
     if (!fusion) { pile.push(modele); if (pile.length > HISTORIQUE_MAX) pile.shift(); reprise = []; }
     modele = m;
     apresChangement();
@@ -438,6 +438,7 @@ export function creerPlan3dPage({ racine, voirDansViewer = null }) {
       const v = Number(c.input.value.replace(",", "."));
       if (c.input.value.trim() === "" || !Number.isFinite(v)) { c.input.value = String(lire()); return; }
       ecrire(v / 100);
+      c.input.value = String(lire()); // une valeur refusee par le modele n'est jamais laissee affichee
     };
     c.input.addEventListener("change", valider);
     c.input.addEventListener("keydown", (e) => { if (e.key === "Enter") { valider(); c.input.blur(); } });
@@ -696,6 +697,8 @@ export function creerPlan3dPage({ racine, voirDansViewer = null }) {
       const noms = (modele.pieces || []).map(planchePiece).filter(Boolean); // noms des pieces, poses au sol dans le Viewer
       const probleme = await voirDansViewer({ ifc: new TextEncoder().encode(genererIfc(modele)).buffer, noms });
       if (probleme) dire(probleme, true);
+    } catch (erreur) {
+      dire(`La maquette n'a pas pu être construite : ${erreur && erreur.message ? erreur.message : "erreur inattendue"}.`, true);
     } finally {
       majEtat();
     }

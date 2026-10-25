@@ -30,15 +30,15 @@ export function guidIfc(cle) {
   return sortie;
 }
 
-// Chaine STEP : apostrophe doublee, antislash double, caracteres hors ASCII en \X2\....\X0\ (UTF-16, 4 chiffres hexadecimaux par unite).
+// Chaine STEP : apostrophe doublee, antislash double, caracteres hors ASCII en \X2\....\X0\ (4 chiffres hexadecimaux par caractere du plan de base) ou \X4\........\X0\ au-dela (8 chiffres).
 export function texteStep(s) {
   const propre = String(s).replace(/\\/g, "\\\\").replace(/'/g, "''");
   let sortie = "";
   let hors = "";
   const fermer = () => { if (hors) { sortie += `\\X2\\${hors}\\X0\\`; hors = ""; } };
-  for (let i = 0; i < propre.length; i++) {
-    const code = propre.charCodeAt(i);
-    if (code >= 32 && code < 127) { fermer(); sortie += propre[i]; } else hors += code.toString(16).toUpperCase().padStart(4, "0");
+  for (const caractere of propre) {
+    const code = caractere.codePointAt(0);
+    if (code >= 32 && code < 127) { fermer(); sortie += caractere; } else if (code > 0xffff) { fermer(); sortie += `\\X4\\${code.toString(16).toUpperCase().padStart(8, "0")}\\X0\\`; } else hors += code.toString(16).toUpperCase().padStart(4, "0");
   }
   fermer();
   return `'${sortie}'`;
@@ -46,6 +46,8 @@ export function texteStep(s) {
 
 // Reel STEP : toujours avec un point decimal, jamais de notation exponentielle ni de -0.
 export function reel(n) {
+  if (!Number.isFinite(n)) throw new Error(`Valeur non finie dans le modele : ${n}`);
+  if (Math.abs(n) >= 1e15) throw new Error(`Valeur trop grande pour l'IFC : ${n}`);
   const v = Math.abs(n) < 1e-9 ? 0 : Math.round(n * 1e6) / 1e6;
   const t = String(v);
   return t.includes(".") ? t : `${t}.`;

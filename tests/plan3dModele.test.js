@@ -228,3 +228,22 @@ test("infos libres : ajout, remplacement, suppression, cles et valeurs invalides
   assert.equal(validerModele(casse).valide, false);
 });
 
+
+test("revue 26/10 : raccourcir un mur ou deplacer un angle garde les ouvertures dans leur mur ; une largeur trop grande est rognee", async () => {
+  const { creerModeleVide, ajouterNoeud, ajouterMur, ajouterOuverture, definirLongueur, deplacerNoeud, modifierOuverture, validerModele, murDe, longueurMur } = await import("../src/plan3d/modele.js");
+  let m = creerModeleVide();
+  const a = ajouterNoeud(m, 0, 0); m = a.modele;
+  const b = ajouterNoeud(m, 4, 0); m = b.modele;
+  const w = ajouterMur(m, a.id, b.id); m = w.modele;
+  const o = ajouterOuverture(m, w.id, "porte", 3); m = o.modele;
+  assert.equal(validerModele(m).valide, true);
+  const court = definirLongueur(m, w.id, 0.5);
+  assert.equal(validerModele(court).valide, true, JSON.stringify(validerModele(court).erreurs));
+  const ouv = court.ouvertures[0];
+  assert.ok(ouv.decalage >= 0 && ouv.decalage + ouv.largeur <= longueurMur(court, murDe(court, w.id)) + 1e-9);
+  const glisse = deplacerNoeud(m, b.id, 1, 0);
+  assert.equal(validerModele(glisse).valide, true);
+  const large = modifierOuverture(m, o.id, { largeur: 10 });
+  assert.equal(validerModele(large).valide, true);
+  assert.equal(large.ouvertures[0].largeur, 4);
+});
