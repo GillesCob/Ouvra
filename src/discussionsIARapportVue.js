@@ -1,19 +1,23 @@
-// Discussions par commande IA (24/10) : le panneau du rapport, une modale lisible sur ordinateur et sur mobile.
+// Discussions par commande IA (24/10, refait le 26/10) : la fenetre du recapitulatif, un MINI RAPPORT PARTAGEABLE lisible sur ordinateur et sur mobile.
 //
-// Il affiche le rapport verifie par le moteur (conclureRapport, src/discussionsIAMoteur.js) :
-//  - un titre, le nombre de messages analyses, et une mention rappelant que le rapport ne reprend que les messages fournis ;
-//  - des sections, des points ; un point que l'IA n'a pas pu confirmer porte la mention « non confirmé » ;
-//  - sous CHAQUE point, ses sources (auteur, date et heure, discussion) : un clic ferme le panneau et ouvre le message dans sa discussion ;
-//  - la chronologie des messages cites, avec l'extrait ;
-//  - « Copier » (texte brut, sources entre parentheses) et « Fermer ».
+// Il affiche le rapport verifie par le moteur (conclureRapport, src/discussionsIAMoteur.js) au FORMAT FIXE, toujours dans cet ordre :
+//  1. titre (avec le logo Ouvra, « Rapport du JJ/MM/AAAA » et le perimetre : messages analyses, discussions, periode) ;
+//  2. contexte ; 3. intervenants ; 4. desaccords exprimes ; 5. decision finale (« Aucune décision prise » quand rien n'est decide, jamais inventee) ;
+//  puis les sources : chaque bloc a ses boutons de source (auteur, date, discussion) : un clic ferme la fenetre et ouvre le message dans sa discussion.
+// Un bloc que l'IA n'a pas pu confirmer porte la mention « non confirmé ».
+// Boutons : « Copier » (texte brut, meme ordre), « Exporter en PDF » (PDF A4 genere dans le navigateur, bibliotheques chargees au clic), « Fermer ».
 // Tout texte venant des messages ou du modele passe par textContent : aucun HTML n'est jamais injecte.
 // Accessibilite : role « dialog » modal, nom = le titre du rapport, focus sur « Fermer » a l'ouverture, tabulation gardee dans le panneau, Echap ferme,
 // le focus revient la ou il etait.
 //
-// Module sans dependance a main.js : surSource(mk) ouvre le message (apres la fermeture du panneau) ; texteRapport(rapport) : version texte a copier.
+// Module sans dependance a main.js : surSource(mk) ouvre le message (apres la fermeture du panneau) ; texteRapport(rapport) : version texte a copier ;
+// exporterPdf(rapport) : telecharge le PDF (promesse).
 
 import "./reglesIA.css";
 import "./discussionsIA.css";
+import { dateDuRapport, perimetreDe, libelleDecision, nomsEnPhrase, MESSAGE_AUCUN_DESACCORD, MESSAGE_CONTEXTE_ABSENT, MENTION_NON_CONFIRME } from "./discussionsIARapportFormat.js";
+
+export const LOGO_RAPPORT = "/images/ouvra-logo.svg";
 
 function creer(tag, classe, texte) {
   const el = document.createElement(tag);
@@ -22,13 +26,15 @@ function creer(tag, classe, texte) {
   return el;
 }
 
-export function creerRapportVue({ surSource, texteRapport }) {
+export function creerRapportVue({ surSource, texteRapport, exporterPdf }) {
   let fond = null;
   let carte = null;
   let corps = null;
   let titre = null;
   let compte = null;
   let boutonCopier = null;
+  let boutonPdf = null;
+  let dateEl = null;
   let boutonFermer = null;
   let rapportCourant = null;
   let focusAvant = null;
@@ -43,18 +49,29 @@ export function creerRapportVue({ surSource, texteRapport }) {
     carte.setAttribute("aria-labelledby", "discRapportTitre");
     carte.setAttribute("aria-describedby", "discRapportCompte");
     const entete = creer("div", "disc-rapport-entete");
+    entete.dataset.bloc = "titre";
+    const marque = creer("div", "disc-rapport-marque");
+    const logo = creer("img", "disc-rapport-logo");
+    logo.src = LOGO_RAPPORT;
+    logo.alt = "Ouvra";
+    logo.width = 72;
+    logo.height = 53;
+    dateEl = creer("p", "disc-rapport-date");
+    marque.append(logo, dateEl);
     titre = creer("h2", "disc-rapport-titre");
     titre.id = "discRapportTitre";
     compte = creer("p", "disc-rapport-compte");
     compte.id = "discRapportCompte";
-    entete.append(titre, compte);
+    entete.append(marque, titre, compte);
     corps = creer("div", "disc-rapport-corps");
     const pied = creer("div", "disc-rapport-pied");
     boutonCopier = creer("button", "disc-rapport-btn", "Copier");
     boutonCopier.type = "button";
+    boutonPdf = creer("button", "disc-rapport-btn", "Exporter en PDF");
+    boutonPdf.type = "button";
     boutonFermer = creer("button", "disc-rapport-btn disc-rapport-fermer", "Fermer");
     boutonFermer.type = "button";
-    pied.append(boutonCopier, boutonFermer);
+    pied.append(boutonCopier, boutonPdf, boutonFermer);
     carte.append(entete, corps, pied);
     fond.appendChild(carte);
     document.body.appendChild(fond);
@@ -62,6 +79,7 @@ export function creerRapportVue({ surSource, texteRapport }) {
     fond.addEventListener("click", (e) => { if (e.target === fond) fermer(true); });
     boutonFermer.addEventListener("click", () => fermer(true));
     boutonCopier.addEventListener("click", copier);
+    boutonPdf.addEventListener("click", exporter);
     corps.addEventListener("click", (e) => {
       const source = e.target.closest("[data-mk]");
       if (!source) return;
@@ -95,53 +113,95 @@ export function creerRapportVue({ surSource, texteRapport }) {
     return b;
   }
 
-  function rendreSection(section) {
-    const bloc = creer("section", "disc-rapport-section");
-    bloc.appendChild(creer("h3", null, section.titre));
-    const ul = creer("ul", "disc-rapport-points");
-    for (const p of section.points) {
-      const li = creer("li", "disc-rapport-point");
-      const phrase = creer("p", "disc-rapport-phrase", p.texte);
-      if (!p.confirme) phrase.appendChild(creer("span", "disc-rapport-incertain", " non confirmé"));
-      const sources = creer("div", "disc-rapport-sources");
-      p.sources.forEach((s) => sources.appendChild(boutonSource(s)));
-      li.append(phrase, sources);
-      ul.appendChild(li);
-    }
-    bloc.appendChild(ul);
-    return bloc;
+  const mention = () => creer("span", "disc-rapport-incertain", MENTION_NON_CONFIRME);
+
+  function boutonsSources(sources) {
+    const liste = creer("div", "disc-rapport-sources");
+    sources.forEach((s) => liste.appendChild(boutonSource(s)));
+    return liste;
   }
 
-  function rendreChronologie(chronologie) {
-    const bloc = creer("section", "disc-rapport-section disc-rapport-chrono");
-    bloc.appendChild(creer("h3", null, "Chronologie des sources"));
+  // Un bloc du format fixe : un titre de section (h3) et son contenu. data-bloc sert aux tests et a la mesure en navigateur.
+  function bloc(nom, libelle, ...contenu) {
+    const el = creer("section", "disc-rapport-bloc");
+    el.dataset.bloc = nom;
+    el.appendChild(creer("h3", null, libelle));
+    contenu.forEach((c) => el.appendChild(c));
+    return el;
+  }
+
+  function phrase(texte, confirme) {
+    const p = creer("p", "disc-rapport-phrase", texte);
+    if (!confirme) p.appendChild(mention());
+    return p;
+  }
+
+  function rendreContexte(rapport) {
+    const c = rapport.contexte;
+    if (!c.texte) return bloc("contexte", "Contexte", creer("p", "disc-rapport-phrase disc-rapport-muet", MESSAGE_CONTEXTE_ABSENT));
+    return bloc("contexte", "Contexte", phrase(c.texte, c.confirme), boutonsSources(c.sources));
+  }
+
+  function rendreIntervenants(rapport) {
+    const ul = creer("ul", "disc-rapport-intervenants");
+    rapport.intervenants.forEach((nom) => ul.appendChild(creer("li", "disc-rapport-intervenant", nom)));
+    return bloc("intervenants", "Intervenants", rapport.intervenants.length ? ul : creer("p", "disc-rapport-phrase disc-rapport-muet", "Aucun intervenant identifié."));
+  }
+
+  function rendreDesaccords(rapport) {
+    if (!rapport.desaccords.length) return bloc("desaccords", "Désaccords exprimés", creer("p", "disc-rapport-phrase disc-rapport-muet", MESSAGE_AUCUN_DESACCORD));
     const ul = creer("ul", "disc-rapport-points");
-    for (const s of chronologie) {
+    for (const d of rapport.desaccords) {
       const li = creer("li", "disc-rapport-point");
-      const b = boutonSource(s);
-      const extrait = creer("p", "disc-rapport-extrait", s.extrait.texte);
-      li.append(b, extrait);
+      if (d.opposants.length) li.appendChild(creer("p", "disc-rapport-opposants", nomsEnPhrase(d.opposants)));
+      li.append(phrase(d.objet, d.confirme), boutonsSources(d.sources));
       ul.appendChild(li);
     }
-    bloc.appendChild(ul);
-    return bloc;
+    return bloc("desaccords", "Désaccords exprimés", ul);
+  }
+
+  function rendreDecision(rapport) {
+    const d = rapport.decision;
+    const el = bloc("decision", "Décision finale");
+    el.classList.add("disc-rapport-decision-" + d.statut);
+    const etiquette = creer("p", "disc-rapport-decision-etat", libelleDecision(d));
+    el.appendChild(etiquette);
+    if (d.statut !== "aucune") {
+      el.appendChild(phrase(d.texte, d.statut === "prise" ? d.confirme : true));
+      el.appendChild(boutonsSources(d.sources));
+    }
+    return el;
+  }
+
+  function rendreChronologie(rapport) {
+    const el = creer("section", "disc-rapport-bloc disc-rapport-chrono");
+    el.dataset.bloc = "sources";
+    el.appendChild(creer("h3", null, "Sources"));
+    const ul = creer("ul", "disc-rapport-points");
+    rapport.chronologie.forEach((s, i) => {
+      const li = creer("li", "disc-rapport-point");
+      li.append(boutonSource(s), creer("p", "disc-rapport-extrait", (i + 1) + ". " + s.extrait.texte));
+      ul.appendChild(li);
+    });
+    el.appendChild(ul);
+    return el;
   }
 
   function ouvrir(rapport) {
     assurerSquelette();
     rapportCourant = rapport;
     titre.textContent = rapport.titre;
-    compte.textContent = rapport.vide
-      ? rapport.analyses + " message" + (rapport.analyses > 1 ? "s" : "") + " examiné" + (rapport.analyses > 1 ? "s" : "") + "."
-      : rapport.analyses + " messages analysés. Ce rapport ne reprend que ce que disent ces messages ; chaque point renvoie à ses sources.";
+    dateEl.textContent = dateDuRapport(rapport);
+    compte.textContent = perimetreDe(rapport) + (rapport.vide ? "." : ". Ce rapport ne reprend que ce que disent ces messages ; chaque bloc renvoie à ses sources.");
     corps.textContent = "";
     if (rapport.vide) {
       corps.appendChild(creer("p", "disc-rapport-rien", rapport.message));
     } else {
-      rapport.sections.forEach((s) => corps.appendChild(rendreSection(s)));
-      corps.appendChild(rendreChronologie(rapport.chronologie));
+      [rendreContexte, rendreIntervenants, rendreDesaccords, rendreDecision, rendreChronologie].forEach((rendre) => corps.appendChild(rendre(rapport)));
     }
     boutonCopier.textContent = "Copier";
+    boutonPdf.textContent = "Exporter en PDF";
+    boutonPdf.disabled = !!rapport.vide;
     focusAvant = document.activeElement;
     fond.hidden = false;
     corps.scrollTop = 0;
@@ -161,6 +221,20 @@ export function creerRapportVue({ surSource, texteRapport }) {
       boutonCopier.textContent = "Copié";
     } catch {
       boutonCopier.textContent = "Copie impossible"; // contexte non securise ou autorisation refusee : le rapport reste lisible a l'ecran
+    }
+  }
+
+  async function exporter() {
+    if (!rapportCourant || rapportCourant.vide || boutonPdf.disabled) return;
+    boutonPdf.disabled = true;
+    boutonPdf.textContent = "Préparation du PDF…";
+    try {
+      await exporterPdf(rapportCourant);
+      boutonPdf.textContent = "PDF téléchargé";
+    } catch {
+      boutonPdf.textContent = "Export impossible"; // le rapport reste lisible et copiable
+    } finally {
+      boutonPdf.disabled = false;
     }
   }
 

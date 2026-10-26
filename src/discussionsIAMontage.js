@@ -18,6 +18,18 @@ import { demanderComprehension, demanderAnalyse } from "./discussionsIAClient.js
 
 const DELAI_ANALYSE_MS = 42000; // un rapport est plus long a ecrire : un peu plus que le delai du relais (32 s)
 
+// Telechargement d'un fichier genere dans le navigateur (le meme geste que la page Quantitatif) : rien n'est envoye a un serveur.
+function telecharger(nomFichier, blob) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = nomFichier;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 // Date du jour de l'utilisateur, « AAAA-MM-JJ » (heure locale), envoyee au relais pour resoudre « depuis 3 jours » ou « le 15 octobre ».
 function dateDuJourLocale() {
   const d = new Date();
@@ -40,6 +52,7 @@ export function creerDiscussionsIAMontage() {
     flux = creerFlux({ messagerie });
     rapportVue = creerRapportVue({
       texteRapport: rapportEnTexte,
+      exporterPdf: async (rapport) => (await import("./discussionsIARapportPdf.js")).exporterRapportPdf(rapport, { telecharger }),
       surSource: (mk) => messagerie.montrerMessageIA(mk)
     });
     bandeau = creerDiscussionsBandeau({

@@ -45,3 +45,12 @@ test("aucun tiret quadratin dans les fichiers du lot Discussions IA", () => {
   assert.ok(fichiers.length >= 20);
   for (const f of fichiers) assert.equal(lire(f).includes("\u2014"), false, f);
 });
+
+test("fenetre du rapport : cinq blocs dans l'ordre, logo, trois boutons, PDF charge a la demande", () => {
+  const vue = lire("src/discussionsIARapportVue.js");
+  const ordre = ["rendreContexte, rendreIntervenants, rendreDesaccords, rendreDecision, rendreChronologie"].map((m) => vue.indexOf(m));
+  assert.ok(ordre[0] > 0);
+  for (const libelle of ['"Copier"', '"Exporter en PDF"', '"Fermer"', 'ouvra-logo.svg']) assert.ok(vue.includes(libelle), libelle);
+  assert.equal(/from "\.\/discussionsIARapportPdf\.js"|from "jspdf/.test(vue + lire("src/discussionsIAMontage.js")), false, "le PDF ne se charge qu'au clic");
+  assert.ok(lire("src/discussionsIAMontage.js").includes('await import("./discussionsIARapportPdf.js")'));
+});

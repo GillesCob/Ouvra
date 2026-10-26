@@ -102,10 +102,10 @@ body.discussions-confirm-actif .disc-rapport-fond { padding-top: calc(52px + var
 /* Specificite au-dessus de « .regles-ia-carte > * { flex-shrink: 0 } » (reglesIA.css, ordre de chargement variable) : seul le corps rétrécit et defile, l'entete et le pied restent visibles. */
 .regles-ia-carte.disc-rapport-carte > .disc-rapport-corps { flex: 1 1 auto; min-height: 0; }
 .disc-rapport-entete { display: flex; flex-direction: column; gap: 4px; }
-.disc-rapport-titre { margin: 0; font-size: 17px; line-height: 1.3; overflow-wrap: anywhere; }
+.disc-rapport-titre { margin: 0; font-size: 19px; font-weight: 700; line-height: 1.3; overflow-wrap: anywhere; }
 .disc-rapport-compte { margin: 0; font-size: 12.5px; line-height: 1.4; color: var(--muted); }
 .disc-rapport-corps { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: 16px; padding-right: 2px; }
-.disc-rapport-section h3 { margin: 0 0 8px; font-size: 13px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+.disc-rapport-bloc h3 { margin: 0 0 8px; font-size: 13px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
 .disc-rapport-points { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 12px; }
 .disc-rapport-point { display: flex; flex-direction: column; gap: 6px; padding-left: 12px; border-left: 2px solid var(--border); }
 .disc-rapport-phrase, .disc-rapport-extrait, .disc-rapport-rien { margin: 0; font-size: 14px; line-height: 1.45; overflow-wrap: anywhere; }
@@ -120,12 +120,26 @@ body.discussions-confirm-actif .disc-rapport-fond { padding-top: calc(52px + var
 .disc-rapport-source-qui { font-weight: 600; }
 .disc-rapport-source-fil { color: var(--muted); font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
 @media (hover: hover) and (pointer: fine) { .disc-rapport-source:hover { border-color: var(--accent); } }
-.disc-rapport-pied { display: flex; justify-content: flex-end; gap: 8px; padding-top: 10px; border-top: 1px solid var(--border); }
+.disc-rapport-marque { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-bottom: 10px; margin-bottom: 4px; border-bottom: 2px solid var(--accent); }
+.disc-rapport-logo { height: 40px; width: auto; display: block; }
+.disc-rapport-date { margin: 0; font-size: 12.5px; font-weight: 600; color: var(--muted); text-align: right; }
+.disc-rapport-bloc { padding: 12px 14px; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; display: flex; flex-direction: column; gap: 8px; }
+.disc-rapport-bloc h3 { margin: 0; color: var(--accent); }
+.disc-rapport-muet { color: var(--muted); }
+.disc-rapport-intervenants { margin: 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 6px; }
+.disc-rapport-intervenant { padding: 4px 10px; border: 1px solid var(--border); border-radius: 14px; font-size: 13px; background: var(--surface); }
+.disc-rapport-opposants { margin: 0; font-size: 13px; font-weight: 700; }
+.disc-rapport-decision-etat { margin: 0; font-size: 15px; font-weight: 700; }
+.disc-rapport-decision-prise { border-color: var(--accent); }
+.disc-rapport-decision-aucune .disc-rapport-decision-etat { color: var(--muted); }
+.disc-rapport-pied { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; padding-top: 10px; border-top: 1px solid var(--border); }
+.disc-rapport-btn:disabled { opacity: 0.55; cursor: default; }
 .disc-rapport-btn { min-height: 44px; padding: 0 18px; background: none; color: var(--text); border: 1px solid var(--border); border-radius: 8px; font-size: 14px; font-weight: 700; }
 .disc-rapport-fermer { background: var(--accent); color: var(--bg); border-color: var(--accent); }
 @media (max-width: 768px) {
   .disc-rapport-fond { align-items: flex-end; padding: 0; }
   .regles-ia-carte.disc-rapport-carte { width: 100%; max-height: 92%; border-radius: 14px 14px 0 0; }
-  .disc-rapport-btn { flex: 1 1 0; }
+  .disc-rapport-btn { flex: 1 1 auto; padding: 0 12px; }
+  .disc-rapport-source { min-height: 44px; }
   body.discussions-confirm-actif .disc-rapport-fond { padding-top: calc(52px + var(--discussions-bandeau-h, 44px)); }
 }
