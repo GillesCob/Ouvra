@@ -7,9 +7,9 @@
 //
 // Regles : ouverture-bout (l'ouverture entre dans l'epaisseur d'un mur perpendiculaire, ou laisse moins de 5 cm de mur plein), ouvertures-recouvrement,
 // battement (la porte ne peut s'ouvrir d'aucun cote, ou son battement dessine heurte un mur), dimensions (hauteur, largeur anormale), murs-croises,
-// mur-non-raccorde, pieces-recouvrement, mur-dans-piece, ouverture-orpheline (ouverture qui ne donne dans aucune piece : contour de piece mal place).
+// mur-non-raccorde, pieces-recouvrement, mur-dans-piece, contour-ouvert (les murs exterieurs ne forment pas une boucle : pas de dalle), ouverture-orpheline (ouverture qui ne donne dans aucune piece : contour de piece mal place).
 
-import { extremites, longueurMur } from "./modele.js";
+import { extremites, longueurMur, contourExterieur } from "./modele.js";
 import { pointDansPolygone } from "./etiquettesPieces.js";
 
 const JAMBAGE_MIN = 0.03; // metres de mur plein en dessous desquels on signale une ouverture collee a un mur perpendiculaire (relevé a +-1 px = 1,1 cm pres)
@@ -197,6 +197,9 @@ function controlesOrphelines(modele, geo, sortie) {
 export function controlerPlan(modele) {
   const geo = mursGeometrie(modele);
   const sortie = [];
+  if (modele.murs.some((w) => w.type === "exterieur") && !contourExterieur(modele)) {
+    sortie.push({ gravite: "erreur", regle: "contour-ouvert", cibles: [], texte: "Les murs extérieurs ne forment pas une boucle fermée simple : la maquette 3D n'aura pas de dalle. Un mur extérieur en trop, une brisure ou un angle manquant." });
+  }
   controlesOuvertures(modele, geo, sortie);
   controlesBattements(modele, geo, sortie);
   controlesMurs(modele, geo, sortie);

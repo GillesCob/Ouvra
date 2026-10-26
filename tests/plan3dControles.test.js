@@ -101,3 +101,17 @@ test("controlerPlan : une ouverture qui ne donne dans aucune piece est signalee,
   assert.ok(!regles(proche).includes("alerte:ouverture-orpheline"));
   assert.ok(!regles(base({ ouvertures: [ouv("O1", 1.5, 0.9)] })).includes("alerte:ouverture-orpheline"), "sans piece, la regle ne s'applique pas");
 });
+
+test("controlerPlan : des murs exterieurs qui ne forment pas une boucle fermee (pas de dalle) sont une erreur", () => {
+  const ferme = {
+    unite: "m", fond: null, niveau: { nom: "RDC", hauteur: 2.5, epaisseurDalle: 0.2 },
+    noeuds: [{ id: "A", x: 0, y: 0 }, { id: "B", x: 4, y: 0 }, { id: "C", x: 4, y: 3 }, { id: "D", x: 0, y: 3 }],
+    murs: [["M1", "A", "B"], ["M2", "B", "C"], ["M3", "C", "D"], ["M4", "D", "A"]].map(([id, a, b]) => ({ id, a, b, epaisseur: 0.3, type: "exterieur" })),
+    ouvertures: [], pieces: []
+  };
+  assert.ok(!regles(ferme).includes("erreur:contour-ouvert"));
+  const ouvert = { ...ferme, murs: ferme.murs.slice(0, 3) };
+  assert.ok(regles(ouvert).includes("erreur:contour-ouvert"));
+  const branche = { ...ferme, noeuds: [...ferme.noeuds, { id: "E", x: 6, y: 3 }], murs: [...ferme.murs, { id: "M5", a: "D", b: "E", epaisseur: 0.3, type: "exterieur" }] };
+  assert.ok(regles(branche).includes("erreur:contour-ouvert"));
+});
