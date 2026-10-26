@@ -64,7 +64,7 @@ export async function traduireDiscussions(entree, { client }) {
   const rapport = action.sortie === "rapport";
   const r = await appeler(client, {
     etiquette: "analyser", consigne: rapport ? CONSIGNE_RAPPORT : CONSIGNE_CLASSEMENT, message: messageAnalyse(entree),
-    schema: construireSchemaAnalyseJson(action.sortie, entree.extraits.map((e) => e.id)),
+    schema: construireSchemaAnalyseJson(action.sortie, entree.extraits.map((e) => e.id), Array.from(new Set(entree.extraits.map((e) => e.auteur)))),
     maxJetons: rapport ? MAX_JETONS.rapport : MAX_JETONS.liste, effort: rapport ? "medium" : "low", delaiMs: rapport ? DELAI_RAPPORT_MS : DELAI_MS
   });
   if (!r.ok) return r;

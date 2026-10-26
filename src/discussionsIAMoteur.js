@@ -13,6 +13,8 @@ import { ACTIONS } from "./discussionsIAActions.js";
 import { validerCritereDate } from "./reglesCollision.js";
 import { plagesCorrespondantes, extraitAutour } from "./discussionsIATexte.js";
 import { dateHeure } from "./messagerie/format.js";
+import { normaliserRapport, chiffresSourcesTrouves, MOIS } from "./discussionsIARapportNormaliser.js";
+import { rapportEnTexte } from "./discussionsIARapportFormat.js";
 
 export const REGISTRE = creerRegistre(ACTIONS);
 
@@ -160,19 +162,8 @@ export function preparerAnalyse(selection, index) {
 }
 
 // ---------- Verification des chiffres et des dates ----------
-// Un point de rapport ne doit contenir aucun nombre ni nom de mois qui ne figure pas dans l'un de ses messages cites (ou dans leur date, que le modele voit).
-// Sinon il est marque « non confirmé » : on ne le supprime pas (il peut etre juste), mais on ne le presente pas comme sur.
-const MOIS = ["janvier", "fevrier", "mars", "avril", "mai", "juin", "juillet", "aout", "septembre", "octobre", "novembre", "decembre"];
-const sansAccent = (t) => t.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
-const nombresEtMois = (texte) => {
-  const bas = sansAccent(texte);
-  return new Set([...(bas.match(/\d+(?:[.,]\d+)?/g) || []).map((n) => n.replace(",", ".")), ...MOIS.filter((m) => new RegExp("\\b" + m + "\\b").test(bas))]);
-};
-export function chiffresSourcesTrouves(texteDuPoint, textesSources) {
-  const permis = new Set();
-  textesSources.forEach((t) => nombresEtMois(t).forEach((x) => permis.add(x)));
-  return Array.from(nombresEtMois(texteDuPoint)).every((x) => permis.has(x));
-}
+// Voir src/discussionsIARapportNormaliser.js : un bloc de rapport ne contient aucun nombre ni mois absent de ses messages cites.
+export { chiffresSourcesTrouves };
 const textesAvecDate = (entree) => entree.texte + " " + horodatage(entree.quand) + " " + MOIS[new Date(entree.quand).getMonth()];
 
 // ---------- 4a. Conclusion « classement » (retrouver_echange) ----------
@@ -199,69 +190,48 @@ export function resultatClasse(classes, index, termes) {
   return construireResultat(elements, index, { termes, ordre: "pertinence" });
 }
 
-// ---------- 4b. Conclusion « rapport » ----------
-export const POINTS_MAX = 24;
-export const SOURCES_PAR_POINT_MAX = 5;
-const TEXTE_POINT_MAX = 400;
-const TITRE_SECTION_MAX = 80;
+// ---------- 4b. Conclusion « rapport » (format fixe : titre, contexte, intervenants, desaccords, decision) ----------
+const EXTRAIT_SOURCE_MAX = 180;
 
 function sourceDe(id, entree, index, termes) {
   const fil = index.filParCle.get(entree.filCle);
   const plages = plagesCorrespondantes(entree.texte, termes);
   return {
     id, mk: entree.mk, auteurNom: entree.auteurNom, quand: entree.quand, quandLibelle: dateHeure(new Date(entree.quand)),
-    discussion: libelleDiscussion(fil), extrait: extraitAutour(entree.texte, plages, 180)
+    discussion: libelleDiscussion(fil), extrait: extraitAutour(entree.texte, plages, EXTRAIT_SOURCE_MAX)
   };
 }
 
-// Rapport verifie. Un numero cite qui n'existe pas dans la table est ecarte ; un point sans aucune source valide est ecarte ; une section sans point aussi.
-// Un point que le modele juge incertain (confirme: false) est conserve et marque « non confirmé ». Sans point restant : « Rien n'a été dit à ce sujet. ».
-export function conclureRapport(sortie, table, index, { sujet = "", termes = [] } = {}) {
-  const titre = "Rapport : " + sujet;
-  const vide = (analyses) => ({ ok: true, rapport: { titre, vide: true, message: MESSAGE_RIEN, sections: [], chronologie: [], analyses, ecartes: { points: 0, sources: 0 } } });
-  if (!sortie || typeof sortie !== "object" || !Array.isArray(sortie.sections)) return { ok: false, erreur: "Rapport absent." };
-  if (sortie.rien_a_dire === true) return vide(table.size);
-  const ecartes = { points: 0, sources: 0 };
+// Rapport verifie, toujours au meme format (voir src/discussionsIARapportNormaliser.js pour les regles : numeros inconnus ecartes, decision jamais
+// inventee, chiffre ou mois absent des sources = « non confirmé »). Sans rien d'exploitable : « Rien n'a été dit à ce sujet. ».
+// maintenant : l'instant du rapport (date affichee « Rapport du JJ/MM/AAAA »).
+export function conclureRapport(sortie, table, index, { sujet = "", termes = [], maintenant = Date.now() } = {}) {
+  const titreParDefaut = "Récapitulatif : " + sujet;
+  const vide = () => ({ ok: true, rapport: { titre: titreParDefaut, sujet, date: maintenant, vide: true, message: MESSAGE_RIEN, intervenants: [], desaccords: [], chronologie: [], analyses: table.size } });
+  const auteurs = new Set(Array.from(table.values()).map((e) => e.auteurNom));
+  const norme = normaliserRapport(sortie, {
+    auteurs,
+    texteDe: (id) => (table.has(id) ? textesAvecDate(table.get(id)) : null),
+    auteurDe: (id) => (table.has(id) ? table.get(id).auteurNom : null)
+  });
+  if (!norme) return { ok: false, erreur: "Rapport absent." };
+  if (norme.vide) return vide();
+
   const citees = new Map();
-  const sections = [];
-  let nbPoints = 0;
-  for (const s of sortie.sections) {
-    const titreSection = s && typeof s.titre === "string" ? s.titre.replace(/\s+/g, " ").trim().slice(0, TITRE_SECTION_MAX) : "";
-    const points = [];
-    for (const p of (s && Array.isArray(s.points) ? s.points : [])) {
-      const texte = p && typeof p.texte === "string" ? p.texte.replace(/\s+/g, " ").trim() : "";
-      const ids = Array.from(new Set(p && Array.isArray(p.sources) ? p.sources : []));
-      const valides = ids.filter((id) => typeof id === "string" && table.has(id));
-      ecartes.sources += ids.length - valides.length;
-      if (!texte || texte.length > TEXTE_POINT_MAX || !valides.length || nbPoints >= POINTS_MAX) { ecartes.points += 1; continue; }
-      nbPoints += 1;
-      const sources = valides.slice(0, SOURCES_PAR_POINT_MAX).map((id) => {
-        if (!citees.has(id)) citees.set(id, sourceDe(id, table.get(id), index, termes));
-        return citees.get(id);
-      });
-      // Un chiffre ou un mois absent des messages cites rend le point « non confirmé », meme si le modele l'avait juge sur.
-      const verifie = chiffresSourcesTrouves(texte, valides.map((id) => textesAvecDate(table.get(id))));
-      points.push({ texte, confirme: p.confirme === true && verifie, sources }); // « confirme » absent = incertain
-    }
-    if (points.length && titreSection) sections.push({ titre: titreSection, points });
-    else ecartes.points += points.length;
-  }
-  if (!sections.length) return vide(table.size);
-  const chronologie = Array.from(citees.values()).sort((a, b) => a.quand - b.quand);
-  return { ok: true, rapport: { titre, vide: false, sections, chronologie, analyses: table.size, ecartes } };
+  const sources = (ids) => ids.map((id) => {
+    if (!citees.has(id)) citees.set(id, sourceDe(id, table.get(id), index, termes));
+    return citees.get(id);
+  });
+  const rapport = {
+    titre: norme.titre || titreParDefaut, sujet, date: maintenant, vide: false,
+    contexte: { ...norme.contexte, sources: sources(norme.contexte.sources) },
+    intervenants: norme.intervenants,
+    desaccords: norme.desaccords.map((d) => ({ ...d, sources: sources(d.sources) })),
+    decision: { ...norme.decision, sources: sources(norme.decision.sources) }
+  };
+  rapport.chronologie = Array.from(citees.values()).sort((a, b) => a.quand - b.quand);
+  rapport.analyses = table.size;
+  return { ok: true, rapport };
 }
 
-// Version texte du rapport (bouton « Copier »), sources entre parentheses.
-export function rapportEnTexte(rapport) {
-  const lignes = [rapport.titre, ""];
-  if (rapport.vide) { lignes.push(rapport.message); return lignes.join("\n"); }
-  const refs = (sources) => sources.map((s) => s.auteurNom + ", " + s.quandLibelle + ", " + s.discussion).join(" ; ");
-  for (const s of rapport.sections) {
-    lignes.push(s.titre);
-    for (const p of s.points) lignes.push("- " + p.texte + (p.confirme ? "" : " (non confirmé)") + " [" + refs(p.sources) + "]");
-    lignes.push("");
-  }
-  lignes.push("Chronologie des sources");
-  for (const c of rapport.chronologie) lignes.push("- " + c.quandLibelle + " " + c.auteurNom + " (" + c.discussion + ") : " + c.extrait.texte);
-  return lignes.join("\n");
-}
+export { rapportEnTexte };

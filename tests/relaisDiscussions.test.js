@@ -17,6 +17,7 @@ import { fixture } from "./aide/fixtureDiscussions.js";
 import { chargerDemo } from "./aide/demoMessagerie.js";
 
 const personnes = ["Ana Roux", "Bob Lenoir"];
+const AUTEURS_DEMO = ["Vous", "Ana Roux", "Bob Lenoir", "Claire Martin", "David Morel", "Emma Petit"];
 const extrait = (n, extra = {}) => ({ id: "M" + n, discussion: "Accès grue", auteur: "Bob Lenoir", quand: "2026-10-22 14:00", texte: "Le levage est décalé de 12 cm mardi.", ...extra });
 const analyse = (extra = {}) => ({ etape: "analyser", action: "rapport", phrase: "rapport grue", sujet: "grue", extraits: [extrait(1), extrait(2, { texte: "Je décale le planning." })], ...extra });
 const reponse = (parsed, extra = {}) => ({ parsed_output: parsed, stop_reason: "end_turn", usage: { input_tokens: 900, output_tokens: 120 }, ...extra });
@@ -127,10 +128,10 @@ test("grammaire : aucune union d'objets, taille du schema bornee (messagerie de 
   assert.ok(JSON.stringify(comprendre).length <= 5000, "schema comprendre de " + JSON.stringify(comprendre).length + " caractères");
   const ids = Array.from({ length: MAX_EXTRAITS }, (_, i) => "M" + (i + 1));
   for (const sortie of ["liste", "rapport"]) {
-    const schema = construireSchemaAnalyseJson(sortie, ids);
+    const schema = construireSchemaAnalyseJson(sortie, ids, AUTEURS_DEMO);
     assert.deepEqual(unionsDObjets(schema), []);
-    // Mesures reelles : rapport a 40 numeros = 1 237 caracteres, accepte. Seuil a 3 000.
-    assert.ok(JSON.stringify(schema).length <= 3000, sortie + " de " + JSON.stringify(schema).length + " caractères");
+    // Mesures reelles : l'ancien rapport a 40 numeros = 1 237 caracteres, accepte. Le format fixe (26/10) est plus gros : seuil a 4 500 (voir la mesure reelle).
+    assert.ok(JSON.stringify(schema).length <= 4500, sortie + " de " + JSON.stringify(schema).length + " caractères");
   }
 });
 
@@ -156,13 +157,22 @@ test("schema : un meme parametre avec deux genres dans le registre est refuse", 
   assert.throws(() => construireSchemaComprendreJson({ personnes }, registre), /deux genres/);
 });
 
-test("schema analyser : les numeros cites sont une enumeration des seuls numeros envoyes", () => {
-  const rapport = JSON.stringify(construireSchemaAnalyseJson("rapport", ["M1", "M2"]));
+test("schema analyser : numeros cites et noms = enumerations fermees ; format fixe du rapport ; aucun mot-cle de borne", () => {
+  const brut = construireSchemaAnalyseJson("rapport", ["M1", "M2"], ["Ana Roux", "Bob Lenoir"]);
+  const rapport = JSON.stringify(brut);
   assert.ok(rapport.includes('"enum":["M1","M2"]') && !rapport.includes("M3"));
-  assert.ok(rapport.includes("rien_a_dire") && rapport.includes("confirme"));
+  assert.ok(rapport.includes('"enum":["Ana Roux","Bob Lenoir"]'));
+  assert.deepEqual(Object.keys(brut.properties), ["rien_a_dire", "titre", "contexte", "intervenants", "desaccords", "decision"]);
+  assert.deepEqual(Object.keys(brut.properties.contexte.properties), ["texte", "sources"]);
+  assert.deepEqual(Object.keys(brut.properties.desaccords.items.properties), ["opposants", "objet", "sources"]);
+  assert.deepEqual(Object.keys(brut.properties.decision.properties), ["statut", "texte", "sources"]);
+  assert.deepEqual(brut.properties.decision.properties.statut.enum, ["prise", "rapportee", "incertaine", "aucune"]);
+  assert.equal(brut.additionalProperties, false);
+  assert.equal(/"(minimum|maximum|minLength|maxLength|minItems|maxItems)"/.test(rapport), false);
   const liste = JSON.stringify(construireSchemaAnalyseJson("liste", ["M1"]));
   assert.ok(liste.includes('"enum":["forte","moyenne"]') && liste.includes('"enum":["M1"]'));
-  assert.throws(() => construireSchemaAnalyseJson("rapport", []), /Aucun extrait/);
+  assert.throws(() => construireSchemaAnalyseJson("rapport", [], ["Ana Roux"]), /Aucun extrait/);
+  assert.throws(() => construireSchemaAnalyseJson("rapport", ["M1"], []), /Aucun auteur/);
 });
 
 // ---------- Sorties ----------
@@ -189,41 +199,62 @@ test("sortie comprendre : personne inventee, action inconnue ou absente, paramet
   for (const c of cas) { const r = convertirSortieComprendre(c, v); assert.equal(r.ok, false, JSON.stringify(c)); assert.equal(r.code, "sortie_invalide"); }
 });
 
-test("sortie analyser : numeros hors de la liste envoyee retires cote relais, chiffre ou mois absent des sources -> non confirme", () => {
-  const extraits = [extrait(1), extrait(2, { texte: "Je décale le planning." })];
-  const r = convertirSortieAnalyse({
-    rien_a_dire: false,
-    sections: [{ titre: "T", points: [
-      { texte: "Le levage est décalé de 12 cm.", confirme: true, sources: ["M1", "M9"] },
-      { texte: "Le levage est décalé de 15 cm.", confirme: true, sources: ["M1"] },
-      { texte: "Le planning change en octobre.", confirme: true, sources: ["M2"] },
-      { texte: "Décalé en novembre.", confirme: true, sources: ["M1"] },
-      { texte: "Sans source valide.", confirme: true, sources: ["M9"] }
-    ] }]
-  }, "rapport", extraits);
+const brutRapport = (extra = {}) => ({
+  rien_a_dire: false,
+  titre: "Levage des groupes",
+  contexte: { texte: "Le levage est décalé de 12 cm.", sources: ["M1", "M9"] },
+  intervenants: ["Bob Lenoir", "Zoé Inventée"],
+  desaccords: [{ opposants: ["Bob Lenoir"], objet: "Bob refuse de décaler de 15 cm.", sources: ["M1"] }, { opposants: ["Bob Lenoir"], objet: "Sans source.", sources: ["M9"] }],
+  decision: { statut: "prise", texte: "Planning décalé en novembre.", sources: ["M2"] },
+  ...extra
+});
+
+test("sortie analyser : format fixe ; numeros hors de la liste retires cote relais ; chiffre ou mois absent des sources -> non confirme", () => {
+  const extraits = [extrait(1), extrait(2, { texte: "Je décale le planning.", auteur: "Vous" })];
+  const r = convertirSortieAnalyse(brutRapport(), "rapport", extraits);
   assert.equal(r.ok, true);
-  const p = r.sortie.sections[0].points;
-  assert.deepEqual(p[0].sources, ["M1"]);
-  assert.equal(p[0].confirme, true); // 12 figure dans M1
-  assert.equal(p[1].confirme, false); // 15 n'y figure pas
-  assert.equal(p[2].confirme, true); // « octobre » vient de la date du message
-  assert.equal(p[3].confirme, false); // novembre n'y figure pas
-  assert.equal(p[4].confirme, false);
-  assert.deepEqual(p[4].sources, []);
+  const s = r.sortie;
+  assert.equal(s.titre, "Levage des groupes");
+  assert.deepEqual(s.contexte, { texte: "Le levage est décalé de 12 cm.", sources: ["M1"], confirme: true }); // 12 figure dans M1
+  assert.deepEqual(s.intervenants, ["Bob Lenoir"]); // « Zoé Inventée » n'est l'auteur d'aucun message
+  assert.equal(s.desaccords.length, 1); // le desaccord sans source valide est ecarte
+  assert.equal(s.desaccords[0].confirme, false); // 15 absent de M1
+  assert.equal(s.decision.statut, "prise");
+  assert.equal(s.decision.confirme, false); // « novembre » absent de M2 (le mois de sa date est octobre)
+});
+
+test("sortie analyser : AUCUNE decision exprimee -> « aucune », meme si le modele a ecrit un texte ; decision sans source valide -> « aucune »", () => {
+  const extraits = [extrait(1)];
+  const sans = convertirSortieAnalyse(brutRapport({ decision: { statut: "aucune", texte: "On décale peut-être.", sources: ["M1"] } }), "rapport", extraits).sortie.decision;
+  assert.deepEqual(sans, { statut: "aucune", texte: "", sources: [], confirme: false });
+  const sansSource = convertirSortieAnalyse(brutRapport({ decision: { statut: "prise", texte: "Décalé.", sources: ["M9"] } }), "rapport", extraits).sortie.decision;
+  assert.equal(sansSource.statut, "aucune");
+  const rapportee = convertirSortieAnalyse(brutRapport({ decision: { statut: "rapportee", texte: "Il paraît que le levage est décalé.", sources: ["M1"] } }), "rapport", extraits).sortie.decision;
+  assert.equal(rapportee.statut, "rapportee");
+  assert.equal(rapportee.confirme, false);
+});
+
+test("sortie analyser : rien_a_dire accepte sans autre champ", () => {
+  const r = convertirSortieAnalyse({ rien_a_dire: true }, "rapport", [extrait(1)]);
+  assert.equal(r.ok, true);
+  assert.equal(r.sortie.rien_a_dire, true);
 });
 
 test("sortie analyser (liste) : numeros inventes retires ; formes invalides refusees", () => {
   const r = convertirSortieAnalyse({ resultats: [{ id: "M1", pertinence: "forte" }, { id: "M5", pertinence: "forte" }, null] }, "liste", [extrait(1)]);
   assert.deepEqual(r.sortie.resultats, [{ id: "M1", pertinence: "forte" }]);
   for (const mauvais of [null, [], {}, { resultats: "x" }]) assert.equal(convertirSortieAnalyse(mauvais, "liste", []).ok, false);
-  for (const mauvais of [null, {}, { sections: [] }, { rien_a_dire: true }]) assert.equal(convertirSortieAnalyse(mauvais, "rapport", []).ok, false);
+  for (const mauvais of [null, [], {}, { sections: [] }, { rien_a_dire: false }, { rien_a_dire: false, contexte: null }]) assert.equal(convertirSortieAnalyse(mauvais, "rapport", []).ok, false);
 });
 
 // ---------- Consigne et injection ----------
 test("consigne : la regle absolue de sourcage et les actions du registre sont dites au modele", () => {
   assert.match(CONSIGNE_RAPPORT, /aucune information qui ne soit pas dans les messages/);
   assert.match(CONSIGNE_RAPPORT, /rien_a_dire/);
-  assert.match(CONSIGNE_RAPPORT, /confirme faux/);
+  for (const mot of ["titre", "contexte", "intervenants", "desaccords", "decision"]) assert.ok(CONSIGNE_RAPPORT.includes(mot), mot);
+  assert.match(CONSIGNE_RAPPORT, /statut "aucune"/);
+  assert.match(CONSIGNE_RAPPORT, /N'invente JAMAIS une décision/);
+  assert.match(CONSIGNE_RAPPORT, /seconde main/);
   assert.match(CONSIGNE_CLASSEMENT, /Rends uniquement des numéros de la liste/);
   for (const nom of REGISTRE.noms()) assert.ok(CONSIGNE_COMPRENDRE.includes("- " + nom + " :"), nom);
   for (const c of [CONSIGNE_COMPRENDRE, CONSIGNE_CLASSEMENT, CONSIGNE_RAPPORT]) assert.equal(c.includes("\u2014"), false);
@@ -263,11 +294,12 @@ test("traduire comprendre : aucune personne -> critere introuvable sans appel ; 
 });
 
 test("traduire analyser rapport : effort moyen, plafond de sortie, delai long, journal avec un champ resultat", async () => {
-  const client = clientQui(reponse({ rien_a_dire: false, sections: [{ titre: "T", points: [{ texte: "Décalé de 12 cm.", confirme: true, sources: ["M1"] }] }] }));
+  const client = clientQui(reponse(brutRapport({ decision: { statut: "prise", texte: "Décalé de 12 cm.", sources: ["M1"] } })));
   const r = await traduireDiscussions(validerEntreeDiscussions(analyse()), { client });
   assert.equal(r.ok, true);
   assert.equal(r.resultat, "analyse");
-  assert.equal(r.sortie.sections[0].points[0].confirme, true);
+  assert.equal(r.sortie.decision.confirme, true);
+  assert.deepEqual(client.dernier.params.output_config.format.schema.properties.intervenants.items.enum, ["Bob Lenoir"]);
   assert.equal(client.dernier.params.max_tokens, 3000);
   assert.equal(client.dernier.params.output_config.effort, "medium");
   assert.equal(client.dernier.options.timeout, 32000);

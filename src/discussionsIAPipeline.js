@@ -52,7 +52,7 @@ export function creerPipeline({ lireIndex, comprendre, analyser, maintenant = Da
       if (!selection.messages.length) {
         // Aucun message ne contient un mot du sujet : pas d'appel a l'IA. Un rapport le dit, une recherche s'arrete la.
         if (action.sortie === "rapport") {
-          const rapport = conclureRapport({ rien_a_dire: true, sections: [] }, new Map(), index, { sujet: commande.parametres.sujet }).rapport;
+          const rapport = conclureRapport({ rien_a_dire: true }, new Map(), index, { sujet: commande.parametres.sujet, maintenant: maintenant() }).rapport;
           return { ok: true, type: "rapport", commande, relecture, resultat: construireResultat([], index), rapport };
         }
         return { ok: false, message: "Aucun message ne parle de « " + commande.parametres.sujet + " »." };
@@ -83,7 +83,7 @@ export function creerPipeline({ lireIndex, comprendre, analyser, maintenant = Da
 
   function conclureEnRapport(analyse, { table, selection, index, commande, relecture }) {
     if (!analyse.ok) return { ok: false, message: analyse.message || MESSAGE_ANALYSE };
-    const verdict = conclureRapport(analyse.sortie, table, index, { sujet: commande.parametres.sujet, termes: selection.termes });
+    const verdict = conclureRapport(analyse.sortie, table, index, { sujet: commande.parametres.sujet, termes: selection.termes, maintenant: maintenant() });
     if (!verdict.ok) return { ok: false, message: "L'IA n'a pas renvoyé de rapport exploitable." };
     const citees = verdict.rapport.chronologie.map((s) => ({ entree: table.get(s.id), mis: true, score: 0 }));
     return { ok: true, type: "rapport", commande, relecture, resultat: construireResultat(citees, index, { termes: selection.termes }), rapport: verdict.rapport };

@@ -3,7 +3,8 @@
 //  - analyser : la forme de la reponse est verifiee ici ; les numeros de messages cites sont reverifies un par un par le moteur de la page
 //    (conclureClassement / conclureRapport), qui ecarte tout numero absent des extraits envoyes.
 
-import { validerCommande, REGISTRE, chiffresSourcesTrouves } from "../src/discussionsIAMoteur.js";
+import { validerCommande, REGISTRE } from "../src/discussionsIAMoteur.js";
+import { normaliserRapport } from "../src/discussionsIARapportNormaliser.js";
 import { periodeDepuisPlat } from "./schemaDiscussions.js";
 
 const invalide = (message) => ({ ok: false, code: "sortie_invalide", message });
@@ -41,16 +42,15 @@ export function convertirSortieAnalyse(sortie, sortieAction, extraits = []) {
     if (!Array.isArray(sortie.resultats)) return invalide("Classement absent.");
     return { ok: true, sortie: { resultats: sortie.resultats.filter((r) => r && parId.has(r.id)) } };
   }
-  if (!Array.isArray(sortie.sections) || typeof sortie.rien_a_dire !== "boolean") return invalide("Rapport absent.");
-  const sections = sortie.sections.filter((s) => s && Array.isArray(s.points)).map((s) => ({
-    ...s,
-    points: s.points.filter((p) => p && Array.isArray(p.sources)).map((p) => {
-      const sources = p.sources.filter((id) => parId.has(id));
-      const textes = sources.map((id) => parId.get(id).texte + " " + parId.get(id).quand + " " + moisDe(parId.get(id).quand));
-      return { ...p, sources, confirme: p.confirme === true && sources.length > 0 && chiffresSourcesTrouves(String(p.texte || ""), textes) };
-    })
-  }));
-  return { ok: true, sortie: { rien_a_dire: sortie.rien_a_dire, sections } };
+  // Format fixe du rapport : la normalisation est celle de la page (src/discussionsIARapportNormaliser.js), le relais reverifie avec le meme code.
+  const rapport = normaliserRapport(sortie, {
+    auteurs: new Set(extraits.map((e) => e.auteur)),
+    texteDe: (id) => (parId.has(id) ? parId.get(id).texte + " " + parId.get(id).quand + " " + moisDe(parId.get(id).quand) : null),
+    auteurDe: (id) => (parId.has(id) ? parId.get(id).auteur : null)
+  });
+  if (!rapport) return invalide("Rapport absent.");
+  if (rapport.vide) return { ok: true, sortie: { rien_a_dire: true } };
+  return { ok: true, sortie: { rien_a_dire: false, titre: rapport.titre, contexte: rapport.contexte, intervenants: rapport.intervenants, desaccords: rapport.desaccords, decision: rapport.decision } };
 }
 
 const NOMS_MOIS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"];

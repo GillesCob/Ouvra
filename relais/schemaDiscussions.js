@@ -9,6 +9,7 @@ import * as z from "zod/v4";
 import { UNITES } from "../src/reglesCollision.js";
 import { REGISTRE, PERTINENCES } from "../src/discussionsIAMoteur.js";
 import { STATUTS_SUJET } from "../src/discussionsIARegistre.js";
+import { STATUTS_DECISION } from "../src/discussionsIARapportNormaliser.js";
 
 export const RESULTATS_COMPRENDRE = ["commande", "critere_introuvable", "non_comprise"];
 
@@ -99,8 +100,10 @@ function versJson(schemaZod) {
 
 export const construireSchemaComprendreJson = (valeurs, registre = REGISTRE) => versJson(construireComprendreZod(valeurs, registre));
 
-// ids : les numeros reellement envoyes. sortie : "liste" (classement) ou "rapport" (synthese), lue dans le registre.
-export function construireSchemaAnalyseJson(sortie, ids) {
+// ids : les numeros reellement envoyes. auteurs : les noms reels des auteurs de ces messages (enumeration fermee, utilisee seulement pour le rapport).
+// sortie : "liste" (classement) ou "rapport" (synthese au FORMAT FIXE du 26/10 : titre, contexte, intervenants, desaccords, decision), lue dans le registre.
+// Schema plat sans union d'objets (voir plus haut) : des objets et des tableaux imbriques seulement.
+export function construireSchemaAnalyseJson(sortie, ids, auteurs = []) {
   if (!ids.length) throw new Error("Aucun extrait.");
   const id = z.enum(ids);
   if (sortie === "liste") {
@@ -108,15 +111,25 @@ export function construireSchemaAnalyseJson(sortie, ids) {
       resultats: z.array(z.object({ id, pertinence: z.enum(PERTINENCES) })).describe("messages qui parlent vraiment du sujet, du plus au moins pertinent ; tableau vide si aucun")
     }));
   }
+  if (!auteurs.length) throw new Error("Aucun auteur.");
+  const auteur = z.enum(auteurs);
   return versJson(z.object({
-    rien_a_dire: z.boolean().describe("vrai si aucun message ne dit quoi que ce soit sur le sujet ; alors sections est un tableau vide"),
-    sections: z.array(z.object({
-      titre: z.string().describe("titre court de la section (quelques mots)"),
-      points: z.array(z.object({
-        texte: z.string().describe("une affirmation, une ou deux phrases, qui reprend UNIQUEMENT ce que disent les messages cités"),
-        confirme: z.boolean().describe("faux si le point reste une hypothèse, une question ou un désaccord non tranché dans les messages"),
-        sources: z.array(id).describe("numéros des messages qui disent ce point ; au moins un")
-      }))
-    }))
+    rien_a_dire: z.boolean().describe("vrai si aucun message ne dit quoi que ce soit sur le sujet ; alors les autres champs restent vides"),
+    titre: z.string().describe("titre court du sujet traité (une ligne), qui reprend le sujet demandé"),
+    contexte: z.object({
+      texte: z.string().describe("explication du contexte en deux ou trois phrases, UNIQUEMENT ce que disent les messages cités"),
+      sources: z.array(id).describe("numéros des messages qui disent ce contexte ; au moins un")
+    }),
+    intervenants: z.array(auteur).describe("les personnes qui ont réellement pris part à l'échange sur ce sujet"),
+    desaccords: z.array(z.object({
+      opposants: z.array(auteur).describe("qui s'oppose"),
+      objet: z.string().describe("à quoi chacun s'oppose, une ou deux phrases, au présent"),
+      sources: z.array(id).describe("numéros des messages qui expriment ce désaccord ; au moins un")
+    })).describe("désaccords exprimés dans les messages ; tableau vide s'il n'y en a aucun"),
+    decision: z.object({
+      statut: z.enum(STATUTS_DECISION).describe("prise : décision énoncée clairement ; rapportee : décision rapportée de seconde main ; incertaine : décision envisagée ou ambiguë ; aucune : aucune décision exprimée"),
+      texte: z.string().describe("la décision finale telle qu'écrite dans les messages ; chaîne vide si statut aucune"),
+      sources: z.array(id).describe("numéros des messages qui disent la décision ; vide si statut aucune")
+    })
   }));
 }

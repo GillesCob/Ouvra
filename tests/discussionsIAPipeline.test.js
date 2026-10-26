@@ -4,7 +4,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { creerPipeline } from "../src/discussionsIAPipeline.js";
 import { indexer } from "../src/discussionsIAIndex.js";
-import { preparerAnalyse, conclureClassement, conclureRapport, rapportEnTexte, EXTRAIT_MAX, MESSAGE_RIEN, selectionner } from "../src/discussionsIAMoteur.js";
+import { preparerAnalyse, conclureClassement, conclureRapport, EXTRAIT_MAX, MESSAGE_RIEN, selectionner } from "../src/discussionsIAMoteur.js";
 import { fixture, MAINTENANT } from "./aide/fixtureDiscussions.js";
 
 const donnees = fixture();
@@ -119,14 +119,17 @@ test("retrouver_echange : l'IA ne retient rien -> message ; analyse en echec -> 
 // ---------- Rapport ----------
 const rapportBrut = (ids) => ({
   rien_a_dire: false,
-  sections: [
-    { titre: "Constat", points: [{ texte: "Le levage est décalé.", confirme: true, sources: [ids[0]] }] },
-    { titre: "Inventé", points: [{ texte: "Point sans source valide.", confirme: true, sources: ["M999"] }] },
-    { titre: "Incertain", points: [{ texte: "Un report est envisagé.", confirme: false, sources: [ids[1], "M888"] }] }
-  ]
+  titre: "Levage des groupes",
+  contexte: { texte: "Le levage est décalé.", sources: [ids[0], "M999"] },
+  intervenants: ["Bob Lenoir", "Personne Inventée"],
+  desaccords: [
+    { opposants: ["Vous"], objet: "Sans source valide.", sources: ["M999"] },
+    { opposants: ["Vous", "Bob Lenoir"], objet: "Un report est envisagé.", sources: [ids[1], "M888"] }
+  ],
+  decision: { statut: "aucune", texte: "Inventée.", sources: [ids[0]] }
 });
 
-test("rapport : chaque source est verifiee ; point sans source valide ecarte ; incertain marque ; chronologie triee", async () => {
+test("rapport : format fixe ; sources verifiees ; desaccord sans source ecarte ; AUCUNE decision n'est inventee ; chronologie triee", async () => {
   let ids = [];
   const { pipeline } = nouveau({
     comprendre: commande("rapport", { sujet: "levage grue" }),
@@ -137,20 +140,28 @@ test("rapport : chaque source est verifiee ; point sans source valide ecarte ; i
   assert.equal(r.type, "rapport");
   const { rapport } = r;
   assert.equal(rapport.vide, false);
-  assert.deepEqual(rapport.sections.map((s) => s.titre), ["Constat", "Incertain"]);
-  assert.equal(rapport.ecartes.points, 1);
-  assert.equal(rapport.ecartes.sources, 2); // M999 et M888
-  assert.equal(rapport.sections[1].points[0].confirme, false);
-  assert.equal(rapport.sections[1].points[0].sources.length, 1);
+  assert.equal(rapport.titre, "Levage des groupes");
+  assert.equal(rapport.date, MAINTENANT);
+  assert.equal(rapport.contexte.sources.length, 1);
+  assert.deepEqual(rapport.desaccords.map((d) => d.objet), ["Un report est envisagé."]);
+  assert.equal(rapport.desaccords[0].sources.length, 1);
+  assert.equal(rapport.decision.statut, "aucune");
+  assert.equal(rapport.decision.texte, "");
+  assert.ok(!rapport.intervenants.includes("Personne Inventée"));
   const quand = rapport.chronologie.map((c) => c.quand);
   assert.deepEqual(quand, quand.slice().sort((a, b) => a - b));
-  for (const s of rapport.sections.flatMap((x) => x.points.flatMap((p) => p.sources))) assert.ok(index.parCle.get(s.mk), "source inexistante : " + s.mk);
+  const toutes = [...rapport.contexte.sources, ...rapport.desaccords.flatMap((d) => d.sources), ...rapport.decision.sources];
+  for (const s of toutes) assert.ok(index.parCle.get(s.mk), "source inexistante : " + s.mk);
   // Les discussions citees sont celles des sources.
   assert.ok(r.resultat.fils.every((f) => rapport.chronologie.some((c) => c.mk.startsWith(f.cle + "#"))));
 });
 
-test("rapport : rien_a_dire, ou aucun point source -> « Rien n'a ete dit a ce sujet. »", async () => {
-  for (const sortie of [{ rien_a_dire: true, sections: [] }, { rien_a_dire: false, sections: [{ titre: "T", points: [{ texte: "x", confirme: true, sources: ["M404"] }] }] }, { rien_a_dire: false, sections: [] }]) {
+test("rapport : rien_a_dire, ou aucun bloc source -> « Rien n'a ete dit a ce sujet. »", async () => {
+  const vides = [
+    { rien_a_dire: true },
+    { rien_a_dire: false, titre: "T", contexte: { texte: "x", sources: ["M404"] }, intervenants: [], desaccords: [], decision: { statut: "aucune", texte: "", sources: [] } }
+  ];
+  for (const sortie of vides) {
     const { pipeline } = nouveau({ comprendre: commande("rapport", { sujet: "grue" }), analyser: async () => ({ ok: true, sortie }) });
     const r = await pipeline.traiter("rapport grue");
     assert.equal(r.ok, true);
@@ -200,38 +211,20 @@ test("conclureClassement : doublons et numeros inconnus ecartes, pertinence inco
   for (const mauvais of [null, {}, { resultats: "x" }, []]) assert.equal(conclureClassement(mauvais, table).ok, false);
 });
 
-test("conclureRapport : texte vide, trop long, titre vide, trop de sources -> ecartes ; sources plafonnees", () => {
+test("conclureRapport : sources plafonnees par bloc, titre du modele garde", () => {
   const table = new Map(index.messages.slice(0, 8).map((m, i) => ["M" + (i + 1), m]));
   const ids = Array.from(table.keys());
   const { rapport } = conclureRapport({
-    rien_a_dire: false,
-    sections: [
-      { titre: "Bon", points: [{ texte: "ok", confirme: true, sources: ids }, { texte: "", confirme: true, sources: ["M1"] }, { texte: "x".repeat(401), confirme: true, sources: ["M1"] }] },
-      { titre: "   ", points: [{ texte: "titre vide", confirme: true, sources: ["M1"] }] },
-      { points: [] }
-    ]
+    rien_a_dire: false, titre: "Essai", contexte: { texte: "ok", sources: ids }, intervenants: [], desaccords: [],
+    decision: { statut: "aucune", texte: "", sources: [] }
   }, table, index, { sujet: "essai" });
-  assert.equal(rapport.sections.length, 1);
-  assert.equal(rapport.sections[0].points.length, 1);
-  assert.equal(rapport.sections[0].points[0].sources.length, 5);
-  assert.equal(rapport.titre, "Rapport : essai");
+  assert.equal(rapport.contexte.sources.length, 5);
+  assert.equal(rapport.titre, "Essai");
 });
 
-test("conclureRapport : confirme absent = non confirme (on ne suppose jamais une certitude)", () => {
+test("conclureRapport : formes invalides -> erreur", () => {
   const table = new Map([["M1", index.messages[0]]]);
-  const { rapport } = conclureRapport({ rien_a_dire: false, sections: [{ titre: "T", points: [{ texte: "p", sources: ["M1"] }] }] }, table, index, { sujet: "s" });
-  assert.equal(rapport.sections[0].points[0].confirme, false);
-});
-
-test("rapportEnTexte : sources entre crochets, mention « non confirme », rapport vide", () => {
-  const table = new Map([["M1", index.messages[0]], ["M2", index.messages[1]]]);
-  const { rapport } = conclureRapport({ rien_a_dire: false, sections: [{ titre: "T", points: [{ texte: "alpha", confirme: true, sources: ["M1"] }, { texte: "beta", confirme: false, sources: ["M2"] }] }] }, table, index, { sujet: "s" });
-  const texte = rapportEnTexte(rapport);
-  assert.match(texte, /^Rapport : s\n/);
-  assert.match(texte, /- alpha \[.+, .+, .+\]/);
-  assert.match(texte, /- beta \(non confirmé\) \[/);
-  assert.match(texte, /Chronologie des sources/);
-  assert.equal(rapportEnTexte({ titre: "Rapport : s", vide: true, message: MESSAGE_RIEN }).trim(), "Rapport : s\n\n" + MESSAGE_RIEN);
+  for (const mauvais of [null, {}, { sections: [] }, { rien_a_dire: false }]) assert.equal(conclureRapport(mauvais, table, index, { sujet: "s" }).ok, false);
 });
 
 test("selection par mots : la preselection de rapport reste bornee et ajoute le contexte sans le mettre en evidence", () => {
@@ -242,10 +235,9 @@ test("selection par mots : la preselection de rapport reste bornee et ajoute le 
   assert.ok(filtre.messages.length > 0);
 });
 
-test("conclureRapport : un chiffre ou un mois absent des messages cites rend le point non confirme (jamais supprime)", () => {
+test("conclureRapport : un chiffre ou un mois absent des messages cites rend le bloc non confirme (jamais supprime)", () => {
   const entree = { ...index.messages[0], texte: "La trémie fait 12 cm de trop.", quand: new Date("2026-10-20T10:00:00").getTime() };
   const table = new Map([["M1", entree]]);
-  const point = (texte) => ({ texte, confirme: true, sources: ["M1"] });
-  const { rapport } = conclureRapport({ rien_a_dire: false, sections: [{ titre: "T", points: [point("La trémie est trop grande de 12 cm."), point("La trémie dépasse de 15 cm."), point("Constaté en octobre."), point("Constaté en mars."), point("Constaté le 20.")] }] }, table, index, { sujet: "s" });
-  assert.deepEqual(rapport.sections[0].points.map((p) => p.confirme), [true, false, true, false, true]);
+  const cas = (texte) => conclureRapport({ rien_a_dire: false, titre: "T", contexte: { texte, sources: ["M1"] }, intervenants: [], desaccords: [], decision: { statut: "aucune", texte: "", sources: [] } }, table, index, { sujet: "s" }).rapport.contexte.confirme;
+  assert.deepEqual(["La trémie est trop grande de 12 cm.", "La trémie dépasse de 15 cm.", "Constaté en octobre.", "Constaté en mars.", "Constaté le 20."].map(cas), [true, false, true, false, true]);
 });

@@ -8,12 +8,11 @@
 
 import { tableauDe, informationsDe, formaterNombre, nomFichier } from "./quantitatifRapport.js";
 import { libelleStatut } from "./quantitatifVersions.js";
+import { VERT, sansSpecial, chargerLogo } from "./exportPdfCommun.js";
 
-const VERT = [92, 122, 95]; // --accent d'Ouvra
 const ROUGE = [178, 34, 34];
 const ORANGE_PALE = [253, 236, 220];
 
-const sansSpecial = (t) => String(t == null ? "" : t).replace(/[  ]/g, " ").replace(/’/g, "'").replace(/…/g, "...");
 
 // statut : sortie de comparerVersions (ou null si non evalue).
 export function definitionPdf(rapport, statut) {
@@ -112,19 +111,6 @@ export function construirePdf({ jsPDF, autoTable }, def, { logoPng = null, maint
     doc.text("Page " + p + " / " + pages, largeur - marge, hauteur - 7, { align: "right" });
   }
   return doc;
-}
-
-async function chargerLogo(fetchFn) {
-  try {
-    const reponse = await fetchFn("/icons/icon-192.png");
-    if (!reponse.ok) return null;
-    const octets = new Uint8Array(await reponse.arrayBuffer());
-    let binaire = "";
-    octets.forEach((o) => { binaire += String.fromCharCode(o); });
-    return "data:image/png;base64," + btoa(binaire);
-  } catch {
-    return null; // sans logo, le PDF reste valide
-  }
 }
 
 // Declenche le telechargement. Les bibliotheques sont importees ici, au clic.

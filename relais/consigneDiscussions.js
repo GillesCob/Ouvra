@@ -32,13 +32,22 @@ export const CONSIGNE_CLASSEMENT = `Tu aides un BIM Manager à retrouver, dans s
 
 Parmi les messages fournis, garde ceux qui parlent VRAIMENT du sujet demandé (le sens compte, pas seulement les mots : un message qui évoque la même chose avec d'autres mots compte ; un message qui contient un mot du sujet sans en parler ne compte pas). Classe-les du plus au moins pertinent, au plus 12. pertinence "forte" : le message traite directement le sujet ; "moyenne" : il le touche ou y répond. Un message de contexte sans lien avec le sujet est écarté. Si aucun message ne parle du sujet, rends un tableau vide. Rends uniquement des numéros de la liste.`;
 
-export const CONSIGNE_RAPPORT = `Tu rédiges, pour un BIM Manager, un rapport de ce qui a été dit dans sa messagerie de projet à propos d'une problématique. ${REGLES_COMMUNES_ANALYSE}
+export const CONSIGNE_RAPPORT = `Tu rédiges, pour un BIM Manager, un récapitulatif partageable de ce qui a été dit dans sa messagerie de projet à propos d'une problématique. ${REGLES_COMMUNES_ANALYSE}
 
-RÈGLE ABSOLUE : aucune information qui ne soit pas dans les messages fournis. Chaque point du rapport est une affirmation que des messages disent, et il cite le numéro de ces messages dans "sources" (au moins un, au plus 5). Ce qui n'est pas dans les messages n'est pas écrit : pas de chiffre, de date, de nom, de cause ou de conclusion de ton cru, pas de recommandation, pas de « il faudrait ». Reprends les chiffres et les noms tels qu'ils sont écrits.
-- Si les messages ne disent rien sur la problématique : rien_a_dire vrai et sections vide. N'essaie pas de remplir.
-- Structure : des sections aux titres courts (quelques mots : « Constat », « Positions », « Décision », « Points ouverts »... selon ce qui est dit), des points courts (une ou deux phrases) rangés dans l'ordre chronologique. Dis qui a dit quoi (« Sophie propose... », « Karim répond que... »), au présent, avec le prénom tel qu'il est écrit dans les messages ; « Vous » est l'utilisateur.
-- Incertain : une hypothèse, une question restée sans réponse, un désaccord non tranché ou une information rapportée de seconde main reste un point, avec confirme faux. Une décision ou un fait énoncé clairement a confirme vrai.
-- Ignore les messages qui ne concernent pas la problématique, même s'ils sont fournis. Ne cite jamais un message qui ne dit pas ce que dit le point.`;
+RÈGLE ABSOLUE : aucune information qui ne soit pas dans les messages fournis. Chaque bloc du récapitulatif affirme ce que des messages disent, et cite leurs numéros dans "sources". Ce qui n'est pas dans les messages n'est pas écrit : pas de chiffre, de date, de nom, de cause ou de conclusion de ton cru, pas de recommandation, pas de « il faudrait ». Reprends les chiffres et les noms tels qu'ils sont écrits. Si les messages ne disent rien sur la problématique : rien_a_dire vrai et tous les autres champs vides (titre vide, contexte avec un texte vide, tableaux vides, decision de statut "aucune").
+
+Le récapitulatif a TOUJOURS ce format, dans cet ordre :
+1. titre : le sujet traité, en une ligne courte, repris de la demande.
+2. contexte : deux ou trois phrases qui expliquent de quoi il s'agit et ce qui a déclenché l'échange, dans l'ordre chronologique.
+3. intervenants : les personnes qui ont pris part à l'échange sur ce sujet, avec leur nom tel qu'il est écrit dans les messages (« Vous » est l'utilisateur).
+4. desaccords : chaque désaccord EXPRIMÉ dans les messages (une position contraire, un refus, une objection) : opposants (les personnes qui s'opposent) et objet (à quoi chacun s'oppose, au présent, « Karim veut maintenir le levage, Sophie demande de le décaler »). Un simple échange d'informations n'est pas un désaccord. Aucun désaccord exprimé : tableau vide.
+5. decision : la décision FINALE prise, avec son statut :
+   - "prise" : une décision énoncée clairement par quelqu'un qui en a le pouvoir ou acceptée par les autres (« on décale », « c'est validé »), reprise telle qu'écrite ;
+   - "rapportee" : une décision racontée de seconde main (« il paraît que », « Karim m'a dit que ») ;
+   - "incertaine" : une décision seulement envisagée, conditionnelle ou contestée sans réponse (« on pourrait », « à voir ») ;
+   - "aucune" : aucune décision n'est exprimée dans les messages. Alors texte vide et sources vide. N'invente JAMAIS une décision : une question, une proposition sans réponse ou un désaccord non tranché n'est pas une décision.
+S'il y a plusieurs décisions successives, retiens la dernière.
+Ignore les messages qui ne concernent pas la problématique, même s'ils sont fournis. Ne cite jamais un message qui ne dit pas ce que dit le bloc. Chaque bloc cite au plus 5 numéros.`;
 
 const ligne = (titre, liste) => titre + " : " + (liste.length ? liste.map(neutraliser).join(" | ") : "aucune");
 
