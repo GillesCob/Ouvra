@@ -1394,5 +1394,1222 @@
       },
       "tronque": false
     }
+  },
+  {
+    "id": "hosp-clash-9",
+    "version": 3,
+    "collisionId": "hosp-clash-9",
+    "niveau": "Niveau 1",
+    "modeles": "Architecture + Mécanique",
+    "camera": {
+      "eye": [
+        32.28997459621556,
+        169.3632,
+        -111.0369
+      ],
+      "look": [
+        33.156,
+        168.3632,
+        -112.5369
+      ],
+      "up": [
+        0,
+        1,
+        0
+      ]
+    },
+    "niveaux": [
+      {
+        "name": "Level 1",
+        "checked": true
+      },
+      {
+        "name": "Level 2",
+        "checked": true
+      },
+      {
+        "name": "Level 3",
+        "checked": true
+      },
+      {
+        "name": "Level 4",
+        "checked": true
+      },
+      {
+        "name": "Level 5",
+        "checked": true
+      },
+      {
+        "name": "Level 6",
+        "checked": true
+      },
+      {
+        "name": "Level 7",
+        "checked": true
+      }
+    ],
+    "maquettes": [
+      {
+        "id": "hosp-struct",
+        "visible": false
+      },
+      {
+        "id": "hosp-mep",
+        "visible": true
+      },
+      {
+        "id": "hosp-arch",
+        "visible": true
+      }
+    ],
+    "coupe": null,
+    "entites": {
+      "parMaquette": {
+        "hosp-mep": {
+          "xray": {
+            "sauf": true,
+            "ids": [
+              "1x6TfEQKXD0gdSuVgmPRLz"
+            ]
+          },
+          "couleurs": [
+            {
+              "rgb": [
+                63,
+                255,
+                76
+              ],
+              "ids": {
+                "sauf": false,
+                "ids": [
+                  "1x6TfEQKXD0gdSuVgmPRLz"
+                ]
+              }
+            }
+          ]
+        },
+        "hosp-arch": {
+          "xray": {
+            "sauf": true,
+            "ids": [
+              "1NU4DBqZr9TveX2NFh7PrI",
+              "2e$FV4Y9f6NPrJ7KOfe14U",
+              "3NoPuFwSP2$ukR3bjeYMMS",
+              "37lZNn4SHFawe$5ITwJJpq",
+              "1zhleAQ4z7IhcfPaY8GgGb",
+              "2ZoIlszeb7y8t1_FxE$e8y",
+              "0OLDFHvsT2fvWuPyaWakuD",
+              "0mPx06yCT81Oir7rgqE8a2",
+              "21BheI$eX15OQoWN2f7nBq",
+              "1JtlWVxEHF7AtnVhy0$7Xe",
+              "38$O$vZ5r3$h_KGQTTsXE5",
+              "0FQP_M_L9CUOuIiAy668HI",
+              "0DJSIqdVP289oPRnBHeG5C",
+              "2WetIfYwT3igEiGFFiPlO9",
+              "0yWW_91e9BzgCnPQ6U_Vy2",
+              "3Z2iznH717FxB09x2OQu1S",
+              "0bWHqDYhP9l9bZwXFgwD6F",
+              "0cvnr162r2qRGfCroKgvqN",
+              "2Cd4x0qfzCaubEd0IqNKaH",
+              "1iTlCtoG5BNRuGHj1YUyKK",
+              "1Ib3Rs4fn1Ufu1Vad7Ar6F",
+              "2rxO7f4zbBJ8Ji6togGdpG",
+              "1vFhikqQ163Pzjkl699cjh",
+              "2ebwD8q_r6DeLBBZ8NlCRr",
+              "3Aqo$pSrb7YwrcNdiiJdK0",
+              "2M$9CiIFv8_fHn8uoZNXCJ",
+              "0mRctqW7P5IwSZkA2Fi9OV",
+              "3sXCbf4XTByQhehgTY2Son",
+              "3LgX6wz1L7pRQ1ad9wkmz6",
+              "0Yy5HEbTj9jQzJM_Clf3Z_",
+              "1uAItwbGfF6hhQfTk4IvDZ"
+            ]
+          },
+          "couleurs": [
+            {
+              "rgb": [
+                255,
+                51,
+                51
+              ],
+              "ids": {
+                "sauf": false,
+                "ids": [
+                  "1uAItwbGfF6hhQfTk4IvDZ"
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "xrayMat": {
+        "fillAlpha": 0.03,
+        "edgeAlpha": 0.14,
+        "fillColor": [
+          0.8199999928474426,
+          0.8399999737739563,
+          0.8600000143051147
+        ],
+        "edgeColor": [
+          0.8199999928474426,
+          0.8399999737739563,
+          0.8600000143051147
+        ]
+      },
+      "tronque": false
+    }
+  },
+  {
+    "id": "hosp-clash-10",
+    "version": 3,
+    "collisionId": "hosp-clash-10",
+    "niveau": "Niveau 3",
+    "modeles": "Architecture + Mécanique",
+    "camera": {
+      "eye": [
+        62.82635080756887,
+        178.9721,
+        -85.8975
+      ],
+      "look": [
+        61.0943,
+        177.9721,
+        -85.8975
+      ],
+      "up": [
+        0,
+        1,
+        0
+      ]
+    },
+    "niveaux": [
+      {
+        "name": "Level 1",
+        "checked": true
+      },
+      {
+        "name": "Level 2",
+        "checked": true
+      },
+      {
+        "name": "Level 3",
+        "checked": true
+      },
+      {
+        "name": "Level 4",
+        "checked": true
+      },
+      {
+        "name": "Level 5",
+        "checked": true
+      },
+      {
+        "name": "Level 6",
+        "checked": true
+      },
+      {
+        "name": "Level 7",
+        "checked": true
+      }
+    ],
+    "maquettes": [
+      {
+        "id": "hosp-struct",
+        "visible": false
+      },
+      {
+        "id": "hosp-mep",
+        "visible": true
+      },
+      {
+        "id": "hosp-arch",
+        "visible": true
+      }
+    ],
+    "coupe": null,
+    "entites": {
+      "parMaquette": {
+        "hosp-mep": {
+          "xray": {
+            "sauf": true,
+            "ids": [
+              "2kiAne$$n56eHBJkyVm5uW"
+            ]
+          },
+          "couleurs": [
+            {
+              "rgb": null,
+              "ids": {
+                "sauf": false,
+                "ids": [
+                  "1x6TfEQKXD0gdSuVgmPRLz"
+                ]
+              }
+            },
+            {
+              "rgb": [
+                63,
+                255,
+                76
+              ],
+              "ids": {
+                "sauf": false,
+                "ids": [
+                  "2kiAne$$n56eHBJkyVm5uW"
+                ]
+              }
+            }
+          ]
+        },
+        "hosp-arch": {
+          "xray": {
+            "sauf": true,
+            "ids": [
+              "2Vmr1Ti7jER94ybNBhQISJ",
+              "1NU4DBqZr9TveX2NFh7PrI",
+              "2e$FV4Y9f6NPrJ7KOfe14U",
+              "3NoPuFwSP2$ukR3bjeYMMS",
+              "37lZNn4SHFawe$5ITwJJpq",
+              "1zhleAQ4z7IhcfPaY8GgGb",
+              "2ZoIlszeb7y8t1_FxE$e8y",
+              "0OLDFHvsT2fvWuPyaWakuD",
+              "0mPx06yCT81Oir7rgqE8a2",
+              "21BheI$eX15OQoWN2f7nBq",
+              "1JtlWVxEHF7AtnVhy0$7Xe",
+              "38$O$vZ5r3$h_KGQTTsXE5",
+              "0FQP_M_L9CUOuIiAy668HI",
+              "0DJSIqdVP289oPRnBHeG5C",
+              "2WetIfYwT3igEiGFFiPlO9",
+              "0yWW_91e9BzgCnPQ6U_Vy2",
+              "3Z2iznH717FxB09x2OQu1S",
+              "0bWHqDYhP9l9bZwXFgwD6F",
+              "0cvnr162r2qRGfCroKgvqN",
+              "2Cd4x0qfzCaubEd0IqNKaH",
+              "1iTlCtoG5BNRuGHj1YUyKK",
+              "1Ib3Rs4fn1Ufu1Vad7Ar6F",
+              "2rxO7f4zbBJ8Ji6togGdpG",
+              "1vFhikqQ163Pzjkl699cjh",
+              "2ebwD8q_r6DeLBBZ8NlCRr",
+              "3Aqo$pSrb7YwrcNdiiJdK0",
+              "2M$9CiIFv8_fHn8uoZNXCJ",
+              "0mRctqW7P5IwSZkA2Fi9OV",
+              "3sXCbf4XTByQhehgTY2Son",
+              "3LgX6wz1L7pRQ1ad9wkmz6",
+              "0Yy5HEbTj9jQzJM_Clf3Z_"
+            ]
+          },
+          "couleurs": [
+            {
+              "rgb": [
+                255,
+                51,
+                51
+              ],
+              "ids": {
+                "sauf": false,
+                "ids": [
+                  "2Vmr1Ti7jER94ybNBhQISJ"
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "xrayMat": {
+        "fillAlpha": 0.03,
+        "edgeAlpha": 0.14,
+        "fillColor": [
+          0.8199999928474426,
+          0.8399999737739563,
+          0.8600000143051147
+        ],
+        "edgeColor": [
+          0.8199999928474426,
+          0.8399999737739563,
+          0.8600000143051147
+        ]
+      },
+      "tronque": false
+    }
+  },
+  {
+    "id": "hosp-clash-11",
+    "version": 3,
+    "collisionId": "hosp-clash-11",
+    "niveau": "Niveau 1",
+    "modeles": "Architecture + Mécanique",
+    "camera": {
+      "eye": [
+        19.2892,
+        170.7878,
+        -82.90174919243111
+      ],
+      "look": [
+        19.2892,
+        169.7878,
+        -84.6338
+      ],
+      "up": [
+        0,
+        1,
+        0
+      ]
+    },
+    "niveaux": [
+      {
+        "name": "Level 1",
+        "checked": true
+      },
+      {
+        "name": "Level 2",
+        "checked": true
+      },
+      {
+        "name": "Level 3",
+        "checked": true
+      },
+      {
+        "name": "Level 4",
+        "checked": true
+      },
+      {
+        "name": "Level 5",
+        "checked": true
+      },
+      {
+        "name": "Level 6",
+        "checked": true
+      },
+      {
+        "name": "Level 7",
+        "checked": true
+      }
+    ],
+    "maquettes": [
+      {
+        "id": "hosp-struct",
+        "visible": false
+      },
+      {
+        "id": "hosp-mep",
+        "visible": true
+      },
+      {
+        "id": "hosp-arch",
+        "visible": true
+      }
+    ],
+    "coupe": null,
+    "entites": {
+      "parMaquette": {
+        "hosp-mep": {
+          "xray": {
+            "sauf": true,
+            "ids": [
+              "2Y8P3M7$v29Ot0VmFMfbJX"
+            ]
+          },
+          "couleurs": [
+            {
+              "rgb": null,
+              "ids": {
+                "sauf": false,
+                "ids": [
+                  "1x6TfEQKXD0gdSuVgmPRLz",
+                  "2kiAne$$n56eHBJkyVm5uW"
+                ]
+              }
+            },
+            {
+              "rgb": [
+                63,
+                255,
+                76
+              ],
+              "ids": {
+                "sauf": false,
+                "ids": [
+                  "2Y8P3M7$v29Ot0VmFMfbJX"
+                ]
+              }
+            }
+          ]
+        },
+        "hosp-arch": {
+          "xray": {
+            "sauf": true,
+            "ids": [
+              "3GKM_ZECz7W9zLWaxxFO2N",
+              "1NU4DBqZr9TveX2NFh7PrI",
+              "2e$FV4Y9f6NPrJ7KOfe14U",
+              "3NoPuFwSP2$ukR3bjeYMMS",
+              "37lZNn4SHFawe$5ITwJJpq",
+              "1zhleAQ4z7IhcfPaY8GgGb",
+              "2ZoIlszeb7y8t1_FxE$e8y",
+              "0OLDFHvsT2fvWuPyaWakuD",
+              "0mPx06yCT81Oir7rgqE8a2",
+              "21BheI$eX15OQoWN2f7nBq",
+              "1JtlWVxEHF7AtnVhy0$7Xe",
+              "38$O$vZ5r3$h_KGQTTsXE5",
+              "0FQP_M_L9CUOuIiAy668HI",
+              "0DJSIqdVP289oPRnBHeG5C",
+              "2WetIfYwT3igEiGFFiPlO9",
+              "0yWW_91e9BzgCnPQ6U_Vy2",
+              "3Z2iznH717FxB09x2OQu1S",
+              "0bWHqDYhP9l9bZwXFgwD6F",
+              "0cvnr162r2qRGfCroKgvqN",
+              "2Cd4x0qfzCaubEd0IqNKaH",
+              "1iTlCtoG5BNRuGHj1YUyKK",
+              "1Ib3Rs4fn1Ufu1Vad7Ar6F",
+              "2rxO7f4zbBJ8Ji6togGdpG",
+              "1vFhikqQ163Pzjkl699cjh",
+              "2ebwD8q_r6DeLBBZ8NlCRr",
+              "3Aqo$pSrb7YwrcNdiiJdK0",
+              "2M$9CiIFv8_fHn8uoZNXCJ",
+              "0mRctqW7P5IwSZkA2Fi9OV",
+              "3sXCbf4XTByQhehgTY2Son",
+              "3LgX6wz1L7pRQ1ad9wkmz6",
+              "0Yy5HEbTj9jQzJM_Clf3Z_"
+            ]
+          },
+          "couleurs": [
+            {
+              "rgb": [
+                255,
+                51,
+                51
+              ],
+              "ids": {
+                "sauf": false,
+                "ids": [
+                  "3GKM_ZECz7W9zLWaxxFO2N"
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "xrayMat": {
+        "fillAlpha": 0.03,
+        "edgeAlpha": 0.14,
+        "fillColor": [
+          0.8199999928474426,
+          0.8399999737739563,
+          0.8600000143051147
+        ],
+        "edgeColor": [
+          0.8199999928474426,
+          0.8399999737739563,
+          0.8600000143051147
+        ]
+      },
+      "tronque": false
+    }
+  },
+  {
+    "id": "hosp-clash-12",
+    "version": 3,
+    "collisionId": "hosp-clash-12",
+    "niveau": "Niveau 1",
+    "modeles": "Architecture + Mécanique",
+    "camera": {
+      "eye": [
+        25.957,
+        170.6362,
+        -68.27617459621557
+      ],
+      "look": [
+        24.457,
+        169.6362,
+        -69.1422
+      ],
+      "up": [
+        0,
+        1,
+        0
+      ]
+    },
+    "niveaux": [
+      {
+        "name": "Level 1",
+        "checked": true
+      },
+      {
+        "name": "Level 2",
+        "checked": true
+      },
+      {
+        "name": "Level 3",
+        "checked": true
+      },
+      {
+        "name": "Level 4",
+        "checked": true
+      },
+      {
+        "name": "Level 5",
+        "checked": true
+      },
+      {
+        "name": "Level 6",
+        "checked": true
+      },
+      {
+        "name": "Level 7",
+        "checked": true
+      }
+    ],
+    "maquettes": [
+      {
+        "id": "hosp-struct",
+        "visible": false
+      },
+      {
+        "id": "hosp-mep",
+        "visible": true
+      },
+      {
+        "id": "hosp-arch",
+        "visible": true
+      }
+    ],
+    "coupe": null,
+    "entites": {
+      "parMaquette": {
+        "hosp-mep": {
+          "xray": {
+            "sauf": true,
+            "ids": [
+              "2qP17kDeP7DgzqI9A1BDwZ"
+            ]
+          },
+          "couleurs": [
+            {
+              "rgb": null,
+              "ids": {
+                "sauf": false,
+                "ids": [
+                  "1x6TfEQKXD0gdSuVgmPRLz",
+                  "2Y8P3M7$v29Ot0VmFMfbJX",
+                  "2kiAne$$n56eHBJkyVm5uW"
+                ]
+              }
+            },
+            {
+              "rgb": [
+                63,
+                255,
+                76
+              ],
+              "ids": {
+                "sauf": false,
+                "ids": [
+                  "2qP17kDeP7DgzqI9A1BDwZ"
+                ]
+              }
+            }
+          ]
+        },
+        "hosp-arch": {
+          "xray": {
+            "sauf": true,
+            "ids": [
+              "3GKM_ZECz7W9zLWaxxFPok",
+              "1NU4DBqZr9TveX2NFh7PrI",
+              "2e$FV4Y9f6NPrJ7KOfe14U",
+              "3NoPuFwSP2$ukR3bjeYMMS",
+              "37lZNn4SHFawe$5ITwJJpq",
+              "1zhleAQ4z7IhcfPaY8GgGb",
+              "2ZoIlszeb7y8t1_FxE$e8y",
+              "0OLDFHvsT2fvWuPyaWakuD",
+              "0mPx06yCT81Oir7rgqE8a2",
+              "21BheI$eX15OQoWN2f7nBq",
+              "1JtlWVxEHF7AtnVhy0$7Xe",
+              "38$O$vZ5r3$h_KGQTTsXE5",
+              "0FQP_M_L9CUOuIiAy668HI",
+              "0DJSIqdVP289oPRnBHeG5C",
+              "2WetIfYwT3igEiGFFiPlO9",
+              "0yWW_91e9BzgCnPQ6U_Vy2",
+              "3Z2iznH717FxB09x2OQu1S",
+              "0bWHqDYhP9l9bZwXFgwD6F",
+              "0cvnr162r2qRGfCroKgvqN",
+              "2Cd4x0qfzCaubEd0IqNKaH",
+              "1iTlCtoG5BNRuGHj1YUyKK",
+              "1Ib3Rs4fn1Ufu1Vad7Ar6F",
+              "2rxO7f4zbBJ8Ji6togGdpG",
+              "1vFhikqQ163Pzjkl699cjh",
+              "2ebwD8q_r6DeLBBZ8NlCRr",
+              "3Aqo$pSrb7YwrcNdiiJdK0",
+              "2M$9CiIFv8_fHn8uoZNXCJ",
+              "0mRctqW7P5IwSZkA2Fi9OV",
+              "3sXCbf4XTByQhehgTY2Son",
+              "3LgX6wz1L7pRQ1ad9wkmz6",
+              "0Yy5HEbTj9jQzJM_Clf3Z_"
+            ]
+          },
+          "couleurs": [
+            {
+              "rgb": [
+                255,
+                51,
+                51
+              ],
+              "ids": {
+                "sauf": false,
+                "ids": [
+                  "3GKM_ZECz7W9zLWaxxFPok"
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "xrayMat": {
+        "fillAlpha": 0.03,
+        "edgeAlpha": 0.14,
+        "fillColor": [
+          0.8199999928474426,
+          0.8399999737739563,
+          0.8600000143051147
+        ],
+        "edgeColor": [
+          0.8199999928474426,
+          0.8399999737739563,
+          0.8600000143051147
+        ]
+      },
+      "tronque": false
+    }
+  },
+  {
+    "id": "hosp-clash-13",
+    "version": 3,
+    "collisionId": "hosp-clash-13",
+    "niveau": "Niveau 3",
+    "modeles": "Architecture + Mécanique",
+    "camera": {
+      "eye": [
+        6.235800000000001,
+        181.29763428590437,
+        -121.84752576519737
+      ],
+      "look": [
+        6.235800000000001,
+        179.6132,
+        -118.93
+      ],
+      "up": [
+        0,
+        1,
+        0
+      ]
+    },
+    "niveaux": [
+      {
+        "name": "Level 1",
+        "checked": true
+      },
+      {
+        "name": "Level 2",
+        "checked": true
+      },
+      {
+        "name": "Level 3",
+        "checked": true
+      },
+      {
+        "name": "Level 4",
+        "checked": true
+      },
+      {
+        "name": "Level 5",
+        "checked": true
+      },
+      {
+        "name": "Level 6",
+        "checked": true
+      },
+      {
+        "name": "Level 7",
+        "checked": true
+      }
+    ],
+    "maquettes": [
+      {
+        "id": "hosp-struct",
+        "visible": false
+      },
+      {
+        "id": "hosp-mep",
+        "visible": true
+      },
+      {
+        "id": "hosp-arch",
+        "visible": true
+      }
+    ],
+    "coupe": null,
+    "entites": {
+      "parMaquette": {
+        "hosp-mep": {
+          "xray": {
+            "sauf": true,
+            "ids": [
+              "0Da$jOx5510AJAhJy6embe"
+            ]
+          },
+          "couleurs": [
+            {
+              "rgb": null,
+              "ids": {
+                "sauf": false,
+                "ids": [
+                  "2qP17kDeP7DgzqI9A1BDwZ",
+                  "1x6TfEQKXD0gdSuVgmPRLz",
+                  "2Y8P3M7$v29Ot0VmFMfbJX",
+                  "2kiAne$$n56eHBJkyVm5uW"
+                ]
+              }
+            },
+            {
+              "rgb": [
+                63,
+                255,
+                76
+              ],
+              "ids": {
+                "sauf": false,
+                "ids": [
+                  "0Da$jOx5510AJAhJy6embe"
+                ]
+              }
+            }
+          ]
+        },
+        "hosp-arch": {
+          "xray": {
+            "sauf": true,
+            "ids": [
+              "1NU4DBqZr9TveX2NFh7PrI",
+              "2e$FV4Y9f6NPrJ7KOfe14U",
+              "3NoPuFwSP2$ukR3bjeYMMS",
+              "37lZNn4SHFawe$5ITwJJpq",
+              "1zhleAQ4z7IhcfPaY8GgGb",
+              "2ZoIlszeb7y8t1_FxE$e8y",
+              "0OLDFHvsT2fvWuPyaWakuD",
+              "0mPx06yCT81Oir7rgqE8a2",
+              "21BheI$eX15OQoWN2f7nBq",
+              "1JtlWVxEHF7AtnVhy0$7Xe",
+              "38$O$vZ5r3$h_KGQTTsXE5",
+              "0FQP_M_L9CUOuIiAy668HI",
+              "0DJSIqdVP289oPRnBHeG5C",
+              "2WetIfYwT3igEiGFFiPlO9",
+              "0yWW_91e9BzgCnPQ6U_Vy2",
+              "3Z2iznH717FxB09x2OQu1S",
+              "0bWHqDYhP9l9bZwXFgwD6F",
+              "0cvnr162r2qRGfCroKgvqN",
+              "2Cd4x0qfzCaubEd0IqNKaH",
+              "1iTlCtoG5BNRuGHj1YUyKK",
+              "1Ib3Rs4fn1Ufu1Vad7Ar6F",
+              "2rxO7f4zbBJ8Ji6togGdpG",
+              "1vFhikqQ163Pzjkl699cjh",
+              "2ebwD8q_r6DeLBBZ8NlCRr",
+              "3Aqo$pSrb7YwrcNdiiJdK0",
+              "2M$9CiIFv8_fHn8uoZNXCJ",
+              "0mRctqW7P5IwSZkA2Fi9OV",
+              "3sXCbf4XTByQhehgTY2Son",
+              "3LgX6wz1L7pRQ1ad9wkmz6",
+              "0Yy5HEbTj9jQzJM_Clf3Z_",
+              "1_U0abofb2x96Zk8Hyv14C"
+            ]
+          },
+          "couleurs": [
+            {
+              "rgb": [
+                255,
+                51,
+                51
+              ],
+              "ids": {
+                "sauf": false,
+                "ids": [
+                  "1_U0abofb2x96Zk8Hyv14C"
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "xrayMat": {
+        "fillAlpha": 0.03,
+        "edgeAlpha": 0.14,
+        "fillColor": [
+          0.8199999928474426,
+          0.8399999737739563,
+          0.8600000143051147
+        ],
+        "edgeColor": [
+          0.8199999928474426,
+          0.8399999737739563,
+          0.8600000143051147
+        ]
+      },
+      "tronque": false
+    }
+  },
+  {
+    "id": "hosp-clash-14",
+    "version": 3,
+    "collisionId": "hosp-clash-14",
+    "niveau": "Niveau 4",
+    "modeles": "Architecture + Mécanique",
+    "camera": {
+      "eye": [
+        63.070899999999995,
+        186.0612,
+        -66.94532540378444
+      ],
+      "look": [
+        61.570899999999995,
+        185.0612,
+        -66.0793
+      ],
+      "up": [
+        0,
+        1,
+        0
+      ]
+    },
+    "niveaux": [
+      {
+        "name": "Level 1",
+        "checked": true
+      },
+      {
+        "name": "Level 2",
+        "checked": true
+      },
+      {
+        "name": "Level 3",
+        "checked": true
+      },
+      {
+        "name": "Level 4",
+        "checked": true
+      },
+      {
+        "name": "Level 5",
+        "checked": true
+      },
+      {
+        "name": "Level 6",
+        "checked": true
+      },
+      {
+        "name": "Level 7",
+        "checked": true
+      }
+    ],
+    "maquettes": [
+      {
+        "id": "hosp-struct",
+        "visible": false
+      },
+      {
+        "id": "hosp-mep",
+        "visible": true
+      },
+      {
+        "id": "hosp-arch",
+        "visible": true
+      }
+    ],
+    "coupe": null,
+    "entites": {
+      "parMaquette": {
+        "hosp-mep": {
+          "xray": {
+            "sauf": true,
+            "ids": [
+              "2nt2LYCN9989XGGlsEhRUH"
+            ]
+          },
+          "couleurs": [
+            {
+              "rgb": null,
+              "ids": {
+                "sauf": false,
+                "ids": [
+                  "2qP17kDeP7DgzqI9A1BDwZ",
+                  "0Da$jOx5510AJAhJy6embe",
+                  "1x6TfEQKXD0gdSuVgmPRLz",
+                  "2Y8P3M7$v29Ot0VmFMfbJX",
+                  "2kiAne$$n56eHBJkyVm5uW"
+                ]
+              }
+            },
+            {
+              "rgb": [
+                63,
+                255,
+                76
+              ],
+              "ids": {
+                "sauf": false,
+                "ids": [
+                  "2nt2LYCN9989XGGlsEhRUH"
+                ]
+              }
+            }
+          ]
+        },
+        "hosp-arch": {
+          "xray": {
+            "sauf": true,
+            "ids": [
+              "1NU4DBqZr9TveX2NFh7PrI",
+              "2e$FV4Y9f6NPrJ7KOfe14U",
+              "3NoPuFwSP2$ukR3bjeYMMS",
+              "37lZNn4SHFawe$5ITwJJpq",
+              "1zhleAQ4z7IhcfPaY8GgGb",
+              "2ZoIlszeb7y8t1_FxE$e8y",
+              "0OLDFHvsT2fvWuPyaWakuD",
+              "0mPx06yCT81Oir7rgqE8a2",
+              "21BheI$eX15OQoWN2f7nBq",
+              "1JtlWVxEHF7AtnVhy0$7Xe",
+              "38$O$vZ5r3$h_KGQTTsXE5",
+              "0FQP_M_L9CUOuIiAy668HI",
+              "0DJSIqdVP289oPRnBHeG5C",
+              "2WetIfYwT3igEiGFFiPlO9",
+              "0yWW_91e9BzgCnPQ6U_Vy2",
+              "3Z2iznH717FxB09x2OQu1S",
+              "0bWHqDYhP9l9bZwXFgwD6F",
+              "0cvnr162r2qRGfCroKgvqN",
+              "2Cd4x0qfzCaubEd0IqNKaH",
+              "1iTlCtoG5BNRuGHj1YUyKK",
+              "1Ib3Rs4fn1Ufu1Vad7Ar6F",
+              "2rxO7f4zbBJ8Ji6togGdpG",
+              "1vFhikqQ163Pzjkl699cjh",
+              "2ebwD8q_r6DeLBBZ8NlCRr",
+              "3Aqo$pSrb7YwrcNdiiJdK0",
+              "2M$9CiIFv8_fHn8uoZNXCJ",
+              "0mRctqW7P5IwSZkA2Fi9OV",
+              "3sXCbf4XTByQhehgTY2Son",
+              "3LgX6wz1L7pRQ1ad9wkmz6",
+              "0Yy5HEbTj9jQzJM_Clf3Z_",
+              "2pw9duL$jBS82bFqOjndCu"
+            ]
+          },
+          "couleurs": [
+            {
+              "rgb": [
+                255,
+                51,
+                51
+              ],
+              "ids": {
+                "sauf": false,
+                "ids": [
+                  "2pw9duL$jBS82bFqOjndCu"
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "xrayMat": {
+        "fillAlpha": 0.03,
+        "edgeAlpha": 0.14,
+        "fillColor": [
+          0.8199999928474426,
+          0.8399999737739563,
+          0.8600000143051147
+        ],
+        "edgeColor": [
+          0.8199999928474426,
+          0.8399999737739563,
+          0.8600000143051147
+        ]
+      },
+      "tronque": false
+    }
+  },
+  {
+    "id": "hosp-clash-15",
+    "version": 3,
+    "collisionId": "hosp-clash-15",
+    "niveau": "Niveau 7A",
+    "modeles": "Architecture + Mécanique",
+    "camera": {
+      "eye": [
+        59.73,
+        198.6886,
+        -121.01127459621557
+      ],
+      "look": [
+        58.23,
+        197.6886,
+        -121.8773
+      ],
+      "up": [
+        0,
+        1,
+        0
+      ]
+    },
+    "niveaux": [
+      {
+        "name": "Level 1",
+        "checked": true
+      },
+      {
+        "name": "Level 2",
+        "checked": true
+      },
+      {
+        "name": "Level 3",
+        "checked": true
+      },
+      {
+        "name": "Level 4",
+        "checked": true
+      },
+      {
+        "name": "Level 5",
+        "checked": true
+      },
+      {
+        "name": "Level 6",
+        "checked": true
+      },
+      {
+        "name": "Level 7",
+        "checked": true
+      }
+    ],
+    "maquettes": [
+      {
+        "id": "hosp-struct",
+        "visible": false
+      },
+      {
+        "id": "hosp-mep",
+        "visible": true
+      },
+      {
+        "id": "hosp-arch",
+        "visible": true
+      }
+    ],
+    "coupe": null,
+    "entites": {
+      "parMaquette": {
+        "hosp-mep": {
+          "xray": {
+            "sauf": true,
+            "ids": [
+              "1o4ip7curF0OtNjCYAZgKC"
+            ]
+          },
+          "couleurs": [
+            {
+              "rgb": null,
+              "ids": {
+                "sauf": false,
+                "ids": [
+                  "2nt2LYCN9989XGGlsEhRUH",
+                  "2qP17kDeP7DgzqI9A1BDwZ",
+                  "0Da$jOx5510AJAhJy6embe",
+                  "1x6TfEQKXD0gdSuVgmPRLz",
+                  "2Y8P3M7$v29Ot0VmFMfbJX",
+                  "2kiAne$$n56eHBJkyVm5uW"
+                ]
+              }
+            },
+            {
+              "rgb": [
+                63,
+                255,
+                76
+              ],
+              "ids": {
+                "sauf": false,
+                "ids": [
+                  "1o4ip7curF0OtNjCYAZgKC"
+                ]
+              }
+            }
+          ]
+        },
+        "hosp-arch": {
+          "xray": {
+            "sauf": true,
+            "ids": [
+              "1NU4DBqZr9TveX2NFh7PrI",
+              "2e$FV4Y9f6NPrJ7KOfe14U",
+              "3NoPuFwSP2$ukR3bjeYMMS",
+              "37lZNn4SHFawe$5ITwJJpq",
+              "1zhleAQ4z7IhcfPaY8GgGb",
+              "2ZoIlszeb7y8t1_FxE$e8y",
+              "0OLDFHvsT2fvWuPyaWakuD",
+              "0mPx06yCT81Oir7rgqE8a2",
+              "21BheI$eX15OQoWN2f7nBq",
+              "1JtlWVxEHF7AtnVhy0$7Xe",
+              "38$O$vZ5r3$h_KGQTTsXE5",
+              "0FQP_M_L9CUOuIiAy668HI",
+              "0DJSIqdVP289oPRnBHeG5C",
+              "2WetIfYwT3igEiGFFiPlO9",
+              "0yWW_91e9BzgCnPQ6U_Vy2",
+              "3Z2iznH717FxB09x2OQu1S",
+              "0bWHqDYhP9l9bZwXFgwD6F",
+              "0cvnr162r2qRGfCroKgvqN",
+              "2Cd4x0qfzCaubEd0IqNKaH",
+              "1iTlCtoG5BNRuGHj1YUyKK",
+              "1Ib3Rs4fn1Ufu1Vad7Ar6F",
+              "2rxO7f4zbBJ8Ji6togGdpG",
+              "1vFhikqQ163Pzjkl699cjh",
+              "2ebwD8q_r6DeLBBZ8NlCRr",
+              "3Aqo$pSrb7YwrcNdiiJdK0",
+              "2M$9CiIFv8_fHn8uoZNXCJ",
+              "0mRctqW7P5IwSZkA2Fi9OV",
+              "3sXCbf4XTByQhehgTY2Son",
+              "3LgX6wz1L7pRQ1ad9wkmz6",
+              "0Yy5HEbTj9jQzJM_Clf3Z_",
+              "3kAGQjYaL5K8DdxPJdyKEm"
+            ]
+          },
+          "couleurs": [
+            {
+              "rgb": [
+                255,
+                51,
+                51
+              ],
+              "ids": {
+                "sauf": false,
+                "ids": [
+                  "3kAGQjYaL5K8DdxPJdyKEm"
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "xrayMat": {
+        "fillAlpha": 0.03,
+        "edgeAlpha": 0.14,
+        "fillColor": [
+          0.8199999928474426,
+          0.8399999737739563,
+          0.8600000143051147
+        ],
+        "edgeColor": [
+          0.8199999928474426,
+          0.8399999737739563,
+          0.8600000143051147
+        ]
+      },
+      "tronque": false
+    }
   }
 ]
