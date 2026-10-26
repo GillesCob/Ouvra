@@ -5,6 +5,8 @@ import { creerMessagerie } from "./messagerie/messagerie.js";
 import { creerDiscussionsIAMontage } from "./discussionsIAMontage.js";
 import { descripteurElement, validerRegle, appliquerRegle } from "./reglesCollision.js";
 import { creerReglesModale } from "./reglesModale.js";
+import { urlVueCollision } from "./reglesImages.js";
+import { chargerBanque } from "./messagerie/vuesMessagerie.js";
 import { creerReglesIA } from "./reglesIA.js";
 import { valeursPourIA } from "./reglesValeurs.js";
 import { demanderRegle } from "./reglesIAClient.js";
@@ -902,7 +904,7 @@ function redirectMaskedView(viewName) {
 // (jamais Viewer ni Collision) n'est pas touchee. Un rendu a la fois, avec des pauses. Puis camera, visibilites, X-ray, coupe et
 // emplacement de la 3D sont remis tels qu'avant. Un changement de page l'interrompt. Les fichiers etant statiques ensuite, les
 // rechargements suivants n'ont plus rien a faire (la messagerie lit index.json au demarrage).
-const RECOLTE_NOMBRE = 8;
+const RECOLTE_NOMBRE = 15; // les 15 collisions reelles de l'hopital (modale « Regle a valider » : une image par collision) ; Discussions n'en utilise que les 8 premieres (NOMBRE_VUES_MESSAGERIE)
 const RECOLTE_LARGEUR_MAX = 640;
 // Version du format des vues enregistrees : une entree d'index d'une autre version (ou sans camera) est recoltee de nouveau.
 const RECOLTE_VERSION = 3;
@@ -1038,6 +1040,7 @@ async function executerRecolteAuto(cibles) {
     }
     r.enCours = false;
     if (messagerie && enregistrees > 0) messagerie.rechargerVues();
+    if (enregistrees > 0) relireBanqueVuesCollisions();
     // Interrompue ou reportee : la prochaine page non Viewer/Collision relance la verification (les vues deja ecrites sont comptees).
     if (!r.termine) planifierRecolteAuto(r.echecs > 0 ? 30000 : 3000);
   }
@@ -6294,6 +6297,11 @@ function appliquerSelectionRegle(selection, demande) {
   }
 }
 
+// Banque des vues 3D deja generees (public/images/vues/index.json), lue au demarrage et apres chaque recolte : la modale n'a qu'a y chercher l'image de chaque collision.
+let banqueVuesCollisions = [];
+function relireBanqueVuesCollisions() { return chargerBanque().then((b) => { banqueVuesCollisions = b; }); }
+relireBanqueVuesCollisions();
+
 reglesModale = creerReglesModale({
   libellesPriorite: PRIORITE_LABELS,
   libellesStatut: STATUT_LABELS,
@@ -6301,6 +6309,7 @@ reglesModale = creerReglesModale({
   creerCarte: (clash) => buildCollisionCard(clash, "span"),
   lireElement: (id) => descripteurElement(viewer.metaScene, id, MAQUETTES),
   voirEn3D: (clash) => activateClash(clash),
+  imageDe: (clash) => urlVueCollision(banqueVuesCollisions, clash.id, import.meta.env.BASE_URL),
   appliquer: appliquerSelectionRegle,
   reformuler: (phrase) => reglesIA && reglesIA.reformuler(phrase),
   glisserPourFermer: enableDrawerSwipeToClose

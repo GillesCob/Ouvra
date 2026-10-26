@@ -13,6 +13,7 @@
 //   creerCarte(clash) : carte de la collision, le meme rendu que la ligne de la liste des collisions (buildCollisionCard de main.js)
 //   lireElement(entityId) : descripteur { nom, typeIfc, niveau, ... } (descripteurElement de reglesCollision.js) ou null
 //   voirEn3D(clash) : ouvre la collision dans la vue Collision (comme un clic dans la liste)
+//   imageDe(clash) : optionnel ; adresse de l'image 3D deja generee de la collision (src/reglesImages.js), ou null : la ligne garde alors un espace vide
 //   appliquer(selection, demande) : applique [{ clash, champ: "priorite"|"statut", vers }] et rafraichit l'interface
 //   reformuler(phrase) : optionnel ; « Reformuler » (regle venue d'une phrase saisie, regle.saisie) ferme la modale comme « Annuler » puis rouvre le
 //     panneau « IA » avec cette phrase pre-remplie, sans appel a l'IA
@@ -23,7 +24,7 @@ import "./reglesModale.css";
 const MOBILE = "(max-width: 768px)";
 const DUREE_FERMETURE_MS = 350;
 
-export function creerReglesModale({ libellesPriorite, libellesStatut, numero, creerCarte, lireElement, voirEn3D, appliquer, reformuler, glisserPourFermer }) {
+export function creerReglesModale({ libellesPriorite, libellesStatut, numero, creerCarte, lireElement, voirEn3D, imageDe, appliquer, reformuler, glisserPourFermer }) {
   // Etat de session : { regle, lignes: [{ clash, champ, de, vers, coche }], defilement, enVisite }, ou null.
   let session = null;
   let fond = null;
@@ -130,6 +131,22 @@ export function creerReglesModale({ libellesPriorite, libellesStatut, numero, cr
     return val;
   }
 
+  // Image 3D de la collision, a droite du texte (deja generee, jamais rendue ici). Sans image : espace vide de meme taille, la colonne reste alignee.
+  function creerVue(clash) {
+    const url = imageDe ? imageDe(clash) : null;
+    const vue = creer("span", "regles-vue" + (url ? "" : " regles-vue-vide"));
+    vue.setAttribute("aria-hidden", "true");
+    if (url) {
+      const img = creer("img");
+      img.src = url;
+      img.alt = "";
+      img.loading = "lazy";
+      img.decoding = "async";
+      vue.appendChild(img);
+    }
+    return vue;
+  }
+
   // Ligne « Priorite : Normale → Haute » : le nom du champ en clair, l'ancienne valeur grisee, la nouvelle mise en valeur.
   function ligneChangement(ligne) {
     const el = creer("span", "regles-changement");
@@ -163,7 +180,7 @@ export function creerReglesModale({ libellesPriorite, libellesStatut, numero, cr
     carteClash.removeAttribute("aria-label");
     const contenu = creer("span", "regles-contenu");
     contenu.append(carteClash, ligneChangement(ligne));
-    label.append(caseEl, contenu);
+    label.append(caseEl, contenu, creerVue(ligne.clash));
     const voir = creer("button", "regles-voir", "Voir en 3D");
     voir.type = "button";
     voir.dataset.act = "voir";
@@ -178,7 +195,7 @@ export function creerReglesModale({ libellesPriorite, libellesStatut, numero, cr
     const bloc = creer("div", "regles-choix regles-choix-simple");
     const contenu = creer("span", "regles-contenu");
     contenu.appendChild(creerCarte(ligne.clash));
-    bloc.appendChild(contenu);
+    bloc.append(contenu, creerVue(ligne.clash));
     const voir = creer("button", "regles-voir", "Voir en 3D");
     voir.type = "button";
     voir.dataset.act = "voir";
