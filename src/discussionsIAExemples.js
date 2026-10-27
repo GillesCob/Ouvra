@@ -1,7 +1,7 @@
 // Phrases toutes faites du bouton « IA » de la page Discussions (24/10), calquees sur src/commandesExemples.js : une demande en francais naturel +
 // la commande au format du moteur (src/discussionsIAMoteur.js), construites sur les VRAIES donnees de demonstration de la messagerie
 // (src/messagerie/donneesDemo.js et corpus/*.json) : noms des 6 interlocuteurs, sujets reellement presents (cloison coupe-feu, acces grue,
-// collision gaine DN200 / poutre axe C, reservations...).
+// collision gaine rectangulaire / cloison, couloir R+2, reservations...).
 // Quand l'utilisateur envoie EXACTEMENT une de ces phrases (casse, accents et ponctuation mis a part), la commande est reconnue ici, sans appel a
 // l'IA pour la COMPREHENSION : le filtre par personne, les etats et les periodes ne coutent rien et marchent hors ligne. La recherche par sujet et le
 // rapport appellent quand meme l'IA pour classer ou synthetiser les messages retenus.
@@ -32,9 +32,9 @@ export const EXEMPLES_DISCUSSIONS = [
     commande: { action: "retrouver_echange", parametres: { sujet: "accès grue", mots: ["levage"] } }
   },
   {
-    demande: "Fais-moi un rapport sur la collision entre la gaine et la poutre",
-    relecture: "Faire un rapport sur la collision entre la gaine et la poutre.",
-    commande: { action: "rapport", parametres: { sujet: "collision gaine poutre", mots: ["DN200", "axe C"] } }
+    demande: "Fais-moi un rapport sur la collision entre la gaine et la cloison",
+    relecture: "Faire un rapport sur la collision entre la gaine et la cloison.",
+    commande: { action: "rapport", parametres: { sujet: "collision gaine cloison", mots: ["gaine rectangulaire", "123 mm", "R+2"] } }
   },
   {
     demande: "Fais-moi un rapport sur les réservations",

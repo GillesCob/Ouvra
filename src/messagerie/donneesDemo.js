@@ -107,7 +107,7 @@ export function construireDemo(maintenant) {
     c1: ["Cloison coupe-feu niveau 2", ["claire"], 0, 40, "encours"],
     c2: ["Plan de repérage des réservations", ["claire"], 0, 2900, "clos"],
     c3: ["Maquette V3 : retours", ["claire"], 0, 6200, "clos"],
-    s1: ["Collision gaine DN200 / poutre axe C", ["sophie"], 2, 12, "attente"],
+    s1: ["Collision gaine rectangulaire / cloison, couloir R+2", ["sophie"], 2, 12, "attente"],
     s2: ["Passages en dalle", ["sophie"], 0, 4300, "clos"],
     k1: ["Poutre axe C : reprise de section", ["karim"], 0, 700, "encours"],
     j1: ["Accès grue semaine 44", ["julien"], 0, 5000, "clos"],

@@ -1024,7 +1024,7 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
     return "<h3>Nouveau sujet</h3>" + bascule +
       (choixConversation ? '<div><label for="msgNsConv">Conversation</label><select id="msgNsConv">' +
         conversations.map((c) => '<option value="' + echapper(c.id) + '"' + (c.id === convId ? " selected" : "") + ">" + echapper(c.nom) + "</option>").join("") + "</select></div>" : "") +
-      '<div><label for="msgNsTitre">Titre</label><input id="msgNsTitre" placeholder="Ex. Collision gaine / poutre axe C" autocomplete="off" /></div>' +
+      '<div><label for="msgNsTitre">Titre</label><input id="msgNsTitre" placeholder="Ex. Collision gaine / cloison R+2" autocomplete="off" /></div>' +
       '<div><label for="msgNsMessage">Premier message</label><textarea id="msgNsMessage"></textarea></div>' +
       '<div class="msg-case"><button type="button" id="msgNsUrgent" class="msg-urgent-bouton" data-act="bascule-urgent-ns" aria-pressed="false">Urgent</button></div>' +
       htmlVueJointe(vue) +
