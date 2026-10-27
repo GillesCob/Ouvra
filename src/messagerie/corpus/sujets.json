@@ -188,123 +188,83 @@
  "s1": [
   [
    "me",
-   "@sophie @karim point de collision détecté en V4 sur le R+1 : la gaine DN200 de soufflage (repère CVC-S-114) traverse la poutre de l'axe C, entre les axes 4 et 5. Altitude de passage 3,02 m sous-face de dalle. [photo : vue 3D de la collision]"
+   "@sophie collision détectée au niveau 2, elle ressort de la dernière détection et je l'ai passée en urgente : la gaine rectangulaire, avec ses coudes et ses piquages, traverse la cloison de 123 mm du couloir R+2. Le rapport est joint. [photo : vue 3D de la collision]"
   ],
   [
    "sophie",
-   "Je vois. La gaine descend là parce que le plenum est déjà saturé côté axe B avec les chemins de câbles. J'avais pas prévu la poutre en V3, elle n'y était pas."
-  ],
-  [
-   "karim",
-   "La poutre axe C a toujours été à cet endroit, elle apparaît dès la V1 de la Structure. Mais je comprends que la section a changé : elle passe de 30x60 à 30x70 en V4."
+   "Je vois. C'est bien le tracé de mon indice en cours. Cette cloison n'était pas dans la maquette d'architecture que j'avais importée, je ne l'ai donc pas vue en dessinant."
   ],
   [
    "me",
-   "Oui c'est ça, le détail est dans le fil sur la reprise de section. Pour ici, la question : est-ce qu'on peut percer la poutre pour une gaine DN200 ?"
-  ],
-  [
-   "karim",
-   "Techniquement un percement de 200 de diamètre dans une poutre de 70 de haut est faisable s'il est dans le tiers central de la portée, à mi-hauteur, et avec des renforts. Mais il faut que je recalcule."
+   "Elle appartient à Claire Martin et elle n'a pas bougé depuis plusieurs versions : l'écart ne vient pas d'un changement de sa part. Pourquoi la gaine passe-t-elle précisément là ?"
   ],
   [
    "sophie",
-   "Ça tombe à environ 1,50 m de l'appui, donc pas au milieu."
-  ],
-  [
-   "karim",
-   "Alors c'est moins favorable. Près de l'appui l'effort tranchant est maximal, on évite de percer."
+   "Parce que le plénum est saturé côté axe B avec les chemins de câbles, et que cette gaine porte les piquages suivants. Je ne peux pas la remonter, la dalle est juste au-dessus."
   ],
   [
    "me",
-   "Donc option A : réservation dans la poutre à valider par Karim, option B : passage dessous, option C : décaler la gaine. Sophie, tu vois quoi comme possibilité côté fluides ?"
+   "Julien Roux me dit que la cloison n'est pas encore montée sur ce tronçon, mais qu'il veut une réponse avant de lancer les plaquistes. On a donc une fenêtre, mais elle n'est pas longue."
   ],
   [
    "sophie",
-   "Décaler est compliqué : l'axe 4-5 est le seul corridor libre entre les deux cages. Passer dessous, ça fait descendre la gaine à 2,75 m, et le faux plafond du couloir est à 2,60 m."
+   "Alors on pose les options à plat. Pour moi il y en a trois."
   ],
   [
    "me",
-   "Donc ça passe à 2,60 avec 15 cm de marge, sans le raccord ni l'isolant. L'isolant de la gaine ajoute 3 cm."
+   "Je les écris pour qu'on parle de la même chose. A : dévoyer la gaine pour éviter la cloison, avec des coudes en plus et le piquage suivant à reprendre. B : une réservation dans la cloison pour laisser passer la gaine, avec un renfort autour et un contrôle du coupe-feu si la cloison a une exigence à cet endroit, à confirmer avec Claire. C : déplacer la cloison."
   ],
   [
    "sophie",
-   "Oui, ça passe de justesse mais il reste 12 cm. C'est limite mais conforme à la hauteur minimale de circulation."
-  ],
-  [
-   "karim",
-   "Je précise que le couloir est aussi sous la contrainte de hauteur libre de Claire, à vérifier si on descend le plafond."
+   "Je préfère C. Le réseau reste tel que je l'ai calculé, je ne redessine rien, et si Claire peut décaler, c'est la solution la plus propre côté fluides. Le dévoiement, je l'écarte : il reprend le piquage suivant, donc un autre tracé à refaire."
   ],
   [
    "me",
-   "Noté Karim, je la tiens informée si on retient le passage dessous."
+   "Je suis moins à l'aise avec C. Déplacer une cloison, c'est l'avis de Claire, ça remonte sur le local voisin et ça retarde tout ce qui est dessiné autour. Je préfère B, la réservation : on garde la cloison, la gaine reste en place et on tient la hauteur sous faux plafond du couloir."
+  ],
+  [
+   "sophie",
+   "Sauf que la réservation, c'est Claire qui l'accepte, et si la cloison a une exigence coupe-feu, il y a un contrôle en plus. Et avec des coudes et des piquages si proches de la cloison, je ne suis pas sûre que la gaine tienne dans une seule réservation."
   ],
   [
    "me",
-   "Noté Claire, mais cette discussion est entre Sophie et Karim pour l'instant, je te remets dans la boucle si ça touche le couloir."
+   "Si les coudes sont dans l'épaisseur de la cloison, tu as raison, une réservation ne suffit pas. Je vérifie dans la maquette où sont exactement les coudes par rapport à la cloison."
   ],
   [
-   "karim",
-   "Pour ma part, je ne veux pas me prononcer sur le percement avant d'avoir la note de calcul de l'ancrage des armatures. Je dois demander à mon collègue qui gère le modèle de calcul."
+   "sophie",
+   "Fais-le. Côté délais : C demande une mise à jour d'architecture, donc un nouvel import chez moi et une nouvelle détection. B demande aussi l'avis de Claire sur le renfort. A, c'est moi qui perds le plus de temps."
   ],
   [
    "me",
-   "Tu peux me donner une idée du délai ? La synthèse est le 28 et j'aimerais arriver avec une réponse."
+   "Claire m'a répondu : elle peut décaler la cloison ou prévoir une réservation, et elle regarde l'effet sur le local voisin. Elle ne s'engage pas à l'aveugle, elle veut voir ce que chaque option fait toucher."
   ],
   [
-   "karim",
-   "Je ne peux pas promettre avant vendredi. Si le calcul est défavorable, il faudra renforcer la poutre avec des cadres supplémentaires, ça change aussi le plan de coffrage."
+   "sophie",
+   "Elle a raison. Moi non plus, je ne fige pas le tracé avant de savoir ce que chaque option coûte."
   ],
   [
    "me",
-   "Compris. Sophie, en attendant tu peux préparer le plan B (passage dessous) pour qu'on ne perde pas de temps ?"
-  ],
-  [
-   "sophie",
-   "Oui je commence. Je dois ajuster le DN200 en deux coudes à 45° pour contourner la poutre par dessous, donc un peu plus de pertes de charge."
+   "Chaque option déplace une équipe : plaquistes pour la cloison, calorifugeur et monteur pour la gaine, et le faux plafond à reprendre si on perd de la hauteur. Je ne veux pas trancher à l'estime."
   ],
   [
    "me",
-   "Les pertes de charge sont acceptables ?"
+   "Ce qu'il faut chiffrer au R+2 : le linéaire de gaines à reprendre, le nombre de raccords concernés (coudes, piquages), la surface de faux plafond à déposer et à refaire, et le linéaire de cloison touchée. Je sors tout ça de la maquette."
   ],
   [
    "sophie",
-   "J'ai fait un calcul rapide : +18 Pa sur le réseau, le ventilateur a la marge. Je confirme avec le calcul complet demain."
+   "OK pour le métré. Tu me le donnes par famille, que je distingue les coudes, les piquages et les gaines droites. Je garde le tracé actuel comme tracé de travail."
   ],
   [
    "me",
-   "Parfait. Karim, de ton côté tu nous dis dès que tu as une réponse sur le percement."
-  ],
-  [
-   "karim",
-   "Bien reçu. Je reviens vers vous."
-  ],
-  [
-   "me",
-   "Je mets le sujet en attente jusqu'à ta réponse Karim. Merci Sophie pour la piste du passage dessous."
+   "Donc on ne décide rien pour l'instant. La décision dépend du métré du R+2. Dès que les quantités sont tirées de la maquette, on tranche entre dévoiement, réservation et déplacement de la cloison. Je laisse le sujet en attente, urgent."
   ],
   [
    "sophie",
-   "Je te mets la coupe avec le passage dessous, tu me dis si c'est lisible. [fichier : coupe-gaine-S114-passage-dessous.pdf]"
+   "Je te mets la coupe avec le passage actuel en attendant. [fichier : coupe-gaine-cloison-R2.pdf]"
   ],
   [
    "sophie",
-   "J'ai ajouté le raccord avec isolant : on est à 2,71 m sous-face de dalle, ça laisse 11 cm avant le faux plafond."
-  ],
-  [
-   "sophie",
-   "Je rappelle que sur ce passage, la trappe de visite doit rester accessible, j'ai prévu une trappe de 40x40 juste avant le premier coude."
-  ],
-  [
-   "sophie",
-   "@karim toujours pas de retour de ta part sur la possibilité de réservation dans la poutre, tu as pu avancer sur le calcul ?"
-  ],
-  [
-   "sophie",
-   "Je relance aussi parce que Marc doit figer la maquette Mécanique V4 demain, et il faut savoir quelle option on intègre."
-  ],
-  [
-   "sophie",
-   "Si je n'ai rien d'ici demain midi, je pars sur le passage dessous dans la V4 et on réétudiera le percement si Karim le valide plus tard."
+   "Tu me dis dès que le métré est sorti, je ne fige rien avant. Et tu préviens Claire et Julien que ça reste ouvert ?"
   ]
  ],
  "s2": [
@@ -384,7 +344,7 @@
  "k1": [
   [
    "me",
-   "@karim la poutre axe C passe de 30x60 à 30x70 en V4 sur ta maquette Structure, entre les axes 3 et 6 au R+1. Peux-tu m'expliquer la raison pour que je prévienne les autres lots ?"
+   "@karim la poutre axe C passe de 30x60 à 30x70 en V4 sur ta maquette Structure, entre les axes 3 et 6 au R+2. Peux-tu m'expliquer la raison pour que je prévienne les autres lots ?"
   ],
   [
    "karim",
@@ -412,19 +372,19 @@
   ],
   [
    "karim",
-   "Avec 70 on perd 10 cm : la sous-face passe de 3,25 m à 3,15 m par rapport au sol fini R+1, ce qui touche le passage de la gaine de Sophie."
+   "Avec 70 on perd 10 cm : la sous-face passe de 3,05 m à 2,95 m par rapport au sol fini du R+2, ce qui réduit la hauteur libre du couloir du R+2."
   ],
   [
    "me",
-   "C'est précisément l'objet du sujet sur la collision DN200. J'ai besoin de ta réponse sur la réservation dans la poutre, mais ça dépend de cette section."
+   "Ça réduit aussi la marge sous le faux plafond du couloir. Je préviens Claire, elle devra arbitrer entre la hauteur libre et la section."
   ],
   [
    "karim",
-   "Oui, c'est lié. Avec 70 de haut, une réservation DN200 est plus facile à justifier, mais je dois quand même modifier le ferraillage."
+   "Oui, c'est à elle d'arbitrer. Avec 70 de haut, la poutre reprend mieux la charge, mais je dois quand même modifier le ferraillage."
   ],
   [
    "me",
-   "Tu vois des moyens de garder 60 en ajoutant de l'acier ou un béton plus résistant, pour éviter de pénaliser les réseaux ?"
+   "Tu vois des moyens de garder 60 en ajoutant de l'acier ou un béton plus résistant, pour éviter de pénaliser la hauteur libre ?"
   ],
   [
    "karim",
@@ -500,7 +460,7 @@
   ],
   [
    "sophie",
-   "Je présente la Mécanique et la gaine DN200. Je peux faire un point aussi sur le plan de passage des gaines au R+1."
+   "Je présente la Mécanique et la gaine rectangulaire du R+2. Je peux faire un point aussi sur le plan de passage des gaines au R+2."
   ],
   [
    "me",
@@ -577,6 +537,22 @@
   [
    "claire",
    "Pour moi 16h30 mardi c'est bon. J'envoie l'invitation visio avec le lien."
+  ],
+  [
+   "me",
+   "Sur la collision de la gaine rectangulaire et de la cloison au R+2, je propose de ne pas trancher le 28 sans métré. Je prépare un tableau : gaines et raccords à reprendre, faux plafond à déposer et à refaire, linéaire de cloison touchée."
+  ],
+  [
+   "sophie",
+   "D'accord. Je donne le tracé de travail à Marc pour qu'il sorte les quantités de la maquette."
+  ],
+  [
+   "karim",
+   "Pour la poutre, ce sera le point d'étape promis, pas la note de calcul."
+  ],
+  [
+   "claire",
+   "Pour le faux plafond du couloir, je veux voir la surface reprise avant d'accepter de descendre la hauteur libre."
   ]
  ],
  "gg2": [

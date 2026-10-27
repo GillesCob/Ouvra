@@ -112,3 +112,7 @@ export const nettoyerPhrase = (texte) => String(texte || "").replace(/\s+/g, " "
 
 // Raison pour laquelle « Vocal » est inutilisable quand le navigateur n'a pas l'API de reconnaissance (meme message que le code d'erreur « network »).
 export const motifSansAPI = (ios = false) => messageErreurVoix("network", { ios });
+
+// Raison exacte quand la dictee est indisponible AVANT tout clic : contexte non securise (http sur une IP locale, interface SecureContext) ou API absente.
+export const MESSAGE_CONTEXTE_NON_SECURISE = "La dictée demande une connexion sécurisée (HTTPS). Écris ta demande ici.";
+export const motifDicteeIndisponible = (fenetre, ios = false) => (fenetre && fenetre.isSecureContext === false ? MESSAGE_CONTEXTE_NON_SECURISE : motifSansAPI(ios));

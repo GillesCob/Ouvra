@@ -1,9 +1,18 @@
+import { readFileSync } from "node:fs";
 import { defineConfig } from "vite";
 import { viteStaticCopy } from "vite-plugin-static-copy";
 import { recolteVues } from "./tools/viteRecolteVues.js";
 import { relaisIA } from "./tools/viteRelaisIA.js";
 
 export default defineConfig({
+  // Serveur de dev (24/10) : plus de rechargement automatique de la page quand un fichier change. Vite ne pousse plus rien au navigateur
+  // (hmr: false coupe le canal WebSocket), les fichiers modifies sont servis a jour au rafraichissement manuel de la page.
+  // Test HTTPS (dictee iPhone) : OUVRA_HTTPS=1 (npm run dev:https) active le certificat auto-signe de .certs/ ; sans cette variable, rien ne change.
+  server: {
+    hmr: false,
+    // proxy: {} force HTTP/1.1 (sans lui Vite 5 sert en HTTP/2, dont les en-tetes ":authority" font echouer le relais IA).
+    ...(process.env.OUVRA_HTTPS ? { proxy: {}, https: { key: readFileSync(".certs/key.pem"), cert: readFileSync(".certs/cert.pem") } } : {})
+  },
   plugins: [
     // Serveur de dev seulement : recolte des vues 3D de la messagerie (voir tools/viteRecolteVues.js).
     recolteVues(),

@@ -17,6 +17,11 @@ export const EXEMPLES_REGLES = [
     action: { champ: "priorite", valeur: "urgente" }
   },
   {
+    demande: "Passe en urgent toutes les collisions qui impliquent des gaines du niveau 2",
+    filtre: { portee: "un_des_deux", criteres: [{ champ: "typeIfc", contient: "IfcDuctSegment" }, { champ: "niveau", contient: "Level 2" }] },
+    action: { champ: "priorite", valeur: "urgente" }
+  },
+  {
     demande: "Confirme les collisions entre deux éléments du niveau 1",
     filtre: { portee: "les_deux", criteres: [{ champ: "niveau", contient: "Level 1" }] },
     action: { champ: "statut", valeur: "confirme" }
@@ -35,5 +40,24 @@ export const EXEMPLES_REGLES = [
     demande: "Passe en urgent les collisions qui impliquent une vanne",
     filtre: { portee: "un_des_deux", criteres: [{ champ: "typeIfc", contient: "IfcValve" }] },
     action: { champ: "priorite", valeur: "urgente" }
+  },
+  {
+    demande: "Affiche les collisions urgentes sans message depuis 3 jours",
+    filtre: {
+      portee: "un_des_deux",
+      criteres: [],
+      etat: { priorite: "urgente" },
+      dates: [{ evenement: "message", presence: "aucun", periode: { type: "depuis", nombre: 3, unite: "jour" } }]
+    },
+    action: { champ: "afficher" }
+  },
+  {
+    demande: "Affiche les collisions dont la priorité ou le statut a changé depuis le 16 octobre",
+    filtre: {
+      portee: "un_des_deux",
+      criteres: [],
+      dates: [{ evenement: "modification", presence: "au_moins_un", periode: { type: "depuis_le", date: "2026-10-16" } }]
+    },
+    action: { champ: "afficher" }
   }
 ];

@@ -159,6 +159,29 @@ export function sujetsTries(conv, actifId) {
     (x.creeEnSession ? 0 : dernierMessage(y).quand - dernierMessage(x).quand));
 }
 
+// Onglets de la liste : « individuel », « groupe » et « ia » (les discussions trouvees par une commande IA, sans liste de conversations).
+export const ONGLETS = ["individuel", "groupe", "ia"];
+
+// Conversations d'un onglet, dans l'ordre d'affichage de la liste : celles qui ont des non lus d'abord, puis la plus recente d'abord.
+export function listeTriee(conversations, type) {
+  return conversations
+    .filter((c) => c.type === type)
+    .sort((a, b) => {
+      const ua = nonLusConv(a) > 0;
+      const ub = nonLusConv(b) > 0;
+      if (ua !== ub) return ua ? -1 : 1;
+      return activiteConv(b) - activiteConv(a);
+    });
+}
+
+// Conversation a ouvrir automatiquement quand on choisit un onglet : la premiere de la liste affichee (Individuel comme Groupes). Aucune pour l'onglet IA
+// (le centre reste vide tant qu'aucune discussion n'est choisie dans les resultats), ni sur mobile (la liste prend l'ecran, on n'ouvre rien a la place de l'utilisateur).
+export function conversationAOuvrir(conversations, onglet, { mobile = false } = {}) {
+  if (mobile || onglet === "ia" || !ONGLETS.includes(onglet)) return null;
+  const premiere = listeTriee(conversations, onglet)[0];
+  return premiere ? premiere.id : null;
+}
+
 export function convParId(conversations, id) {
   return conversations.find((c) => c.id === id) || null;
 }

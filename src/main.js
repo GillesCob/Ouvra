@@ -1,13 +1,33 @@
-import { Viewer, AnnotationsPlugin, WebIFCLoaderPlugin, XKTLoaderPlugin, SectionPlanesPlugin, TransformControl, Mesh, ReadableGeometry, PhongMaterial, buildSphereGeometry } from "@xeokit/xeokit-sdk";
+import { Viewer, AnnotationsPlugin, WebIFCLoaderPlugin, XKTLoaderPlugin, SectionPlanesPlugin, TransformControl, Mesh, ReadableGeometry, PhongMaterial, Texture, buildSphereGeometry, buildPlaneGeometry } from "@xeokit/xeokit-sdk";
 import * as WebIFC from "web-ifc";
 import { HOSPITAL_DETECTIONS, HOSPITAL_CLASHES, HOSPITAL_CLASHES_FACTICES } from "./clashesHospital.js";
 import { creerMessagerie } from "./messagerie/messagerie.js";
+import { creerDiscussionsIAMontage } from "./discussionsIAMontage.js";
 import { descripteurElement, validerRegle, appliquerRegle } from "./reglesCollision.js";
 import { creerReglesModale } from "./reglesModale.js";
+import { urlVueCollision } from "./reglesImages.js";
+import { chargerBanque } from "./messagerie/vuesMessagerie.js";
 import { creerReglesIA } from "./reglesIA.js";
 import { valeursPourIA } from "./reglesValeurs.js";
 import { demanderRegle } from "./reglesIAClient.js";
 import { EXEMPLES_REGLES } from "./reglesExemples.js";
+import { creerControleur, REGISTRE } from "./commandesViewer.js";
+import { creerCommandesIA } from "./commandesIA.js";
+import { creerFlux } from "./commandesFlux.js";
+import { etatDrawerDepuisVisibles, capturerEtatDrawer, boiteDesVisibles } from "./commandesDrawer.js";
+import { creerCommandesBandeau } from "./commandesBandeau.js";
+import { creerZones } from "./commandesZones.js";
+import { creerZonesUI } from "./commandesZonesUI.js";
+import { valeursPourCommande } from "./commandesValeurs.js";
+import { demanderCommande } from "./commandesIAClient.js";
+import { EXEMPLES_COMMANDES, reconnaitreExemple } from "./commandesExemples.js";
+import { creerQuantitatifPage } from "./quantitatifPage.js";
+import { demanderQuantitatif } from "./quantitatifIAClient.js";
+import { elementsDepuisScene, chargerElementsJson } from "./quantitatifDonnees.js";
+import { lireEmpreintes } from "./quantitatifVersions.js";
+import "./retourContexte.css";
+import { creerRetourContexte } from "./retourContexte.js";
+import { creerHistorique, creerDepotLocal } from "./quantitatifHistorique.js";
 
 // ============================================================================
 // INTERRUPTEURS DE MASQUAGE : base propre du 19/10
@@ -147,6 +167,11 @@ const COLLISION_PASTILLES = false;
 // liste des collisions (il masquait/affichait la bulle 3D de cette collision).
 // false = l'oeil revient.
 const MASQUE_OEIL_COLLISION = true;
+// MASQUE_ZONES (27/10, demande de Gilles) : retire le bouton « Zone » de la barre
+// du Viewer (laptop et mobile) et sa fenetre « Zones nommees » (jamais creee).
+// Les zones deja stockees restent lisibles par « Affiche la zone ... », mais plus
+// aucune ne peut etre definie. false = le bouton et la fenetre reviennent.
+const MASQUE_ZONES = true;
 // COLLISION_LISTE_SIMPLE (19/10) : chaque ligne de la liste des collisions ne
 // montre que le numero, les identifiants des 2 elements, le niveau et le statut
 // (le nom complet reste en infobulle et dans la fiche). false = lignes d'avant.
@@ -374,6 +399,7 @@ const maquettesList = document.getElementById("maquettesList");
 const fichePlaceholder = document.getElementById("fichePlaceholder");
 const ficheContent = document.getElementById("ficheContent");
 const recenterBtn = document.getElementById("recenterBtn");
+const vueDessusBtn = document.getElementById("vueDessusBtn");
 const projectSelect = document.getElementById("projectSelect");
 const niveauxResetBtn = document.getElementById("niveauxResetBtn");
 const maquettesResetBtn = document.getElementById("maquettesResetBtn");
@@ -883,7 +909,7 @@ function redirectMaskedView(viewName) {
 // (jamais Viewer ni Collision) n'est pas touchee. Un rendu a la fois, avec des pauses. Puis camera, visibilites, X-ray, coupe et
 // emplacement de la 3D sont remis tels qu'avant. Un changement de page l'interrompt. Les fichiers etant statiques ensuite, les
 // rechargements suivants n'ont plus rien a faire (la messagerie lit index.json au demarrage).
-const RECOLTE_NOMBRE = 8;
+const RECOLTE_NOMBRE = 15; // les 15 collisions reelles de l'hopital (modale « Regle a valider » : une image par collision) ; Discussions n'en utilise que les 8 premieres (NOMBRE_VUES_MESSAGERIE)
 const RECOLTE_LARGEUR_MAX = 640;
 // Version du format des vues enregistrees : une entree d'index d'une autre version (ou sans camera) est recoltee de nouveau.
 const RECOLTE_VERSION = 3;
@@ -1019,12 +1045,19 @@ async function executerRecolteAuto(cibles) {
     }
     r.enCours = false;
     if (messagerie && enregistrees > 0) messagerie.rechargerVues();
+    if (enregistrees > 0) relireBanqueVuesCollisions();
     // Interrompue ou reportee : la prochaine page non Viewer/Collision relance la verification (les vues deja ecrites sont comptees).
     if (!r.termine) planifierRecolteAuto(r.echecs > 0 ? 30000 : 3000);
   }
 }
 const viewDiscussions = document.getElementById("view-discussions");
+// Discussions par commande IA (24/10) : bouton « IA » de la liste des discussions, tout est assemble dans src/discussionsIAMontage.js. La messagerie
+// rappelle monter / action apres sa construction.
+const discussionsIA = creerDiscussionsIAMontage();
 const messagerie = DISCUSSIONS_MESSAGERIE ? creerMessagerie({
+  surMonte: () => discussionsIA.monter(messagerie),
+  surActionIA: (nom) => discussionsIA.action(nom),
+  surOngletIA: () => discussionsIA.ouvrirSaisie(),
   racine: document.getElementById("msgRoot"),
   lienNavbar: navLinks.find((l) => l.dataset.view === "discussions"),
   capturerVue: capturerVuePourMessagerie,
@@ -1035,6 +1068,24 @@ const messagerie = DISCUSSIONS_MESSAGERIE ? creerMessagerie({
 // Modale « Regle a valider » des regles de collision (etapes 2 et 3), creee plus bas une fois les libelles de priorite et de statut definis.
 let reglesModale = null;
 let reglesIA = null; // cree plus bas ; « Reformuler » de la modale y rouvre le panneau
+let retourQuantitatif = null; // bandeau « ← Retour au quantitatif » (src/retourContexte.js), cree plus bas ; relu par activateView avant sa definition
+let quantitatif = null; // page Quantitatif (creee plus bas) ; relue par activateView avant sa definition
+let plan3d = null; // page 2D -> 3D (src/plan3d/plan3dPage.js), chargee a la premiere ouverture ; relue par activateView avant sa definition
+let plan3dEnCours = null; // chargement de la page 2D -> 3D en route (evite deux creations)
+let retourPlan3d = null; // bandeau « ← Retour au plan 2D » (src/retourContexte.js), cree plus bas ; relu par activateView avant sa definition
+let planDansViewer = null; // maquette « Plan 2D -> 3D » montree dans le Viewer : { maquette, avant } ; relu par activateView avant sa definition
+let vueAvantDessus = null; // camera avant la vue a plat : { eye, look, up, projection } (voir entrerVueDessus)
+let vitesseAvantDessus = null; // valeur du curseur « Vitesse » avant la vue a plat, rendue en sortant
+let maquettesVueDessus = ""; // maquettes presentes quand la vue a plat a ete cadree : un changement la recadre
+let cameraAvantCommande = null; // camera d'avant la commande « IA » en attente de reponse, que « Non » rend : { eye, look, up } ; relue par activateView
+const DUREE_RETOUR_CAMERA_S = 0.6; // vol de retour de la camera apres « Non »
+let commandesViewer = null; // moteur des commandes du Viewer (cree a la premiere commande) ; relu par activateView avant sa definition
+let commandesFlux = null; // flux « appliquer puis confirmer » des commandes (cree a la premiere commande), idem
+let commandesBandeau = null; // bandeau « Est-ce bien votre demande ? » (cree plus bas), idem
+let commandesIA = null; // saisie « IA » du Viewer (creee plus bas) ; fermee par activateView a la sortie du Viewer
+let zonesUI = null; // fenetre « Zones nommees » (creee plus bas), idem
+let zonePointCapture = null; // rappel arme par la fenetre « Zones nommees » : le prochain clic dans la 3D lui donne le point touche
+let origineDrawer = null; // cases du drawer avant la premiere commande en cours (photo de capturerEtatDrawer), rendue au « Non » et a la sortie du Viewer
 if (messagerie) {
   document.getElementById("msgRoot").hidden = false;
   viewDiscussions.classList.add("msg-actif");
@@ -1061,8 +1112,23 @@ function activateView(viewName, options = {}) {
     view.hidden = view.id !== "view-" + viewName;
   });
   if (messagerie) messagerie.surVueActivee(viewName);
+  if (quantitatif) quantitatif.surVueActivee(viewName);
+  if (viewName === "plan3d") ouvrirPlan3d();
+  else if (plan3d) plan3d.surVueActivee(viewName);
+  if (retourQuantitatif && viewName !== "viewer") retourQuantitatif.effacer(); // le bandeau de retour ne vit que dans le Viewer ouvert par le Quantitatif
+  if (viewName !== "viewer") {
+    if (retourPlan3d) retourPlan3d.effacer(); // idem pour le bandeau du plan 2D -> 3D
+    retirerPlanDuViewer(); // quitter le Viewer rend les maquettes a leur etat d'avant et retire la maquette du plan
+  }
   // Quitter la vue Collision pendant une visite 3D depuis la modale de regle : le bandeau de retour disparait, la regle est oubliee.
   if (viewName !== "collision" && reglesModale) reglesModale.oublier();
+  // Quitter le Viewer : une commande « IA » appliquee (isolement, surbrillance) est annulee, les autres pages repartent d'une scene intacte.
+  if (viewName !== "viewer") {
+    // Saisie ouverte, dictee en cours ou reponse IA en route : tout est coupe, sinon une reponse tardive s'appliquerait dans un Viewer masque.
+    if (commandesIA) commandesIA.fermer();
+    if (zonesUI) zonesUI.fermer();
+    reinitialiserCommandesViewer();
+  }
   if (import.meta.env.DEV) {
     // Changement de page pendant la recolte automatique : elle s'interrompt et remet tout en place ; sinon elle (re)verifie son point de depart.
     if (recolteAuto.enCours) recolteAuto.interrompue = true;
@@ -1679,7 +1745,7 @@ const HOSPITAL_PROJECT_KEY = "hospital-xkt";
 // 19/10 : l'hopital devient le projet unique et expose aussi Collision et
 // Discussions, qui fonctionnent sans donnees dessus (listes vides, cf
 // applyProjectData). Ancienne valeur : ["presentation", "viewer"].
-const HOSPITAL_VISIBLE_VIEWS = ["presentation", "viewer", "collision", "discussions"];
+const HOSPITAL_VISIBLE_VIEWS = ["presentation", "viewer", "collision", "discussions", "quantitatif", "plan3d"];
 
 // Projet hopital force au demarrage quand le selecteur est masque (aucune
 // valeur memorisee n'est relue : l'hopital s'impose a chaque chargement).
@@ -2111,12 +2177,29 @@ TransformControl.prototype.setHandlers = function (handlers) {
 
 const sectionPlanes = new SectionPlanesPlugin(viewer);
 
+// Boite englobante (aabb xeokit) des maquettes chargees de la liste, ou null s'il n'y en a aucune.
+function aabbDesMaquettes(liste) {
+  const boites = liste.filter((m) => m.model).map((m) => m.model.aabb);
+  if (!boites.length) return null;
+  return [0, 1, 2].map((i) => Math.min(...boites.map((b) => b[i]))).concat([3, 4, 5].map((i) => Math.max(...boites.map((b) => b[i]))));
+}
+
+// « Recentrer » s'adapte aux maquettes cochees (25/10) : seule une partie est cochee, la camera se cadre sur celles-la (cocher uniquement la maquette
+// du plan 2D -> 3D = recentrer sur elle seule). Toutes cochees : la vue de depart de la maquette, comme avant. En vue a plat, la vue a plat est refaite.
+// Cadrage de « Recentrer » sur la page Viewer (hors vue a plat et hors cible propre a Collision / Discussions), partage avec la commande IA du Viewer.
+function recentrerSurMaquettes() {
+  const chargees = MAQUETTES.filter((m) => m.model);
+  const cochees = chargees.filter((m) => m.shown);
+  // Avec la maquette du plan dans la liste, meme toutes cochees : la vue de depart est celle de l'hopital et ne montrerait pas le plan.
+  const boite = cochees.length > 0 && (cochees.length < chargees.length || planDansViewer) ? aabbDesMaquettes(cochees) : null;
+  if (boite) viewer.cameraFlight.flyTo({ aabb: boite });
+  else viewer.cameraFlight.flyTo(initialCameraState || DEFAULT_CAMERA_STATE);
+}
+
 recenterBtn.addEventListener("click", () => {
-  if (recenterTarget) {
-    recenterTarget();
-  } else {
-    viewer.cameraFlight.flyTo(initialCameraState || DEFAULT_CAMERA_STATE);
-  }
+  if (vueAvantDessus) { appliquerVueDessus(); return; }
+  if (recenterTarget) { recenterTarget(); return; }
+  recentrerSurMaquettes();
 });
 
 // Choix assume du 04/09 : Projet_structure.ifc (2,6 Mo) plutot que
@@ -6226,6 +6309,11 @@ function appliquerSelectionRegle(selection, demande) {
   }
 }
 
+// Banque des vues 3D deja generees (public/images/vues/index.json), lue au demarrage et apres chaque recolte : la modale n'a qu'a y chercher l'image de chaque collision.
+let banqueVuesCollisions = [];
+function relireBanqueVuesCollisions() { return chargerBanque().then((b) => { banqueVuesCollisions = b; }); }
+relireBanqueVuesCollisions();
+
 reglesModale = creerReglesModale({
   libellesPriorite: PRIORITE_LABELS,
   libellesStatut: STATUT_LABELS,
@@ -6233,6 +6321,7 @@ reglesModale = creerReglesModale({
   creerCarte: (clash) => buildCollisionCard(clash, "span"),
   lireElement: (id) => descripteurElement(viewer.metaScene, id, MAQUETTES),
   voirEn3D: (clash) => activateClash(clash),
+  imageDe: (clash) => urlVueCollision(banqueVuesCollisions, clash.id, import.meta.env.BASE_URL),
   appliquer: appliquerSelectionRegle,
   reformuler: (phrase) => reglesIA && reglesIA.reformuler(phrase),
   glisserPourFermer: enableDrawerSwipeToClose
@@ -6248,7 +6337,8 @@ function ouvrirRegleCollision(regle) {
     regle,
     clashes,
     (id) => descripteurElement(viewer.metaScene, id, MAQUETTES),
-    (clash) => ({ priorite: clashPriorite(clash), statut: clash.statut })
+    (clash) => ({ priorite: clashPriorite(clash), statut: clash.statut }),
+    { maintenant: Date.now(), evenements: evenementsDeCollision }
   );
   reglesModale.ouvrir(regle, touchees);
   return { ok: true };
@@ -6271,7 +6361,20 @@ function fermerMenusDeroulantsCollision() {
 // la phrase, lus sur les maquettes chargees ; jamais la geometrie. Ne rejette jamais (repli sur les phrases d'exemple en cas d'echec).
 function traduirePhraseParIA(phrase) {
   const valeurs = valeursPourIA(viewer.metaScene, MAQUETTES, phrase, { priorite: PRIORITE_ORDRE, statut: Object.keys(STATUT_LABELS) });
-  return demanderRegle({ phrase, valeurs });
+  return demanderRegle({ phrase, valeurs, aujourdhui: dateDuJourLocale() });
+}
+
+// Date du jour de l'utilisateur, « AAAA-MM-JJ » (heure locale), envoyee au relais pour resoudre « depuis 3 jours » ou « le 15 octobre ».
+function dateDuJourLocale() {
+  const d = new Date();
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+}
+
+// Evenements d'une collision lus par les filtres de date : ses messages (discussion) et ses modifications de priorite ou de statut (historique).
+// Date.parse lit un horodatage sans fuseau comme une heure locale, comme les jours calendaires du moteur.
+function evenementsDeCollision(clash) {
+  return (clash.discussion || []).map((m) => ({ type: "message", quand: Date.parse(m.quand) }))
+    .concat((clash.historique || []).map((h) => ({ type: "modification", quand: Date.parse(h.quand) })));
 }
 reglesIA = creerReglesIA({
   parent: collisionLeft,
@@ -6282,8 +6385,477 @@ reglesIA = creerReglesIA({
   exemples: EXEMPLES_REGLES,
   ouvrirRegle: ouvrirRegleCollision,
   traduire: traduirePhraseParIA,
-  fermerAutres: fermerMenusDeroulantsCollision,
-  absorberGeste: absorberGesteNeutre
+  fermerAutres: fermerMenusDeroulantsCollision
+});
+
+// ---------- Viewer par commande en langage naturel (24/10) ----------
+// Bouton « IA » de la barre du Viewer (src/commandesIA.js) : une phrase ecrite ou dictee devient une commande du moteur (src/commandesViewer.js) qui
+// isole, met en surbrillance et cadre. Seuls des mots partent vers l'IA (relais api/commande.js) ; les phrases toutes faites sont reconnues ici, sans IA.
+const commandesIABtn = document.getElementById("commandesIABtn");
+const commandesResetBtn = document.getElementById("commandesResetBtn");
+const commandesZoneBtn = document.getElementById("commandesZoneBtn");
+
+// Zones nommees (option A de « afficher une piece » : les maquettes n'ont aucun IfcSpace), sauvegardees dans localStorage (jamais bloquant).
+function stockageLocal() {
+  try { return window.localStorage; } catch (e) { return null; }
+}
+const zonesCommandes = creerZones({ stockage: stockageLocal() });
+
+// Le moteur est cree a la premiere commande : la scene et les maquettes sont alors chargees. Les garde-corps mal places de l'hopital
+// (HOSPITAL_MISPLACED_RAILING_IDS) restent hors de portee : ni trouves, ni rendus visibles.
+function moteurCommandesViewer() {
+  if (!commandesViewer) {
+    commandesViewer = creerControleur({
+      scene: viewer.scene,
+      metaScene: viewer.metaScene,
+      maquettes: MAQUETTES,
+      cameraFlight: viewer.cameraFlight,
+      exclus: new Set(HOSPITAL_MISPLACED_RAILING_IDS),
+      zones: zonesCommandes,
+      apres: synchroniserDrawerApresCommande,
+      registre: REGISTRE
+    });
+  }
+  return commandesViewer;
+}
+
+// Le drawer (maquettes visibles, niveaux coches) suit la 3D, sinon il la contredirait : « Tout reafficher » recoche tout ; apres une commande
+// « afficher », une maquette est cochee si un de ses elements est visible, un niveau aussi (src/commandesDrawer.js). On ne rappelle PAS
+// applyVisibility apres une commande « afficher » : il redefairait l'isolement fin (types, noms) que la commande vient d'appliquer.
+const idsParMaquetteCommandes = new Map(); // id de maquette -> ids de ses elements (calcule une fois, les maquettes ne changent pas)
+
+function idsDeMaquette(maquette) {
+  if (!idsParMaquetteCommandes.has(maquette.id)) {
+    const metaModel = viewer.metaScene.metaModels[maquette.id];
+    const racine = metaModel && metaModel.rootMetaObject;
+    idsParMaquetteCommandes.set(maquette.id, racine ? viewer.metaScene.getObjectIDsInSubtree(racine.id) : []);
+  }
+  return idsParMaquetteCommandes.get(maquette.id);
+}
+
+// Reporte un etat de cases (Map par maquette et par niveau) sur les modeles, les cases du drawer et les boutons de maquettes de Collision.
+function reporterEtatDrawer(etat) {
+  MAQUETTES.forEach((m) => { if (etat.maquettes.has(m.id)) m.shown = etat.maquettes.get(m.id); });
+  niveauxState.forEach((n) => {
+    if (!etat.niveaux.has(n.name)) return;
+    n.checked = etat.niveaux.get(n.name);
+    if (n.checkboxEl) n.checkboxEl.checked = n.checked;
+  });
+  renderMaquetteRows(maquettesList, MAQUETTES);
+  refreshCollisionMaquetteToggles();
+}
+
+// Retour des cases a ce qu'elles etaient avant la premiere commande en cours (« Non » sans commande confirmee avant, sortie du Viewer).
+function restaurerDrawerOrigine() {
+  if (!origineDrawer) return;
+  const photo = origineDrawer;
+  origineDrawer = null;
+  reporterEtatDrawer(photo);
+}
+
+function synchroniserDrawerApresCommande(nomAction) {
+  if (nomAction === "tout_afficher") {
+    origineDrawer = null;
+    MAQUETTES.forEach((m) => { m.shown = true; });
+    niveauxState.forEach((n) => { n.checked = true; if (n.checkboxEl) n.checkboxEl.checked = true; });
+    applyVisibility();
+    renderMaquetteRows(maquettesList, MAQUETTES);
+    return;
+  }
+  if (nomAction !== "afficher") return;
+  const chargees = MAQUETTES.filter((m) => viewer.metaScene.metaModels[m.id]);
+  reporterEtatDrawer(etatDrawerDepuisVisibles({
+    idsParMaquette: new Map(chargees.map((m) => [m.id, idsDeMaquette(m)])),
+    niveaux: niveauxState,
+    visibles: new Set(viewer.scene.visibleObjectIds)
+  }));
+}
+
+// Bouton « Tout reafficher » : visible tant qu'une commande est appliquee. Aucun compte rendu n'est affiche : la relecture du bandeau suffit.
+function majBoutonToutReafficher() {
+  commandesResetBtn.hidden = !(commandesViewer && commandesViewer.active());
+}
+
+// Flux « appliquer tout de suite, puis confirmer » (src/commandesFlux.js) : la commande comprise est appliquee, le bandeau pose la question.
+function fluxCommandes() {
+  if (!commandesFlux) commandesFlux = creerFlux({ moteur: moteurCommandesViewer() });
+  return commandesFlux;
+}
+
+// Sortie du Viewer : la commande est defaite et le bandeau se ferme.
+function reinitialiserCommandesViewer() {
+  if (commandesBandeau) commandesBandeau.masquer(false);
+  cameraAvantCommande = null;
+  if (commandesFlux && commandesFlux.abandonner()) {
+    restaurerDrawerOrigine();
+    majBoutonToutReafficher();
+  }
+}
+
+// Phrase -> commande : une phrase toute faite est reconnue ici (aucun appel), sinon le relais IA traduit. Ne rejette jamais.
+async function traduirePhraseViewer(phrase) {
+  const exemple = reconnaitreExemple(phrase);
+  if (exemple) return { ok: true, resultat: "commande", commande: exemple };
+  const valeurs = valeursPourCommande(viewer.metaScene, MAQUETTES, phrase, zonesCommandes.noms());
+  return demanderCommande({ phrase, valeurs, etat: fluxCommandes().etatPourIA() }); // la vue actuelle, en mots : « ajoute », « enleve », « uniquement »
+}
+
+commandesBandeau = creerCommandesBandeau({
+  conteneur: document.getElementById("viewerWrap"),
+  retourFocus: commandesIABtn,
+  surOui() {
+    cameraAvantCommande = null;
+    fluxCommandes().accepter();
+  },
+  surNon() {
+    const retour = fluxCommandes().refuser();
+    restaurerCameraAvantCommande();
+    // Une commande confirmee avant est rejouee par le flux (le drawer s'y resynchronise) ; sinon retour exact des cases d'avant.
+    if (!moteurCommandesViewer().active()) restaurerDrawerOrigine();
+    majBoutonToutReafficher();
+    if (retour) commandesIA.reformuler(retour.phrase);
+  }
+});
+
+// Saisie « IA » : la camera se recadre comme un clic sur « Recentrer » (les cases du drawer sont deja synchronisees par la commande), sauf pour un focus
+// (cadrage propre sur l'element) ou une commande qui ne cadre pas (resultat.recentrer faux) ; en vue a plat rien ne change. Un seul vol : il remplace celui du moteur.
+function recentrerApresCommande(resultat, cameraAvant, enAttente) {
+  if (vueAvantDessus) return;
+  if (resultat.confirmation) { if (!enAttente) cameraAvantCommande = cameraAvant; } else cameraAvantCommande = null;
+  if (!resultat.recentrer) return;
+  viewer.cameraFlight.cancel();
+  // Commande confirmable : cadrage sur les seuls elements visibles ; « Tout reafficher » (sans confirmation) ou boite inexploitable : cadrage de « Recentrer ».
+  const boite = resultat.confirmation ? boiteDesVisibles(viewer.scene.visibleObjectIds, (ids) => viewer.scene.getAABB(ids)) : null;
+  if (boite) viewer.cameraFlight.flyTo({ aabb: boite });
+  else recentrerSurMaquettes();
+}
+
+// « Non » : la camera revient la ou elle etait avant la commande (la derniere etape seulement, comme la scene).
+function restaurerCameraAvantCommande() {
+  const avant = cameraAvantCommande;
+  cameraAvantCommande = null;
+  if (!avant || vueAvantDessus) return;
+  viewer.cameraFlight.cancel();
+  viewer.cameraFlight.flyTo({ eye: avant.eye, look: avant.look, up: avant.up, duration: DUREE_RETOUR_CAMERA_S });
+}
+
+// Applique la commande tout de suite puis pose la question. Rend { ok: true } ou { ok: false, message } (rien n'est applique, pas de bandeau).
+// deLaSaisieIA : la commande vient de la saisie « IA » du Viewer (recadrage de la camera, retour au « Non »).
+function proposerCommandeViewer(commande, deLaSaisieIA = false) {
+  const photo = moteurCommandesViewer().active() ? null : capturerEtatDrawer({ maquettes: MAQUETTES, niveaux: niveauxState });
+  const enAttente = fluxCommandes().enAttente();
+  const cameraAvant = { eye: viewer.camera.eye.slice(), look: viewer.camera.look.slice(), up: viewer.camera.up.slice() };
+  const resultat = fluxCommandes().proposer(commande);
+  if (!resultat.ok) return { ok: false, message: resultat.message };
+  if (photo && resultat.confirmation) origineDrawer = photo;
+  if (deLaSaisieIA) recentrerApresCommande(resultat, cameraAvant, enAttente);
+  majBoutonToutReafficher();
+  if (resultat.confirmation) commandesBandeau.montrer(resultat);
+  else commandesBandeau.masquer(false);
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
+// Page Quantitatif (24/10, src/quantitatifPage.js) : une demande en francais, un tableau de quantites calcule en local (src/quantitatif.js).
+// Source des elements : la scene xeokit quand TOUTES les maquettes sont chargees (boites englobantes disponibles, mesures estimees possibles) ;
+// sinon les metadonnees JSON seules, sans geometrie (src/quantitatifDonnees.js : leger, comptage exact). Memoisee tant que la source ne change pas.
+let quantitatifDonnees = null; // { cle, promesse }
+function donneesQuantitatif() {
+  const pret = MAQUETTES.length > 0 && MAQUETTES.every((m) => m.model);
+  const cle = (pret ? "scene:" + Object.keys(viewer.metaScene.metaObjects).length : "json") + ":" + MAQUETTES.map((m) => m.id).join(",");
+  if (quantitatifDonnees && quantitatifDonnees.cle === cle) return quantitatifDonnees.promesse;
+  const promesse = pret
+    ? Promise.resolve({ source: "scene", notes: [], elements: elementsDepuisScene({ metaScene: viewer.metaScene, scene: viewer.scene, maquettes: MAQUETTES, exclus: new Set(HOSPITAL_MISPLACED_RAILING_IDS) }) })
+    : chargerElementsJson(MAQUETTES, { exclus: new Set(HOSPITAL_MISPLACED_RAILING_IDS) }).then((r) => (r.elements.length ? { source: "json", ...r } : null));
+  quantitatifDonnees = { cle, promesse };
+  // Un echec (aucun element lisible) n'est pas memorise : la demande suivante retente.
+  promesse.then((r) => { if (!r && quantitatifDonnees && quantitatifDonnees.promesse === promesse) quantitatifDonnees = null; });
+  return promesse;
+}
+
+// Empreintes de version des maquettes (en-tetes HEAD, voir src/quantitatifVersions.js), relues a chaque ouverture de la page ou de l'historique ;
+// une courte memoire (10 s) evite de repeter les requetes quand la page enchaine plusieurs affichages.
+let quantitatifVersions = null; // { cle, quand, promesse }
+function versionsQuantitatif() {
+  const cle = MAQUETTES.map((m) => m.id + "=" + m.src).join(",");
+  if (quantitatifVersions && quantitatifVersions.cle === cle && Date.now() - quantitatifVersions.quand < 10000) return quantitatifVersions.promesse;
+  const promesse = lireEmpreintes(MAQUETTES.map((m) => ({ id: m.id, label: m.label, src: m.src })));
+  quantitatifVersions = { cle, quand: Date.now(), promesse };
+  return promesse;
+}
+
+// « Voir » d'une ligne du tableau : le Viewer isole les elements de la ligne (meme mecanisme que la commande « afficher » du Viewer par commande).
+// Rend un message (rien a voir, maquettes non chargees) ou null si le Viewer est ouvert sur la selection.
+function voirQuantitatifDansViewer(criteres, retour = null) {
+  const commande = {
+    action: "afficher",
+    parametres: { typesIfc: criteres.typesIfc, niveaux: criteres.niveaux, maquettes: criteres.maquettes, noms: criteres.noms, isoler: true, surbrillance: false, cadrer: true },
+    demande: "",
+    relecture: ""
+  };
+  const essai = moteurCommandesViewer().preparer(commande);
+  if (!essai.ok) return essai.erreur;
+  if (essai.vide) return "Rien à voir dans le Viewer pour cette ligne : les maquettes ne sont peut-être pas encore chargées.";
+  activateView("viewer");
+  const resultat = proposerCommandeViewer(commande);
+  if (!resultat.ok) return resultat.message;
+  // La demande vient du tableau, pas d'une phrase a verifier : pas de question « Est-ce bien votre demande ? ».
+  commandesBandeau.masquer(false);
+  fluxCommandes().accepter();
+  // Bandeau « ← Retour au quantitatif » : la page fournit le rappel, le bandeau ne sait rien d'elle. Un clic revient sur la page (comme un clic sur l'onglet,
+  // pour la meme remise a zero) puis rappelle la page, qui re-affiche le meme rapport.
+  if (retour) {
+    retourQuantitatif.montrer({
+      libelle: retour.libelle,
+      surRetour: () => {
+        const lien = navLinks.find((l) => l.dataset.view === "quantitatif");
+        if (lien) lien.click(); else activateView("quantitatif");
+        retour.surRetour();
+      }
+    });
+  }
+  return null;
+}
+
+retourQuantitatif = creerRetourContexte({
+  id: "quantitatifBandeauRetour",
+  classeCorps: "quantitatif-retour-actif",
+  ariaLabel: "Retour au quantitatif",
+  autresClasses: ["msg-retour-actif", "regles-retour-actif"] // un seul bandeau de retour a la fois : le plus recent gagne
+});
+
+// Page 2D -> 3D (25/10) : chargee a la demande (Three.js et pdf.js ne pesent pas sur le demarrage). Si le chargement echoue, la page affiche l'erreur.
+function ouvrirPlan3d() {
+  if (plan3d) { plan3d.surVueActivee("plan3d"); return; }
+  if (!plan3dEnCours) {
+    const racine = document.getElementById("plan3dRoot");
+    plan3dEnCours = import("./plan3d/plan3dPage.js")
+      .then(({ creerPlan3dPage }) => { plan3d = creerPlan3dPage({ racine, voirDansViewer: voirPlanDansViewer }); })
+      .catch(() => { plan3dEnCours = null; racine.textContent = "La page 2D → 3D n'a pas pu se charger. Recharge la page."; });
+  }
+  plan3dEnCours.then(() => { if (plan3d && !document.getElementById("view-plan3d").hidden) plan3d.surVueActivee("plan3d"); });
+}
+
+// Maquette 3D de la page 2D -> 3D (25/10) : c'est le VRAI Viewer. L'IFC genere depuis le plan y est charge comme une maquette (web-ifc), les autres maquettes
+// sont masquees le temps de la visite, et le bandeau « ← Retour au plan 2D » ramene sur la page. Coupe, vitesse, recentrer, isolation, commande IA,
+// nouvelle discussion et fiche d'element sont donc ceux du Viewer, sans copie. Quitter le Viewer par n'importe quel chemin appelle retirerPlanDuViewer
+// (via activateView) : la maquette du plan disparait et la visibilite des autres maquettes revient comme avant.
+let initWebIfc = null;
+function initialiserWebIfc() {
+  if (!initWebIfc) initWebIfc = IfcAPI.Init().catch((e) => { initWebIfc = null; throw e; });
+  return initWebIfc;
+}
+
+async function assurerChargeurIfc() {
+  if (ifcLoader) return;
+  await initialiserWebIfc();
+  if (!ifcLoader) ifcLoader = new WebIFCLoaderPlugin(viewer, { WebIFC, IfcAPI });
+  if (!xktLoader) xktLoader = new XKTLoaderPlugin(viewer);
+}
+
+// ifc : ArrayBuffer de l'IFC genere. Rend null si tout va bien, sinon un message pour la page.
+async function voirPlanDansViewer({ ifc, noms = [], surRetour }) {
+  try {
+    await assurerChargeurIfc();
+  } catch (e) {
+    return "Le lecteur d'IFC n'a pas pu démarrer. Recharge la page.";
+  }
+  if (!planDansViewer) {
+    const avant = new Map(MAQUETTES.map((m) => [m.id, m.shown]));
+    MAQUETTES.forEach((m) => { m.shown = false; });
+    const maquette = { id: "plan2d3d", label: "Plan 2D → 3D", color: "#5c7a5f", format: "ifc", shown: true, chargee: false, externe: true, model: null };
+    MAQUETTES.push(maquette);
+    const cam = viewer.camera;
+    planDansViewer = { maquette, avant, plaques: [], camera: { eye: cam.eye.slice(), look: cam.look.slice(), up: cam.up.slice(), projection: cam.projection } }; // camera a rendre en sortant
+    vueDessusBtn.hidden = false;
+  } else if (planDansViewer.maquette.model) {
+    sortirVueDessus(false);
+    planDansViewer.maquette.model.destroy(); // plan modifie depuis la derniere visite : on recharge
+  }
+  const { maquette } = planDansViewer;
+  poserNomsAuSol(noms);
+  maquette.shown = true;
+  maquette.chargee = false;
+  const model = ifcLoader.load({ id: maquette.id, ifc, excludeTypes: ["IfcSpace"], edges: true });
+  maquette.model = model;
+  model.on("loaded", () => {
+    maquette.chargee = true;
+    applyVisibility();
+    renderMaquetteRows(maquettesList, MAQUETTES);
+    if (planDansViewer && planDansViewer.maquette === maquette) viewer.cameraFlight.jumpTo({ aabb: model.aabb }); // l'utilisateur a pu quitter la vue pendant le chargement
+  });
+  model.on("error", (msg) => { console.warn("[plan 2D -> 3D] chargement de l'IFC : " + msg); });
+  activateView("viewer");
+  retourPlan3d.montrer({
+    libelle: "Retour au plan 2D", // la fleche est ajoutee par le bandeau
+    surRetour: () => {
+      const lien = navLinks.find((l) => l.dataset.view === "plan3d");
+      if (lien) lien.click(); else activateView("plan3d");
+      if (surRetour) surRetour();
+    }
+  });
+  return null;
+}
+
+// Vue a plat (25/10) : projection orthographique, camera au-dessus de la maquette, nord du plan en haut. Dans la scene xeokit (Y vers le haut), le nord
+// du plan (+y IFC) est -z : « up » = [0, 0, -1] donne x vers la droite et le nord vers le haut de l'ecran, comme sur le plan 2D.
+// Reglages de la vue a plat, a ajuster ici au fil des tests.
+const VUE_PLAT_VITESSE = 30; // % : vitesse de navigation de la vue a plat (le curseur « Vitesse » du Viewer l'affiche et peut la changer)
+const VUE_PLAT_PART_MIN = 2 / 3; // part de l'ecran que la maquette garde AU MINIMUM en dezoomant (1 = remplit l'ecran, 0,5 = la moitie)
+
+// Echelle orthographique (ortho.scale) pour que le rectangle largeur x profondeur (metres), agrandi de `marge` (1,15 = 15 % de marge), tienne dans l'ecran.
+// xeokit (Ortho.js) : ecran en paysage, ortho.scale est la LARGEUR visible (la hauteur en decoule par le rapport de l'ecran) ; en portrait, c'est la HAUTEUR visible.
+function echelleOrtho(largeur, profondeur, marge) {
+  const aspect = Math.max(viewerCanvas.clientWidth, 1) / Math.max(viewerCanvas.clientHeight, 1);
+  const l = Math.max(largeur, 1) * marge;
+  const p = Math.max(profondeur, 1) * marge;
+  return viewerCanvas.clientWidth > viewerCanvas.clientHeight ? Math.max(l, p * aspect) : Math.max(p, l / aspect);
+}
+
+// Plus grande echelle orthographique permise : celle ou la maquette occupe encore VUE_PLAT_PART_MIN de l'ecran dans sa dimension la plus contraignante.
+function echelleOrthoMax() {
+  const boite = aabbDesMaquettes(maquettesPresentes());
+  if (!boite) return Infinity;
+  const [x0, , z0, x1, , z1] = boite;
+  return echelleOrtho(x1 - x0, z1 - z0, 1 / VUE_PLAT_PART_MIN);
+}
+
+// Zoom arriere borne : impossible de s'eloigner au-dela de echelleOrthoMax (molette, pincement ou curseur).
+viewer.camera.ortho.on("scale", (echelle) => {
+  if (!vueAvantDessus) return;
+  const max = echelleOrthoMax();
+  if (echelle > max + 1e-6) viewer.camera.ortho.scale = max;
+});
+
+function reglerVitesseCamera(pourcent) {
+  cameraSpeedSlider.value = String(pourcent);
+  cameraSpeedValue.textContent = pourcent + " %";
+  applyCameraTouchSpeed(pourcent); // le curseur n'est pas persiste ici : c'est l'ecouteur « input » du curseur qui memorise
+}
+
+// Maquettes presentes dans la vue a plat : celles qui sont cochees (et chargees). La vue se cadre sur leur ensemble.
+function maquettesPresentes() {
+  return MAQUETTES.filter((m) => m.shown && m.model);
+}
+
+function appliquerVueDessus() {
+  const presentes = maquettesPresentes();
+  const boite = aabbDesMaquettes(presentes);
+  if (!boite) return;
+  maquettesVueDessus = presentes.map((m) => m.id).join(",");
+  const [x0, y0, z0, x1, y1, z1] = boite;
+  const camera = viewer.camera;
+  const centre = [(x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2];
+  camera.projection = "ortho";
+  camera.ortho.scale = Math.min(echelleOrtho(x1 - x0, z1 - z0, 1.15), echelleOrthoMax()); // tout le niveau, avec 15 % de marge
+  viewer.cameraFlight.jumpTo({ eye: [centre[0], y1 + 50, centre[2]], look: centre, up: [0, 0, -1] });
+}
+
+function entrerVueDessus() {
+  if (vueAvantDessus || !planDansViewer || !planDansViewer.maquette.model) return;
+  const camera = viewer.camera;
+  vueAvantDessus = { eye: camera.eye.slice(), look: camera.look.slice(), up: camera.up.slice(), projection: camera.projection };
+  appliquerVueDessus();
+  vitesseAvantDessus = Number(cameraSpeedSlider.value);
+  reglerVitesseCamera(VUE_PLAT_VITESSE);
+  vueDessusBtn.textContent = "Perspective";
+  vueDessusBtn.setAttribute("aria-pressed", "true");
+}
+
+// retablir : remettre la camera d'avant (bouton « Perspective »). Sans retablir, seule la projection revient (sortie du Viewer, rechargement).
+function sortirVueDessus(retablir) {
+  if (!vueAvantDessus) return;
+  const avant = vueAvantDessus;
+  vueAvantDessus = null;
+  viewer.camera.projection = "perspective";
+  if (vitesseAvantDessus !== null) { reglerVitesseCamera(vitesseAvantDessus); vitesseAvantDessus = null; }
+  if (retablir) viewer.cameraFlight.jumpTo({ eye: avant.eye, look: avant.look, up: avant.up });
+  vueDessusBtn.textContent = "Vue à plat";
+  vueDessusBtn.setAttribute("aria-pressed", "false");
+}
+
+vueDessusBtn.addEventListener("click", () => { if (vueAvantDessus) sortirVueDessus(true); else entrerVueDessus(); });
+
+// Noms des pieces, poses au sol : un plan horizontal par piece (texture PNG transparente, haut de l'image = nord = -z dans la scene), a 3 cm au-dessus de la dalle.
+// Meshes hors « objets » de la scene (isObject faux) : les commandes d'affichage du Viewer (isoler, masquer, IA) ne les voient pas ; la coupe les decoupe comme le reste.
+function poserNomsAuSol(noms) {
+  viderNomsAuSol();
+  const scene = viewer.scene;
+  for (const n of noms) {
+    const geometrie = new ReadableGeometry(scene, buildPlaneGeometry({ xSize: n.largeur, zSize: n.hauteur }));
+    const texture = new Texture(scene, { src: n.image });
+    const materiau = new PhongMaterial(scene, { diffuseMap: texture, alphaMode: "blend", alpha: 1.0, specular: [0, 0, 0], emissive: [0.35, 0.35, 0.35] });
+    const maille = new Mesh(scene, { id: "plan2d3d-nom-" + n.id, geometry: geometrie, material: materiau, position: [n.x, 0.03, n.z], pickable: false, collidable: false });
+    planDansViewer.plaques.push({ maille, geometrie, materiau, texture });
+  }
+}
+
+function viderNomsAuSol() {
+  if (!planDansViewer) return;
+  for (const p of planDansViewer.plaques) { p.maille.destroy(); p.geometrie.destroy(); p.materiau.destroy(); p.texture.destroy(); }
+  planDansViewer.plaques = [];
+}
+
+function retirerPlanDuViewer() {
+  if (!planDansViewer) return;
+  viderNomsAuSol();
+  const { maquette, avant, camera } = planDansViewer;
+  sortirVueDessus(false);
+  planDansViewer = null;
+  vueDessusBtn.hidden = true;
+  viewer.camera.projection = camera.projection;
+  viewer.cameraFlight.jumpTo({ eye: camera.eye, look: camera.look, up: camera.up }); // la camera du Viewer comme avant la visite
+  if (maquette.model) maquette.model.destroy();
+  const i = MAQUETTES.indexOf(maquette);
+  if (i >= 0) MAQUETTES.splice(i, 1);
+  MAQUETTES.forEach((m) => { if (avant.has(m.id)) m.shown = avant.get(m.id); });
+  applyVisibility();
+  renderMaquetteRows(maquettesList, MAQUETTES);
+}
+
+retourPlan3d = creerRetourContexte({
+  id: "plan3dBandeauRetour",
+  classeCorps: "plan3d-retour-actif",
+  ariaLabel: "Retour au plan 2D",
+  autresClasses: ["msg-retour-actif", "regles-retour-actif", "quantitatif-retour-actif"]
+});
+
+quantitatif = creerQuantitatifPage({
+  racine: document.getElementById("quantitatifRoot"),
+  obtenirDonnees: donneesQuantitatif,
+  demander: demanderQuantitatif,
+  voirDansViewer: voirQuantitatifDansViewer,
+  obtenirVersions: versionsQuantitatif,
+  historique: creerHistorique({ depot: creerDepotLocal() })
+});
+// Rechargement direct sur la page (hash ou dernier onglet) : activateView s'est execute avant la creation de la page.
+// Differe d'un cran : appelee pendant l'initialisation du module, la page lirait des constantes declarees plus bas (HOSPITAL_MISPLACED_RAILING_IDS...) avant leur initialisation.
+if (!document.getElementById("view-quantitatif").hidden) setTimeout(() => quantitatif.surVueActivee("quantitatif"), 0);
+
+commandesIA = creerCommandesIA({
+  bouton: commandesIABtn,
+  exemples: EXEMPLES_COMMANDES,
+  proposerCommande: (commande) => proposerCommandeViewer(commande, true),
+  traduire: traduirePhraseViewer,
+  fermerAutres: () => { cameraSpeedPanel.hidden = true; cameraSpeedToggle.classList.remove("active"); }
+});
+
+// Bouton « Zone » : definir un volume nomme (depuis l'element selectionne ou par un clic dans la maquette). Masque par MASQUE_ZONES : ni bouton, ni fenetre (zonesUI reste null, deja gere partout).
+commandesZoneBtn.hidden = MASQUE_ZONES;
+if (!MASQUE_ZONES) zonesUI = creerZonesUI({
+  bouton: commandesZoneBtn,
+  zones: zonesCommandes,
+  elementSelectionne: () => (selectedEntity && selectedEntity.aabb ? Array.from(selectedEntity.aabb) : null),
+  armerClic: (rappel) => { zonePointCapture = rappel; },
+  annulerClic: () => { zonePointCapture = null; },
+  fermerAutres: () => { cameraSpeedPanel.hidden = true; cameraSpeedToggle.classList.remove("active"); }
+});
+
+// « Tout reafficher » : toute question en cours tombe avec la commande qu'elle portait.
+commandesResetBtn.addEventListener("click", () => {
+  commandesBandeau.masquer(false);
+  fluxCommandes().toutReafficher();
+  majBoutonToutReafficher();
 });
 
 function isThreadOpen(thread) {
@@ -7870,6 +8442,8 @@ function applyVisibility() {
   }
 
   refreshCollisionMaquetteToggles();
+  // Vue a plat : une maquette cochee ou decochee recadre la vue sur celles qui sont presentes (pas pour un simple changement de niveau).
+  if (vueAvantDessus && maquettesPresentes().map((m) => m.id).join(",") !== maquettesVueDessus) appliquerVueDessus();
   // Previent le curseur de coupe (course a recalculer selon ce qui est visible).
   window.dispatchEvent(new Event("visibilite-changee"));
 }
@@ -8527,6 +9101,14 @@ function createCoupeFromHit(hit) {
 }
 
 function handleViewerPick(canvasCoords) {
+  // Fenetre « Zones nommees » en attente d'un point : ce clic le lui donne et ne selectionne rien.
+  if (zonePointCapture) {
+    const rappel = zonePointCapture;
+    zonePointCapture = null;
+    const touche = viewer.scene.pick({ canvasPos: canvasCoords, pickSurface: true });
+    rappel(touche && touche.worldPos ? Array.from(touche.worldPos) : null);
+    return;
+  }
   if (coupePickingMode) {
     const hit = viewer.scene.pick({ canvasPos: canvasCoords, pickSurface: true, pickSurfaceNormal: true });
     setCoupePickingMode(false);
@@ -8783,6 +9365,7 @@ function loadProject(projectKey) {
       return;
     }
 
+    if (MAQUETTES[index].externe) { loadNextMaquette(index + 1); return; } // la maquette du plan 2D -> 3D se charge a part (voirPlanDansViewer)
     const maquette = MAQUETTES[index];
     const tMaquette = performance.now();
     majEtatMaquette(maquette, "en cours…", "en-cours");
@@ -8909,7 +9492,7 @@ if ((CHARGEMENT_SANS_ATTENDRE_WEBIFC || HOPITAL_SANS_WEBIFC) && projectSelect.va
 }
 
 // L'hopital n'utilise que des XKT : on n'initialise pas web-ifc (memoire du telephone).
-if (!(HOPITAL_SANS_WEBIFC && projectSelect.value === HOSPITAL_PROJECT_KEY)) IfcAPI.Init().then(() => {
+if (!(HOPITAL_SANS_WEBIFC && projectSelect.value === HOSPITAL_PROJECT_KEY)) initialiserWebIfc().then(() => {
   ifcLoader = new WebIFCLoaderPlugin(viewer, { WebIFC, IfcAPI });
   if (!xktLoader) xktLoader = new XKTLoaderPlugin(viewer);
   demarrerChargement();

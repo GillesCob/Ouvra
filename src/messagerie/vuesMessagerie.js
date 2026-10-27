@@ -7,6 +7,9 @@ import { echapper } from "./format.js";
 
 export const DOSSIER_VUES = "images/vues/";
 export const INDEX_VUES = DOSSIER_VUES + "index.json";
+// Nombre de vues de la banque (les premieres, triees par numero de collision) que Discussions distribue aux messages de demonstration : la banque
+// contient aussi les images des autres collisions (modale des regles), qui ne doivent pas changer les vues deja validees des echanges.
+export const NOMBRE_VUES_MESSAGERIE = 8;
 
 // Generateur pseudo-aleatoire a graine (mulberry32).
 export function aleatoire(graine) {
@@ -92,13 +95,14 @@ function indiceDeterministe(graine, n) {
 // Viewer lisent toujours la meme source. Retourne true si au moins une vue a change (le fil affiche doit alors etre redessine).
 export function attribuerBanque(conversations, banque) {
   if (!banque.length) return false;
+  banque = banque.slice(0, NOMBRE_VUES_MESSAGERIE);
   let change = false;
   const attribuer = (m) => {
     // Une capture propre (vue.image sans deBanque) n'est jamais remplacee.
     if (!m.vue || (m.vue.image && !m.vue.deBanque)) return;
     const vue = m.vue;
     const entree = banque.find((e) => e.id === vue.banqueId) || banque[indiceDeterministe(vue.seed, banque.length)];
-    const image = import.meta.env.BASE_URL + DOSSIER_VUES + entree.id + ".jpg?v=" + entree.version;
+    const image = (import.meta.env ? import.meta.env.BASE_URL : "/") + DOSSIER_VUES + entree.id + ".jpg?v=" + entree.version;
     if (vue.image !== image || vue.banqueId !== entree.id) change = true;
     vue.banqueId = entree.id;
     vue.image = image;

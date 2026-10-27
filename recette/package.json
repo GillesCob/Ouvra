@@ -1,0 +1,20 @@
+{
+  "name": "ouvra-recette",
+  "private": true,
+  "version": "0.0.1",
+  "description": "Harnais de recette automatique d'Ouvra (Playwright WebKit, assertions DOM et reseau, jamais de capture, jamais d'appel IA reel)",
+  "type": "module",
+  "scripts": {
+    "recette": "tsx src/run.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "exceljs": "^4.4.0",
+    "jspdf": "^4.2.1",
+    "pdfjs-dist": "^4.10.38",
+    "playwright-core": "^1.64.1",
+    "tsx": "^4.20.0",
+    "typescript": "^5.6.0"
+  }
+}

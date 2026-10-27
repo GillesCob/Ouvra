@@ -36,15 +36,17 @@ export const ECHANGES_HOSPITAL = {
     historique: [modif("2026-10-15T11:20:00", "priorité", "normale", "haute")]
   },
 
-  // Level 2 : cloison 123 mm contre gaine rectangulaire (coudes et piquages). Urgente, confirme, decision prise.
+  // Level 2 : cloison 123 mm contre gaine rectangulaire (coudes et piquages). Urgente, confirme, options a chiffrer.
   "hosp-clash-2": {
     discussion: [
-      msg(VOUS, "2026-10-14T14:05:00", "La gaine rectangulaire avec ses coudes et ses piquages traverse la cloison 123 mm du niveau 2. À traiter avec Sophie et Claire."),
-      msg(SOPHIE, "2026-10-14T15:10:00", "Confirmé de mon côté. La gaine ne peut pas être raccourcie sans toucher au piquage suivant."),
-      msg(CLAIRE, "2026-10-15T09:20:00", "Déplacer la cloison est possible. Je dois d'abord vérifier la surface du local voisin."),
+      msg(VOUS, "2026-10-14T14:05:00", "Détection du jour : la gaine rectangulaire, avec ses coudes et ses piquages, traverse la cloison 123 mm du niveau 2. Sophie, c'est bien le tracé de ton indice en cours ?"),
+      msg(SOPHIE, "2026-10-14T15:10:00", "Oui, c'est le tracé de l'indice en cours. Cette cloison n'est pas dans la dernière maquette d'architecture que j'ai importée. Je regarde si je peux raccourcir la gaine, mais elle porte les piquages suivants."),
+      msg(CLAIRE, "2026-10-14T16:20:00", "La cloison n'a pas bougé depuis plusieurs versions. Je peux la décaler ou prévoir une réservation, mais je dois d'abord voir ce que ça donne sur le local voisin."),
+      msg(SOPHIE, "2026-10-15T09:20:00", "Raccourcir la gaine oblige à reprendre le piquage suivant, donc un autre tracé à redessiner. Je préfère que la cloison bouge si Claire le peut."),
       msg(VOUS, "2026-10-16T10:15:00", "Ça bloque la suite des réseaux de ce niveau. Je passe en urgente."),
-      msg(CLAIRE, "2026-10-16T11:30:00", "Surface du local voisin vérifiée, on tient. Je décale la cloison de 15 cm et je dépose la mise à jour demain."),
-      msg(SOPHIE, "2026-10-16T11:45:00", "Ok pour moi, la gaine reste en place. Je confirme sur la prochaine mise à jour.")
+      msg(CLAIRE, "2026-10-16T11:30:00", "Le local voisin tient si je décale la cloison de 15 cm, mais je ne dépose rien avant d'avoir vu ce que coûte chaque option : décaler la cloison, prévoir une réservation avec renfort, ou dévoyer la gaine."),
+      msg(SOPHIE, "2026-10-16T11:45:00", "Ok, je garde le tracé actuel comme tracé de travail. Je ne fige rien avant le métré du niveau 2 : linéaire de gaines, raccords, faux plafond et cloison touchés."),
+      msg(MARC, "2026-10-16T14:10:00", "Je sors les quantités du niveau 2 de la maquette par famille, coudes, piquages et gaines droites, et je relancerai la détection sur l'option retenue.")
     ],
     historique: [
       modif("2026-10-14T14:30:00", "statut", "nouveau", "confirme"),

@@ -1,0 +1,16 @@
+/* Bandeau « ← Retour au quantitatif » (src/retourContexte.js, 24/10) : meme composant et meme placement que #msgBandeauRetour (messagerie.css) et
+   #reglesBandeauRetour (reglesModale.css) : sous la navbar (52 px), 44 px de haut, z-index 55 (les 56 du bandeau « Est-ce bien votre demande ? » du Viewer le
+   recouvrent le temps de la question), barre d'outils du Viewer decalee de 4 px de plus que la hauteur de la navbar. Aucune regle des deux existants n'est modifiee. */
+#quantitatifBandeauRetour, #plan3dBandeauRetour {
+  position: fixed; top: 52px; left: 0; right: 0; z-index: 55; display: flex; align-items: center; justify-content: center; flex-wrap: nowrap;
+  height: 44px; box-sizing: border-box; padding: 2px 12px; background: var(--surface); border-bottom: 1px solid var(--border);
+  color: var(--text); font-size: 13px; font-weight: 600;
+}
+#quantitatifBandeauRetour[hidden], #plan3dBandeauRetour[hidden] { display: none !important; }
+#quantitatifBandeauRetour button, #plan3dBandeauRetour button {
+  flex: none; white-space: nowrap; min-height: 40px; border-radius: 8px; padding: 6px 16px; font: inherit; font-weight: 700; cursor: pointer;
+  border: 1px solid var(--border); background: none; color: var(--text); -webkit-tap-highlight-color: transparent;
+}
+#quantitatifBandeauRetour button:focus-visible, #plan3dBandeauRetour button:focus-visible { outline: 2px solid #7fae84; outline-offset: 1px; }
+body.quantitatif-retour-actif #viewerToolbar, body.plan3d-retour-actif #viewerToolbar { top: 56px; }
+@media (max-width: 768px) { #quantitatifBandeauRetour, #plan3dBandeauRetour { padding: 0 12px; } #quantitatifBandeauRetour button, #plan3dBandeauRetour button { min-height: 44px; } }

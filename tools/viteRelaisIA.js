@@ -1,5 +1,6 @@
-// Plugin Vite, serveur de dev et de previsualisation SEULEMENT : monte la fonction api/regle.js sur POST /api/regle, comme le fait Vercel
-// en production (Vite ne sert pas le dossier api/). Aucun effet dans la version construite deployee.
+// Plugin Vite, serveur de dev et de previsualisation SEULEMENT : monte les fonctions api/regle.js (POST /api/regle) et api/commande.js
+// (POST /api/commande, Viewer par commande), api/plan.js (POST /api/plan, IA du plan 2D), comme le fait Vercel en production (Vite ne sert pas le dossier api/). Aucun effet dans la version
+// construite deployee.
 //
 // La cle ANTHROPIC_API_KEY est lue dans l'environnement du processus, ou a defaut dans .env.local (ignore par git, jamais commite) :
 //   echo 'ANTHROPIC_API_KEY=...' > .env.local
@@ -18,12 +19,21 @@ async function versRequete(req) {
   });
 }
 
+// Route -> chargement de la fonction (a la demande, comme Vercel : rien n'est importe tant qu'aucune requete n'arrive).
+const ROUTES = {
+  "/api/regle": () => import("../api/regle.js"),
+  "/api/commande": () => import("../api/commande.js"),
+  "/api/discussions": () => import("../api/discussions.js"),
+  "/api/quantitatif": () => import("../api/quantitatif.js"),
+  "/api/plan": () => import("../api/plan.js")
+};
+
 function monter(serveur, mode) {
   const env = loadEnv(mode, process.cwd(), "");
   if (!process.env.ANTHROPIC_API_KEY && env.ANTHROPIC_API_KEY) process.env.ANTHROPIC_API_KEY = env.ANTHROPIC_API_KEY;
-  serveur.middlewares.use("/api/regle", async (req, res) => {
+  Object.entries(ROUTES).forEach(([route, charger]) => serveur.middlewares.use(route, async (req, res) => {
     try {
-      const { default: fonction } = await import("../api/regle.js");
+      const { default: fonction } = await charger();
       const reponse = await fonction.fetch(await versRequete(req));
       res.statusCode = reponse.status;
       reponse.headers.forEach((valeur, nom) => res.setHeader(nom, valeur));
@@ -32,7 +42,7 @@ function monter(serveur, mode) {
       res.statusCode = 500;
       res.end(JSON.stringify({ ok: false, code: "ia_indisponible", message: "Relais indisponible en local." }));
     }
-  });
+  }));
 }
 
 export function relaisIA() {

@@ -1,5 +1,7 @@
 // Regles de collision en langage naturel, etapes 2 et 3 (22/10) : la modale « Regle a valider » et l'aller-retour vers la 3D.
 //
+// Une regle « afficher » (23/10) ne change rien : la meme modale liste les collisions trouvees, sans case ni « Valider », avec « Voir en 3D » sur
+// chaque ligne, et « Fermer » / « Reformuler » en bas.
 // La modale liste les collisions que la regle changerait reellement (jamais celles deja a la valeur visee), toutes cochees. L'utilisateur
 // peut en decocher, aller voir une collision en 3D (« Voir en 3D » ferme la modale, un bandeau « ← Retour a la regle » la rouvre avec la
 // meme selection et le meme defilement), puis valider. La regle et la selection vivent en memoire de session seulement : rien n'est ecrit
@@ -11,6 +13,7 @@
 //   creerCarte(clash) : carte de la collision, le meme rendu que la ligne de la liste des collisions (buildCollisionCard de main.js)
 //   lireElement(entityId) : descripteur { nom, typeIfc, niveau, ... } (descripteurElement de reglesCollision.js) ou null
 //   voirEn3D(clash) : ouvre la collision dans la vue Collision (comme un clic dans la liste)
+//   imageDe(clash) : optionnel ; adresse de l'image 3D deja generee de la collision (src/reglesImages.js), ou null : la ligne garde alors un espace vide
 //   appliquer(selection, demande) : applique [{ clash, champ: "priorite"|"statut", vers }] et rafraichit l'interface
 //   reformuler(phrase) : optionnel ; « Reformuler » (regle venue d'une phrase saisie, regle.saisie) ferme la modale comme « Annuler » puis rouvre le
 //     panneau « IA » avec cette phrase pre-remplie, sans appel a l'IA
@@ -21,7 +24,7 @@ import "./reglesModale.css";
 const MOBILE = "(max-width: 768px)";
 const DUREE_FERMETURE_MS = 350;
 
-export function creerReglesModale({ libellesPriorite, libellesStatut, numero, creerCarte, lireElement, voirEn3D, appliquer, reformuler, glisserPourFermer }) {
+export function creerReglesModale({ libellesPriorite, libellesStatut, numero, creerCarte, lireElement, voirEn3D, imageDe, appliquer, reformuler, glisserPourFermer }) {
   // Etat de session : { regle, lignes: [{ clash, champ, de, vers, coche }], defilement, enVisite }, ou null.
   let session = null;
   let fond = null;
@@ -52,6 +55,9 @@ export function creerReglesModale({ libellesPriorite, libellesStatut, numero, cr
   function actionReformuler() {
     return reformuler && session.regle.saisie ? [creerAction("msg-fantome", "reformuler", "Reformuler")] : [];
   }
+
+  // Regle d'affichage : aucune modification a valider, la modale ne fait que lister.
+  const enAffichage = () => !!session && session.regle.action.champ === "afficher";
 
   function libellesDe(champ) {
     return champ === "priorite" ? libellesPriorite : libellesStatut;
@@ -125,6 +131,22 @@ export function creerReglesModale({ libellesPriorite, libellesStatut, numero, cr
     return val;
   }
 
+  // Image 3D de la collision, a droite du texte (deja generee, jamais rendue ici). Sans image : espace vide de meme taille, la colonne reste alignee.
+  function creerVue(clash) {
+    const url = imageDe ? imageDe(clash) : null;
+    const vue = creer("span", "regles-vue" + (url ? "" : " regles-vue-vide"));
+    vue.setAttribute("aria-hidden", "true");
+    if (url) {
+      const img = creer("img");
+      img.src = url;
+      img.alt = "";
+      img.loading = "lazy";
+      img.decoding = "async";
+      vue.appendChild(img);
+    }
+    return vue;
+  }
+
   // Ligne « Priorite : Normale → Haute » : le nom du champ en clair, l'ancienne valeur grisee, la nouvelle mise en valeur.
   function ligneChangement(ligne) {
     const el = creer("span", "regles-changement");
@@ -140,6 +162,7 @@ export function creerReglesModale({ libellesPriorite, libellesStatut, numero, cr
 
   function creerLigne(ligne, index) {
     const li = creer("li", "regles-ligne");
+    if (enAffichage()) return creerLigneAffichage(ligne, index, li);
     const idCase = "reglesCase" + index;
     const label = creer("label", "regles-choix");
     label.htmlFor = idCase;
@@ -157,7 +180,7 @@ export function creerReglesModale({ libellesPriorite, libellesStatut, numero, cr
     carteClash.removeAttribute("aria-label");
     const contenu = creer("span", "regles-contenu");
     contenu.append(carteClash, ligneChangement(ligne));
-    label.append(caseEl, contenu);
+    label.append(caseEl, contenu, creerVue(ligne.clash));
     const voir = creer("button", "regles-voir", "Voir en 3D");
     voir.type = "button";
     voir.dataset.act = "voir";
@@ -167,12 +190,41 @@ export function creerReglesModale({ libellesPriorite, libellesStatut, numero, cr
     return li;
   }
 
+  // Ligne d'une regle d'affichage : la carte de la collision (sans case a cocher ni ligne de changement) et « Voir en 3D ».
+  function creerLigneAffichage(ligne, index, li) {
+    const bloc = creer("div", "regles-choix regles-choix-simple");
+    const contenu = creer("span", "regles-contenu");
+    contenu.appendChild(creerCarte(ligne.clash));
+    bloc.append(contenu, creerVue(ligne.clash));
+    const voir = creer("button", "regles-voir", "Voir en 3D");
+    voir.type = "button";
+    voir.dataset.act = "voir";
+    voir.dataset.i = String(index);
+    voir.setAttribute("aria-label", "Voir la collision n° " + numero(ligne.clash) + " en 3D");
+    li.append(bloc, voir);
+    return li;
+  }
+
+  // Liste d'une regle d'affichage : compteur, lignes, et seulement « Reformuler » / « Fermer » en bas.
+  function rendreAffichage(tete, croix, actions) {
+    const n = session.lignes.length;
+    const compteur = creer("p", "regles-barre regles-barre-simple", n + (n > 1 ? " collisions trouvées" : " collision trouvée"));
+    compteur.setAttribute("role", "status");
+    tete.appendChild(compteur);
+    const corps = creer("ul", "regles-corps");
+    corps.setAttribute("aria-label", "Collisions trouvées");
+    session.lignes.forEach((l, i) => corps.appendChild(creerLigne(l, i)));
+    actions.append(...actionReformuler(), creerAction("msg-fantome", "annuler", "Fermer"));
+    carte.append(tete, corps, actions, croix);
+  }
+
   function rendre() {
     carte.textContent = "";
     const tete = creer("div", "regles-tete");
-    const titre = creer("h3", null, "Règle à valider");
+    const titre = creer("h3", null, enAffichage() ? "Collisions trouvées" : "Règle à valider");
     titre.id = "reglesTitre";
-    const demande = creer("p", "regles-demande", "« " + session.regle.demande + " »");
+    // Espaces insecables autour des guillemets : le "»" ne peut pas rester seul en debut de ligne, ni le "«" seul en fin de ligne.
+    const demande = creer("p", "regles-demande", "«\u00a0" + session.regle.demande + "\u00a0»");
     demande.title = session.regle.demande;
     tete.append(titre, demande);
     const croix = creer("button", "msg-croix", "✕");
@@ -182,7 +234,7 @@ export function creerReglesModale({ libellesPriorite, libellesStatut, numero, cr
     const actions = creer("div", "regles-actions msg-rangee");
 
     if (!session.lignes.length) {
-      const vide = creer("p", "regles-vide", "Aucune collision ne correspond à cette règle.");
+      const vide = creer("p", "regles-vide", enAffichage() ? "Aucune collision ne correspond à cette demande." : "Aucune collision ne correspond à cette règle.");
       vide.setAttribute("role", "status");
       actions.append(...actionReformuler(), creerAction("msg-fantome", "annuler", "Fermer"));
       const corpsVide = creer("div", "regles-corps");
@@ -190,6 +242,8 @@ export function creerReglesModale({ libellesPriorite, libellesStatut, numero, cr
       carte.append(tete, corpsVide, actions, croix);
       return;
     }
+
+    if (enAffichage()) { rendreAffichage(tete, croix, actions); return; }
 
     // Case maitresse tri-etat (cochee, decochee, indeterminee) et compteur, alignes sur les cases des lignes.
     const barre = creer("label", "regles-barre");
@@ -332,7 +386,7 @@ export function creerReglesModale({ libellesPriorite, libellesStatut, numero, cr
       defilement: 0,
       enVisite: false,
       lignes: (touchees || []).filter((t) => !t.inchange)
-        .map((t) => ({ clash: t.clash, champ: regle.action.champ, de: t.de, vers: t.vers, coche: true }))
+        .map((t) => ({ clash: t.clash, champ: regle.action.champ, de: t.de, vers: t.vers, coche: true })) // pour « afficher », rien n'est « inchange » : tout est liste
     };
     afficher(false);
   }

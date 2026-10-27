@@ -9,19 +9,22 @@
 import "./messagerie.css";
 import {
   MOI, LIBELLES_STATUT, STATUTS_ACTIFS, TAILLE_PAQUET,
-  dernierMessage, nonLusConv, activiteConv, filActif, ouvrirFil, fermerRepere, ajouterMessage,
+  dernierMessage, nonLusConv, activiteConv, listeTriee, conversationAOuvrir, filActif, ouvrirFil, fermerRepere, ajouterMessage,
   changerStatut, ajouterPersonne, ajouterAuGroupe, basculerUrgence, estUrgent, convAUrgent, cloturer, rouvrir, creerSujet, creerConversation, vueOrigine, sujetsClos, sujetsTries, convParId
 } from "./messagerieDonnees.js";
 import { echapper, heureMinute, cleJour, libelleJour, heureCourte, initiales, prenom } from "./format.js";
 import { imageVue, chargerBanque, attribuerBanque } from "./vuesMessagerie.js";
 import { requeteMention, filtrerPersonnes, occurrences } from "./mentions.js";
+import { cleFil, cleMessage, lireCleMessage } from "../discussionsIAIndex.js"; // Discussions par commande IA (24/10)
+import { plagesCorrespondantes, htmlSurligne } from "../discussionsIATexte.js";
 
 const ICONE_APPAREIL = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l1.5-2h7L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>';
 const ICONE_LOUPE = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>';
 const VERBES_JOURNAL = { ouverture: "ouvert le sujet", cloture: "clos le sujet", reouverture: "rouvert le sujet" };
 const MOBILE = "(max-width: 768px)";
 
-export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvrirDansViewer, glisserPourFermer }) {
+// surMonte() : appelee une fois le squelette construit (le bouton « IA » #discussionsIABtn existe alors) ; surActionIA("tout" | "rapport") : boutons de la liste filtree par l'IA ; surOngletIA() : clic sur l'onglet IA (ouvre la saisie).
+export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvrirDansViewer, glisserPourFermer, surMonte, surActionIA, surOngletIA }) {
   let personnes = {};
   let conversations = [];
   let monte = false;
@@ -35,7 +38,7 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
   let vueDialogue = null;
   let vuesAffichees = [];
   let vuesPeriment = false; // des vues ont change pendant que la page etait masquee : le fil affiche est a redessiner
-  const etat = { onglet: "individuel", convId: null, sujetId: null, recherche: "" };
+  const etat = { onglet: "individuel", convId: null, sujetId: null, recherche: "", filtreIA: null }; // filtreIA : resultat d'une commande IA appliquee a la liste (voir appliquerFiltreIA)
 
   const $ = (id) => document.getElementById(id);
   const mobile = () => window.matchMedia(MOBILE).matches;
@@ -50,7 +53,10 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
           '<span class="msg-onglets-thumb" aria-hidden="true"></span>' +
           '<button type="button" role="tab" id="msgOngletIndividuel" data-act="onglet" data-v="individuel" aria-selected="true" aria-controls="msgListe">Individuel <span class="msg-badge" id="msgBadgeIndividuel" hidden></span></button>' +
           '<button type="button" role="tab" id="msgOngletGroupe" data-act="onglet" data-v="groupe" aria-selected="false" aria-controls="msgListe">Groupes <span class="msg-badge" id="msgBadgeGroupe" hidden></span></button>' +
+          // Troisieme onglet du meme groupe (Discussions par commande IA) : meme composant, meme pastille coulissante.
+          '<button type="button" role="tab" id="discussionsIABtn" data-act="onglet" data-v="ia" aria-selected="false" aria-controls="msgListe" title="Chercher dans les discussions par une phrase, écrite ou dictée">IA</button>' +
         "</div>" +
+        '<div class="msg-ia-panneau" id="msgIAPanneau" hidden></div>' +
         '<div class="msg-liste" id="msgListe" role="tabpanel" aria-labelledby="msgOngletIndividuel"></div>' +
         '<div class="msg-demo">Échanges fictifs, pour la démonstration</div>' +
       "</aside>" +
@@ -94,6 +100,7 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
     });
     ["pointercancel", "touchcancel"].forEach((type) => document.addEventListener(type, terminerGesteNeutre, true));
     monte = true;
+    if (surMonte) surMonte();
   }
 
   // Chargement paresseux : le module de demonstration (et ses 130 Ko de textes) n'est telecharge qu'a la premiere utilisation.
@@ -149,7 +156,8 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
     if (premierAffichage) {
       premierAffichage = false;
       rendreListe();
-      if (!mobile()) ouvrirConversation("sophie", null);
+      const premiere = conversationAOuvrir(conversations, etat.onglet, { mobile: mobile() });
+      if (premiere) ouvrirConversation(premiere, null);
     } else {
       rendreListe();
       if (vuesPeriment) {
@@ -225,14 +233,11 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
   }
 
   function rendreListe() {
-    const items = conversations
-      .filter((c) => c.type === etat.onglet)
-      .sort((a, b) => {
-        const ua = nonLusConv(a) > 0;
-        const ub = nonLusConv(b) > 0;
-        if (ua !== ub) return ua ? -1 : 1;
-        return activiteConv(b) - activiteConv(a);
-      });
+    // Mode resultat (onglet IA avec une demande appliquee) : la classe masque onglets et phrases (discussionsIA.css). Point unique d'entree et de sortie :
+    // chaque chemin (Retour, Non, changement d'onglet, nouvelle demande) repasse par ici, l'etat deplie des phrases n'est jamais touche.
+    racine.querySelector(".msg-lateral").classList.toggle("msg-ia-resultat", etat.onglet === "ia" && !!etat.filtreIA);
+    if (etat.onglet === "ia") { rendreResultatsIA(); return; }
+    const items = listeTriee(conversations, etat.onglet);
     const html = items.length ? items.map(ligneConv).join("") : '<div class="msg-vide">Aucune conversation.</div>';
     // « + » en tete de liste, nouvelle conversation 1 a 1 (Individuel) ou nouveau groupe (Groupes).
     const plus = '<div class="msg-liste-tete"><button type="button" class="msg-liste-plus" data-act="plus-conversation" aria-label="' +
@@ -259,21 +264,48 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
   }
 
   let minuteurOnglet = null;
-  function choisirOnglet(onglet) {
+  const IDS_ONGLETS = { individuel: "msgOngletIndividuel", groupe: "msgOngletGroupe", ia: "discussionsIABtn" };
+
+  // Onglet IA : le centre n'a plus de discussion ouverte (la liste de gauche n'est plus celle des conversations), il retrouve son etat « aucune selection ».
+  function fermerConversationCourante() {
+    const avant = filCourant();
+    if (avant) fermerRepere(avant.fil);
+    clearTimeout(minuteurSujet);
+    etat.convId = null;
+    etat.sujetId = null;
+    etat.recherche = "";
+    vuePendante = null;
+    $("msgVolet").innerHTML = '<p class="msg-volet-vide">Choisissez une conversation.</p>';
+    racine.classList.remove("volet-ouvert");
+  }
+
+  // ouvrirPremiere : clic sur un onglet (et non creation d'une conversation) -> la premiere conversation de la liste s'ouvre au centre, sur ordinateur ;
+  // jamais sur mobile (la liste prend l'ecran) ni pour l'onglet IA. Revenir de l'onglet IA vers un autre rouvre donc la premiere conversation de celui-ci.
+  function choisirOnglet(onglet, { ouvrirPremiere = false } = {}) {
     const change = onglet !== etat.onglet;
     etat.onglet = onglet;
-    [["individuel", "msgOngletIndividuel"], ["groupe", "msgOngletGroupe"]].forEach(([cle, id]) => $(id).setAttribute("aria-selected", String(cle === onglet)));
-    $("msgListe").setAttribute("aria-labelledby", onglet === "individuel" ? "msgOngletIndividuel" : "msgOngletGroupe");
+    Object.entries(IDS_ONGLETS).forEach(([cle, id]) => $(id).setAttribute("aria-selected", String(cle === onglet)));
+    $("msgListe").setAttribute("aria-labelledby", IDS_ONGLETS[onglet]);
+    $("msgIAPanneau").hidden = onglet !== "ia";
     placerPastilleOnglets();
-    if (!change || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    if (change && onglet === "ia") fermerConversationCourante();
+    // Phrases toutes faites du panneau IA : depliees a l'arrivee sur ordinateur (lisibles a cote de la modale), repliees sur mobile (la modale couvre la page).
+    if (change && onglet === "ia") { const phrases = $("msgIAPanneau").querySelector(".msg-ia-phrases"); if (phrases) phrases.open = !mobile(); }
+    const terminer = () => {
       rendreListe();
+      if (!ouvrirPremiere || (!change && etat.convId)) return;
+      const premiere = conversationAOuvrir(conversations, onglet, { mobile: mobile() });
+      if (premiere) ouvrirConversation(premiere, null);
+    };
+    if (!change || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      terminer();
       return;
     }
     const liste = $("msgListe");
     liste.classList.add("msg-liste-sortie");
     clearTimeout(minuteurOnglet);
     minuteurOnglet = setTimeout(() => {
-      rendreListe();
+      terminer();
       liste.classList.remove("msg-liste-sortie");
       liste.classList.add("msg-liste-entree");
       void liste.offsetHeight;
@@ -403,8 +435,9 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
   // Texte brut en HTML : echappe, @Vous en orange, termes recherches surlignes (on decoupe le texte brut, jamais le HTML).
   function texteSimple(texte, recherche) {
     const mention = (t) => echapper(t).replace(/@Vous/g, '<span class="msg-mention">@Vous</span>');
-    if (!recherche) return mention(texte);
-    const morceaux = texte.split(new RegExp("(" + recherche.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + ")", "ig"));
+    const mots = [].concat(recherche || []).filter(Boolean); // une chaine (recherche dans la conversation) ou une liste de mots (message trouve par l'IA)
+    if (!mots.length) return mention(texte);
+    const morceaux = texte.split(new RegExp("(" + mots.map((mot) => mot.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|") + ")", "ig"));
     return morceaux.map((p, i) => (i % 2 ? "<mark>" + echapper(p) + "</mark>" : mention(p))).join("");
   }
 
@@ -449,9 +482,14 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
       const moi = m.auteur === MOI;
       const premier = !precedent || precedent.auteur !== m.auteur || (m.quand - precedent.quand) > 5 * 60000;
       const afficheAuteur = c.type === "groupe" && !moi && premier;
-      const texte = texteHtml(m.texte || "", recherche, m.mentions);
+      // Discussions par commande IA : le message porte sa cle (pour y aller depuis un resultat ou une source) et, s'il est trouve, ses mots sont surlignes.
+      const mk = m.systeme ? "" : cleMessage(cleFil(c.id, sujet ? sujet.id : null), fil.messages.indexOf(m));
+      const filtreIA = etat.onglet === "ia" ? etat.filtreIA : null; // les messages trouves ne sont mis en evidence que sur l'onglet IA
+      const trouveIA = !!(filtreIA && filtreIA.surlignes.has(mk));
+      const motsIA = trouveIA ? Array.from(new Set(plagesCorrespondantes(m.texte || "", filtreIA.termes).map(([a, b]) => m.texte.slice(a, b)))) : [];
+      const texte = texteHtml(m.texte || "", recherche || motsIA, m.mentions);
       const heure = '<span class="msg-heure">' + heureMinute(m.quand) + "</span>";
-      html += '<div class="msg-ligne' + (moi ? " moi" : "") + (premier ? " premier" : "") + '">' +
+      html += '<div class="msg-ligne' + (moi ? " moi" : "") + (premier ? " premier" : "") + (trouveIA ? " msg-ia-trouve" : "") + '" data-mk="' + echapper(mk) + '">' +
         (moi ? "" : '<span class="msg-av-place">' + (c.type === "groupe" && premier ? avatarPersonne(m.auteur, "pt") : "") + "</span>") +
         '<div class="msg-bulle">' + (afficheAuteur ? '<div class="msg-qui">' + echapper(personne(m.auteur).nom) + "</div>" : "") +
         // L'heure est a la fin du texte (et non avant) : sinon la largeur de la bulle ignore sa place et coupe les messages courts.
@@ -986,7 +1024,7 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
     return "<h3>Nouveau sujet</h3>" + bascule +
       (choixConversation ? '<div><label for="msgNsConv">Conversation</label><select id="msgNsConv">' +
         conversations.map((c) => '<option value="' + echapper(c.id) + '"' + (c.id === convId ? " selected" : "") + ">" + echapper(c.nom) + "</option>").join("") + "</select></div>" : "") +
-      '<div><label for="msgNsTitre">Titre</label><input id="msgNsTitre" placeholder="Ex. Collision gaine / poutre axe C" autocomplete="off" /></div>' +
+      '<div><label for="msgNsTitre">Titre</label><input id="msgNsTitre" placeholder="Ex. Collision gaine / cloison R+2" autocomplete="off" /></div>' +
       '<div><label for="msgNsMessage">Premier message</label><textarea id="msgNsMessage"></textarea></div>' +
       '<div class="msg-case"><button type="button" id="msgNsUrgent" class="msg-urgent-bouton" data-act="bascule-urgent-ns" aria-pressed="false">Urgent</button></div>' +
       htmlVueJointe(vue) +
@@ -1390,6 +1428,92 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
     gesteNeutreTimer = setTimeout(() => { gesteNeutre = false; }, 400);
   }
 
+  // ---------- Discussions par commande IA (24/10) ----------
+  // Le resultat d'une commande (src/discussionsIAPipeline.js) remplace la liste des conversations par les discussions concernees ; les messages
+  // trouves sont mis en evidence dans le fil. « Tout reafficher » le retire. Rien n'est modifie dans les donnees : seul l'affichage change.
+  const nombreFr = (n, un, plusieurs) => n + " " + (n > 1 ? plusieurs : un);
+
+  function ligneResultatIA(r, i) {
+    const c = convParId(conversations, r.convId);
+    const actif = r.convId === etat.convId && (r.sujetId || null) === (etat.sujetId || null);
+    const titre = r.sujetId ? echapper(r.convNom) + " &middot; # " + echapper(r.titre) : echapper(r.convNom);
+    const compte = r.mis.length || r.total;
+    return '<button type="button" class="msg-conv msg-ia-res' + (actif ? " actif" : "") + '" data-act="ia-fil" data-i="' + i + '"' + (actif ? ' aria-current="true"' : "") + ">" +
+      (c ? avatarConv(c) : '<span class="msg-av" aria-hidden="true"></span>') +
+      '<span class="msg-conv-nom">' + titre + "</span>" +
+      '<span class="msg-conv-heure">' + nombreFr(compte, "message", "messages") + "</span>" +
+      '<span class="msg-conv-apercu msg-ia-extrait"><span class="msg-ia-qui">' + echapper(r.extrait.auteurNom) + " : </span>" + htmlSurligne(r.extrait.texte, r.extrait.plages, echapper) + "</span>" +
+      "</button>";
+  }
+
+  function rendreResultatsIA() {
+    const f = etat.filtreIA;
+    if (!f) { $("msgListe").innerHTML = '<div class="msg-vide">Choisis Texte ou Vocal pour décrire ce que tu cherches dans les discussions.</div>'; return; }
+    const compte = nombreFr(f.fils.length, "discussion", "discussions") + (f.surlignes.size ? ", " + nombreFr(f.surlignes.size, "message trouvé", "messages trouvés") : "");
+    // Une seule ligne : « Retour » en tete, la demande et le compte (ellipsis si trop long, texte complet en title), « Voir le rapport » a droite.
+    const resume = echapper((f.relecture || "") + (f.relecture ? " \u00b7 " : "") + compte);
+    const bandeau = '<div class="msg-ia-resume" role="status"><button type="button" class="msg-ia-retour" data-act="ia-tout" aria-label="Retour aux discussions">\u2190 Retour</button>' +
+      '<div class="msg-ia-demande" title="' + resume + '"><b>' + echapper(f.relecture || "") + "</b><span>" + echapper(compte) + "</span></div>" +
+      (f.rapport ? '<div class="msg-ia-actions"><button type="button" data-act="ia-rapport">Voir le rapport</button></div>' : "") + "</div>";
+    const lignes = f.fils.length ? f.fils.map(ligneResultatIA).join("") : '<div class="msg-vide">Aucune discussion à afficher.</div>';
+    $("msgListe").innerHTML = bandeau + lignes;
+  }
+
+  // filtre : { fils, surlignes: [mk], termes, relecture, type, rapport } (src/discussionsIAFlux.js). Sur mobile la liste prend l'ecran.
+  function appliquerFiltreIA(filtre) {
+    etat.filtreIA = { ...filtre, surlignes: new Set(filtre.surlignes) };
+    if (etat.onglet !== "ia") choisirOnglet("ia");
+    racine.classList.remove("volet-ouvert");
+    rendreListe();
+    if (etat.convId && $("msgScroller")) rendreFilCourant(true);
+  }
+
+  function retirerFiltreIA() {
+    if (!etat.filtreIA) return;
+    etat.filtreIA = null;
+    rendreListe();
+    if (etat.convId && $("msgScroller")) rendreFilCourant(true);
+  }
+
+  // Ouvre la discussion du message puis fait defiler jusqu'a lui. Le message peut etre au-dela des messages affiches (historique replie) : on les etend.
+  // Deux essais : l'ouverture d'un autre sujet differe l'affichage du fil de 0,3 s.
+  function montrerMessageIA(mk) {
+    const lu = lireCleMessage(mk);
+    if (!lu || !convParId(conversations, lu.convId)) return;
+    const memeFil = etat.convId === lu.convId && (etat.sujetId || null) === lu.sujetId;
+    ouvrirConversation(lu.convId, lu.sujetId);
+    const viser = (clignoter) => {
+      const cur = filCourant();
+      if (!cur || cur.c.id !== lu.convId) return;
+      const trouve = () => racine.querySelector('[data-mk="' + CSS.escape(mk) + '"]');
+      let el = trouve();
+      if (!el && cur.fil.messages.length > lu.position) {
+        cur.fil.affiches = Math.max(cur.fil.affiches, cur.fil.messages.length - lu.position);
+        rendreMessages(false);
+        el = trouve();
+      }
+      if (!el) return;
+      el.scrollIntoView({ block: "center" });
+      defilementMemorise = $("msgScroller").scrollTop;
+      synchroniserBoutonBas();
+      if (clignoter) {
+        el.classList.add("msg-ia-flash");
+        setTimeout(() => el.classList.remove("msg-ia-flash"), 1800);
+      }
+    };
+    viser(false);
+    setTimeout(() => viser(true), memeFil ? 60 : 420);
+  }
+
+  function ouvrirResultatIA(i) {
+    const r = etat.filtreIA && etat.filtreIA.fils[i];
+    if (r) montrerMessageIA(r.premier);
+  }
+
+  // Donnees lues par la commande IA (moteur src/discussionsIAIndex.js) : jamais modifiees par lui.
+  const donneesPourIA = () => ({ conversations, personnes });
+  const rapportIA = () => (etat.filtreIA ? etat.filtreIA.rapport : null);
+
   function fermerMenu() {
     const menu = $("msgMenu");
     if (!menu || menu.hidden) return;
@@ -1412,7 +1536,10 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
     if (cible.closest("#msgMenu")) fermerMenu();
     const cur = filCourant();
     switch (act) {
-      case "onglet": choisirOnglet(cible.dataset.v); break;
+      case "onglet":
+        choisirOnglet(cible.dataset.v, { ouvrirPremiere: true });
+        if (cible.dataset.v === "ia" && surOngletIA) surOngletIA(); // aussi quand l'onglet est deja choisi
+        break;
       case "conversation": ouvrirConversation(cible.dataset.id, null); break;
       case "retour": racine.classList.remove("volet-ouvert"); break;
       case "options": {
@@ -1437,6 +1564,9 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
       case "vers-principal": ouvrirConversation(etat.convId, null); break;
       case "plus-ancien": cur.fil.affiches += TAILLE_PAQUET; rendreMessages(true); break;
       case "bas": allerAuDernier(); break;
+      case "ia-fil": ouvrirResultatIA(Number(cible.dataset.i)); break;
+      case "ia-tout": if (surActionIA) surActionIA("tout"); else retirerFiltreIA(); break;
+      case "ia-rapport": if (surActionIA) surActionIA("rapport"); break;
       case "agrandir": { const m = vuesAffichees[Number(cible.dataset.vp)]; memoriserDepart(m); ouvrirDansViewer(m.vue); break; }
       case "agrandir-origine": {
         const depuisInfos = !!cible.closest("#msgFeuille, .msg-carte-infos");
@@ -1544,5 +1674,8 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
     if (dialogueOuvert()) { fermerDialogue(); return; }
   }
 
-  return { preparer, surVueActivee, vueDeConversation, nouveauSujetDepuisViewer, rechargerVues, priseDeVueEnCours: () => priseDeVueEnCours };
+  return {
+    preparer, surVueActivee, vueDeConversation, nouveauSujetDepuisViewer, rechargerVues, priseDeVueEnCours: () => priseDeVueEnCours,
+    donneesPourIA, appliquerFiltreIA, retirerFiltreIA, montrerMessageIA, rapportIA
+  };
 }

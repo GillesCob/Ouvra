@@ -73,3 +73,25 @@ test("la regle recue ne peut contenir qu'une valeur presente dans les listes env
   const r = await demanderRegle(entree, { fetch: json(200, { ok: true, resultat: "regle", regle }) });
   assert.equal(r.ok, false);
 });
+
+// ---------- 23/10 : date du jour ----------
+test("requete : la date du jour part avec la phrase et les valeurs quand elle est fournie", async () => {
+  let vu;
+  await demanderRegle({ ...entree, aujourdhui: "2026-10-23" }, { fetch: async (url, init) => { vu = init; return new Response(JSON.stringify({ ok: true, resultat: "non_comprise", message: "m" })); } });
+  assert.deepEqual(Object.keys(JSON.parse(vu.body)).sort(), ["aujourdhui", "phrase", "valeurs"]);
+  assert.equal(JSON.parse(vu.body).aujourdhui, "2026-10-23");
+});
+
+test("regle d'affichage par date ou etat, sans critere d'element : acceptee", async () => {
+  const regle = { demande: "x", relecture: "y", filtre: { portee: "un_des_deux", criteres: [], dates: [{ evenement: "message", presence: "aucun", periode: { type: "depuis", nombre: 3, unite: "jour" } }] }, action: { champ: "afficher" } };
+  const r = await demanderRegle(entree, { fetch: json(200, { ok: true, resultat: "regle", regle }) });
+  assert.equal(r.ok, true);
+  assert.equal(r.resultat, "regle");
+});
+
+test("regle de date mal formee renvoyee par le relais : rejetee comme indisponible", async () => {
+  const regle = { demande: "x", relecture: "y", filtre: { portee: "un_des_deux", criteres: [], dates: [{ evenement: "message", presence: "aucun", periode: { type: "depuis", nombre: 0, unite: "jour" } }] }, action: { champ: "afficher" } };
+  const r = await demanderRegle(entree, { fetch: json(200, { ok: true, resultat: "regle", regle }) });
+  assert.equal(r.ok, false);
+  assert.equal(r.code, "ia_indisponible");
+});

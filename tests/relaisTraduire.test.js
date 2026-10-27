@@ -149,3 +149,44 @@ test("consigne : les messages destines a l'utilisateur sont courts, tutoyes et s
   assert.match(CONSIGNE, /jamais « valeurs permises »/);
   assert.equal(/—|–/.test(CONSIGNE), false, "tiret long dans la consigne");
 });
+
+// ---------- 23/10 : date du jour, action « afficher », etat et dates dans le schema ----------
+test("la date du jour est donnee au modele dans le message, avec les regles de lecture des dates dans la consigne", async () => {
+  await traduire({ ...entree, aujourdhui: "2026-10-23" }, { client: clientQui(reponse(bonneSortie)) });
+  assert.match(clientQui.dernier.params.messages[0].content, /<date_du_jour>2026-10-23<\/date_du_jour>/);
+  for (const mot of ["afficher", "depuis_le", "aucun", "au_moins_un", "activite"]) assert.ok(CONSIGNE.includes(mot), mot);
+});
+
+test("schema : action afficher sans valeur, etat aux enumerations de priorite et statut, dates fermees", async () => {
+  await traduire({ ...entree, aujourdhui: "2026-10-23" }, { client: clientQui(reponse(bonneSortie)) });
+  const schema = clientQui.dernier.params.output_config.format.schema;
+  const texte = JSON.stringify(schema);
+  assert.ok(texte.includes('"const":"afficher"') || texte.includes('"enum":["afficher"]'), "action afficher");
+  assert.ok(schema.properties.etat && schema.properties.dates, "proprietes etat et dates");
+  assert.ok(texte.includes('"enum":["nouveau","confirme","ecarte"]'), "enum des statuts dans l'etat");
+  for (const mot of ["depuis", "depuis_le", "avant", "entre", "jour", "semaine", "mois", "message", "modification", "activite", "au_moins_un", "aucun"]) assert.ok(texte.includes('"' + mot + '"'), mot);
+  assert.equal(schema.additionalProperties, false);
+  assert.ok(schema.required.includes("etat") && schema.required.includes("dates"), "tous les champs requis (mode strict)");
+});
+
+test("sortie d'affichage par date renvoyee par le modele : regle du moteur", async () => {
+  const sortie = {
+    resultat: "regle", portee: "un_des_deux", criteres: [], etat: { priorite: null, statut: "nouveau" },
+    dates: [{ evenement: "message", presence: "aucun", periode: { type: "depuis", nombre: 3, unite: "jour" } }],
+    action: { champ: "afficher" }, relecture: "Afficher les collisions nouvelles sans message depuis 3 jours.", critere_introuvable: null
+  };
+  const r = await traduire({ ...entree, aujourdhui: "2026-10-23" }, { client: clientQui(reponse(sortie)) });
+  assert.equal(r.ok, true);
+  assert.deepEqual(r.regle.action, { champ: "afficher" });
+  assert.deepEqual(r.regle.filtre.etat, { statut: "nouveau" });
+  assert.equal(r.regle.filtre.dates.length, 1);
+});
+
+test("schema : aucun mot-cle que la sortie structuree ne supporte pas (bornes, longueurs, motifs, formats)", async () => {
+  await traduire({ ...entree, aujourdhui: "2026-10-23" }, { client: clientQui(reponse(bonneSortie)) });
+  const texte = JSON.stringify(clientQui.dernier.params.output_config.format.schema);
+  for (const interdit of ["minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum", "multipleOf", "minLength", "maxLength", "pattern", "minItems", "maxItems", '"format"']) {
+    assert.equal(texte.includes('"' + interdit.replace(/"/g, "") + '"'), false, interdit);
+  }
+  assert.ok(texte.includes('"type":"integer"'), "l'entier reste un entier");
+});

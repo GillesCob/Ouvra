@@ -1,0 +1,165 @@
+/* Page Quantitatif (24/10, refonte visuelle). Tout est prefixe qt- et limite a #view-quantitatif : aucune autre page n'est touchee.
+   Langage visuel repris de l'application, aucune couleur ni police nouvelle :
+   - variables de :root (--bg, --surface, --border, --text, --muted, --accent) ;
+   - cartes : fond --surface, bordure 1px --border, rayon 8px (comme les cartes de la messagerie et des modales) ;
+   - pastilles : forme pilule teintee a 15 % comme .status-badge (orange #f0883e, rouge #f85149, vert #3fb950, deja utilises par l'application) ;
+   - boutons : meme gabarit que #reglesIABtn / .msg-bouton-petit (fond --surface, bordure --border, survol et focus en --accent) ;
+   - titres de page : 16 px, comme #discussionsListPane h2 ; textes secondaires en --muted. */
+
+#view-quantitatif { flex-direction: column; overflow-y: auto; overscroll-behavior: contain; }
+.qt-page { box-sizing: border-box; width: 100%; max-width: 1320px; margin: 0 auto; padding: 24px 24px 56px; color: var(--text); }
+.qt-page *, .qt-page *::before, .qt-page *::after { box-sizing: border-box; }
+.qt-page [hidden] { display: none !important; }
+
+/* En-tete de page */
+.qt-entete { margin-bottom: 16px; }
+.qt-titre { margin: 0 0 4px; font-size: 16px; font-weight: 700; }
+.qt-statut { margin: 6px 0 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
+
+/* Deux colonnes sur laptop : demande + resultat | historique */
+.qt-principal { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.qt-zone { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+/* Carte de depart (25/10) : deux choix, centres, comme la carte « Commence par un plan » de la page 2D -> 3D. La barre prend le relais dans les autres vues. */
+.qt-depart { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 16px; padding: 56px 16px; }
+.qt-depart .qt-btn-ia, .qt-depart .qt-btn { min-width: 200px; min-height: 64px; padding: 0 28px; font-size: 15px; }
+.qt-barre { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.qt-occupe .qt-depart .qt-btn, .qt-occupe .qt-barre .qt-btn { opacity: 0.55; pointer-events: none; } /* demande en cours : les choix sont gelés */
+
+/* Carte */
+.qt-carte { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px; }
+.qt-carte-titre { margin: 0; font-size: 13px; font-weight: 700; }
+
+/* Boutons */
+.qt-btn, .qt-voir {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px; padding: 0 14px;
+  background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 8px;
+  font: inherit; font-size: 12.5px; font-weight: 600; line-height: 1; cursor: pointer; white-space: nowrap;
+  -webkit-tap-highlight-color: transparent; transition: border-color 0.18s ease, color 0.18s ease, background-color 0.18s ease;
+}
+.qt-btn-principal { background: var(--accent); border-color: var(--accent); color: #fff; }
+.qt-btn-discret { border-color: transparent; background: none; color: var(--muted); }
+.qt-btn:focus-visible, .qt-voir:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+.qt-btn:disabled { opacity: 0.5; cursor: default; }
+@media (hover: hover) and (pointer: fine) {
+  .qt-btn:not(:disabled):hover, .qt-voir:hover { border-color: var(--accent); }
+  .qt-btn-principal:not(:disabled):hover { filter: brightness(1.12); }
+  .qt-btn-discret:hover { color: var(--text); }
+}
+
+.qt-btn-ia {
+  flex: none; min-width: 64px; min-height: 40px; padding: 7px 18px; background: var(--surface); color: var(--text); border: 1px solid var(--border);
+  border-radius: 6px; font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; white-space: nowrap; -webkit-tap-highlight-color: transparent;
+  transition: border-color 0.18s ease, color 0.18s ease;
+}
+.qt-btn-ia:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+.qt-btn-ia:disabled { opacity: 0.5; cursor: default; }
+@media (hover: hover) and (pointer: fine) { .qt-btn-ia:not(:disabled):hover { border-color: var(--accent); color: var(--accent); } }
+
+
+/* Message (chargement, erreur, aide) */
+.qt-message { margin: 0; padding: 10px 14px; border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: 8px; background: var(--surface); font-size: 13px; line-height: 1.5; white-space: pre-line; }
+
+/* Bandeau « Est-ce bien votre demande ? » */
+/* Confirmation (27/10) : la relecture s'affiche SEULE, en grand, avant tout resultat ; le tableau, le total et les exports n'apparaissent qu'apres « Oui ». */
+.qt-bandeau { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 14px; padding: 40px 20px; border: 1px solid var(--accent); border-radius: 8px; background: var(--surface); }
+.qt-bandeau-question { margin: 0; font-size: 20px; font-weight: 700; }
+.qt-bandeau-texte { margin: 0; max-width: 720px; color: var(--text); font-size: 18px; line-height: 1.5; overflow-wrap: anywhere; }
+.qt-bandeau-boutons { display: flex; justify-content: center; gap: 12px; margin-top: 8px; }
+.qt-bandeau-boutons .qt-btn { min-width: 120px; min-height: 48px; font-size: 15px; }
+
+/* Etat vide */
+
+/* Pastilles (comme .status-badge : pilule teintee, mot en toutes lettres) */
+.qt-pastilles { display: flex; flex-wrap: wrap; gap: 6px; }
+.qt-pastille, .qt-origine {
+  display: inline-block; padding: 3px 9px; border-radius: 20px; font-size: 10.5px; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; white-space: nowrap; line-height: 1.3;
+}
+.qt-pastille-compte, .qt-origine-compte, .qt-pastille-ajour { color: #3fb950; background: rgba(63, 185, 80, 0.15); }
+.qt-pastille-estime, .qt-origine-estime, .qt-pastille-inconnue { color: #f0883e; background: rgba(240, 136, 62, 0.15); }
+.qt-pastille-lu, .qt-origine-lu { color: var(--text); background: rgba(92, 122, 95, 0.35); }
+.qt-pastille-neutre { color: var(--muted); background: var(--bg); }
+.qt-pastille-obsolete { color: #160b0a; background: #f85149; letter-spacing: 0.06em; }
+
+/* Carte Resultat */
+.qt-resultat { padding: 0; overflow: hidden; }
+.qt-resultat-tete { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px 16px; padding: 16px 16px 12px; }
+.qt-resultat-titres { flex: 1 1 280px; min-width: 0; }
+.qt-resultat-titre { margin: 0 0 8px; font-size: 15px; line-height: 1.4; overflow-wrap: anywhere; }
+.qt-exports { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 12px 16px 16px; border-top: 1px solid var(--border); } /* en bas du panneau, sous le tableau (27/10) */
+.qt-exports-lib { color: var(--muted); font-size: 12px; font-weight: 600; margin-right: 2px; }
+
+/* Etat du rapport : OBSOLETE tres visible, version inconnue en orange */
+.qt-statut-rapport { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin: 0 16px 12px; padding: 12px 14px; border-radius: 8px; font-size: 13.5px; line-height: 1.5; }
+.qt-statut-obsolete { color: var(--text); background: rgba(248, 81, 73, 0.18); border: 2px solid #f85149; }
+.qt-statut-obsolete .qt-btn { background: #f85149; border-color: #f85149; color: #160b0a; }
+.qt-statut-inconnue { color: var(--text); background: rgba(240, 136, 62, 0.15); border: 1px solid #f0883e; }
+.qt-statut-texte { flex: 1 1 240px; }
+
+.qt-avertissement { margin: 0 16px 12px; padding: 8px 12px; border-left: 3px solid var(--border); border-radius: 0 6px 6px 0; background: var(--bg); color: var(--muted); font-size: 12.5px; line-height: 1.5; }
+.qt-avertissement-estime { border-left-color: #f0883e; color: var(--text); background: rgba(240, 136, 62, 0.15); font-weight: 600; }
+.qt-vide { margin: 0; padding: 8px 16px 20px; color: var(--muted); font-size: 13.5px; }
+
+/* Tableau : en-tete et premiere colonne collants, lignes aerees et bandees, nombres a droite en chiffres tabulaires */
+.qt-tableau-enveloppe { max-width: 100%; max-height: min(62vh, 640px); overflow: auto; border-top: 1px solid var(--border); overscroll-behavior: contain; }
+.qt-tableau { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 14px; }
+.qt-legende { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.qt-tableau th, .qt-tableau td { padding: 11px 16px; text-align: left; vertical-align: middle; border-bottom: 1px solid var(--border); }
+.qt-tableau thead th { position: sticky; top: 0; z-index: 2; background: var(--surface); color: var(--muted); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; }
+.qt-tableau tbody th { font-weight: 500; }
+.qt-tableau tbody tr:nth-child(even) th, .qt-tableau tbody tr:nth-child(even) td { background: rgba(255, 255, 255, 0.025); }
+.qt-tableau .qt-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.qt-tableau .qt-valeur { font-weight: 700; }
+.qt-unite { color: var(--muted); font-weight: 400; font-size: 12px; }
+.qt-tableau .qt-action { width: 1%; text-align: right; }
+.qt-tableau tbody th, .qt-tableau tfoot th { position: sticky; left: 0; z-index: 1; background: var(--surface); }
+.qt-tableau tbody tr:nth-child(even) th { background-image: linear-gradient(rgba(255, 255, 255, 0.025), rgba(255, 255, 255, 0.025)); }
+.qt-tableau tfoot th, .qt-tableau tfoot td { position: sticky; bottom: 0; z-index: 2; background: var(--bg); border-top: 2px solid var(--accent); border-bottom: 0; font-weight: 700; }
+.qt-tableau tfoot th { z-index: 3; }
+.qt-voir { min-height: 30px; padding: 0 10px; border-color: transparent; background: none; color: var(--muted); font-weight: 600; }
+
+.qt-cle { overflow-wrap: anywhere; }
+.qt-origine-cellule { white-space: nowrap; }
+.qt-total { font-weight: 700; }
+.qt-historique { min-width: 0; }
+.qt-notes { margin: 0; padding: 12px 16px 16px 34px; border-top: 1px solid var(--border); color: var(--muted); font-size: 12.5px; line-height: 1.65; }
+
+/* Historique : liste de cartes */
+.qt-histo-tete { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+.qt-histo-vide { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.55; }
+.qt-histo-liste { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; max-height: calc(100vh - 220px); overflow-y: auto; overscroll-behavior: contain; }
+.qt-histo-item { padding: 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); }
+.qt-histo-ligne { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.qt-histo-date { color: var(--muted); font-size: 11.5px; }
+.qt-histo-phrase { margin: 8px 0 2px; font-size: 13.5px; font-weight: 600; line-height: 1.4; overflow-wrap: anywhere; }
+.qt-histo-detail { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.45; overflow-wrap: anywhere; }
+.qt-histo-actions { display: flex; gap: 6px; margin-top: 10px; }
+
+/* Mobile : une colonne, historique sous le resultat, cibles tactiles de 40 a 44 px, aucun debordement horizontal de la page */
+@media (max-width: 900px) {
+  .qt-histo-liste { max-height: none; overflow: visible; }
+}
+@media (max-width: 768px) {
+  .qt-page { padding: 16px 16px 40px; }
+  .qt-carte { padding: 14px; }
+  .qt-resultat { padding: 0; }
+  .qt-btn-ia { min-height: 44px; min-width: 72px; }
+  .qt-btn { min-height: 40px; }
+  .qt-exports { width: 100%; }
+  .qt-exports-lib { flex: 1 1 100%; }
+  .qt-exports .qt-btn, .qt-histo-actions .qt-btn { flex: 1 1 0; }
+  .qt-voir { min-height: 40px; min-width: 40px; }
+  .qt-exports .qt-btn { min-height: 44px; }
+  /* Tableau sans defilement horizontal a 390 px (27/10) : colonnes serrees, en-tetes qui passent a la ligne, pastille d'origine reduite. */
+  .qt-tableau { font-size: 13px; }
+  .qt-tableau th, .qt-tableau td { padding: 10px 6px; }
+  .qt-tableau th:first-child, .qt-tableau td:first-child { padding-left: 10px; }
+  .qt-tableau thead th { white-space: normal; letter-spacing: 0; font-size: 10px; vertical-align: bottom; }
+  .qt-tableau .qt-origine { padding: 3px 6px; font-size: 9.5px; letter-spacing: 0; }
+  .qt-tableau .qt-voir { padding: 0 8px; }
+  .qt-tableau .qt-action { padding-right: 6px; }
+  .qt-tableau-enveloppe { max-height: 70vh; }
+  .qt-statut-rapport .qt-btn { flex: 1 1 100%; }
+  .qt-bandeau-boutons { width: 100%; }
+  .qt-bandeau-boutons .qt-btn { flex: 1 1 0; min-height: 44px; }
+}
+@media (prefers-reduced-motion: reduce) { .qt-btn, .qt-voir, .qt-btn-ia { transition: none; } }
