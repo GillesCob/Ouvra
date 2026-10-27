@@ -223,7 +223,8 @@ export function creerReglesModale({ libellesPriorite, libellesStatut, numero, cr
     const tete = creer("div", "regles-tete");
     const titre = creer("h3", null, enAffichage() ? "Collisions trouvées" : "Règle à valider");
     titre.id = "reglesTitre";
-    const demande = creer("p", "regles-demande", "« " + session.regle.demande + " »");
+    // Espaces insecables autour des guillemets : le "»" ne peut pas rester seul en debut de ligne, ni le "«" seul en fin de ligne.
+    const demande = creer("p", "regles-demande", "«\u00a0" + session.regle.demande + "\u00a0»");
     demande.title = session.regle.demande;
     tete.append(titre, demande);
     const croix = creer("button", "msg-croix", "✕");

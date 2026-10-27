@@ -1,7 +1,7 @@
 // Tests de la logique pure de la dictee vocale (src/reglesVoix.js) avec une FAUSSE SpeechRecognition : aucun micro reel. Ecrits avant le code.
 import test from "node:test";
 import assert from "node:assert/strict";
-import { detecterReconnaissance, assemblerTexte, messageErreurVoix, creerDictee, nettoyerPhrase, motifSansAPI, MESSAGE_PHRASE_VIDE, MESSAGE_RIEN_RECONNU } from "../src/reglesVoix.js";
+import { detecterReconnaissance, assemblerTexte, messageErreurVoix, creerDictee, nettoyerPhrase, motifSansAPI, motifDicteeIndisponible, MESSAGE_CONTEXTE_NON_SECURISE, MESSAGE_PHRASE_VIDE, MESSAGE_RIEN_RECONNU } from "../src/reglesVoix.js";
 
 class FausseReconnaissance {
   static derniere = null;
@@ -240,4 +240,11 @@ test("messages de la modale : ni « Envoyer » ni « Traduire » (boutons qui n'
 test("navigateur sans API : un seul motif, message navigateur ; sur iPhone, message sans Chrome", () => {
   assert.equal(motifSansAPI(), "Ce navigateur n'accepte pas la dictée vocale.\nOuvre Ouvra dans Chrome ou Safari pour l'utiliser.");
   assert.doesNotMatch(motifSansAPI(true), /Chrome|Safari/);
+});
+
+test("contexte non securise : motif HTTPS distinct, y compris sur iPhone ; sinon motif API absente", () => {
+  assert.equal(motifDicteeIndisponible({ isSecureContext: false }, true), MESSAGE_CONTEXTE_NON_SECURISE);
+  assert.match(MESSAGE_CONTEXTE_NON_SECURISE, /HTTPS/);
+  assert.equal(motifDicteeIndisponible({ isSecureContext: true }), motifSansAPI());
+  assert.equal(motifDicteeIndisponible({}, true), motifSansAPI(true));
 });

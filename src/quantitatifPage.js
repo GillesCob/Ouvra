@@ -21,6 +21,10 @@ import { EXEMPLES_QUANTITATIF, reconnaitreExemple } from "./quantitatifExemples.
 import { nettoyerPhrase } from "./reglesVoix.js";
 import { creerIASaisie } from "./iaSaisie.js";
 
+// MASQUE_INFOS_QUANTITATIF (27/10, demande de Gilles) : retire de l'ecran les informations de contexte du calcul (elements exclus, objets spatiaux,
+// niveaux regroupes, date de calcul, maquettes). Les donnees restent dans le rapport et les exports ne changent pas. Mettre false pour les reafficher.
+const MASQUE_INFOS_QUANTITATIF = true;
+
 const MESSAGE_VIDE = "Écris ta demande, par exemple « Combien de portes au niveau 2 ? ».";
 const MESSAGE_SANS_DONNEES = "Aucune maquette lisible pour le moment. Ouvre d'abord le Viewer et attends la fin du chargement.";
 const nombre = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 2 });
@@ -111,9 +115,9 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
   let vue = "depart";
   // La vue « resultat » sans rapport affiche (demande abandonnee, « Non », rapport supprime) retombe sur le depart.
   function majVue() {
-    const v = vue === "resultat" && resultatZone.hidden ? "depart" : vue;
+    const v = vue === "resultat" && resultatZone.hidden && bandeau.hidden ? "depart" : vue;
     departCarte.hidden = v !== "depart";
-    barre.hidden = v === "depart";
+    barre.hidden = v === "depart" || (v === "resultat" && !bandeau.hidden); // pendant la confirmation, la relecture s'affiche seule
     zoneResultat.hidden = v !== "resultat";
     zoneHistorique.hidden = v !== "historique";
     if (v === "depart") departCarte.append(boutonIA, boutonHistorique);
@@ -268,7 +272,7 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
     return creer("span", "qt-pastille qt-pastille-ajour", "À jour");
   }
 
-  function dessinerRapport(rapport, statut) {
+  function dessinerRapport(rapport, statut, confirmation = false) {
     const resultat = rapport.resultat;
     resultatZone.textContent = "";
     const tete = creer("div", "qt-resultat-tete");
@@ -279,18 +283,6 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
     pastilles.appendChild(pastilleEtat(statut));
     titres.appendChild(pastilles);
     tete.appendChild(titres);
-    const exports = creer("div", "qt-exports");
-    exports.setAttribute("role", "group");
-    exports.setAttribute("aria-label", "Exporter ce rapport");
-    exports.appendChild(creer("span", "qt-exports-lib", "Exporter"));
-    [["xlsx", "Excel"], ["pdf", "PDF"], ["csv", "CSV"]].forEach(([format, libelle]) => {
-      const b = creer("button", "qt-btn", libelle);
-      b.type = "button";
-      b.setAttribute("aria-label", "Exporter en " + libelle);
-      b.addEventListener("click", () => exporter(format, rapport, statut));
-      exports.appendChild(b);
-    });
-    tete.appendChild(exports);
     resultatZone.appendChild(tete);
     const badge = badgeStatut(statut, () => recalculer(rapport));
     if (badge) resultatZone.appendChild(badge);
@@ -325,24 +317,39 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
       resultatZone.appendChild(enveloppe);
     }
 
-    const notes = resultat.notes.slice(1);
-    if (resultat.elementsExclus > 0) notes.push(nombre.format(resultat.elementsExclus) + " objets spatiaux (projet, site, bâtiment, niveaux) ne sont jamais comptés.");
-    if (resultat.requete.filtres.niveaux.length || resultat.regroupements.some((r) => r.nom === "niveau")) {
-      notes.push("Les niveaux « Level 2 Ceiling » et « Level 2 TOS » sont comptés avec « Level 2 », comme dans le Viewer.");
+    if (!MASQUE_INFOS_QUANTITATIF) {
+      const notes = resultat.notes.slice(1);
+      if (resultat.elementsExclus > 0) notes.push(nombre.format(resultat.elementsExclus) + " objets spatiaux (projet, site, bâtiment, niveaux) ne sont jamais comptés.");
+      if (resultat.requete.filtres.niveaux.length || resultat.regroupements.some((r) => r.nom === "niveau")) {
+        notes.push("Les niveaux « Level 2 Ceiling » et « Level 2 TOS » sont comptés avec « Level 2 », comme dans le Viewer.");
+      }
+      notes.push("Calculé le " + new Date(rapport.calculeLe).toLocaleString("fr-FR") + " sur : " + (rapport.maquettes.map((m) => m.label).join(", ") || "aucune maquette") + ".");
+      const liste = creer("ul", "qt-notes");
+      notes.forEach((n) => liste.appendChild(creer("li", null, n)));
+      resultatZone.appendChild(liste);
     }
-    notes.push("Calculé le " + new Date(rapport.calculeLe).toLocaleString("fr-FR") + " sur : " + (rapport.maquettes.map((m) => m.label).join(", ") || "aucune maquette") + ".");
-    const liste = creer("ul", "qt-notes");
-    notes.forEach((n) => liste.appendChild(creer("li", null, n)));
-    resultatZone.appendChild(liste);
-    resultatZone.hidden = false;
+    // Exports (27/10) : regroupes en bas du panneau, sous le tableau et le total.
+    const exports = creer("div", "qt-exports");
+    exports.setAttribute("role", "group");
+    exports.setAttribute("aria-label", "Exporter ce rapport");
+    exports.appendChild(creer("span", "qt-exports-lib", "Exporter"));
+    [["xlsx", "Excel"], ["pdf", "PDF"], ["csv", "CSV"]].forEach(([format, libelle]) => {
+      const b = creer("button", "qt-btn", libelle);
+      b.type = "button";
+      b.setAttribute("aria-label", "Exporter en " + libelle);
+      b.addEventListener("click", () => exporter(format, rapport, statut));
+      exports.appendChild(b);
+    });
+    resultatZone.appendChild(exports);
+    resultatZone.hidden = !!confirmation;
   }
 
   // Affiche un rapport (nouveau ou rouvert) avec son etat de version actuel, recalcule a chaque affichage.
   async function afficherRapport(rapport, { nouveau }) {
     const statut = comparerVersions(rapport.maquettes, await obtenirVersions());
     dernierResultat = { rapport, phrase: rapport.phrase, nouveau };
-    dessinerRapport(rapport, statut);
-    bandeauTexte.textContent = rapport.relecture;
+    dessinerRapport(rapport, statut, nouveau); // nouveau : le resultat reste cache tant que « Oui » n'est pas cliquee
+    bandeauTexte.textContent = "« " + rapport.relecture + " »";
     bandeauQuestion.textContent = "Est-ce bien votre demande ?";
     bandeauBoutons.hidden = false;
     bandeau.hidden = !nouveau;
@@ -436,8 +443,7 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
     const resultat = calculer(donnees.elements, requete);
     if (!resultat.ok) return { ok: false, message: resultat.message };
     const rapport = construireRapport({ resultat, phrase, versions: await obtenirVersions() });
-    await enregistrer(rapport);
-    await afficherRapport(rapport, { nouveau: true });
+    await afficherRapport(rapport, { nouveau: true }); // enregistre dans l'historique seulement apres « Oui »
     return { ok: true };
   }
 
@@ -467,17 +473,22 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
     dire(r.ok ? "" : r.message || "");
   }
 
-  boutonOui.addEventListener("click", () => {
-    bandeauQuestion.textContent = "Demande confirmée.";
-    bandeauBoutons.hidden = true;
+  // « Oui » (27/10) : le resultat apparait seulement maintenant, et le rapport entre alors dans l'historique.
+  boutonOui.addEventListener("click", async () => {
+    const courant = dernierResultat;
+    if (!courant || !courant.nouveau) return;
+    courant.nouveau = false;
+    bandeau.hidden = true;
+    resultatZone.hidden = false;
+    majVue();
+    await enregistrer(courant.rapport);
   });
-  // « Non » : le tableau est annule, la saisie rouverte prerenseignee, et le rapport n'est pas garde dans l'historique.
-  boutonNon.addEventListener("click", async () => {
+  // « Non » : rien n'a ete enregistre ni affiche, la saisie est rouverte prerenseignee.
+  boutonNon.addEventListener("click", () => {
     const courant = dernierResultat;
     const phrase = courant ? courant.phrase : "";
     jeton += 1;
     viderResultat();
-    if (historique && courant && courant.nouveau) { await historique.supprimer(courant.rapport.id); rafraichirHistorique(); }
     allerA("depart");
     dire("");
     saisie.reformuler(phrase); // la modale se rouvre en mode texte, phrase prerenseignee

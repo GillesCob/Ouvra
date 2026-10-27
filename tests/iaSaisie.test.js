@@ -41,7 +41,7 @@ test("fin d'ecoute : second clic + phrase = envoi ; arret spontane avec phrase =
 test("modale : memes classes que les autres IA, toutes definies dans reglesIA.css ou iaSaisie.css", () => {
   const css = lire("src/reglesIA.css") + lire("src/iaSaisie.css");
   const classes = new Set([...js.matchAll(/["' ]regles-ia-[a-z-]+/g)].map((m) => m[0].trim().replace(/["']/g, "")));
-  for (const c of ["regles-ia-fond", "regles-ia-carte", "regles-ia-vue-texte", "regles-ia-vue-vocal", "regles-ia-vue-chargement", "regles-ia-micro", "regles-ia-legende", "regles-ia-valider", "regles-ia-etat", "regles-ia-propositions", "regles-ia-exemple", "regles-ia-exemple-lu"]) assert.ok(classes.has(c), "classe attendue : " + c);
+  for (const c of ["regles-ia-fond", "regles-ia-carte", "regles-ia-vue-texte", "regles-ia-vue-vocal", "regles-ia-vue-chargement", "regles-ia-micro", "regles-ia-legende", "regles-ia-valider", "regles-ia-etat", "regles-ia-propositions", "regles-ia-exemple"]) assert.ok(classes.has(c), "classe attendue : " + c);
   for (const c of classes) assert.ok(css.includes("." + c), "classe sans regle : " + c);
 });
 

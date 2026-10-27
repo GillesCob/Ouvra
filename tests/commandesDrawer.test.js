@@ -51,3 +51,27 @@ test("capturerEtatDrawer : photo des cases, independante des objets d'origine", 
   assert.deepEqual([...photo.maquettes], [["mep", true], ["arch", false]]);
   assert.deepEqual([...photo.niveaux], [["Level 1", false]]);
 });
+
+// Cadrage de la camera apres une commande IA : boite des seuls elements visibles.
+import { boiteDesVisibles } from "../src/commandesDrawer.js";
+
+test("boiteDesVisibles : niveau 3 seul sur la maquette Structure -> boite des seuls elements visibles", () => {
+  const appels = [];
+  const getAABB = (ids) => { appels.push(ids); return [0, 6, 0, 10, 9, 10]; };
+  assert.deepEqual(boiteDesVisibles(["s3a", "s3b"], getAABB), [0, 6, 0, 10, 9, 10]);
+  assert.deepEqual(appels, [["s3a", "s3b"]]);
+});
+
+test("boiteDesVisibles : rien de visible -> null, sans interroger la scene", () => {
+  const getAABB = () => { throw new Error("ne doit pas etre appele"); };
+  assert.equal(boiteDesVisibles([], getAABB), null);
+  assert.equal(boiteDesVisibles(undefined, getAABB), null);
+});
+
+test("boiteDesVisibles : boite non finie, incomplete ou inversee -> null", () => {
+  assert.equal(boiteDesVisibles(["a"], () => [0, 0, 0, Infinity, 1, 1]), null);
+  assert.equal(boiteDesVisibles(["a"], () => [0, 0, NaN, 1, 1, 1]), null);
+  assert.equal(boiteDesVisibles(["a"], () => [0, 0, 0, 1, 1]), null);
+  assert.equal(boiteDesVisibles(["a"], () => null), null);
+  assert.equal(boiteDesVisibles(["a"], () => [5, 0, 0, 1, 1, 1]), null);
+});

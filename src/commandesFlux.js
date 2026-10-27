@@ -6,6 +6,7 @@
 //  - proposer(commande) : empile et applique. Rend { ok: true, confirmation: true, demande, relecture, resume } (la question peut s'afficher), ou
 //    { ok: false, message } (zero element, critere sans effet, commande invalide) : rien n'est modifie, aucune etape n'est empilee.
 //    confirmation: false pour « tout reafficher » : applique, vide la pile, pas de question.
+//    `recentrer` (les deux cas ok) : vrai quand la camera doit se recadrer comme « Recentrer » (commande qui cadre, hors focus qui a son propre cadrage ; « tout reafficher »).
 //  - accepter() : « Oui », l'etape est validee. refuser() : « Non », SEULE la derniere etape tombe ; rend { phrase }, la phrase a reformuler.
 //  - toutReafficher() : vide la pile (bouton). abandonner() : vide la pile et defait tout (sortie du Viewer).
 //  - etatPourIA() : resume en mots de la vue actuelle (criteres, exclusions, couches, nombre d'etapes), envoye au relais pour que « ajoute », « enleve » et
@@ -15,7 +16,7 @@
 
 import { validerCommande } from "./commandesViewer.js";
 import { reduire, criteresDeLaVue, compositionDe, resumerVue } from "./commandesVue.js";
-import { presentationEffective } from "./commandesPresentations.js";
+import { presentationEffective, PRESENTATIONS } from "./commandesPresentations.js";
 
 export function creerFlux({ moteur }) {
   let pile = []; // [{ commande, validee }] ; au plus une etape non validee, la derniere
@@ -79,7 +80,7 @@ export function creerFlux({ moteur }) {
     const commande = verdictCommande.commande;
     if (commande.action === "tout_afficher") {
       const resultat = toutReafficher();
-      return { ok: true, confirmation: false, resume: resultat.message };
+      return { ok: true, confirmation: false, resume: resultat.message, recentrer: true };
     }
     // L'etape en attente est remplacee : on verifie la nouvelle commande sur la pile validee seule, et on rend l'ancienne etape si elle echoue.
     const ancienne = pile;
@@ -90,9 +91,11 @@ export function creerFlux({ moteur }) {
       if (ancienne !== pile) { pile = ancienne; rendre(null); }
       return { ok: false, message: refus };
     }
+    const composition = compositionDe(commande.parametres);
     pile = [...validees, { commande, validee: false }];
     const resume = rendre(commande);
-    return { ok: true, confirmation: true, demande: typeof commande.demande === "string" ? commande.demande : "", relecture: commande.relecture || "", resume };
+    const recentrer = !!commande.parametres.cadrer && composition !== "focus" && PRESENTATIONS.trouver(presentationEffective(commande.parametres)).cadrage !== false;
+    return { ok: true, confirmation: true, recentrer, demande: typeof commande.demande === "string" ? commande.demande : "", relecture: commande.relecture || "", resume };
   }
 
   function accepter() {

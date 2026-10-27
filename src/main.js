@@ -14,7 +14,7 @@ import { EXEMPLES_REGLES } from "./reglesExemples.js";
 import { creerControleur, REGISTRE } from "./commandesViewer.js";
 import { creerCommandesIA } from "./commandesIA.js";
 import { creerFlux } from "./commandesFlux.js";
-import { etatDrawerDepuisVisibles, capturerEtatDrawer } from "./commandesDrawer.js";
+import { etatDrawerDepuisVisibles, capturerEtatDrawer, boiteDesVisibles } from "./commandesDrawer.js";
 import { creerCommandesBandeau } from "./commandesBandeau.js";
 import { creerZones } from "./commandesZones.js";
 import { creerZonesUI } from "./commandesZonesUI.js";
@@ -167,6 +167,11 @@ const COLLISION_PASTILLES = false;
 // liste des collisions (il masquait/affichait la bulle 3D de cette collision).
 // false = l'oeil revient.
 const MASQUE_OEIL_COLLISION = true;
+// MASQUE_ZONES (27/10, demande de Gilles) : retire le bouton « Zone » de la barre
+// du Viewer (laptop et mobile) et sa fenetre « Zones nommees » (jamais creee).
+// Les zones deja stockees restent lisibles par « Affiche la zone ... », mais plus
+// aucune ne peut etre definie. false = le bouton et la fenetre reviennent.
+const MASQUE_ZONES = true;
 // COLLISION_LISTE_SIMPLE (19/10) : chaque ligne de la liste des collisions ne
 // montre que le numero, les identifiants des 2 elements, le niveau et le statut
 // (le nom complet reste en infobulle et dans la fiche). false = lignes d'avant.
@@ -1072,6 +1077,8 @@ let planDansViewer = null; // maquette « Plan 2D -> 3D » montree dans le Viewe
 let vueAvantDessus = null; // camera avant la vue a plat : { eye, look, up, projection } (voir entrerVueDessus)
 let vitesseAvantDessus = null; // valeur du curseur « Vitesse » avant la vue a plat, rendue en sortant
 let maquettesVueDessus = ""; // maquettes presentes quand la vue a plat a ete cadree : un changement la recadre
+let cameraAvantCommande = null; // camera d'avant la commande « IA » en attente de reponse, que « Non » rend : { eye, look, up } ; relue par activateView
+const DUREE_RETOUR_CAMERA_S = 0.6; // vol de retour de la camera apres « Non »
 let commandesViewer = null; // moteur des commandes du Viewer (cree a la premiere commande) ; relu par activateView avant sa definition
 let commandesFlux = null; // flux « appliquer puis confirmer » des commandes (cree a la premiere commande), idem
 let commandesBandeau = null; // bandeau « Est-ce bien votre demande ? » (cree plus bas), idem
@@ -2179,15 +2186,20 @@ function aabbDesMaquettes(liste) {
 
 // « Recentrer » s'adapte aux maquettes cochees (25/10) : seule une partie est cochee, la camera se cadre sur celles-la (cocher uniquement la maquette
 // du plan 2D -> 3D = recentrer sur elle seule). Toutes cochees : la vue de depart de la maquette, comme avant. En vue a plat, la vue a plat est refaite.
-recenterBtn.addEventListener("click", () => {
-  if (vueAvantDessus) { appliquerVueDessus(); return; }
-  if (recenterTarget) { recenterTarget(); return; }
+// Cadrage de « Recentrer » sur la page Viewer (hors vue a plat et hors cible propre a Collision / Discussions), partage avec la commande IA du Viewer.
+function recentrerSurMaquettes() {
   const chargees = MAQUETTES.filter((m) => m.model);
   const cochees = chargees.filter((m) => m.shown);
   // Avec la maquette du plan dans la liste, meme toutes cochees : la vue de depart est celle de l'hopital et ne montrerait pas le plan.
   const boite = cochees.length > 0 && (cochees.length < chargees.length || planDansViewer) ? aabbDesMaquettes(cochees) : null;
   if (boite) viewer.cameraFlight.flyTo({ aabb: boite });
   else viewer.cameraFlight.flyTo(initialCameraState || DEFAULT_CAMERA_STATE);
+}
+
+recenterBtn.addEventListener("click", () => {
+  if (vueAvantDessus) { appliquerVueDessus(); return; }
+  if (recenterTarget) { recenterTarget(); return; }
+  recentrerSurMaquettes();
 });
 
 // Choix assume du 04/09 : Projet_structure.ifc (2,6 Mo) plutot que
@@ -6473,6 +6485,7 @@ function fluxCommandes() {
 // Sortie du Viewer : la commande est defaite et le bandeau se ferme.
 function reinitialiserCommandesViewer() {
   if (commandesBandeau) commandesBandeau.masquer(false);
+  cameraAvantCommande = null;
   if (commandesFlux && commandesFlux.abandonner()) {
     restaurerDrawerOrigine();
     majBoutonToutReafficher();
@@ -6491,10 +6504,12 @@ commandesBandeau = creerCommandesBandeau({
   conteneur: document.getElementById("viewerWrap"),
   retourFocus: commandesIABtn,
   surOui() {
+    cameraAvantCommande = null;
     fluxCommandes().accepter();
   },
   surNon() {
     const retour = fluxCommandes().refuser();
+    restaurerCameraAvantCommande();
     // Une commande confirmee avant est rejouee par le flux (le drawer s'y resynchronise) ; sinon retour exact des cases d'avant.
     if (!moteurCommandesViewer().active()) restaurerDrawerOrigine();
     majBoutonToutReafficher();
@@ -6502,12 +6517,38 @@ commandesBandeau = creerCommandesBandeau({
   }
 });
 
+// Saisie « IA » : la camera se recadre comme un clic sur « Recentrer » (les cases du drawer sont deja synchronisees par la commande), sauf pour un focus
+// (cadrage propre sur l'element) ou une commande qui ne cadre pas (resultat.recentrer faux) ; en vue a plat rien ne change. Un seul vol : il remplace celui du moteur.
+function recentrerApresCommande(resultat, cameraAvant, enAttente) {
+  if (vueAvantDessus) return;
+  if (resultat.confirmation) { if (!enAttente) cameraAvantCommande = cameraAvant; } else cameraAvantCommande = null;
+  if (!resultat.recentrer) return;
+  viewer.cameraFlight.cancel();
+  // Commande confirmable : cadrage sur les seuls elements visibles ; « Tout reafficher » (sans confirmation) ou boite inexploitable : cadrage de « Recentrer ».
+  const boite = resultat.confirmation ? boiteDesVisibles(viewer.scene.visibleObjectIds, (ids) => viewer.scene.getAABB(ids)) : null;
+  if (boite) viewer.cameraFlight.flyTo({ aabb: boite });
+  else recentrerSurMaquettes();
+}
+
+// « Non » : la camera revient la ou elle etait avant la commande (la derniere etape seulement, comme la scene).
+function restaurerCameraAvantCommande() {
+  const avant = cameraAvantCommande;
+  cameraAvantCommande = null;
+  if (!avant || vueAvantDessus) return;
+  viewer.cameraFlight.cancel();
+  viewer.cameraFlight.flyTo({ eye: avant.eye, look: avant.look, up: avant.up, duration: DUREE_RETOUR_CAMERA_S });
+}
+
 // Applique la commande tout de suite puis pose la question. Rend { ok: true } ou { ok: false, message } (rien n'est applique, pas de bandeau).
-function proposerCommandeViewer(commande) {
+// deLaSaisieIA : la commande vient de la saisie « IA » du Viewer (recadrage de la camera, retour au « Non »).
+function proposerCommandeViewer(commande, deLaSaisieIA = false) {
   const photo = moteurCommandesViewer().active() ? null : capturerEtatDrawer({ maquettes: MAQUETTES, niveaux: niveauxState });
+  const enAttente = fluxCommandes().enAttente();
+  const cameraAvant = { eye: viewer.camera.eye.slice(), look: viewer.camera.look.slice(), up: viewer.camera.up.slice() };
   const resultat = fluxCommandes().proposer(commande);
   if (!resultat.ok) return { ok: false, message: resultat.message };
   if (photo && resultat.confirmation) origineDrawer = photo;
+  if (deLaSaisieIA) recentrerApresCommande(resultat, cameraAvant, enAttente);
   majBoutonToutReafficher();
   if (resultat.confirmation) commandesBandeau.montrer(resultat);
   else commandesBandeau.masquer(false);
@@ -6794,13 +6835,14 @@ if (!document.getElementById("view-quantitatif").hidden) setTimeout(() => quanti
 commandesIA = creerCommandesIA({
   bouton: commandesIABtn,
   exemples: EXEMPLES_COMMANDES,
-  proposerCommande: proposerCommandeViewer,
+  proposerCommande: (commande) => proposerCommandeViewer(commande, true),
   traduire: traduirePhraseViewer,
   fermerAutres: () => { cameraSpeedPanel.hidden = true; cameraSpeedToggle.classList.remove("active"); }
 });
 
-// Bouton « Zone » : definir un volume nomme (depuis l'element selectionne ou par un clic dans la maquette).
-zonesUI = creerZonesUI({
+// Bouton « Zone » : definir un volume nomme (depuis l'element selectionne ou par un clic dans la maquette). Masque par MASQUE_ZONES : ni bouton, ni fenetre (zonesUI reste null, deja gere partout).
+commandesZoneBtn.hidden = MASQUE_ZONES;
+if (!MASQUE_ZONES) zonesUI = creerZonesUI({
   bouton: commandesZoneBtn,
   zones: zonesCommandes,
   elementSelectionne: () => (selectedEntity && selectedEntity.aabb ? Array.from(selectedEntity.aabb) : null),

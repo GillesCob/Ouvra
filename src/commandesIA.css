@@ -4,7 +4,7 @@
 
 /* La barre #viewerToolbar est deplacee avec #viewerWrap dans les pages Collision et Discussions : ces pieces n'existent que dans la page Viewer. */
 #commandesIABtn, #commandesZoneBtn, #viewerToolbar #commandesResetBtn { display: none; }
-#view-viewer #commandesIABtn, #view-viewer #commandesZoneBtn { display: block; }
+#view-viewer #commandesIABtn, #view-viewer #commandesZoneBtn:not([hidden]) { display: block; }
 #view-viewer #viewerToolbar #commandesResetBtn:not([hidden]) { display: block; }
 /* « IA » : dans la barre #coupeToolbar, a cote de « Creer une coupe » ; le format (taille, bordure, survol, mobile) vient de cette barre (src/style.css). */
 #commandesIABtn, #commandesZoneBtn { font-weight: 600; transition: border-color 0.18s ease, color 0.18s ease; }
@@ -27,8 +27,8 @@
 #commandesBandeau[hidden] { display: none !important; }
 #commandesBandeau *, #commandesBandeau *::before, #commandesBandeau *::after { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 .commandes-bandeau-corps { flex: 1 1 280px; min-width: 0; max-width: 760px; margin: 0; line-height: 1.35; overflow-wrap: anywhere; }
-.commandes-bandeau-question { font-weight: 700; }
-.commandes-bandeau-texte { font-weight: 600; }
+.commandes-bandeau-question { display: block; font-weight: 700; }
+.commandes-bandeau-texte { display: block; font-weight: 600; }
 .commandes-bandeau-actions { flex: none; display: flex; gap: 8px; }
 #commandesBandeau button {
   flex: none; white-space: nowrap; min-height: 40px; min-width: 72px; border-radius: 8px; padding: 6px 16px; font: inherit; font-weight: 700; cursor: pointer;

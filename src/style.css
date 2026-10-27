@@ -2754,7 +2754,8 @@ html.demarrage #splashLogo {
   /* Coupe active : les trois boutons sur leur propre ligne, au-dessus de Vitesse et Afficher. */
   #coupeToolbar:has(#coupeInvertBtn:not([hidden])) { left: 16px; right: 16px; bottom: 60px; }
   /* Seul sur la ligne du bas, "Creer une coupe" a la meme hauteur que Vitesse et Afficher. */
-  #coupeToolbar:not(:has(#coupeInvertBtn:not([hidden]))) button { min-height: 32px; padding: 7px 12px; }
+  /* Sans « Zone » la barre (178 px a 390 px) loge « Creer une coupe » + « IA » sur une ligne : meme format que Vitesse (12.5 px, une ligne, 31 px), sinon les libelles passaient sur 2 ou 3 lignes. */
+  #coupeToolbar:not(:has(#coupeInvertBtn:not([hidden]))) button { flex: 0 0 auto; min-height: 0; padding: 7px 12px; font-size: 12.5px; line-height: normal; white-space: nowrap; }
   #coupeToolbar button {
     flex: 0 1 150px; min-width: 0; min-height: 40px; padding: 6px 4px; font-size: 12px; line-height: 1.15;
     white-space: normal; text-align: center;

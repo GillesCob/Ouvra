@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:https": "OUVRA_HTTPS=1 vite --host --port 5174 --strictPort",
     "build": "vite build",
     "preview": "vite preview",
     "test": "node --test \"tests/*.test.js\""

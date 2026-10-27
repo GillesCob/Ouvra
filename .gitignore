@@ -10,3 +10,4 @@ tools/clash-test/venv
 
 # Plans de test personnels (2D -> 3D) : jamais commites ni deployes
 public/plan3d-local/
+.certs/

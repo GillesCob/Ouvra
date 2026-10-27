@@ -42,9 +42,14 @@ const ICONES = {
   cube: '<path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M12 12l8-4.5M12 12v9M12 12L4 7.5"/>'
 };
 
+// MASQUE_DESSIN_PLAN (27/10, demande de Gilles) : retire de la barre d'outils tous les outils de dessin a la main (Mur, Porte, Fenetre, Coulissante, Piece),
+// sur laptop et sur mobile. Restent Selection et Echelle. Le code des outils (editeur2d.js, volet « type de mur », bouton « Terminer ») n'est pas supprime :
+// ils deviennent simplement inatteignables. Pour les remettre : passer a false (puis recharger la page).
+const MASQUE_DESSIN_PLAN = true;
+const OUTILS_DESSIN = ["mur", "porte", "fenetre", "coulissante", "piece"];
 const OUTILS = [
   ["selection", "Sélection"], ["mur", "Mur"], ["porte", "Porte"], ["fenetre", "Fenêtre"], ["coulissante", "Coulissante"], ["piece", "Pièce"], ["calibrer", "Échelle"]
-];
+].filter(([id]) => !(MASQUE_DESSIN_PLAN && OUTILS_DESSIN.includes(id)));
 
 function creer(tag, classe, texte) {
   const e = document.createElement(tag);

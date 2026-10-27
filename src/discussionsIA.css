@@ -31,19 +31,25 @@
 @media (prefers-reduced-motion: reduce) { .msg-ia-phrases summary::after { transition: none; } }
 
 /* ---------- Liste filtree par l'IA ---------- */
+/* Resume du resultat sur UNE SEULE ligne : « <- Retour », la demande et le compte (ellipsis si trop long), « Voir le rapport ». */
 .msg-ia-resume {
-  position: sticky; top: 0; z-index: 2; display: flex; flex-direction: column; gap: 8px; padding: 10px 14px 12px;
+  position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 8px; padding: 4px 10px;
   background: var(--surface); border-bottom: 1px solid var(--border);
 }
-.msg-ia-demande { display: flex; flex-direction: column; gap: 2px; min-width: 0; font-size: 13px; line-height: 1.35; overflow-wrap: anywhere; }
-.msg-ia-demande span { color: var(--muted); font-size: 12.5px; }
-.msg-ia-actions { display: flex; flex-wrap: wrap; gap: 8px; }
-.msg-ia-actions button {
-  min-height: 40px; padding: 6px 14px; background: none; color: var(--text); border: 1px solid var(--border); border-radius: 8px; font-size: 13px; font-weight: 700;
-  -webkit-tap-highlight-color: transparent;
+.msg-ia-demande { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; line-height: 1.3; }
+.msg-ia-demande b { font-weight: 600; }
+.msg-ia-demande span { color: var(--muted); }
+.msg-ia-demande span::before { content: " \00b7 "; }
+.msg-ia-actions { flex: none; display: flex; }
+.msg-ia-actions button, .msg-ia-retour {
+  min-height: 44px; padding: 4px 12px; background: none; color: var(--text); border: 1px solid var(--border); border-radius: 8px; font-size: 13px; font-weight: 700;
+  white-space: nowrap; -webkit-tap-highlight-color: transparent;
 }
-.msg-ia-actions button[data-act="ia-tout"] { background: var(--msg-accent); color: var(--msg-sur-accent); border-color: var(--msg-accent); }
+.msg-racine .msg-ia-retour { flex: none; background: var(--msg-accent); color: var(--msg-sur-accent); border-color: var(--msg-accent); cursor: pointer; }
 @media (hover: hover) and (pointer: fine) { .msg-ia-actions button[data-act="ia-rapport"]:hover { border-color: var(--msg-accent); } }
+/* Mode resultat (classe posee par rendreListe sur .msg-lateral) : onglets et phrases toutes faites masques, la liste des discussions remontees prend la place.
+   Retirer ce bloc suffit pour revenir a l'ancien affichage ; l'etat deplie des phrases n'est pas modifie (display seulement). */
+.msg-lateral.msg-ia-resultat .msg-onglets, .msg-lateral.msg-ia-resultat .msg-ia-phrases { display: none; }
 /* Ligne de resultat : le format d'une conversation (.msg-conv), l'extrait passe sur deux lignes avec ses mots trouves en evidence. */
 .msg-ia-res .msg-conv-nom { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .msg-ia-res .msg-conv-heure { font-size: 11.5px; white-space: nowrap; }

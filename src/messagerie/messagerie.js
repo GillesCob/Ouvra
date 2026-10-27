@@ -233,6 +233,9 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
   }
 
   function rendreListe() {
+    // Mode resultat (onglet IA avec une demande appliquee) : la classe masque onglets et phrases (discussionsIA.css). Point unique d'entree et de sortie :
+    // chaque chemin (Retour, Non, changement d'onglet, nouvelle demande) repasse par ici, l'etat deplie des phrases n'est jamais touche.
+    racine.querySelector(".msg-lateral").classList.toggle("msg-ia-resultat", etat.onglet === "ia" && !!etat.filtreIA);
     if (etat.onglet === "ia") { rendreResultatsIA(); return; }
     const items = listeTriee(conversations, etat.onglet);
     const html = items.length ? items.map(ligneConv).join("") : '<div class="msg-vide">Aucune conversation.</div>';
@@ -286,6 +289,8 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
     $("msgIAPanneau").hidden = onglet !== "ia";
     placerPastilleOnglets();
     if (change && onglet === "ia") fermerConversationCourante();
+    // Phrases toutes faites du panneau IA : depliees a l'arrivee sur ordinateur (lisibles a cote de la modale), repliees sur mobile (la modale couvre la page).
+    if (change && onglet === "ia") { const phrases = $("msgIAPanneau").querySelector(".msg-ia-phrases"); if (phrases) phrases.open = !mobile(); }
     const terminer = () => {
       rendreListe();
       if (!ouvrirPremiere || (!change && etat.convId)) return;
@@ -1445,9 +1450,11 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
     const f = etat.filtreIA;
     if (!f) { $("msgListe").innerHTML = '<div class="msg-vide">Choisis Texte ou Vocal pour décrire ce que tu cherches dans les discussions.</div>'; return; }
     const compte = nombreFr(f.fils.length, "discussion", "discussions") + (f.surlignes.size ? ", " + nombreFr(f.surlignes.size, "message trouvé", "messages trouvés") : "");
-    const bandeau = '<div class="msg-ia-resume" role="status"><div class="msg-ia-demande"><b>' + echapper(f.relecture || "") + "</b><span>" + echapper(compte) + "</span></div>" +
-      '<div class="msg-ia-actions">' + (f.rapport ? '<button type="button" data-act="ia-rapport">Voir le rapport</button>' : "") +
-      '<button type="button" data-act="ia-tout">Tout réafficher</button></div></div>';
+    // Une seule ligne : « Retour » en tete, la demande et le compte (ellipsis si trop long, texte complet en title), « Voir le rapport » a droite.
+    const resume = echapper((f.relecture || "") + (f.relecture ? " \u00b7 " : "") + compte);
+    const bandeau = '<div class="msg-ia-resume" role="status"><button type="button" class="msg-ia-retour" data-act="ia-tout" aria-label="Retour aux discussions">\u2190 Retour</button>' +
+      '<div class="msg-ia-demande" title="' + resume + '"><b>' + echapper(f.relecture || "") + "</b><span>" + echapper(compte) + "</span></div>" +
+      (f.rapport ? '<div class="msg-ia-actions"><button type="button" data-act="ia-rapport">Voir le rapport</button></div>' : "") + "</div>";
     const lignes = f.fils.length ? f.fils.map(ligneResultatIA).join("") : '<div class="msg-vide">Aucune discussion à afficher.</div>';
     $("msgListe").innerHTML = bandeau + lignes;
   }

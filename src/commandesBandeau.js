@@ -45,13 +45,14 @@ export function creerCommandesBandeau({ surOui, surNon, conteneur = null, retour
     racine.setAttribute("role", "alertdialog");
     racine.setAttribute("aria-labelledby", "commandesBandeauQuestion");
     racine.setAttribute("aria-describedby", "commandesBandeauTexte");
-    // Une seule ligne : « Est-ce bien votre demande ? « Afficher les gaines du niveau 2 » ». Aucun compte rendu (nombre d'elements, effets).
+    // Deux blocs : le titre fixe « Est-ce bien votre demande ? » sur sa ligne, puis dessous la demande entre guillemets (« Afficher les gaines du niveau 2 »).
+    // Aucun compte rendu (nombre d'elements, effets).
     const corps = creer("p", "commandes-bandeau-corps");
     const question = creer("span", "commandes-bandeau-question", QUESTION);
     question.id = "commandesBandeauQuestion";
     texte = creer("span", "commandes-bandeau-texte");
     texte.id = "commandesBandeauTexte";
-    corps.append(question, document.createTextNode(" "), texte);
+    corps.append(question, texte);
     const actions = creer("div", "commandes-bandeau-actions");
     actions.append(bouton("Oui", "oui"), bouton("Non", "non"));
     racine.append(corps, actions);
@@ -73,7 +74,8 @@ export function creerCommandesBandeau({ surOui, surNon, conteneur = null, retour
 
   function montrer({ relecture }) {
     assurerSquelette();
-    texte.textContent = relecture ? "« " + relecture + " »" : "";
+    // Espaces insecables : le guillemet fermant reste collé au dernier mot, jamais seul sur une ligne.
+    texte.textContent = relecture ? "«\u00a0" + relecture + "\u00a0»" : "";
     racine.hidden = false;
     document.body.classList.add(CLASSE_ACTIF);
     mesurer();

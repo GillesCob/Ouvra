@@ -15,7 +15,7 @@
 
 import "./reglesIA.css";
 import "./iaSaisie.css";
-import { creerDictee, detecterReconnaissance, motifSansAPI, nettoyerPhrase, MESSAGE_RIEN_RECONNU } from "./reglesVoix.js";
+import { creerDictee, detecterReconnaissance, motifDicteeIndisponible, nettoyerPhrase, MESSAGE_RIEN_RECONNU } from "./reglesVoix.js";
 import { modeOuverture, modeApresBascule, annonceMode, aideVocal, suiteFinEcoute } from "./iaSaisieLogique.js";
 
 export const PHRASE_MAX = 200; // meme plafond que les relais (relais/entree.js)
@@ -36,7 +36,7 @@ export function creerIASaisie({ exemples = [], libelle = "Demande par l'IA", pla
   const Reconnaissance = detecterReconnaissance(window);
   const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
   const dicteeDisponible = !!Reconnaissance;
-  let motifVocal = dicteeDisponible ? null : motifSansAPI(ios); // non nul : le vocal est inutilisable
+  let motifVocal = dicteeDisponible ? null : motifDicteeIndisponible(window, ios); // non nul : le vocal est inutilisable
   let demandeEnCours = 0; // numero de la derniere demande : une reponse d'une demande abandonnee est ignoree
   let vue = null; // "texte" | "vocal" | "chargement" quand la modale est ouverte, sinon null
   let vueAvantChargement = "texte";
@@ -45,7 +45,7 @@ export function creerIASaisie({ exemples = [], libelle = "Demande par l'IA", pla
   let minuteurArret = 0;
 
   // ---------- Modale (markup identique aux autres IA) ----------
-  const fond = creer("div", "regles-ia-fond");
+  const fond = creer("div", "regles-ia-fond regles-ia-fond-saisie");
   fond.hidden = true;
   const carte = creer("div", "regles-ia-carte");
   carte.setAttribute("role", "dialog");
@@ -55,8 +55,9 @@ export function creerIASaisie({ exemples = [], libelle = "Demande par l'IA", pla
 
   const formulaire = creer("form", "regles-ia-vue regles-ia-vue-texte");
   formulaire.noValidate = true;
-  const champ = creer("input");
-  champ.type = "text";
+  const champ = creer("textarea"); // zone de texte a hauteur automatique : la phrase longue passe a la ligne et reste visible en entier (jamais de saut de ligne saisi)
+  champ.rows = 1;
+  champ.spellcheck = false;
   champ.maxLength = PHRASE_MAX;
   champ.autocomplete = "off";
   champ.enterKeyHint = "go";
@@ -90,16 +91,22 @@ export function creerIASaisie({ exemples = [], libelle = "Demande par l'IA", pla
   etat.setAttribute("role", "status");
   etat.hidden = true;
 
-  // Phrases toutes faites, en bas, dans un menu deroulant ferme : cliquables en texte (elles remplissent le champ), a lire seulement en vocal.
+  // Phrases toutes faites, en bas, dans un menu deroulant ferme : cliquables en texte comme en vocal (elles remplissent le champ ; en vocal elles basculent d'abord en texte).
   const propositions = creer("details", "regles-ia-propositions");
   const liste = creer("ul");
   exemples.forEach((exemple) => {
     const li = creer("li");
     const choisie = creer("button", "regles-ia-exemple", exemple.demande);
     choisie.type = "button";
-    choisie.addEventListener("click", () => { champ.value = exemple.demande.slice(0, PHRASE_MAX); propositions.open = false; afficherEtat("", false); champ.focus({ preventScroll: true }); });
-    const lue = creer("span", "regles-ia-exemple-lu", "« " + exemple.demande + " »");
-    li.append(choisie, lue);
+    choisie.addEventListener("click", () => {
+      if (vue === "vocal") { envoiApresArret = false; clearTimeout(minuteurArret); abandonnerDictee(); montrerVue("texte", { annoncer: true }); } // meme bascule que « Ecrire ma demande »
+      champ.value = exemple.demande.slice(0, PHRASE_MAX); // rempli, jamais envoye : « Valider » reste a l'utilisateur
+      propositions.open = false;
+      afficherEtat("", false);
+      ajusterChamp();
+      focusVue("texte");
+    });
+    li.appendChild(choisie);
     liste.appendChild(li);
   });
   propositions.append(creer("summary", null, "Proposition d'instruction"), liste);
@@ -110,6 +117,35 @@ export function creerIASaisie({ exemples = [], libelle = "Demande par l'IA", pla
   document.body.appendChild(fond);
 
   const ouvert = () => !fond.hidden;
+
+  // Hauteur du champ = hauteur du texte (plafond de 5 lignes pose en CSS, au-dela le champ defile en interne). Appelee a chaque saisie, remplissage et affichage.
+  function ajusterChamp() {
+    if (formulaire.hidden || fond.hidden) return;
+    champ.style.height = "auto";
+    champ.style.height = `${champ.scrollHeight + champ.offsetHeight - champ.clientHeight}px`; // scrollHeight exclut la bordure (border-box)
+    ajusterListe(); // le champ a change de taille : la liste des propositions se recalcule
+  }
+  champ.addEventListener("input", () => {
+    if (/[\r\n]/.test(champ.value)) { const debut = champ.selectionStart; champ.value = champ.value.replace(/[\r\n]/g, " "); champ.setSelectionRange(debut, debut); } // collage multiligne : espaces, longueur inchangee
+    ajusterChamp();
+  });
+  champ.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter" || e.isComposing) return;
+    e.preventDefault(); // Entree valide comme avant, jamais de saut de ligne
+    valider.click();
+  });
+
+  // Hauteur maximale de la liste des propositions : place libre dans le fond (zone visible, padding retire) moins le reste de la carte. Elle seule defile.
+  function ajusterListe() {
+    if (fond.hidden || !propositions.open || propositions.hidden) { fond.style.removeProperty("--ia-liste-max"); return; }
+    fond.style.setProperty("--ia-liste-max", "none");
+    const style = getComputedStyle(fond);
+    const libre = fond.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom);
+    const reste = carte.getBoundingClientRect().height - liste.getBoundingClientRect().height;
+    fond.style.setProperty("--ia-liste-max", `${Math.max(44, Math.floor(libre - reste))}px`);
+  }
+  propositions.addEventListener("toggle", ajusterListe);
+  window.addEventListener("resize", () => { ajusterChamp(); ajusterListe(); }); // largeur changee : le retour a la ligne change
 
   // Dictee : le texte reconnu reste en memoire (texteVocal), il ne part qu'au second appui sur le micro.
   const dictee = creerDictee({
@@ -145,6 +181,7 @@ export function creerIASaisie({ exemples = [], libelle = "Demande par l'IA", pla
     etat.textContent = texte || "";
     etat.hidden = !texte;
     etat.classList.toggle("erreur", erreur !== false);
+    ajusterListe();
   }
 
   // ---------- Vues ----------
@@ -157,6 +194,8 @@ export function creerIASaisie({ exemples = [], libelle = "Demande par l'IA", pla
     propositions.classList.toggle("lecture", nom === "vocal");
     retourMicro.hidden = !dicteeDisponible || !!motifVocal;
     carte.dataset.vue = nom;
+    ajusterChamp();
+    ajusterListe();
     carte.setAttribute("aria-busy", String(nom === "chargement"));
     if (annoncer && nom !== "chargement") annonce.textContent = annonceMode(nom);
   }
@@ -179,6 +218,7 @@ export function creerIASaisie({ exemples = [], libelle = "Demande par l'IA", pla
     const ouverture = modeOuverture({ dicteeDisponible: dicteeDisponible && !motifVocal, motifIndisponible: motifVocal });
     const nom = modeInitial === "texte" ? "texte" : ouverture.mode;
     fond.hidden = false;
+    suivreZoneVisible();
     montrerVue(nom);
     if (nom === "texte" && ouverture.raison && modeInitial !== "texte") afficherEtat(ouverture.raison, false);
     focusVue(nom);
@@ -271,6 +311,19 @@ export function creerIASaisie({ exemples = [], libelle = "Demande par l'IA", pla
     else if (termine) afficherEtat(MESSAGE_RIEN_RECONNU, true);
   }
 
+  // Mobile : le clavier virtuel d'iOS ne reduit pas la page, seulement la partie visible (visualViewport). Le fond suit cette zone visible (haut et hauteur),
+  // la carte se plafonne dedans et defile en interne : champ, propositions et « Valider » restent atteignables clavier ouvert.
+  const vv = window.visualViewport;
+  const ecranEtroit = window.matchMedia ? window.matchMedia("(max-width: 768px)") : { matches: false };
+  const suivreZoneVisible = () => {
+    const actif = ecranEtroit.matches && vv && !fond.hidden;
+    fond.style.setProperty("--ia-vv-haut", actif ? `${Math.round(vv.offsetTop)}px` : "0px");
+    fond.style.setProperty("--ia-vv-hauteur", actif ? `${Math.round(vv.height)}px` : "100%");
+    fond.classList.toggle("zone-reduite", !!actif && window.innerHeight - vv.height > 120); // clavier ouvert : la carte se cale en haut
+    ajusterListe();
+  };
+  if (vv) { vv.addEventListener("resize", suivreZoneVisible); vv.addEventListener("scroll", suivreZoneVisible); }
+
   // Clic sur le fond autour de la carte : fermeture (annule aussi une demande en cours).
   fond.addEventListener("click", (e) => { if (e.target === fond) fermer(true); });
   document.addEventListener("keydown", (e) => {
@@ -281,7 +334,7 @@ export function creerIASaisie({ exemples = [], libelle = "Demande par l'IA", pla
 
   // Tabulation gardee dans la modale (elle est modale : le reste de la page n'est pas atteignable au clavier).
   function boucleFocus(e) {
-    const cibles = [...carte.querySelectorAll("button, input, summary")].filter((el) => !el.disabled && el.offsetParent !== null);
+    const cibles = [...carte.querySelectorAll("button, textarea, summary")].filter((el) => !el.disabled && el.offsetParent !== null);
     if (!cibles.length) return;
     const premier = cibles[0];
     const dernier = cibles[cibles.length - 1];

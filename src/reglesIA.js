@@ -75,6 +75,9 @@ export function creerReglesIA({ parent, slot, boutonCollisions, masquerSurMobile
     if (saisie.ouvert()) saisie.fermer(true); else saisie.ouvrir();
   });
 
+  // Le bouton « IA » vit dans la zone de la page Collision (masque avec elle) ; sans cette ligne il n'est jamais dans la page.
+  parent.appendChild(racine);
+
   // ---------- Placement ----------
   const mobile = () => window.matchMedia(MOBILE).matches;
   // Ordinateur : coin bas droite de la zone 3D. Mobile : a gauche de « ☰ Collisions », centre sur sa ligne. Rend une signature de la position.
