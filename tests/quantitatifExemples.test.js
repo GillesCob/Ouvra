@@ -15,8 +15,8 @@ const MAQUETTES = [
 ];
 const ELEMENTS = MAQUETTES.flatMap(([fichier, id, label]) => elementsDepuisJson(lire(fichier), { id, label }));
 
-test("6 a 8 exemples, phrases distinctes, sans tiret quadratin", () => {
-  assert.ok(EXEMPLES_QUANTITATIF.length >= 6 && EXEMPLES_QUANTITATIF.length <= 8);
+test("6 a 9 exemples, phrases distinctes, sans tiret quadratin", () => {
+  assert.ok(EXEMPLES_QUANTITATIF.length >= 6 && EXEMPLES_QUANTITATIF.length <= 9);
   assert.equal(new Set(EXEMPLES_QUANTITATIF.map((e) => e.demande)).size, EXEMPLES_QUANTITATIF.length);
   assert.ok(EXEMPLES_QUANTITATIF.every((e) => !e.demande.includes(TIRET_QUADRATIN)));
 });

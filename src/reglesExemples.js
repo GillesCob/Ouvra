@@ -17,6 +17,11 @@ export const EXEMPLES_REGLES = [
     action: { champ: "priorite", valeur: "urgente" }
   },
   {
+    demande: "Passe en urgent toutes les collisions qui impliquent des gaines du niveau 2",
+    filtre: { portee: "un_des_deux", criteres: [{ champ: "typeIfc", contient: "IfcDuctSegment" }, { champ: "niveau", contient: "Level 2" }] },
+    action: { champ: "priorite", valeur: "urgente" }
+  },
+  {
     demande: "Confirme les collisions entre deux éléments du niveau 1",
     filtre: { portee: "les_deux", criteres: [{ champ: "niveau", contient: "Level 1" }] },
     action: { champ: "statut", valeur: "confirme" }
