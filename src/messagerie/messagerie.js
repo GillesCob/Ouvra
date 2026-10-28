@@ -13,6 +13,7 @@ import {
   changerStatut, ajouterPersonne, ajouterAuGroupe, basculerUrgence, estUrgent, convAUrgent, cloturer, rouvrir, creerSujet, creerConversation, vueOrigine, sujetsClos, sujetsTries, convParId
 } from "./messagerieDonnees.js";
 import { echapper, heureMinute, cleJour, libelleJour, heureCourte, initiales, prenom } from "./format.js";
+import { regrouperConversations } from "./groupesConversations.js";
 import { imageVue, chargerBanque, attribuerBanque } from "./vuesMessagerie.js";
 import { requeteMention, filtrerPersonnes, occurrences } from "./mentions.js";
 import { cleFil, cleMessage, lireCleMessage } from "../discussionsIAIndex.js"; // Discussions par commande IA (24/10)
@@ -997,11 +998,12 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
       '<option value="' + echapper(s.id) + '"># ' + echapper(s.titre) + " (" + LIBELLES_STATUT[s.statut] + (s.nonLus ? ", " + s.nonLus + " non lus" : "") + ")</option>").join("");
   }
 
+  // Liste « Conversation » : individuelles et groupes separes par un en-tete (<optgroup>), ordre recu conserve dans chaque groupe.
   function optionsConversations(liste, convId, avecNonLus) {
-    return liste.map((k) => {
+    return regrouperConversations(liste).map((g) => '<optgroup label="' + echapper(g.libelle) + '">' + g.conversations.map((k) => {
       const n = avecNonLus ? nonLusConv(k) : 0;
       return '<option value="' + echapper(k.id) + '"' + (k.id === convId ? " selected" : "") + ">" + echapper(k.nom) + (n ? " : " + n + " non lus" : "") + "</option>";
-    }).join("");
+    }).join("") + "</optgroup>").join("");
   }
 
   // Bascule « Nouveau sujet » / « Conversation existante » : la pastille (meme composant que #navbarThumb) glisse sous le bouton actif, selon data-mode.
