@@ -37,5 +37,13 @@ test("page Quantitatif : onglet ouvert dans le geste du clic avant l'attente, se
 });
 
 test("export PDF : onglet transmis a la livraison, repli telechargement", () => {
-  assert.ok(lire("src/quantitatifExportPdf.js").includes("livrerRapportPdf(def.nomFichier, doc.output(\"blob\"), { onglet, telecharger })"));
+  assert.ok(lire("src/quantitatifExportPdf.js").includes("livrerRapportPdf(def.nomFichier, doc.output(\"blob\"), { onglet, telecharger, ...(mobile ? { afficher: afficherPdfPleinOnglet } : {}) })"));
+});
+
+test("mobile : l'onglet navigue vers le PDF (lecteur natif iOS, toutes les pages), laptop garde l'iframe", async () => {
+  const { afficherPdfPleinOnglet } = await import("../src/quantitatifExportPdf.js");
+  const vues = [];
+  afficherPdfPleinOnglet({ location: { replace: (u) => vues.push(u) } }, "blob:x");
+  assert.deepEqual(vues, ["blob:x"]);
+  assert.ok(lire("src/quantitatifPage.js").includes("onglet, mobile: ecranMobile()"));
 });

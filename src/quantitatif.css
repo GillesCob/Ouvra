@@ -195,7 +195,10 @@
   .qt-resultat-tete > .qt-btn-retour { margin: -10px 0 -10px -8px; }
   .qt-histo-tete > .qt-btn-retour { margin: -10px 0 -10px -8px; }
   .qt-histo-tete > .qt-carte-titre { margin-right: auto; }
-  .qt-resultat-titre { margin-bottom: 6px; font-size: 14px; }
+  /* Place au tableau (28/10) : titre limite a 2 lignes (texte complet en infobulle / nom accessible), « Sur ces chiffres » en une ligne repliee (36 px fermee). */
+  .qt-resultat-titre { margin-bottom: 6px; font-size: 14px; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
+  .qt-infos { margin-bottom: 8px; }
+  .qt-infos-titre { min-height: 34px; font-size: 12px; }
   .qt-col-origine { display: none; }
   .qt-infos, .qt-avertissement, .qt-statut-rapport { margin-left: 12px; margin-right: 12px; }
   .qt-exports { padding: 10px 12px 14px; }

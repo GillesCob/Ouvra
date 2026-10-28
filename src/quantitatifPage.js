@@ -310,11 +310,13 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
       }
     }
     try {
+      // Test de recette (serveur de dev uniquement) : ?qtErreur=1 dans l'adresse fait echouer les exports Excel et PDF, pour voir le message d'erreur. Absent en production.
+      if (import.meta.env?.DEV && format !== "csv" && new URLSearchParams(window.location.search).get("qtErreur") === "1") throw new Error("Echec simule (qtErreur)");
       if (format === "csv") {
         const remarques = [rapport.resultat.notes[0], ...(statut.etat === "a_jour" ? [] : [libelleStatut(statut)])];
         telecharger(nomFichier(rapport, "csv"), exporterCsv(rapport.resultat, remarques), "text/csv;charset=utf-8");
       } else if (format === "pdf") {
-        await (await import("./quantitatifExportPdf.js")).exporterPdf(rapport, statut, { telecharger: (n, c) => telecharger(n, c, "application/pdf"), onglet });
+        await (await import("./quantitatifExportPdf.js")).exporterPdf(rapport, statut, { telecharger: (n, c) => telecharger(n, c, "application/pdf"), onglet, mobile: ecranMobile() });
       } else {
         await (await import("./quantitatifExportXlsx.js")).exporterXlsx(rapport, statut, { telecharger: (n, c) => telecharger(n, c) });
       }
@@ -400,7 +402,9 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
     viderZone(resultatZone);
     const tete = creer("div", "qt-resultat-tete");
     const titres = creer("div", "qt-resultat-titres");
-    titres.appendChild(creer("h3", "qt-resultat-titre", rapport.relecture));
+    const titre = creer("h3", "qt-resultat-titre", rapport.relecture);
+    if (ecranMobile()) titre.title = rapport.relecture; // texte complet quand le titre est tronque a 2 lignes (mobile seulement)
+    titres.appendChild(titre);
     const pastilles = creer("div", "qt-pastilles");
     pastilles.appendChild(creer("span", "qt-pastille qt-pastille-" + resultat.mesure.origine, resultat.mesure.origineLibelle.charAt(0).toUpperCase() + resultat.mesure.origineLibelle.slice(1)));
     pastilles.appendChild(pastilleEtat(statut));

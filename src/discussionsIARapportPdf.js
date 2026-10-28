@@ -173,10 +173,11 @@ export function construireRapportPdf({ jsPDF, autoTable }, def, { logoPng = null
 // Livre le PDF (28/10) : dans l'onglet deja ouvert au clic (le lecteur PDF du navigateur l'affiche, avec son propre bouton de telechargement : rien ne tombe
 // dans le dossier Telechargements devant le public), sinon, onglet bloque ou ferme, en telechargement comme avant. Rend "ouvert" ou "telecharge".
 // L'adresse du blob est revoquee apres un delai : le temps que le lecteur la charge et que l'utilisateur le telecharge depuis le lecteur.
-export function livrerRapportPdf(nomFichier, blob, { onglet = null, telecharger, creerUrl = (b) => URL.createObjectURL(b), revoquer = (u) => URL.revokeObjectURL(u), delaiRevocationMs = 600000 }) {
+// afficher : par defaut le PDF est pose dans un iframe plein ecran ; le Quantitatif mobile navigue vers le PDF lui-meme (lecteur natif, toutes les pages).
+export function livrerRapportPdf(nomFichier, blob, { onglet = null, telecharger, creerUrl = (b) => URL.createObjectURL(b), revoquer = (u) => URL.revokeObjectURL(u), delaiRevocationMs = 600000, afficher = afficherPdfDansOnglet }) {
   if (onglet && !onglet.closed) {
     const url = creerUrl(blob);
-    afficherPdfDansOnglet(onglet, url);
+    afficher(onglet, url);
     setTimeout(() => revoquer(url), delaiRevocationMs);
     return "ouvert";
   }

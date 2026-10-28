@@ -73,6 +73,24 @@ test("pdf : sans logo, sans resultat et tres long (plusieurs pages) restent vali
   assert.ok(doc.getNumberOfPages() > 1);
 });
 
+test("pdf mobile : page etroite 105 x 186 mm, colonnes reduites a l'essentiel, corps >= 10 pt, laptop inchange", () => {
+  const def = definitionPdf(portes(), aJour, { mobile: true });
+  assert.deepEqual(def.tableau.tete, ["Niveau", "Quantité"]);
+  assert.deepEqual(def.tableau.corps[1], ["Level 2", "2 u"]);
+  assert.deepEqual(def.tableau.pied[0], ["Total", "3 u"]);
+  assert.deepEqual(def.infos.map(([k]) => k), ["Demande", "Mesure", "Éléments pris en compte", "État du rapport"]);
+  const doc = construirePdf({ jsPDF, autoTable }, def, { maintenant: new Date("2026-10-24") });
+  assert.ok(Math.abs(doc.internal.pageSize.getWidth() - 105) < 0.01 && Math.abs(doc.internal.pageSize.getHeight() - 186) < 0.01);
+  const polices = new Set([...Buffer.from(doc.output("arraybuffer")).toString("latin1").matchAll(/([\d.]+) Tf/g)].map((m) => Number(m[1])));
+  assert.ok(Math.min(...[...polices].filter((t) => t >= 9)) >= 10);
+  const laptop = definitionPdf(portes(), aJour);
+  assert.ok(!laptop.mobile);
+  assert.equal(laptop.tableau.tete.length, 6);
+  const long = Array.from({ length: 200 }, (_, i) => el("y" + i, "IfcDoor", "Level " + (i % 7), "Architecture", "Porte type " + i));
+  const rl = construireRapport({ resultat: calculer(long, { mesure: "nombre", filtres: filtres(), regroupements: ["famille"] }), phrase: "x", versions: VERSIONS });
+  assert.ok(construirePdf({ jsPDF, autoTable }, definitionPdf(rl, aJour, { mobile: true }), {}).getNumberOfPages() > 1);
+});
+
 // ---------- Excel ----------
 async function relire(classeur) {
   const tampon = await classeur.xlsx.writeBuffer();
