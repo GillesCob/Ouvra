@@ -7,7 +7,7 @@
    contenu, y compris les elements en position: fixed, se place a l'interieur (contain: layout en fait leur bloc de reference), et une
    marge basse protege du geste de fermeture (parti du bas de l'ecran, un menu fait defiler vers le haut trop pres du bord le declenchait).
    Le fond de <html> reste le vert de l'application ; l'accueil repeint un calque fixe plein ecran en crème. */
-@media (display-mode: standalone) {
+@media (display-mode: standalone) and (max-width: 768px) { /* mobile seulement : une PWA installee sur ordinateur garde le comportement du laptop (pas de marge basse) */
   html, body { background: var(--bg); }
   body {
     position: fixed;
