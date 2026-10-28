@@ -335,64 +335,22 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
     return creer("span", "qt-pastille qt-pastille-ajour", "À jour");
   }
 
-  // Liste des formats d'export (29/10) : un vrai menu deroulant, le MEME que les selecteurs Priorite / Statut (classes .collision-menu*, src/style.css), pose en
-  // position fixe pres du bouton « Exporter » (le panneau coupe tout ce qui deborde). Un seul ouvert a la fois ; ferme par un clic en dehors, Echap, le choix
-  // d'un format, un defilement ou un redimensionnement.
+  // Liste des formats d'export (29/10) : le menu commun (src/menuChoix.js), le MEME que les selecteurs Priorite / Statut (classes .collision-menu*, src/style.css), pose en
+  // position fixe pres du bouton « Exporter » (le panneau coupe tout ce qui deborde). Un seul ouvert a la fois ; ferme par un clic en dehors, Echap, le choix d'un format,
+  // un defilement ou un redimensionnement (ecouteurs retires a la fermeture). Mobile : de la largeur du bouton ; laptop : largeur naturelle, au moins celle du bouton.
   const FORMATS_EXPORT = [["xlsx", "Excel"], ["pdf", "PDF"], ["csv", "CSV"]];
-  let menuExport = null; // { bouton, menu } du menu ouvert
-  // Mobile (retour 32) : le menu commun, ancre au bouton et de sa largeur, comme le choix d'une conversation. Laptop : le menu ci-dessous, inchange.
   const menuChoix = creerMenuChoix({ conteneur: document.body });
-  function fermerMenuExport() {
-    menuChoix.fermer();
-    if (!menuExport) return;
-    menuExport.menu.remove();
-    menuExport.bouton.setAttribute("aria-expanded", "false");
-    menuExport = null;
-  }
+  const fermerMenuExport = () => menuChoix.fermer();
   function ouvrirMenuExport(bouton, rapport, statut) {
-    if (ecranMobile()) {
-      menuChoix.ouvrir(bouton, { titre: "Exporter en", options: FORMATS_EXPORT.map(([valeur, libelle]) => ({ valeur, libelle })), surChoix: (format) => exporter(format, rapport, statut) });
-      return;
-    }
-    const menu = creer("div", "collision-menu");
-    menu.id = "quantitatifExportChoix";
-    menu.setAttribute("role", "menu");
-    menu.setAttribute("aria-label", "Format d'export");
-    menu.appendChild(creer("div", "collision-menu-titre", "Exporter en"));
-    FORMATS_EXPORT.forEach(([format, libelle]) => {
-      const option = creer("button", "collision-menu-option", libelle);
-      option.type = "button";
-      option.setAttribute("role", "menuitem");
-      option.setAttribute("aria-label", "Exporter en " + libelle);
-      option.addEventListener("click", () => { fermerMenuExport(); bouton.focus(); exporter(format, rapport, statut); });
-      menu.appendChild(option);
+    menuChoix.ouvrir(bouton, {
+      titre: "Exporter en",
+      id: "quantitatifExportChoix",
+      largeurAuto: !ecranMobile(),
+      fermerAuDefilement: true,
+      options: FORMATS_EXPORT.map(([valeur, libelle]) => ({ valeur, libelle })),
+      surChoix: (format) => exporter(format, rapport, statut),
     });
-    menu.style.visibility = "hidden";
-    document.body.appendChild(menu);
-    // Ancre sous le bouton si la place suffit, sinon au-dessus ; jamais hors de l'ecran (360 et 390 px compris).
-    const r = bouton.getBoundingClientRect();
-    const largeur = Math.max(menu.offsetWidth, r.width);
-    const dessous = window.innerHeight - r.bottom >= menu.offsetHeight + 8;
-    menu.style.top = (dessous ? r.bottom + 6 : Math.max(8, r.top - menu.offsetHeight - 6)) + "px";
-    menu.style.left = Math.max(8, Math.min(r.left, window.innerWidth - largeur - 8)) + "px";
-    menu.style.minWidth = largeur + "px";
-    menu.style.visibility = "";
-    bouton.setAttribute("aria-expanded", "true");
-    menuExport = { bouton, menu };
-    const premier = menu.querySelector(".collision-menu-option");
-    if (premier) premier.focus({ preventScroll: true });
   }
-  document.addEventListener("click", (e) => {
-    if (menuExport && !menuExport.menu.contains(e.target) && !menuExport.bouton.contains(e.target)) fermerMenuExport();
-  });
-  document.addEventListener("keydown", (e) => {
-    if (e.key !== "Escape" || !menuExport) return;
-    const { bouton } = menuExport;
-    fermerMenuExport();
-    bouton.focus();
-  });
-  window.addEventListener("resize", fermerMenuExport);
-  window.addEventListener("scroll", fermerMenuExport, true);
 
   // Mobile : une info secondaire passe dans un menu deroulant ferme ; sur laptop elle reste affichee telle quelle.
   function infoSecondaire(libelle, noeud) {
@@ -471,13 +429,13 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
     exports.setAttribute("aria-label", "Exporter ou supprimer ce rapport");
     const boutonExporter = creer("button", "qt-btn qt-btn-exporter", "Exporter");
     boutonExporter.type = "button";
-    boutonExporter.setAttribute("aria-haspopup", "menu");
+    boutonExporter.setAttribute("aria-haspopup", "listbox");
     boutonExporter.setAttribute("aria-expanded", "false");
     boutonExporter.setAttribute("aria-controls", "quantitatifExportChoix");
     boutonExporter.setAttribute("aria-label", "Exporter ce quantitatif");
     boutonExporter.appendChild(creer("span", "qt-chevron"));
     boutonExporter.addEventListener("click", () => {
-      const etaitOuvert = !!menuExport || menuChoix.ouvert();
+      const etaitOuvert = menuChoix.ouvert();
       fermerMenuExport();
       if (!etaitOuvert) ouvrirMenuExport(boutonExporter, rapport, statut);
     });

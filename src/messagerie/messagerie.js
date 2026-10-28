@@ -15,7 +15,7 @@ import {
 import { echapper, heureMinute, cleJour, libelleJour, heureCourte, initiales, prenom } from "./format.js";
 import { TYPES_CONVERSATION, conversationsDuType } from "./groupesConversations.js";
 import { imageVue, chargerBanque, attribuerBanque } from "./vuesMessagerie.js";
-import { creerMenuChoix } from "../menuChoix.js";
+import { creerMenuChoix, habillerSelect } from "../menuChoix.js";
 import { requeteMention, filtrerPersonnes, occurrences } from "./mentions.js";
 import { cleFil, cleMessage, lireCleMessage } from "../discussionsIAIndex.js"; // Discussions par commande IA (24/10)
 import { plagesCorrespondantes, htmlSurligne } from "../discussionsIATexte.js";
@@ -1000,9 +1000,8 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
 
   // Choix de la conversation du dialogue (29/10) : d'abord le TYPE (individuelle ou de groupe, deux boutons), puis la conversation dans un menu deroulant, rien de presélectionné
   // (« Choisir une conversation »). Laptop : <select> natif (inchange). Mobile (28/10) : menu personnalise ancre a son champ, de la meme largeur (src/menuChoix.js),
-  // a la place de la feuille systeme d'iOS. Les deux partagent les memes options : etatChoix[id] = { options: [{ valeur, libelle }], valeur, placeholder }.
+  // a la place de la feuille systeme d'iOS. Un <select> toujours rendu, habille par habillerSelect.
   const PLACEHOLDER_CONVERSATION = "Choisir une conversation";
-  const etatChoix = {};
   const menuChoix = creerMenuChoix({ conteneur: racine, fonds: () => [$("msgDialogue"), $("msgFeuille")].filter(Boolean) });
   function optionsConversations(typeConv, avecNonLus) {
     return conversationsDuType(conversations, typeConv).map((k) => {
@@ -1014,39 +1013,23 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
     return [{ valeur: "", libelle: "Conversation principale" }].concat(c.sujets.filter((s) => s.statut !== "clos").map((s) =>
       ({ valeur: s.id, libelle: "# " + s.titre + " (" + LIBELLES_STATUT[s.statut] + (s.nonLus ? ", " + s.nonLus + " non lus" : "") + ")" })));
   }
-  const libelleChoix = (e) => { const o = e.options.find((x) => x.valeur === e.valeur); return o ? o.libelle : e.placeholder; };
-  // Contenu du <select> (laptop) ou texte du champ declencheur (mobile).
-  function majChoix(id, options, valeur) {
-    const e = etatChoix[id];
-    e.options = options;
-    e.valeur = valeur;
+  // Contenu du <select> du choix (options et valeur) ; le bouton mobile qui le double (habillerSelect) suit par son observateur.
+  function majChoix(id, options, valeur, placeholder) {
     const el = $(id);
     if (!el) return;
-    if (el.tagName === "SELECT") {
-      el.innerHTML = (e.placeholder ? '<option value=""' + (valeur ? "" : " selected") + " disabled>" + echapper(e.placeholder) + "</option>" : "") +
-        options.map((o) => '<option value="' + echapper(o.valeur) + '"' + (o.valeur === valeur ? " selected" : "") + ">" + echapper(o.libelle) + "</option>").join("");
-    } else {
-      el.querySelector(".collision-trigger-val").textContent = libelleChoix(e);
-    }
+    el.innerHTML = (placeholder ? '<option value=""' + (valeur ? "" : " selected") + " disabled>" + echapper(placeholder) + "</option>" : "") +
+      options.map((o) => '<option value="' + echapper(o.valeur) + '"' + (o.valeur === valeur ? " selected" : "") + ">" + echapper(o.libelle) + "</option>").join("");
   }
+  // Toujours un <select> (source de verite) ; sous 768 px, habillerSelect le remplace par le menu commun (CSS), laptop inchange.
   function htmlChoix(id, act, libelleAria, titre, placeholder, options, valeur, masque) {
-    etatChoix[id] = { options, valeur, placeholder, titre };
-    if (!mobile()) {
-      return '<select id="' + id + '" data-act="' + act + '" aria-label="' + libelleAria + '"' + (masque ? " hidden" : "") + ">" +
-        (placeholder ? '<option value=""' + (valeur ? "" : " selected") + " disabled>" + echapper(placeholder) + "</option>" : "") +
-        options.map((o) => '<option value="' + echapper(o.valeur) + '"' + (o.valeur === valeur ? " selected" : "") + ">" + echapper(o.libelle) + "</option>").join("") + "</select>";
-    }
-    return '<button type="button" id="' + id + '" class="collision-trigger msg-choix-trigger" data-act="menu-choix" data-choix="' + act + '" aria-haspopup="listbox" aria-expanded="false" aria-label="' +
-      libelleAria + '"' + (masque ? " hidden" : "") + '><span class="collision-trigger-val">' + echapper(libelleChoix(etatChoix[id])) + '</span><span class="collision-trigger-chevron" aria-hidden="true"></span></button>';
+    return '<select id="' + id + '" data-act="' + act + '" data-titre="' + echapper(titre) + '" aria-label="' + libelleAria + '"' + (masque ? " hidden" : "") + ">" +
+      (placeholder ? '<option value=""' + (valeur ? "" : " selected") + " disabled>" + echapper(placeholder) + "</option>" : "") +
+      options.map((o) => '<option value="' + echapper(o.valeur) + '"' + (o.valeur === valeur ? " selected" : "") + ">" + echapper(o.libelle) + "</option>").join("") + "</select>";
   }
-  function ouvrirMenuChoix(declencheur) {
-    const e = etatChoix[declencheur.id];
-    if (!e) return;
-    menuChoix.ouvrir(declencheur, { titre: e.titre, options: e.options, valeur: e.valeur, surChoix: (valeur) => {
-      e.valeur = valeur;
-      declencheur.querySelector(".collision-trigger-val").textContent = libelleChoix(e);
-      appliquerChoix(declencheur.dataset.choix, valeur);
-    } });
+  // Apres chaque (re)dessin des choix du dialogue : un seul menu ouvert a la fois, les anciens <select> sont partis avec le HTML remplace.
+  function habillerChoix(zone) {
+    menuChoix.fermer();
+    zone.querySelectorAll("select[data-titre]").forEach((sel) => habillerSelect(sel, menuChoix, { titre: sel.dataset.titre }));
   }
   function appliquerChoix(act, valeur) {
     if (act === "choisir-conv" && valeur) choisirConversationDialogue(valeur);
@@ -1117,6 +1100,7 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
     $("msgDialogue").dataset.typeConv = "";
     $("msgDialogue").dataset.sujetAjout = "";
     $("msgDialogue").dataset.choix = selection.choixConversation ? "1" : "";
+    habillerChoix($("msgDialogue"));
     vueDialogue = selection.vue;
     activerDialogueSujet("sujet");
   }
@@ -1132,6 +1116,7 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
     boite.dataset.sujetAjout = "";
     bascule.querySelectorAll('[data-act="mode-dialogue"]').forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.v === mode)));
     carte.querySelector(".msg-zone").innerHTML = htmlZoneDialogue(mode, boite.dataset.convId, vueDialogue, true, boite.dataset.typeConv);
+    habillerChoix(carte);
     activerDialogueSujet(mode);
   }
 
@@ -1142,7 +1127,7 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
     boite.dataset.convId = "";
     boite.querySelectorAll('[data-act="type-conv"]').forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.v === type)));
     $("msgChoixConv").hidden = false;
-    majChoix("msgChoixConv", optionsConversations(type, !!$("msgAjSujet")), "");
+    majChoix("msgChoixConv", optionsConversations(type, !!$("msgAjSujet")), "", PLACEHOLDER_CONVERSATION);
     majApresChoixConversation();
   }
 
@@ -1159,7 +1144,7 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
     boite.dataset.sujetAjout = "";
     if ($("msgAjSujet")) {
       $("msgAjOu").hidden = !c;
-      majChoix("msgAjSujet", c ? optionsSujets(c) : [], "");
+      majChoix("msgAjSujet", c ? optionsSujets(c) : [], "", "");
     } else {
       rendreTags(boite.dataset.convId);
     }
@@ -1707,7 +1692,6 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
         break;
       }
       case "statut-menu": ouvrirMenuStatut(cible); break;
-      case "menu-choix": ouvrirMenuChoix(cible); break;
       case "choisir-statut": choisirStatut(cible.dataset.valeur); break;
       case "rouvrir": rouvrir(cur.c, cur.sujet, instant()); rafraichirApresChangement(); break;
       case "historique": ouvrirHistorique(); break;

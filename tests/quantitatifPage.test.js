@@ -93,11 +93,11 @@ test("page : « Retour » depuis un quantitatif rouvert de l'historique ramene a
 });
 
 test("29/10 : formats d'export en vrai menu deroulant (memes classes que Priorite / Statut), « Retour » sans ligne dediee sur mobile", () => {
-  assert.match(js, /creer\("div", "collision-menu"\)/);
-  assert.match(js, /collision-menu-option/);
+  assert.match(js, /creerMenuChoix\(\{ conteneur: document\.body \}\)/); // menu commun (src/menuChoix.js)
+  assert.match(js, /fermerAuDefilement: true/);
   assert.doesNotMatch(js, /qt-exports-choix/);
-  assert.match(js, /e\.key !== "Escape" \|\| !menuExport/); // Echap ferme
-  assert.match(js, /!menuExport\.menu\.contains\(e\.target\)/); // clic exterieur ferme
+  assert.doesNotMatch(js, /document\.addEventListener\("(click|keydown)"/); // plus d'ecouteur document jamais retire : Echap et clic exterieur sont dans menuChoix
+  assert.doesNotMatch(js, /menuExport\b/);
   assert.match(js, /boutonRetour\.setAttribute\("aria-label", "Retour"\)/);
   assert.match(js, /cible\.prepend\(boutonRetour\)/);
   assert.match(css, /\.qt-barre:empty \{ display: none; \}/);

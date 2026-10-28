@@ -91,9 +91,10 @@ test("M17 : en mode resultat le panneau IA cede la place a la liste, et Â« Oui Â
   assert.match(montage, /rapportEnAttente && !rapportVue\.ouvert\(\) && window\.matchMedia\("\(max-width: 768px\)"\)\.matches\) rapportVue\.ouvrir\(rapportEnAttente\)/);
 });
 
-test("M20/M21 : menus du dialogue personnalises sur mobile seulement, premier message sur 2 lignes qui grandit", () => {
-  assert.match(js, /if \(!mobile\(\)\) \{\s*return '<select id="'/); // laptop : <select> natif inchange
-  assert.match(js, /data-act="menu-choix"/);
+test("M20/M21 : menus du dialogue = <select> toujours rendu, habille par habillerSelect (menu commun sur mobile), premier message sur 2 lignes qui grandit", () => {
+  assert.match(js, /function htmlChoix[^]*?return '<select id="'/); // un seul <select>, laptop inchange
+  assert.match(js, /habillerSelect\(sel, menuChoix, \{ titre: sel\.dataset\.titre \}\)/);
+  assert.doesNotMatch(js, /data-act="menu-choix"|etatChoix/); // plus de doublon fait a la main
   assert.match(js, /<textarea id="msgNsMessage" rows="2">/);
   assert.match(css, /#msgNsMessage\s*\{[^}]*max-height:\s*40vh/);
 });
