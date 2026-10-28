@@ -222,8 +222,9 @@
 .p3d-btn-retour { flex: none; }
 .p3d-btn-supprimer { flex: none; color: #f85149; border-color: rgba(248, 81, 73, 0.5); }
 .p3d-btn-supprimer, .p3d-bandeau .p3d-btn-danger { margin-top: 0; }
-.p3d-actions-3d { flex: none; }
+.p3d-actions-3d { flex: none; flex-wrap: nowrap; }
 @media (max-width: 768px) {
+  .p3d-nom-projet { flex: 1 1 0; max-width: none; padding: 0 8px; font-size: 13px; }
   .p3d-projets { padding: 12px; }
   .p3d-projets-action { padding: 24px 12px; }
   .p3d-retour-texte, .p3d-btn-supprimer span { display: none; }
@@ -231,6 +232,6 @@
   .p3d-btn-supprimer { font-size: 12.5px; }
 }
 @media (pointer: coarse) {
-  .p3d-nom-projet { min-height: 44px; font-size: 16px; }
+  .p3d-nom-projet { min-height: 44px; }
   .p3d-btn-grand { min-height: 64px; }
 }

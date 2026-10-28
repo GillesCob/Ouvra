@@ -37,6 +37,11 @@ export function entreeValide(e) {
     && nombreFini(e.l) && nombreFini(e.h) && e.l > 0 && e.h > 0 && validerModele(e.modele).valide;
 }
 
+// Detail affiche sur la carte d'un projet : les pieces seulement (retour 8 de Gilles, 28/10).
+export function detailProjet({ pieces }) {
+  return pieces > 0 ? `${pieces} pièce${pieces > 1 ? "s" : ""}` : "Aucune pièce";
+}
+
 const resume = (e) => ({
   id: e.id, nom: e.nom, creeLe: e.creeLe, modifieLe: e.modifieLe, exemple: Boolean(e.exemple),
   murs: e.modele.murs.length, pieces: (e.modele.pieces || []).length, vignette: typeof e.vignette === "string" ? e.vignette : null

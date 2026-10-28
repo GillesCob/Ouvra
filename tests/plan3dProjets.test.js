@@ -1,7 +1,7 @@
 // 2D -> 3D (28/10) : stockage des projets (src/plan3d/projets.js) : vide, corrompu, quota, suppression, renommage, limite.
 import test from "node:test";
 import assert from "node:assert/strict";
-import { creerProjets, nettoyerNom, nomDepuisFichier, CLE_PROJETS, PROJETS_MAX } from "../src/plan3d/projets.js";
+import { creerProjets, nettoyerNom, nomDepuisFichier, detailProjet, CLE_PROJETS, PROJETS_MAX } from "../src/plan3d/projets.js";
 import { creerDepotLocal } from "../src/quantitatifHistorique.js";
 import { creerModeleVide } from "../src/plan3d/modele.js";
 import { creerDepotImagesIdb } from "../src/plan3d/projetsImages.js";
@@ -174,4 +174,10 @@ test("depot IndexedDB absent : lire null, ecrire et supprimer false, sans except
   assert.equal(await d.lire("a"), null);
   assert.equal(await d.ecrire("a", "b"), false);
   assert.equal(await d.supprimer("a"), false);
+});
+
+test("detail d'une carte : pieces seulement, jamais de murs", () => {
+  assert.equal(detailProjet({ pieces: 0, murs: 12 }), "Aucune pièce");
+  assert.equal(detailProjet({ pieces: 1 }), "1 pièce");
+  assert.equal(detailProjet({ pieces: 7, murs: 41 }), "7 pièces");
 });

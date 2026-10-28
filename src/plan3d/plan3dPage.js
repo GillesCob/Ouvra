@@ -13,7 +13,7 @@ import { creerEditeur2d } from "./editeur2d.js";
 import { lireFichierPlan, libererFond } from "./importPlan.js";
 import { genererIfc } from "./exportIfc.js";
 import { planchePiece } from "./texteSol.js";
-import { creerProjets, nomDepuisFichier, nettoyerNom, NOM_EXEMPLE, PROJETS_MAX } from "./projets.js";
+import { creerProjets, nomDepuisFichier, nettoyerNom, detailProjet, NOM_EXEMPLE, PROJETS_MAX } from "./projets.js";
 import { creerDepotImagesIdb } from "./projetsImages.js";
 import { creerDepotLocal } from "../quantitatifHistorique.js";
 import { dateRelative } from "../quantitatifRapport.js";
@@ -102,8 +102,6 @@ const cm = (m) => Math.round(m * 1000) / 10;
 const m2 = (v) => `${v.toFixed(2).replace(".", ",")} m²`;
 const metres = (v) => `${cm(v)} cm`;
 
-const pluriel = (n, mot) => `${n} ${mot}${n > 1 ? "s" : ""}`;
-
 export function creerPlan3dPage({ racine, voirDansViewer = null, projets = creerProjets({ depotMeta: creerDepotLocal(null, "ouvra-plan3d-projets"), depotImages: creerDepotImagesIdb() }) }) {
   let modele = creerModeleVide();
   let projetId = null; // projet ouvert dans l'editeur, null = liste des projets
@@ -149,9 +147,9 @@ export function creerPlan3dPage({ racine, voirDansViewer = null, projets = creer
   const btnVoir3d = bouton("Voir en 3D", { ico: "cube" }); // style neutre comme les autres boutons : le vert (accent) se lirait comme « selectionne »
   btnVoir3d.title = "Ouvre la maquette dans le Viewer d'Ouvra";
   btnVoir3d.setAttribute("aria-label", "Voir la maquette 3D dans le Viewer");
-  zonePlan.append(btnRetour, champNom, selectPage, btnSupprimer, fichierInput);
+  zonePlan.append(btnRetour, champNom, selectPage, fichierInput);
   const zone3d = creer("div", "p3d-actions p3d-actions-3d");
-  zone3d.append(btnVoir3d);
+  zone3d.append(btnVoir3d, btnSupprimer); // « Supprimer » en dernier, tout a droite
   entete.append(zonePlan, zone3d);
   page.appendChild(entete);
 
@@ -173,7 +171,6 @@ export function creerPlan3dPage({ racine, voirDansViewer = null, projets = creer
   const listeTitre = creer("h3", "p3d-projets-titre", "Projets en cours");
   const listeCompte = creer("span", "p3d-pastille");
   listeTete.append(listeTitre, listeCompte);
-  listeTete.hidden = true;
   const listeVide = creer("p", "p3d-projets-vide", "Un projet commence par un plan : PDF, PNG ou JPEG. Il est gardé sur cet appareil et rouvrable ici.");
   const liste = creer("ul", "p3d-projets-liste");
   projetsCol.append(listeAction, listeMessage, listeAvertissement, listeTete, liste, listeVide);
@@ -821,7 +818,6 @@ export function creerPlan3dPage({ racine, voirDansViewer = null, projets = creer
   async function rafraichirListe() {
     const entrees = await projets.lister();
     listeCompte.textContent = String(entrees.length);
-    listeTete.hidden = entrees.length === 0;
     listeVide.hidden = entrees.length > 0;
     listeAvertissement.textContent = projets.persistant() ? "" : MSG_STOCKAGE;
     listeAvertissement.hidden = projets.persistant();
@@ -838,8 +834,7 @@ export function creerPlan3dPage({ racine, voirDansViewer = null, projets = creer
       const quand = creer("time", "p3d-projet-date", dateRelative(e.modifieLe));
       quand.dateTime = e.modifieLe;
       quand.title = new Date(e.modifieLe).toLocaleString("fr-FR");
-      const detail = e.murs === 0 && e.pieces === 0 ? "Aucun mur" : `${pluriel(e.murs, "mur")} · ${pluriel(e.pieces, "pièce")}`;
-      textes.append(creer("span", "p3d-projet-nom", e.nom), quand, creer("span", "p3d-projet-detail", detail));
+      textes.append(creer("span", "p3d-projet-nom", e.nom), quand, creer("span", "p3d-projet-detail", detailProjet(e)));
       carte.append(vignette, textes);
       carte.addEventListener("click", () => ouvrirProjet(e.id));
       li.appendChild(carte);
