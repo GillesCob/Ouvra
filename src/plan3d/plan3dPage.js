@@ -479,6 +479,7 @@ export function creerPlan3dPage({ racine, voirDansViewer = null, projets = creer
   function dessinerPanneau(conserverFocus = false) {
     const actif = document.activeElement;
     if (conserverFocus && actif && panneau.contains(actif) && actif.tagName === "INPUT") return; // ne pas ecraser une saisie en cours
+    menuChoix.fermer(); // un menu ouvert sur un champ du panneau ne survit pas a la reconstruction (son declencheur disparait)
     panneau.replaceChildren();
     panneau.hidden = false;
     panneau.dataset.sel = selection || calibration ? "oui" : "non"; // sur ecran etroit, la carte n'apparait que s'il y a quelque chose a modifier
