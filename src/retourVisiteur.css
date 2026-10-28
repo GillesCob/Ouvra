@@ -18,9 +18,8 @@
 }
 
 .retour-titre { margin: 0; font-size: 18px; }
-.retour-intro { margin: 0; font-size: 13.5px; line-height: 1.4; color: var(--muted); }
 .retour-formulaire { display: flex; flex-direction: column; gap: 12px; }
-.retour-formulaire[hidden], .retour-intro[hidden], .retour-merci[hidden] { display: none; }
+.retour-formulaire[hidden], .retour-merci[hidden] { display: none; }
 /* Choix Bug / Idee : meme animation et memes valeurs que les onglets de la barre de navigation (#navbarThumb et .nav-link de src/style.css), valides le 28/10 :
    une pastille accent translucide glisse sous le choix actif ; le texte du choix actif passe de --muted a --text. */
 .retour-types { position: relative; display: flex; gap: 4px; }

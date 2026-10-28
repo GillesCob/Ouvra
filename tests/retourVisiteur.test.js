@@ -97,3 +97,10 @@ test("libelle : « Bug ou idée ? » (les deux choix de la modale), titre « Un 
     assert.equal(texte.includes("Faire un " + "retour"), false, f + " : nom intermediaire");
   }
 });
+
+test("modale : plus de phrase d'introduction sous le titre (retiree le 28/10, demande de Gilles)", () => {
+  const code = lire("src/retourVisiteur.js");
+  assert.equal(code.includes("retour-intro"), false);
+  assert.equal(code.includes("dis-moi ce que tu as vu"), false);
+  assert.equal(lire("src/retourVisiteur.css").includes("retour-intro"), false);
+});

@@ -73,7 +73,6 @@ export function creerRetourVisiteur({ declencheurs, pageCourante }) {
     carte.setAttribute("aria-labelledby", "retourTitre");
     const titre = creer("h2", "retour-titre", "Un bug, une idée ?");
     titre.id = "retourTitre";
-    const intro = creer("p", "retour-intro", "Un bug, une idée : dis-moi ce que tu as vu. Ça m'aide à améliorer Ouvra.");
 
     const formulaire = creer("form", "retour-formulaire");
     formulaire.noValidate = true;
@@ -135,10 +134,10 @@ export function creerRetourVisiteur({ declencheurs, pageCourante }) {
     fermerMerci.type = "button";
     merci.append(texteMerci, fermerMerci);
 
-    carte.append(titre, intro, formulaire, merci);
+    carte.append(titre, formulaire, merci);
     fond.appendChild(carte);
     document.body.appendChild(fond);
-    champs = { carte, intro, formulaire, radios, message, compteur, contact, piege, etat, envoyer, merci, fermerMerci, groupe, pastille };
+    champs = { carte, formulaire, radios, message, compteur, contact, piege, etat, envoyer, merci, fermerMerci, groupe, pastille };
 
     // Le choix change : le texte d'aide suit, la pastille glisse sous le nouveau choix.
     Object.values(radios).forEach((radio) => radio.addEventListener("change", () => {
@@ -207,7 +206,6 @@ export function creerRetourVisiteur({ declencheurs, pageCourante }) {
     if (!ouverte) return; // fermee pendant l'envoi : rien a afficher
     if (resultat.ok) {
       champs.formulaire.hidden = true;
-      champs.intro.hidden = true;
       champs.merci.hidden = false;
       champs.fermerMerci.focus({ preventScroll: true });
     } else {
@@ -218,7 +216,6 @@ export function creerRetourVisiteur({ declencheurs, pageCourante }) {
   function ouvrir() {
     if (!fond) construire();
     champs.formulaire.hidden = false;
-    champs.intro.hidden = false;
     champs.merci.hidden = true;
     champs.message.value = "";
     champs.contact.value = "";
