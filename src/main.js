@@ -2231,6 +2231,13 @@ function vueDepartCentree() {
 // du plan 2D -> 3D = recentrer sur elle seule). Toutes cochees : la vue de depart de la maquette, comme avant. En vue a plat, la vue a plat est refaite.
 // Cadrage de « Recentrer » sur la page Viewer (hors vue a plat et hors cible propre a Collision / Discussions), partage avec la commande IA du Viewer.
 function recentrerSurMaquettes() {
+// Pose centrant une boite dans la zone 3D en gardant la direction de regard actuelle (commandes IA du Viewer) ; null si le cadrage centre n'est pas possible.
+function poseCentreeSurBoiteActuelle(boite) {
+  const actuelle = { eye: viewer.camera.eye.slice(), look: viewer.camera.look.slice(), up: viewer.camera.up.slice() };
+  const pose = poseCentreeSurBoite(actuelle, boite);
+  return pose === actuelle ? null : pose;
+}
+
   const chargees = MAQUETTES.filter((m) => m.model);
   const cochees = chargees.filter((m) => m.shown);
   // Avec la maquette du plan dans la liste, meme toutes cochees : la vue de depart est celle de l'hopital et ne montrerait pas le plan.
@@ -6469,6 +6476,7 @@ function moteurCommandesViewer() {
       exclus: new Set(HOSPITAL_MISPLACED_RAILING_IDS),
       zones: zonesCommandes,
       apres: synchroniserDrawerApresCommande,
+      poseCentree: poseCentreeSurBoiteActuelle,
       registre: REGISTRE
     });
   }

@@ -110,10 +110,13 @@ function typeIfcDe(contexte, id) {
   return meta ? meta.type : "";
 }
 
-function cadrerSur({ scene, cameraFlight }, aabb) {
+// Vol de camera vers une boite. poseCentree(aabb) (fournie par le Viewer, src/cadrageCentre.js) donne la pose qui centre la boite dans la zone 3D avec une marge
+// serree ; sans elle (ou si elle ne sait pas cadrer), cadrage par defaut de xeokit, plus large.
+export function volerVers({ cameraFlight, poseCentree }, aabb) {
   if (!cameraFlight || !aabb) return;
   cameraFlight.cancel();
-  cameraFlight.flyTo({ aabb, duration: DUREE_VOL_S });
+  const pose = poseCentree ? poseCentree(aabb) : null;
+  cameraFlight.flyTo(pose ? { ...pose, duration: DUREE_VOL_S } : { aabb, duration: DUREE_VOL_S });
 }
 
 // ---------- isoler (comportement d'origine) ----------
@@ -128,7 +131,8 @@ PRESENTATIONS.enregistrer({
   composition: "restreint",
   effetsPropres: true,
   relire: (parametres, criteres) => (!parametres.isoler && parametres.surbrillance ? "Mettre en évidence " : "Afficher ") + criteres,
-  appliquer(plan, { scene, cameraFlight }, parametres) {
+  appliquer(plan, contexte, parametres) {
+    const { scene, cameraFlight } = contexte;
     const trouves = plan.ids;
     const dejaVisibles = new Set(scene.visibleObjectIds);
     const gardes = new Set(trouves);
@@ -138,10 +142,7 @@ PRESENTATIONS.enregistrer({
     scene.setObjectsVisible(trouves, true);
     const journal = creerJournal(scene);
     if (parametres.surbrillance) journal.surbrillance(trouves, true); // l'etat d'origine de chaque element est retenu pour l'annulation
-    if (parametres.cadrer && cameraFlight) {
-      cameraFlight.cancel();
-      cameraFlight.flyTo({ aabb: scene.getAABB(trouves), duration: DUREE_VOL_S });
-    }
+    if (parametres.cadrer && cameraFlight) volerVers(contexte, scene.getAABB(trouves));
     return () => {
       if (masques.length) scene.setObjectsVisible(masques, true);
       if (reveles.length) scene.setObjectsVisible(reveles, false);
