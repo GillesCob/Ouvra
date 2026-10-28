@@ -5,9 +5,11 @@
 //   monter(messagerie)   appele une fois le squelette de la messagerie construit (l'onglet #discussionsIABtn et le panneau #msgIAPanneau existent alors)
 //   ouvrirSaisie()   l'onglet IA vient d'etre choisi : ouvre la modale de demande en vocal
 //   action("tout" | "rapport")   boutons de la liste filtree : « Tout réafficher » et « Voir le rapport »
+//   effacerRetour()   efface le bandeau « ← Retour au rapport » (appele par main.js quand on quitte la page Discussions)
 
 import { creerDiscussionsIA } from "./discussionsIA.js";
 import { creerDiscussionsBandeau } from "./discussionsIABandeau.js";
+import { creerRetourContexte } from "./retourContexte.js";
 import { creerRapportVue } from "./discussionsIARapportVue.js";
 import { creerFlux } from "./discussionsIAFlux.js";
 import { creerPipeline } from "./discussionsIAPipeline.js";
@@ -43,6 +45,7 @@ export function creerDiscussionsIAMontage() {
   let bandeau = null;
   let rapportVue = null;
   let ia = null;
+  let retourRapport = null;
 
   function monter(messagerieMontee) {
     messagerie = messagerieMontee;
@@ -54,7 +57,18 @@ export function creerDiscussionsIAMontage() {
     rapportVue = creerRapportVue({
       texteRapport: rapportEnTexte,
       exporterPdf: async (rapport) => (await import("./discussionsIARapportPdf.js")).exporterRapportPdf(rapport, { telecharger }),
-      surSource: (mk) => messagerie.montrerMessageIA(mk)
+      // Une source du rapport ouvre la discussion au message cite ; le bandeau « ← Retour au rapport » (meme principe que « ← Retour a la conversation » du Viewer)
+      // rouvre le MEME rapport pour continuer la verification des autres blocs.
+      surSource: (mk, rapport) => {
+        messagerie.montrerMessageIA(mk);
+        retourRapport.montrer({ libelle: "Retour au rapport", surRetour: () => rapportVue.ouvrir(rapport) });
+      }
+    });
+    retourRapport = creerRetourContexte({
+      id: "discussionsRapportBandeauRetour",
+      classeCorps: "disc-rapport-retour-actif",
+      ariaLabel: "Retour au rapport",
+      autresClasses: ["msg-retour-actif", "regles-retour-actif", "quantitatif-retour-actif", "plan3d-retour-actif", "discussions-confirm-actif"] // un seul bandeau a la fois : le plus recent gagne
     });
     bandeau = creerDiscussionsBandeau({
       retourFocus: bouton,
@@ -115,5 +129,10 @@ export function creerDiscussionsIAMontage() {
     }
   }
 
-  return { monter, action, ouvrirSaisie };
+  // Quitter la page Discussions : le bandeau « Retour au rapport » ne vit que sur cette page.
+  function effacerRetour() {
+    if (retourRapport) retourRapport.effacer();
+  }
+
+  return { monter, action, ouvrirSaisie, effacerRetour };
 }

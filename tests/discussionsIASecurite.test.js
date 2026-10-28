@@ -29,9 +29,9 @@ test("liste filtree de la messagerie : tout texte variable passe par echapper() 
 test("chaque source du rapport porte la cle de SON message (data-mk) et la remet a la messagerie", () => {
   const vue = lire("src/discussionsIARapportVue.js");
   assert.ok(vue.includes("b.dataset.mk = s.mk"));
-  assert.ok(vue.includes("closest(\"[data-mk]\")") && vue.includes("surSource(mk)"));
+  assert.ok(vue.includes("closest(\"[data-mk]\")") && vue.includes("surSource(mk, rapportCourant)"));
   const montage = lire("src/discussionsIAMontage.js");
-  assert.ok(montage.includes("surSource: (mk) => messagerie.montrerMessageIA(mk)"));
+  assert.ok(montage.includes("surSource: (mk, rapport) => {") && montage.includes("messagerie.montrerMessageIA(mk)"));
   assert.ok(lire("src/messagerie/messagerie.js").includes("'[data-mk=\"' + CSS.escape(mk) + '\"]'"));
 });
 

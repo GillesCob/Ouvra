@@ -137,3 +137,20 @@ body.discussions-confirm-actif .disc-rapport-fond { padding-top: calc(52px + var
   .disc-rapport-source { min-height: 44px; }
   body.discussions-confirm-actif .disc-rapport-fond { padding-top: calc(52px + var(--discussions-bandeau-h, 44px)); }
 }
+
+/* ---------- Bandeau « <- Retour au rapport » (28/10) ---------- */
+/* Meme composant (src/retourContexte.js) et meme placement que #msgBandeauRetour (messagerie.css) : sous la navbar (52 px), 44 px de haut, z-index 55. La page
+   Discussions descend d'autant, comme pour le bandeau « Est-ce bien votre demande ? » (discussions-confirm-actif, plus haut). */
+#discussionsRapportBandeauRetour {
+  position: fixed; top: 52px; left: 0; right: 0; z-index: 55; display: flex; align-items: center; justify-content: center; flex-wrap: nowrap;
+  height: 44px; box-sizing: border-box; padding: 2px 12px; background: var(--surface); border-bottom: 1px solid var(--border);
+  color: var(--text); font-size: 13px; font-weight: 600;
+}
+#discussionsRapportBandeauRetour[hidden] { display: none !important; }
+#discussionsRapportBandeauRetour button {
+  flex: none; white-space: nowrap; min-height: 40px; border-radius: 8px; padding: 6px 16px; font: inherit; font-weight: 700; cursor: pointer;
+  border: 1px solid var(--border); background: none; color: var(--text); -webkit-tap-highlight-color: transparent;
+}
+#discussionsRapportBandeauRetour button:focus-visible { outline: 2px solid var(--text); outline-offset: 1px; }
+body.disc-rapport-retour-actif #view-discussions { padding-top: 44px; box-sizing: border-box; }
+@media (max-width: 768px) { #discussionsRapportBandeauRetour { padding: 0 12px; } #discussionsRapportBandeauRetour button { min-height: 44px; } }

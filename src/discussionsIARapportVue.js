@@ -10,7 +10,7 @@
 // Accessibilite : role « dialog » modal, nom = le titre du rapport, focus sur « Fermer » a l'ouverture, tabulation gardee dans le panneau, Echap ferme,
 // le focus revient la ou il etait.
 //
-// Module sans dependance a main.js : surSource(mk) ouvre le message (apres la fermeture du panneau) ; texteRapport(rapport) : version texte a copier ;
+// Module sans dependance a main.js : surSource(mk, rapport) ouvre le message (apres la fermeture du panneau) ; texteRapport(rapport) : version texte a copier ;
 // exporterPdf(rapport) : telecharge le PDF (promesse).
 
 import "./reglesIA.css";
@@ -88,7 +88,7 @@ export function creerRapportVue({ surSource, texteRapport, exporterPdf }) {
       if (!source) return;
       const mk = source.dataset.mk;
       fermer(false);
-      surSource(mk);
+      surSource(mk, rapportCourant); // le rapport en cours : « Retour au rapport » le rouvre tel quel
     });
     document.addEventListener("keydown", (e) => {
       if (fond.hidden) return;
