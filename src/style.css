@@ -3417,3 +3417,13 @@ button.disc-pin:hover { transform: scale(1.18); box-shadow: 0 0 0 3px color-mix(
 
 /* Progression de la fermeture du bandeau de collision (mobile, 22/10) : variable animable par WAAPI. */
 @property --fp { syntax: "<number>"; inherits: true; initial-value: 0; }
+
+/* Survol des boutons oublies (28/10, Gilles) : memes motifs que les boutons de l'IA (bouton plein : teinte plus claire, bouton neutre : bordure accent, croix : texte plein). */
+@media (hover: hover) and (pointer: fine) {
+  #docModalDownload:not(:disabled):hover, #downloadModalOk:not(:disabled):hover, #newDiscussionForm > button[type="submit"]:not(:disabled):hover, .landing-part-btn:hover,
+  .disc-vide button:hover, #discussionReplyForm button:not(:disabled):hover, .fil-reponse button:not(:disabled):hover { background: color-mix(in srgb, var(--accent) 86%, #fff); }
+  #docModalClose:hover, #newDiscussionClose:hover { color: var(--text); }
+  #infoPanelCollapse:hover, .thread-toggle-btn:not(.active):hover { border-color: var(--accent); }
+  .collision-niveau-btn:not([aria-pressed="true"]):hover { color: var(--accent); }
+  #collisionFiltre button:not([aria-pressed="true"]):hover { color: var(--text); }
+}

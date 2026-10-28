@@ -65,7 +65,7 @@ export function creerPipeline({ lireIndex, comprendre, analyser, maintenant = Da
       return conclureEnRapport(analyse, { table, selection, index, commande, relecture });
     } catch {
       // Filet : une erreur inattendue ne doit jamais bloquer la saisie. Le detail n'est pas affiche (il pourrait contenir du texte de message).
-      return { ok: false, message: "La demande n'a pas pu être traitée. Réessaie ou choisis une phrase d'exemple." };
+      return { ok: false, message: "La demande n'a pas pu être traitée. Réessayer ou choisir une phrase d'exemple." };
     }
   }
 

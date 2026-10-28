@@ -16,6 +16,7 @@
 import "./reglesIA.css";
 import "./discussionsIA.css";
 import { dateDuRapport, perimetreDe, libelleDecision, nomsEnPhrase, MESSAGE_AUCUN_DESACCORD, MESSAGE_CONTEXTE_ABSENT, MENTION_NON_CONFIRME } from "./discussionsIARapportFormat.js";
+import { preparerOngletPdf } from "./discussionsIARapportOnglet.js";
 
 export const LOGO_RAPPORT = "/images/ouvra-logo.svg";
 
@@ -237,8 +238,7 @@ export function creerRapportVue({ surSource, texteRapport, exporterPdf }) {
     const onglet = window.open("", "_blank");
     if (onglet) {
       onglet.opener = null; // l'onglet du PDF n'a aucun lien avec la page d'Ouvra
-      onglet.document.title = "Rapport Ouvra";
-      onglet.document.body.textContent = "Préparation du PDF…";
+      preparerOngletPdf(onglet); // titre + logo Ouvra dans l'onglet (src/discussionsIARapportOnglet.js)
     }
     try {
       const livre = await exporterPdf(rapportCourant, onglet);

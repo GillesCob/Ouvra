@@ -8,15 +8,16 @@ import { validerRegle } from "./reglesCollision.js";
 export const DELAI_MS = 35000; // un peu plus que le delai du relais (25 s) pour recevoir sa reponse plutot que de couper avant
 const PORTEES_IA = ["un_des_deux", "les_deux"];
 const LISTE_DU_CHAMP = { typeIfc: "typesIfc", niveau: "niveaux", maquette: "maquettes", nom: "noms" };
-const MESSAGE_INDISPONIBLE = "L'IA est injoignable pour le moment. Choisis une phrase d'exemple.";
-const MESSAGE_DELAI = "L'IA met trop de temps à répondre. Réessaie ou choisis une phrase d'exemple.";
+const MESSAGE_INDISPONIBLE = "L'IA est injoignable pour le moment. Choisir une phrase d'exemple.";
+const MESSAGE_DELAI = "L'IA met trop de temps à répondre. Réessayer ou choisir une phrase d'exemple.";
 const indisponible = () => ({ ok: false, code: "ia_indisponible", message: MESSAGE_INDISPONIBLE });
 
 function regleAcceptable(regle, valeurs) {
   if (!regle || !regle.filtre || !PORTEES_IA.includes(regle.filtre.portee)) return false;
   const verdict = validerRegle(regle, { priorite: valeurs.priorite, statut: valeurs.statut });
   if (!verdict.ok) return false;
-  return regle.filtre.criteres.every((c) => (valeurs[LISTE_DU_CHAMP[c.champ]] || []).includes(c.contient));
+  if (!regle.filtre.criteres.every((c) => (valeurs[LISTE_DU_CHAMP[c.champ]] || []).includes(c.contient))) return false;
+  return (regle.filtre.numeros || []).every((n) => (valeurs.numeros || []).includes(n)); // un numero absent de la liste envoyee n'est jamais accepte
 }
 
 export async function demanderRegle({ phrase, valeurs, aujourdhui }, { fetch: appel = (...a) => globalThis.fetch(...a), delaiMs = DELAI_MS, url = "/api/regle" } = {}) {

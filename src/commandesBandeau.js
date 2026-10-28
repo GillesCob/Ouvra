@@ -18,7 +18,8 @@ const QUESTION = "Est-ce bien votre demande ?";
 const VARIABLE_HAUTEUR = "--commandes-bandeau-h";
 const CLASSE_ACTIF = "commandes-confirm-actif";
 
-export function creerCommandesBandeau({ surOui, surNon, conteneur = null, retourFocus = null }) {
+// Reutilise par la page Quantitatif (28/10) : id, variable et classe du body changent (id = « quantitatifBandeau »), le squelette, le texte, le focus et le clavier restent les memes.
+export function creerCommandesBandeau({ surOui, surNon, conteneur = null, retourFocus = null, id = "commandesBandeau", variable = VARIABLE_HAUTEUR, classeActif = CLASSE_ACTIF }) {
   let racine = null;
   let texte = null;
   let observateur = null;
@@ -40,18 +41,18 @@ export function creerCommandesBandeau({ surOui, surNon, conteneur = null, retour
   function assurerSquelette() {
     if (racine) return;
     racine = creer("div");
-    racine.id = "commandesBandeau";
+    racine.id = id;
     racine.hidden = true;
     racine.setAttribute("role", "alertdialog");
-    racine.setAttribute("aria-labelledby", "commandesBandeauQuestion");
-    racine.setAttribute("aria-describedby", "commandesBandeauTexte");
+    racine.setAttribute("aria-labelledby", id + "Question");
+    racine.setAttribute("aria-describedby", id + "Texte");
     // Deux blocs : le titre fixe « Est-ce bien votre demande ? » sur sa ligne, puis dessous la demande entre guillemets (« Afficher les gaines du niveau 2 »).
     // Aucun compte rendu (nombre d'elements, effets).
     const corps = creer("p", "commandes-bandeau-corps");
     const question = creer("span", "commandes-bandeau-question", QUESTION);
-    question.id = "commandesBandeauQuestion";
+    question.id = id + "Question";
     texte = creer("span", "commandes-bandeau-texte");
-    texte.id = "commandesBandeauTexte";
+    texte.id = id + "Texte";
     corps.append(question, texte);
     const actions = creer("div", "commandes-bandeau-actions");
     actions.append(bouton("Oui", "oui"), bouton("Non", "non"));
@@ -69,7 +70,7 @@ export function creerCommandesBandeau({ surOui, surNon, conteneur = null, retour
 
   // Hauteur reelle du bandeau (variable selon la longueur du texte et la largeur) : la barre d'outils du Viewer descend d'autant.
   function mesurer() {
-    if (racine && !racine.hidden) document.body.style.setProperty(VARIABLE_HAUTEUR, racine.offsetHeight + "px");
+    if (racine && !racine.hidden) document.body.style.setProperty(variable, racine.offsetHeight + "px");
   }
 
   function montrer({ relecture }) {
@@ -77,7 +78,7 @@ export function creerCommandesBandeau({ surOui, surNon, conteneur = null, retour
     // Espaces insecables : le guillemet fermant reste collé au dernier mot, jamais seul sur une ligne.
     texte.textContent = relecture ? "«\u00a0" + relecture + "\u00a0»" : "";
     racine.hidden = false;
-    document.body.classList.add(CLASSE_ACTIF);
+    document.body.classList.add(classeActif);
     mesurer();
     if (typeof ResizeObserver === "function" && !observateur) {
       observateur = new ResizeObserver(mesurer);
@@ -90,8 +91,8 @@ export function creerCommandesBandeau({ surOui, surNon, conteneur = null, retour
   function masquer(rendreFocus = false) {
     if (!racine || racine.hidden) return;
     racine.hidden = true;
-    document.body.classList.remove(CLASSE_ACTIF);
-    document.body.style.removeProperty(VARIABLE_HAUTEUR);
+    document.body.classList.remove(classeActif);
+    document.body.style.removeProperty(variable);
     if (rendreFocus && retourFocus && document.contains(retourFocus)) retourFocus.focus({ preventScroll: true });
   }
 

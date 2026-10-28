@@ -4,7 +4,7 @@
 //
 //   monter(messagerie)   appele une fois le squelette de la messagerie construit (l'onglet #discussionsIABtn et le panneau #msgIAPanneau existent alors)
 //   ouvrirSaisie()   l'onglet IA vient d'etre choisi : ouvre la modale de demande en vocal
-//   action("tout" | "rapport")   boutons de la liste filtree : « Tout réafficher » et « Voir le rapport »
+//   action("tout")   bouton « Retour » de la liste filtree (annule le filtre ; aucun bouton du rapport dans le panneau de gauche)
 //   effacerRetour()   efface le bandeau « ← Retour au rapport » (appele par main.js quand on quitte la page Discussions)
 
 import { creerDiscussionsIA } from "./discussionsIA.js";
@@ -123,9 +123,6 @@ export function creerDiscussionsIAMontage() {
       bandeau.masquer(false);
       rapportVue.fermer();
       flux.toutReafficher();
-    } else if (nom === "rapport") {
-      const rapport = messagerie.rapportIA();
-      if (rapport) rapportVue.ouvrir(rapport);
     }
   }
 

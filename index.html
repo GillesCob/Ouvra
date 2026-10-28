@@ -304,8 +304,6 @@
             <button id="coupeToggleVisibilityBtn" title="Afficher ou masquer le rectangle/poignées du plan de coupe" hidden>Masquer le plan de coupe</button>
             <!-- Viewer par commande (24/10) : « IA » a cote de « Creer une coupe », meme format (cf commandesIA.css). -->
             <button type="button" id="commandesIABtn" aria-label="Commande par l'IA" title="Piloter l'affichage par une phrase, écrite ou dictée">IA</button>
-            <!-- Zones nommees (24/10) : un volume nomme que « Affiche la zone ... » isole ensuite (src/commandesZonesUI.js). -->
-            <button type="button" id="commandesZoneBtn" title="Définir une zone nommée (volume) que l'IA pourra afficher">Zone</button>
           </div>
           <!-- Choix apres "Creer une coupe" (20/10) : sur une surface de la maquette, ou horizontale. -->
           <div id="coupeChoixBar" hidden>
@@ -327,8 +325,8 @@
           <div id="cameraSpeedControl">
             <button type="button" id="cameraSpeedToggle" aria-label="Régler la vitesse de navigation" title="Vitesse de navigation">Vitesse</button>
             <div id="cameraSpeedPanel" hidden>
-              <input type="range" id="cameraSpeedSlider" aria-label="Vitesse de navigation" min="10" max="100" step="5" value="30">
-              <span id="cameraSpeedValue">30 %</span>
+              <input type="range" id="cameraSpeedSlider" aria-label="Vitesse de navigation" min="10" max="100" step="5" value="50">
+              <span id="cameraSpeedValue">50 %</span>
             </div>
           </div>
         </div>

@@ -45,8 +45,13 @@ test("exemples : chaque famille de presentation est couverte (zone exceptee, ell
   for (const nom of ["niveau_repere", "isoler", "focus", "transparence", "masquer", "tout_afficher"]) assert.ok(presentations.has(nom), nom);
 });
 
-test("exemples : la phrase de Gilles est la premiere", () => {
-  assert.equal(EXEMPLES_COMMANDES[0].demande, "Affiche-moi les gaines au niveau 2");
+const PHRASE_DEMO = "Affiche uniquement le niveau 2 avec les maquettes CVC et Architecture";
+const PHRASE_GAINES = "Affiche-moi les gaines au niveau 2";
+const exemple = (demande) => EXEMPLES_COMMANDES.find((e) => e.demande === demande);
+
+test("exemples : la phrase de demo (niveau et maquettes) est la premiere, celle des gaines la deuxieme", () => {
+  assert.equal(EXEMPLES_COMMANDES[0].demande, PHRASE_DEMO);
+  assert.equal(EXEMPLES_COMMANDES[1].demande, PHRASE_GAINES);
 });
 
 test("exemples : chaque commande est valide pour le moteur", () => {
@@ -73,11 +78,23 @@ test("exemples : « gaines au niveau 2 » ne prend que des gaines du niveau 2 (p
   if (SOURCES.some((s) => !fs.existsSync(s.chemin))) { t.skip("metadonnees de l'hopital absentes"); return; }
   const { scene, metaScene } = sceneDeLHopital();
   const controleur = creerControleur({ scene, metaScene, maquettes: MAQUETTES });
-  const gaines = controleur.preparer(EXEMPLES_COMMANDES[0].commande);
+  const gaines = controleur.preparer(exemple(PHRASE_GAINES).commande);
   assert.ok(gaines.ids.every((id) => /^IfcDuct(Segment|Fitting)$/.test(metaScene.metaObjects[id].type)));
   assert.ok(gaines.ids.every((id) => { let m = metaScene.metaObjects[id]; while (m && m.type !== "IfcBuildingStorey") m = m.parent; return /^Level 2( Ceiling)?$/.test(m.name); }));
-  const niveau3 = controleur.preparer(EXEMPLES_COMMANDES[2].commande);
+  const niveau3 = controleur.preparer(exemple("Affiche le niveau 3 seul").commande);
   assert.ok(niveau3.compte > gaines.compte);
+});
+
+test("exemples : la phrase de demo ne montre que le niveau 2 des maquettes CVC et Architecture, jamais la Structure", (t) => {
+  if (SOURCES.some((s) => !fs.existsSync(s.chemin))) { t.skip("metadonnees de l'hopital absentes"); return; }
+  const { scene, metaScene } = sceneDeLHopital();
+  const controleur = creerControleur({ scene, metaScene, maquettes: MAQUETTES });
+  const plan = controleur.preparer(exemple(PHRASE_DEMO).commande);
+  assert.equal(plan.ok, true);
+  assert.ok(plan.compte > 0);
+  const maquettesVues = new Set(plan.ids.map((id) => metaScene.metaObjects[id].metaModels[0].id));
+  assert.deepEqual([...maquettesVues].sort(), ["hosp-arch", "hosp-mep"]);
+  assert.ok(plan.ids.every((id) => { let m = metaScene.metaObjects[id]; while (m && m.type !== "IfcBuildingStorey") m = m.parent; return !!m && /^Level 2( Ceiling| TOS)?$/.test(m.name); }));
 });
 
 test("reconnaissance locale : phrase exacte, a la casse, aux accents et a la ponctuation pres", () => {
@@ -106,7 +123,7 @@ test("exemples : le focus vise UNE vanne precise, le niveau_repere garde le nive
   assert.ok(par("Rends les murs").ids.every((id) => /^IfcWall/.test(metaScene.metaObjects[id].type)));
   assert.ok(par("Masque la structure").ids.every((id) => metaScene.metaObjects[id].metaModels[0].id === "hosp-struct"));
   assert.ok(par("Masque les faux plafonds").ids.every((id) => ["IfcCovering", "IfcFurniture"].includes(metaScene.metaObjects[id].type)));
-  assert.equal(EXEMPLES_COMMANDES[0].commande.parametres.presentation, "niveau_repere");
+  assert.equal(exemple(PHRASE_GAINES).commande.parametres.presentation, "niveau_repere");
 });
 
 test("exemples : la relecture de chaque phrase est exactement celle que le moteur construit (verbe et critere, aucun effet)", () => {

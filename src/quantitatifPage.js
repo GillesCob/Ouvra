@@ -20,13 +20,17 @@ import { valeursPourQuantitatif } from "./quantitatifDonnees.js";
 import { EXEMPLES_QUANTITATIF, reconnaitreExemple } from "./quantitatifExemples.js";
 import { nettoyerPhrase } from "./reglesVoix.js";
 import { creerIASaisie } from "./iaSaisie.js";
+import { creerCommandesBandeau } from "./commandesBandeau.js";
+import { preparerOngletPdf } from "./discussionsIARapportOnglet.js";
+
+const TITRE_ONGLET_QUANTITATIF = "Quantitatif Ouvra";
 
 // MASQUE_INFOS_QUANTITATIF (27/10, demande de Gilles) : retire de l'ecran les informations de contexte du calcul (elements exclus, objets spatiaux,
 // niveaux regroupes, date de calcul, maquettes). Les donnees restent dans le rapport et les exports ne changent pas. Mettre false pour les reafficher.
 const MASQUE_INFOS_QUANTITATIF = true;
 
-const MESSAGE_VIDE = "Écris ta demande, par exemple « Combien de portes au niveau 2 ? ».";
-const MESSAGE_SANS_DONNEES = "Aucune maquette lisible pour le moment. Ouvre d'abord le Viewer et attends la fin du chargement.";
+const MESSAGE_VIDE = "Écrire la demande, par exemple « Combien de portes au niveau 2 ? ».";
+const MESSAGE_SANS_DONNEES = "Aucune maquette lisible pour le moment. Ouvrir d'abord le Viewer et attendre la fin du chargement.";
 const nombre = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 2 });
 
 function creer(tag, classe, texte) {
@@ -78,19 +82,32 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
   message.setAttribute("role", "status");
   message.hidden = true;
 
-  const bandeau = creer("div", "qt-bandeau");
-  bandeau.setAttribute("role", "group");
-  bandeau.setAttribute("aria-label", "Vérification de la demande");
-  bandeau.hidden = true;
-  const bandeauQuestion = creer("p", "qt-bandeau-question", "Est-ce bien votre demande ?");
-  const bandeauTexte = creer("p", "qt-bandeau-texte");
-  const bandeauBoutons = creer("div", "qt-bandeau-boutons");
-  const boutonOui = creer("button", "qt-btn qt-btn-principal", "Oui");
-  boutonOui.type = "button";
-  const boutonNon = creer("button", "qt-btn", "Non");
-  boutonNon.type = "button";
-  bandeauBoutons.append(boutonOui, boutonNon);
-  bandeau.append(bandeauQuestion, bandeauTexte, bandeauBoutons);
+  // Confirmation de la demande (28/10) : le MEME bandeau que le Viewer (src/commandesBandeau.js), sous la barre de navigation, pleine largeur.
+  // Les rappels n'agissent qu'au clic, apres la creation de la page (majVue, saisie, enregistrer sont alors definis).
+  const bandeau = creerCommandesBandeau({
+    id: "quantitatifBandeau",
+    variable: "--quantitatif-bandeau-h",
+    classeActif: "quantitatif-confirm-actif",
+    surOui: async () => {
+      const courant = dernierResultat;
+      if (!courant || !courant.nouveau) return;
+      courant.nouveau = false;
+      resultatZone.hidden = false;
+      majVue();
+      if (!barre.hidden) boutonIA.focus({ preventScroll: true });
+      await enregistrer(courant.rapport);
+    },
+    // « Non » : rien n'a ete enregistre ni affiche, la saisie est rouverte prerenseignee.
+    surNon: () => {
+      const courant = dernierResultat;
+      const phrase = courant ? courant.phrase : "";
+      jeton += 1;
+      viderResultat();
+      allerA("depart");
+      dire("");
+      saisie.reformuler(phrase); // la modale se rouvre en mode texte, phrase prerenseignee
+    }
+  });
 
   const resultatZone = creer("section", "qt-carte qt-resultat");
   resultatZone.setAttribute("aria-live", "polite");
@@ -101,7 +118,7 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
 
   // Une vue a la fois : depart | resultat | historique. Les zones sont masquees par leur conteneur, jamais en touchant a l'etat interne du bandeau ou du resultat.
   const zoneResultat = creer("div", "qt-zone");
-  zoneResultat.append(bandeau, resultatZone);
+  zoneResultat.append(resultatZone);
   zoneResultat.hidden = true;
   const zoneHistorique = creer("div", "qt-zone");
   zoneHistorique.appendChild(histoBloc);
@@ -115,9 +132,9 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
   let vue = "depart";
   // La vue « resultat » sans rapport affiche (demande abandonnee, « Non », rapport supprime) retombe sur le depart.
   function majVue() {
-    const v = vue === "resultat" && resultatZone.hidden && bandeau.hidden ? "depart" : vue;
+    const v = vue === "resultat" && resultatZone.hidden && !bandeau.visible() ? "depart" : vue;
     departCarte.hidden = v !== "depart";
-    barre.hidden = v === "depart" || (v === "resultat" && !bandeau.hidden); // pendant la confirmation, la relecture s'affiche seule
+    barre.hidden = v === "depart" || (v === "resultat" && bandeau.visible()); // pendant la confirmation, la relecture s'affiche seule
     zoneResultat.hidden = v !== "resultat";
     zoneHistorique.hidden = v !== "historique";
     if (v === "depart") departCarte.append(boutonIA, boutonHistorique);
@@ -142,7 +159,7 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
   }
   function viderResultat() {
     dernierResultat = null;
-    bandeau.hidden = true;
+    bandeau.masquer(false);
     resultatZone.hidden = true;
     resultatZone.textContent = "";
     majVue();
@@ -250,17 +267,28 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
   // Exports : Excel et PDF chargent leur bibliotheque ICI, au clic (import dynamique), jamais au chargement de la page.
   async function exporter(format, rapport, statut) {
     dire("Préparation du fichier…");
+    // Le PDF s'ouvre dans un nouvel onglet (28/10), comme le rapport des discussions : onglet ouvert ICI, dans le geste du clic, avant toute attente
+    // (sinon les bloqueurs de pop-up le refusent). Bloque : onglet null, l'export retombe sur le telechargement.
+    let onglet = null;
+    if (format === "pdf") {
+      onglet = window.open("", "_blank");
+      if (onglet) {
+        onglet.opener = null;
+        preparerOngletPdf(onglet, { titre: TITRE_ONGLET_QUANTITATIF });
+      }
+    }
     try {
       if (format === "csv") {
         const remarques = [rapport.resultat.notes[0], ...(statut.etat === "a_jour" ? [] : [libelleStatut(statut)])];
         telecharger(nomFichier(rapport, "csv"), exporterCsv(rapport.resultat, remarques), "text/csv;charset=utf-8");
       } else if (format === "pdf") {
-        await (await import("./quantitatifExportPdf.js")).exporterPdf(rapport, statut, { telecharger: (n, c) => telecharger(n, c, "application/pdf") });
+        await (await import("./quantitatifExportPdf.js")).exporterPdf(rapport, statut, { telecharger: (n, c) => telecharger(n, c, "application/pdf"), onglet });
       } else {
         await (await import("./quantitatifExportXlsx.js")).exporterXlsx(rapport, statut, { telecharger: (n, c) => telecharger(n, c) });
       }
       dire("");
     } catch {
+      if (onglet && !onglet.closed) onglet.close();
       dire("L'export a échoué. Réessaie, ou utilise le format CSV.");
     }
   }
@@ -349,10 +377,7 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
     const statut = comparerVersions(rapport.maquettes, await obtenirVersions());
     dernierResultat = { rapport, phrase: rapport.phrase, nouveau };
     dessinerRapport(rapport, statut, nouveau); // nouveau : le resultat reste cache tant que « Oui » n'est pas cliquee
-    bandeauTexte.textContent = "« " + rapport.relecture + " »";
-    bandeauQuestion.textContent = "Est-ce bien votre demande ?";
-    bandeauBoutons.hidden = false;
-    bandeau.hidden = !nouveau;
+    if (nouveau) bandeau.montrer({ relecture: rapport.relecture }); else bandeau.masquer(false);
     allerA("resultat");
   }
 
@@ -467,33 +492,13 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
     dire("");
     if (!phrase) { dire(MESSAGE_VIDE); return; }
     occuper(true);
-    dire("Prise en compte de ta demande…");
+    dire("Prise en compte de la demande…");
     const r = await traiter(phrase);
     occuper(false);
     dire(r.ok ? "" : r.message || "");
   }
 
   // « Oui » (27/10) : le resultat apparait seulement maintenant, et le rapport entre alors dans l'historique.
-  boutonOui.addEventListener("click", async () => {
-    const courant = dernierResultat;
-    if (!courant || !courant.nouveau) return;
-    courant.nouveau = false;
-    bandeau.hidden = true;
-    resultatZone.hidden = false;
-    majVue();
-    await enregistrer(courant.rapport);
-  });
-  // « Non » : rien n'a ete enregistre ni affiche, la saisie est rouverte prerenseignee.
-  boutonNon.addEventListener("click", () => {
-    const courant = dernierResultat;
-    const phrase = courant ? courant.phrase : "";
-    jeton += 1;
-    viderResultat();
-    allerA("depart");
-    dire("");
-    saisie.reformuler(phrase); // la modale se rouvre en mode texte, phrase prerenseignee
-  });
-
   // ---------- Etat de la source ----------
   // Les maquettes peuvent encore charger (ouverture directe sur la page) : tant que la page est affichee, on relit un moment, jusqu'a la geometrie.
   let essaisSource = 0;
@@ -522,7 +527,7 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
     // Appelee par main.js a chaque changement de page.
     surVueActivee(nomVue) {
       if (nomVue === "quantitatif") { allerA("depart"); essaisSource = 0; actualiserSource(); rafraichirHistorique(); rafraichirRapportAffiche(); }
-      else { saisie.fermer(false); clearTimeout(minuteurSource); jeton += 1; occuper(false); }
+      else { bandeau.masquer(false); saisie.fermer(false); clearTimeout(minuteurSource); jeton += 1; occuper(false); }
     },
     lancer,
     // Pour les tests et pour main.js : etat courant.

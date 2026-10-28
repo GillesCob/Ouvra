@@ -3,14 +3,14 @@
 // demarre l'ecoute, un second la termine et envoie ; l'ecoute ne demarre jamais toute seule). « Ecrire ma demande » bascule en texte,
 // « Utiliser le micro » revient au vocal, sans perdre la phrase. Dictee indisponible : ouverture directe en texte, avec la raison.
 
-export const AIDE_VOCAL = "Appuie sur le micro pour faire ta demande à voix haute, ou écris-la.";
-export const AIDE_ECOUTE = "Je t'écoute. Appuie de nouveau sur le micro pour terminer et envoyer.";
-export const ANNONCE_VOCAL = "Mode vocal. Appuie sur le micro pour faire ta demande.";
-export const ANNONCE_TEXTE = "Mode texte. Écris ta demande puis valide.";
+export const AIDE_VOCAL = "Appuyer sur le micro pour faire la demande à voix haute, ou l'écrire.";
+export const AIDE_ECOUTE = "Écoute en cours. Appuyer de nouveau sur le micro pour terminer et envoyer.";
+export const ANNONCE_VOCAL = "Mode vocal. Appuyer sur le micro pour faire la demande.";
+export const ANNONCE_TEXTE = "Mode texte. Écrire la demande puis valider.";
 
 // Mode d'ouverture de la demande : { mode: "vocal" | "texte", raison } (raison = pourquoi le vocal manque, sinon null).
 export function modeOuverture({ dicteeDisponible, motifIndisponible = null }) {
-  return dicteeDisponible ? { mode: "vocal", raison: null } : { mode: "texte", raison: motifIndisponible || "La dictée vocale n'est pas disponible ici. Tu peux écrire ta demande." };
+  return dicteeDisponible ? { mode: "vocal", raison: null } : { mode: "texte", raison: motifIndisponible || "La dictée vocale n'est pas disponible ici. La demande peut être écrite." };
 }
 
 // Mode apres un clic sur « Ecrire ma demande » / « Utiliser le micro ». Sans dictee, on reste en texte.

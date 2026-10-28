@@ -8,8 +8,8 @@
 
 import { DELAI_MS } from "./reglesIAClient.js";
 
-const MESSAGE_INDISPONIBLE = "L'IA est injoignable pour le moment. Choisis une phrase d'exemple.";
-const MESSAGE_DELAI = "L'IA met trop de temps à répondre. Réessaie ou choisis une phrase d'exemple.";
+const MESSAGE_INDISPONIBLE = "L'IA est injoignable pour le moment. Choisir une phrase d'exemple.";
+const MESSAGE_DELAI = "L'IA met trop de temps à répondre. Réessayer ou choisir une phrase d'exemple.";
 const indisponible = () => ({ ok: false, code: "ia_indisponible", message: MESSAGE_INDISPONIBLE });
 
 async function appeler(corps, { fetch: appel = (...a) => globalThis.fetch(...a), delaiMs = DELAI_MS, url = "/api/discussions" } = {}) {
@@ -53,7 +53,7 @@ export async function demanderComprehension({ phrase, valeurs, aujourdhui }, opt
 export async function demanderAnalyse({ action, phrase, sujet, extraits }, options) {
   const r = await appeler({ etape: "analyser", action, phrase, sujet, extraits }, options);
   // Le relais repond « entree_invalide » avec un message sur la phrase : ici c'est le lot de messages qu'il a refuse, on le dit.
-  if (!r.ok && r.code === "entree_invalide") return { ok: false, code: r.code, message: "Les messages à analyser n'ont pas pu être envoyés (trop volumineux). Précise le sujet ou une période." };
+  if (!r.ok && r.code === "entree_invalide") return { ok: false, code: r.code, message: "Les messages à analyser n'ont pas pu être envoyés (trop volumineux). Préciser le sujet ou une période." };
   if (!r.ok) return r;
   return r.corps.sortie && typeof r.corps.sortie === "object" ? { ok: true, sortie: r.corps.sortie } : indisponible();
 }

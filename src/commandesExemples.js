@@ -13,6 +13,12 @@ import { normaliser } from "./reglesCollision.js";
 
 export const EXEMPLES_COMMANDES = [
   {
+    // Phrase de demo (28/10) : une seule phrase agit sur les niveaux ET sur les maquettes (la Structure se decoche, l'Architecture et la CVC restent).
+    demande: "Affiche uniquement le niveau 2 avec les maquettes CVC et Architecture",
+    relecture: "Afficher les éléments du niveau 2 des maquettes Architecture et Mechanical (CVC)",
+    commande: { action: "afficher", parametres: { niveaux: ["Level 2"], maquettes: ["Architecture", "Mechanical (CVC)"] } }
+  },
+  {
     demande: "Affiche-moi les gaines au niveau 2",
     relecture: "Afficher les gaines et raccords de gaine du niveau 2",
     commande: { action: "afficher", parametres: { typesIfc: ["IfcDuctSegment", "IfcDuctFitting"], niveaux: ["Level 2"], presentation: "niveau_repere" } }

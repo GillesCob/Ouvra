@@ -6,8 +6,8 @@
 import { validerRequete } from "./quantitatif.js";
 import { DELAI_MS } from "./reglesIAClient.js";
 
-const MESSAGE_INDISPONIBLE = "L'IA est injoignable pour le moment. Choisis une phrase d'exemple.";
-const MESSAGE_DELAI = "L'IA met trop de temps à répondre. Réessaie ou choisis une phrase d'exemple.";
+const MESSAGE_INDISPONIBLE = "L'IA est injoignable pour le moment. Choisir une phrase d'exemple.";
+const MESSAGE_DELAI = "L'IA met trop de temps à répondre. Réessayer ou choisir une phrase d'exemple.";
 const indisponible = () => ({ ok: false, code: "ia_indisponible", message: MESSAGE_INDISPONIBLE });
 
 export async function demanderQuantitatif({ phrase, valeurs }, { fetch: appel = (...a) => globalThis.fetch(...a), delaiMs = DELAI_MS, url = "/api/quantitatif" } = {}) {

@@ -610,7 +610,7 @@ export function creerPlan3dPage({ racine, voirDansViewer = null }) {
     exemples: [],
     libelle: "Modification du plan par l'IA",
     placeholder: "Ex. : la fenêtre nord du salon fait 210 cm",
-    messageVide: "Écris ta demande, par exemple « la fenêtre nord du salon fait 210 cm ».",
+    messageVide: "Écrire la demande, par exemple « la fenêtre nord du salon fait 210 cm ».",
     retourFocus: btnIA,
     surEnvoi: (phrase, options) => flux.traiter(phrase, options)
   });

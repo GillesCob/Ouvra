@@ -17,14 +17,15 @@
 import "./reglesIA.css";
 import "./iaSaisie.css";
 import { creerDictee, detecterReconnaissance, motifDicteeIndisponible, nettoyerPhrase, MESSAGE_RIEN_RECONNU } from "./reglesVoix.js";
+import { demarrerNiveauVoix } from "./niveauVoix.js";
 import { modeOuverture, modeApresBascule, annonceMode, aideVocal, suiteFinEcoute } from "./iaSaisieLogique.js";
 
 export const PHRASE_MAX = 200; // meme plafond que les relais (relais/entree.js)
 const DELAI_ARRET_MS = 2500; // attente des derniers resultats apres le second appui sur le micro, avant d'envoyer ce qui est reconnu
 const ICONE_MICRO = '<svg viewBox="0 0 24 24" width="40" height="40" focusable="false" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>';
-const LEGENDE_CHARGEMENT = "Prise en compte de ta demande par l'IA…";
-const MESSAGE_ECHEC = "Je n'ai pas pu traiter cette demande. Réessaie ou choisis une phrase d'exemple.";
-const MESSAGE_VIDE_DEFAUT = "Écris ta demande, par exemple « combien de portes au niveau 2 ? ».";
+const LEGENDE_CHARGEMENT = "Prise en compte de la demande par l'IA…";
+const MESSAGE_ECHEC = "Cette demande n'a pas pu être traitée. Réessayer ou choisir une phrase d'exemple.";
+const MESSAGE_VIDE_DEFAUT = "Écrire la demande, par exemple « combien de portes au niveau 2 ? ».";
 
 function creer(tag, classe, texte) {
   const el = document.createElement(tag);
@@ -63,7 +64,7 @@ export function creerIASaisie({ exemples = [], libelle = "Demande par l'IA", pla
   champ.autocomplete = "off";
   champ.enterKeyHint = "go";
   champ.placeholder = placeholder;
-  champ.setAttribute("aria-label", "Ta demande, en une phrase");
+  champ.setAttribute("aria-label", "La demande, en une phrase");
   const valider = creer("button", "regles-ia-valider", "Valider");
   valider.type = "submit";
   const retourMicro = creer("button", "regles-ia-bascule", "Utiliser le micro");
@@ -155,6 +156,32 @@ export function creerIASaisie({ exemples = [], libelle = "Demande par l'IA", pla
   propositions.addEventListener("toggle", ajusterListe);
   window.addEventListener("resize", () => { ajusterChamp(); ajusterListe(); }); // largeur changee : le retour a la ligne change
 
+  // Halo du micro qui suit le vrai volume de la voix (28/10) : un SECOND flux micro, ouvert quand l'ecoute demarre et libere a toute sortie d'ecoute (surEtat « inactif » :
+  // second appui, fermeture, abandon, page quittee, erreur). Jamais sur iOS ni en mouvement reduit ; refus ou echec : on garde le halo a rythme fixe, sans message.
+  const mouvementReduit = window.matchMedia ? window.matchMedia("(prefers-reduced-motion: reduce)") : { matches: false };
+  let niveauVoix = null;
+  function arreterNiveau() {
+    if (niveauVoix) niveauVoix.fermer();
+    niveauVoix = null;
+    micro.classList.remove("niveau");
+    micro.style.removeProperty("--ia-niveau");
+  }
+  function lancerNiveau() {
+    arreterNiveau();
+    if (ios || mouvementReduit.matches) return;
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    const suivi = demarrerNiveauVoix({
+      mediaDevices: navigator.mediaDevices,
+      creerContexte: () => new AudioCtx(),
+      planifier: (f) => requestAnimationFrame(f),
+      annuler: (id) => cancelAnimationFrame(id),
+      surNiveau: (n) => micro.style.setProperty("--ia-niveau", n.toFixed(3)),
+      surOuvert: () => { if (niveauVoix === suivi) micro.classList.add("niveau"); }, // le halo reactif remplace le halo fixe
+      surEchec: () => { if (niveauVoix === suivi) arreterNiveau(); }
+    });
+    niveauVoix = suivi;
+  }
+
   // Dictee : le texte reconnu reste en memoire (texteVocal), il ne part qu'au second appui sur le micro.
   const dictee = creerDictee({
     Reconnaissance,
@@ -164,9 +191,10 @@ export function creerIASaisie({ exemples = [], libelle = "Demande par l'IA", pla
       const ecoute = etatDictee === "ecoute";
       micro.classList.toggle("ecoute", ecoute);
       micro.setAttribute("aria-pressed", String(ecoute));
-      micro.setAttribute("aria-label", ecoute ? "Micro : appuie pour terminer et envoyer" : "Micro : appuie pour parler");
+      micro.setAttribute("aria-label", ecoute ? "Micro : appuyer pour terminer et envoyer" : "Micro : appuyer pour parler");
       legende.textContent = aideVocal(ecoute);
       annonce.textContent = ecoute ? "Écoute en cours" : "";
+      if (ecoute) lancerNiveau(); else arreterNiveau();
       if (!ecoute) finDEcoute();
     },
     surErreur: (message, code) => {
@@ -177,7 +205,7 @@ export function creerIASaisie({ exemples = [], libelle = "Demande par l'IA", pla
     ios,
     continu: true
   });
-  micro.setAttribute("aria-label", "Micro : appuie pour parler");
+  micro.setAttribute("aria-label", "Micro : appuyer pour parler");
 
   // Arret sans envoi (fermeture, page quittee) : ce qui a ete reconnu est jete avant que l'etat « inactif » ne declenche finDEcoute.
   function abandonnerDictee() {
@@ -352,7 +380,7 @@ export function creerIASaisie({ exemples = [], libelle = "Demande par l'IA", pla
 
   // Page en arriere-plan ou quittee : le micro ne reste jamais ouvert.
   document.addEventListener("visibilitychange", () => { if (document.hidden) abandonnerDictee(); });
-  window.addEventListener("pagehide", abandonnerDictee);
+  window.addEventListener("pagehide", () => { abandonnerDictee(); arreterNiveau(); });
 
   montrerVue("texte");
 

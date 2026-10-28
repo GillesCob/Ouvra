@@ -17,7 +17,6 @@ import { creerFlux } from "./commandesFlux.js";
 import { etatDrawerDepuisVisibles, capturerEtatDrawer, boiteDesVisibles } from "./commandesDrawer.js";
 import { creerCommandesBandeau } from "./commandesBandeau.js";
 import { creerZones } from "./commandesZones.js";
-import { creerZonesUI } from "./commandesZonesUI.js";
 import { valeursPourCommande } from "./commandesValeurs.js";
 import { demanderCommande } from "./commandesIAClient.js";
 import { EXEMPLES_COMMANDES, reconnaitreExemple } from "./commandesExemples.js";
@@ -29,6 +28,8 @@ import "./retourContexte.css";
 import "./retourVisiteur.css";
 import { creerRetourVisiteur } from "./retourVisiteur.js";
 import { creerRetourContexte } from "./retourContexte.js";
+import { vitesseCameraInitiale } from "./vitesseCamera.js";
+import { cadrerCentre } from "./cadrageCentre.js";
 import { creerHistorique, creerDepotLocal } from "./quantitatifHistorique.js";
 
 // ============================================================================
@@ -169,11 +170,6 @@ const COLLISION_PASTILLES = false;
 // liste des collisions (il masquait/affichait la bulle 3D de cette collision).
 // false = l'oeil revient.
 const MASQUE_OEIL_COLLISION = true;
-// MASQUE_ZONES (27/10, demande de Gilles) : retire le bouton « Zone » de la barre
-// du Viewer (laptop et mobile) et sa fenetre « Zones nommees » (jamais creee).
-// Les zones deja stockees restent lisibles par « Affiche la zone ... », mais plus
-// aucune ne peut etre definie. false = le bouton et la fenetre reviennent.
-const MASQUE_ZONES = true;
 // COLLISION_LISTE_SIMPLE (19/10) : chaque ligne de la liste des collisions ne
 // montre que le numero, les identifiants des 2 elements, le niveau et le statut
 // (le nom complet reste en infobulle et dans la fiche). false = lignes d'avant.
@@ -1112,8 +1108,6 @@ let commandesViewer = null; // moteur des commandes du Viewer (cree a la premier
 let commandesFlux = null; // flux « appliquer puis confirmer » des commandes (cree a la premiere commande), idem
 let commandesBandeau = null; // bandeau « Est-ce bien votre demande ? » (cree plus bas), idem
 let commandesIA = null; // saisie « IA » du Viewer (creee plus bas) ; fermee par activateView a la sortie du Viewer
-let zonesUI = null; // fenetre « Zones nommees » (creee plus bas), idem
-let zonePointCapture = null; // rappel arme par la fenetre « Zones nommees » : le prochain clic dans la 3D lui donne le point touche
 let origineDrawer = null; // cases du drawer avant la premiere commande en cours (photo de capturerEtatDrawer), rendue au « Non » et a la sortie du Viewer
 if (messagerie) {
   document.getElementById("msgRoot").hidden = false;
@@ -1157,7 +1151,6 @@ function activateView(viewName, options = {}) {
   if (viewName !== "viewer") {
     // Saisie ouverte, dictee en cours ou reponse IA en route : tout est coupe, sinon une reponse tardive s'appliquerait dans un Viewer masque.
     if (commandesIA) commandesIA.fermer();
-    if (zonesUI) zonesUI.fermer();
     reinitialiserCommandesViewer();
   }
   if (import.meta.env.DEV) {
@@ -2133,9 +2126,8 @@ Object.values(viewer.scene.lights).forEach((lumiere) => { lumiere.intensity = lu
 // qui envoient la camera beaucoup trop loin au doigt sur mobile. Slider
 // #cameraSpeedControl (tous ecrans) en % de ces valeurs par defaut (10 a
 // 200 %, au dela de 100 % pour accelerer sur une grande maquette), persiste
-// en localStorage. Depart a 30% sur mobile (premiere visite, pas encore de
-// preference enregistree) ; 100% sur ordinateur (comportement inchange tant
-// que le slider n'est pas touche). Cle de stockage conservee telle quelle
+// en localStorage. Depart a 50% pour tous (28/10, pave tactile ; src/vitesseCamera.js) tant
+// qu'aucune preference n'est enregistree. Cle de stockage conservee telle quelle
 // (preferences deja enregistrees).
 const CAMERA_TOUCH_DEFAULTS = { dragRotationRate: 360.0, mouseWheelDollyRate: 100.0, touchPanRate: 1.0, touchDollyRate: 0.2 };
 function applyCameraTouchSpeed(percent) {
@@ -2151,9 +2143,7 @@ try {
 } catch (e) {
   // localStorage indisponible, pas bloquant.
 }
-const initialCameraSpeed = savedCameraSpeed
-  ? Math.min(100, parseInt(savedCameraSpeed, 10))
-  : (window.matchMedia("(max-width: 768px)").matches ? 30 : 100);
+const initialCameraSpeed = vitesseCameraInitiale(savedCameraSpeed);
 cameraSpeedSlider.value = String(initialCameraSpeed);
 cameraSpeedValue.textContent = initialCameraSpeed + " %";
 applyCameraTouchSpeed(initialCameraSpeed);
@@ -2216,6 +2206,27 @@ function aabbDesMaquettes(liste) {
   return [0, 1, 2].map((i) => Math.min(...boites.map((b) => b[i]))).concat([3, 4, 5].map((i) => Math.max(...boites.map((b) => b[i]))));
 }
 
+// Vue de depart (ou pose donnee) recadree pour que la maquette soit parfaitement centree dans la zone 3D (28/10) : meme direction de regard et meme haut,
+// cible et distance calculees pour le canvas courant (src/cadrageCentre.js). Sans boite, sans canvas mesurable ou en projection orthogonale : pose inchangee.
+function poseCentreeSurBoite(pose, boite) {
+  const canevas = viewer.scene.canvas.canvas;
+  if (!pose || !boite || !boite.every(Number.isFinite) || boite[3] <= boite[0] || viewer.camera.projection !== "perspective" || !canevas || !canevas.offsetWidth || !canevas.offsetHeight) return pose;
+  return cadrerCentre({
+    aabb: boite, eye: pose.eye, look: pose.look, up: pose.up,
+    fov: viewer.camera.perspective.fov, fovAxis: viewer.camera.perspective.fovAxis,
+    largeur: canevas.offsetWidth, hauteur: canevas.offsetHeight
+  });
+}
+
+// Vue de depart de la maquette centree sur ce qui est visible (position initiale du Viewer et « Recentrer ») : la boite des objets visibles,
+// pas celle des fichiers (des objets masques par defaut, hors de la maquette vue, la decaleraient).
+function vueDepartCentree() {
+  const pose = initialCameraState || DEFAULT_CAMERA_STATE;
+  const visibles = viewer.scene.visibleObjectIds;
+  const boite = visibles.length ? viewer.scene.getAABB(visibles) : aabbDesMaquettes(MAQUETTES.filter((m) => m.model));
+  return poseCentreeSurBoite(pose, boite);
+}
+
 // « Recentrer » s'adapte aux maquettes cochees (25/10) : seule une partie est cochee, la camera se cadre sur celles-la (cocher uniquement la maquette
 // du plan 2D -> 3D = recentrer sur elle seule). Toutes cochees : la vue de depart de la maquette, comme avant. En vue a plat, la vue a plat est refaite.
 // Cadrage de « Recentrer » sur la page Viewer (hors vue a plat et hors cible propre a Collision / Discussions), partage avec la commande IA du Viewer.
@@ -2224,8 +2235,12 @@ function recentrerSurMaquettes() {
   const cochees = chargees.filter((m) => m.shown);
   // Avec la maquette du plan dans la liste, meme toutes cochees : la vue de depart est celle de l'hopital et ne montrerait pas le plan.
   const boite = cochees.length > 0 && (cochees.length < chargees.length || planDansViewer) ? aabbDesMaquettes(cochees) : null;
-  if (boite) viewer.cameraFlight.flyTo({ aabb: boite });
-  else viewer.cameraFlight.flyTo(initialCameraState || DEFAULT_CAMERA_STATE);
+  // Maquettes cochees seules : direction de regard actuelle (comme le cadrage xeokit sur une boite), recadree pour centrer le rectangle projete.
+  if (boite) {
+    const actuelle = { eye: viewer.camera.eye.slice(), look: viewer.camera.look.slice(), up: viewer.camera.up.slice() };
+    const pose = poseCentreeSurBoite(actuelle, boite);
+    viewer.cameraFlight.flyTo(pose === actuelle ? { aabb: boite } : pose);
+  } else viewer.cameraFlight.flyTo(vueDepartCentree());
 }
 
 recenterBtn.addEventListener("click", () => {
@@ -6346,10 +6361,13 @@ let banqueVuesCollisions = [];
 function relireBanqueVuesCollisions() { return chargerBanque().then((b) => { banqueVuesCollisions = b; }); }
 relireBanqueVuesCollisions();
 
+// Numero affiche d'une collision (liste, pastilles, modale) : son rang dans CLASHES + 1. Le meme sert au critere « numeros » des regles IA.
+function numeroAffiche(clash) { return CLASHES.indexOf(clash) + 1; }
+
 reglesModale = creerReglesModale({
   libellesPriorite: PRIORITE_LABELS,
   libellesStatut: STATUT_LABELS,
-  numero: (clash) => CLASHES.indexOf(clash) + 1,
+  numero: numeroAffiche,
   creerCarte: (clash) => buildCollisionCard(clash, "span"),
   lireElement: (id) => descripteurElement(viewer.metaScene, id, MAQUETTES),
   voirEn3D: (clash) => activateClash(clash),
@@ -6359,20 +6377,25 @@ reglesModale = creerReglesModale({
   glisserPourFermer: enableDrawerSwipeToClose
 });
 
+// Collisions reelles de la detection courante (jamais les fictives), celles que les regles IA peuvent toucher.
+function clashesDeLaDetection() {
+  return detectionCourante ? CLASHES.filter((c) => c.detectionId === detectionCourante.id && !c.factice && isHospitalClash(c)) : [];
+}
+
 // Valide la regle, la confronte aux collisions reelles de la detection courante (jamais les fictives) et ouvre la modale « Regle a valider ».
 // Rend { ok } ou { ok: false, erreur }. Utilisee par le panneau « IA » de la page Collision et par le declencheur de diagnostic.
 function ouvrirRegleCollision(regle) {
   const verdict = validerRegle(regle, { priorite: PRIORITE_ORDRE, statut: Object.keys(STATUT_LABELS) });
   if (!verdict.ok) return verdict;
-  const clashes = detectionCourante ? CLASHES.filter((c) => c.detectionId === detectionCourante.id && !c.factice && isHospitalClash(c)) : [];
+  const clashes = clashesDeLaDetection();
   const touchees = appliquerRegle(
     regle,
     clashes,
     (id) => descripteurElement(viewer.metaScene, id, MAQUETTES),
     (clash) => ({ priorite: clashPriorite(clash), statut: clash.statut }),
-    { maintenant: Date.now(), evenements: evenementsDeCollision }
+    { maintenant: Date.now(), evenements: evenementsDeCollision, numero: numeroAffiche }
   );
-  reglesModale.ouvrir(regle, touchees);
+  reglesModale.ouvrir(regle, touchees, clashes.map(numeroAffiche));
   return { ok: true };
 }
 
@@ -6393,6 +6416,8 @@ function fermerMenusDeroulantsCollision() {
 // la phrase, lus sur les maquettes chargees ; jamais la geometrie. Ne rejette jamais (repli sur les phrases d'exemple en cas d'echec).
 function traduirePhraseParIA(phrase) {
   const valeurs = valeursPourIA(viewer.metaScene, MAQUETTES, phrase, { priorite: PRIORITE_ORDRE, statut: Object.keys(STATUT_LABELS) });
+  // Numeros reels des collisions de la detection courante (memes que ceux de ouvrirRegleCollision) : le modele ne peut en citer aucun autre.
+  valeurs.numeros = clashesDeLaDetection().map(numeroAffiche);
   return demanderRegle({ phrase, valeurs, aujourdhui: dateDuJourLocale() });
 }
 
@@ -6425,7 +6450,6 @@ reglesIA = creerReglesIA({
 // isole, met en surbrillance et cadre. Seuls des mots partent vers l'IA (relais api/commande.js) ; les phrases toutes faites sont reconnues ici, sans IA.
 const commandesIABtn = document.getElementById("commandesIABtn");
 const commandesResetBtn = document.getElementById("commandesResetBtn");
-const commandesZoneBtn = document.getElementById("commandesZoneBtn");
 
 // Zones nommees (option A de « afficher une piece » : les maquettes n'ont aucun IfcSpace), sauvegardees dans localStorage (jamais bloquant).
 function stockageLocal() {
@@ -6869,17 +6893,6 @@ commandesIA = creerCommandesIA({
   exemples: EXEMPLES_COMMANDES,
   proposerCommande: (commande) => proposerCommandeViewer(commande, true),
   traduire: traduirePhraseViewer,
-  fermerAutres: () => { cameraSpeedPanel.hidden = true; cameraSpeedToggle.classList.remove("active"); }
-});
-
-// Bouton « Zone » : definir un volume nomme (depuis l'element selectionne ou par un clic dans la maquette). Masque par MASQUE_ZONES : ni bouton, ni fenetre (zonesUI reste null, deja gere partout).
-commandesZoneBtn.hidden = MASQUE_ZONES;
-if (!MASQUE_ZONES) zonesUI = creerZonesUI({
-  bouton: commandesZoneBtn,
-  zones: zonesCommandes,
-  elementSelectionne: () => (selectedEntity && selectedEntity.aabb ? Array.from(selectedEntity.aabb) : null),
-  armerClic: (rappel) => { zonePointCapture = rappel; },
-  annulerClic: () => { zonePointCapture = null; },
   fermerAutres: () => { cameraSpeedPanel.hidden = true; cameraSpeedToggle.classList.remove("active"); }
 });
 
@@ -9133,14 +9146,6 @@ function createCoupeFromHit(hit) {
 }
 
 function handleViewerPick(canvasCoords) {
-  // Fenetre « Zones nommees » en attente d'un point : ce clic le lui donne et ne selectionne rien.
-  if (zonePointCapture) {
-    const rappel = zonePointCapture;
-    zonePointCapture = null;
-    const touche = viewer.scene.pick({ canvasPos: canvasCoords, pickSurface: true });
-    rappel(touche && touche.worldPos ? Array.from(touche.worldPos) : null);
-    return;
-  }
   if (coupePickingMode) {
     const hit = viewer.scene.pick({ canvasPos: canvasCoords, pickSurface: true, pickSurfaceNormal: true });
     setCoupePickingMode(false);
@@ -9348,7 +9353,7 @@ function loadProject(projectKey) {
     loadingOverlay.classList.add("hidden");
     initialCameraState = getDefaultCameraState(projectKey);
     if (initialCameraState) {
-      viewer.cameraFlight.flyTo(initialCameraState);
+      viewer.cameraFlight.flyTo(vueDepartCentree());
     } else {
       viewer.cameraFlight.flyTo({ aabb: viewer.scene.getAABB(), duration: 0 });
       initialCameraState = { eye: viewer.camera.eye.slice(), look: viewer.camera.look.slice(), up: viewer.camera.up.slice() };
@@ -9385,7 +9390,7 @@ function loadProject(projectKey) {
         initialCameraState = getDefaultCameraState(projectKey);
         if (initialCameraState) {
           // duration 0 : la maquette apparait deja cadree, sans vol visible.
-          viewer.cameraFlight.flyTo(Object.assign({}, initialCameraState, { duration: 0 }));
+          viewer.cameraFlight.flyTo(Object.assign({}, vueDepartCentree(), { duration: 0 }));
         } else {
           viewer.cameraFlight.flyTo({ aabb: viewer.scene.getAABB(), duration: 0 });
           // Snapshot du cadrage obtenu : reutilise par le bouton "Recentrer"

@@ -12,6 +12,11 @@ import { normaliser } from "./reglesCollision.js";
 
 export const EXEMPLES_DISCUSSIONS = [
   {
+    demande: "Fais-moi un rapport sur les collisions avec les gaines au R+2",
+    relecture: "Faire un rapport sur les collisions avec les gaines au R+2.",
+    commande: { action: "rapport", parametres: { sujet: "collisions avec les gaines au R+2", mots: ["gaine rectangulaire", "gaines", "cloison", "R+2"] } }
+  },
+  {
     demande: "Sors-moi toutes les conversations qui parlent de gaines en R+2",
     relecture: "Retrouver les conversations qui parlent de gaines au R+2.",
     commande: { action: "retrouver_echange", parametres: { sujet: "gaines R+2", mots: ["gaine rectangulaire", "cloison", "R+2"] } }

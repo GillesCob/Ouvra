@@ -59,5 +59,10 @@ export const EXEMPLES_REGLES = [
       dates: [{ evenement: "modification", presence: "au_moins_un", periode: { type: "depuis_le", date: "2026-10-16" } }]
     },
     action: { champ: "afficher" }
+  },
+  {
+    demande: "Passe en urgent la collision 2",
+    filtre: { portee: "un_des_deux", criteres: [], numeros: [2] },
+    action: { champ: "priorite", valeur: "urgente" }
   }
 ];

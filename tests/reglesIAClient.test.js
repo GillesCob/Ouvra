@@ -59,7 +59,7 @@ test("delai depasse : code dedie et message humain", async () => {
   const fetchLent = (url, init) => new Promise((_, rejeter) => init.signal.addEventListener("abort", () => rejeter(Object.assign(new Error("aborted"), { name: "AbortError" }))));
   const r = await demanderRegle(entree, { fetch: fetchLent, delaiMs: 20 });
   assert.deepEqual([r.ok, r.code], [false, "delai"]);
-  assert.equal(r.message, "L'IA met trop de temps à répondre. Réessaie ou choisis une phrase d'exemple.");
+  assert.equal(r.message, "L'IA met trop de temps à répondre. Réessayer ou choisir une phrase d'exemple.");
 });
 
 test("la regle recue est revalidee : une regle de forme invalide est refusee", async () => {

@@ -9,7 +9,7 @@
 //
 // Module sans dependance a main.js : tout passe par les parametres de creerReglesModale.
 //   libellesPriorite / libellesStatut : { cle: "Libelle" }
-//   numero(clash) : numero affiche de la collision
+//   numero(clash) : numero affiche de la collision (le meme que le critere « numeros » des regles, src/reglesCollision.js)
 //   creerCarte(clash) : carte de la collision, le meme rendu que la ligne de la liste des collisions (buildCollisionCard de main.js)
 //   lireElement(entityId) : descripteur { nom, typeIfc, niveau, ... } (descripteurElement de reglesCollision.js) ou null
 //   voirEn3D(clash) : ouvre la collision dans la vue Collision (comme un clic dans la liste)
@@ -20,6 +20,7 @@
 //   glisserPourFermer(element, fermer, estOuvert) : fermeture par glissement vers le bas sur mobile (celle des tiroirs et de la carte « Infos du sujet »)
 
 import "./reglesModale.css";
+import { messageAucuneCollision } from "./reglesCollision.js";
 
 const MOBILE = "(max-width: 768px)";
 const DUREE_FERMETURE_MS = 350;
@@ -234,7 +235,7 @@ export function creerReglesModale({ libellesPriorite, libellesStatut, numero, cr
     const actions = creer("div", "regles-actions msg-rangee");
 
     if (!session.lignes.length) {
-      const vide = creer("p", "regles-vide", enAffichage() ? "Aucune collision ne correspond à cette demande." : "Aucune collision ne correspond à cette règle.");
+      const vide = creer("p", "regles-vide", messageAucuneCollision(session.regle, session.numerosExistants));
       vide.setAttribute("role", "status");
       actions.append(...actionReformuler(), creerAction("msg-fantome", "annuler", "Fermer"));
       const corpsVide = creer("div", "regles-corps");
@@ -377,12 +378,14 @@ export function creerReglesModale({ libellesPriorite, libellesStatut, numero, cr
   }
 
   // touchees : resultat de appliquerRegle. Seules les collisions qui changeraient reellement sont listees, toutes cochees.
-  function ouvrir(regle, touchees) {
+  // numerosExistants : numeros affiches des collisions de la detection (sert au message d'un numero cite qui n'existe pas).
+  function ouvrir(regle, touchees, numerosExistants = []) {
     assurerSquelette();
     montrerBandeau(false);
     if (!ouverte()) declencheur = document.activeElement;
     session = {
       regle,
+      numerosExistants,
       defilement: 0,
       enVisite: false,
       lignes: (touchees || []).filter((t) => !t.inchange)

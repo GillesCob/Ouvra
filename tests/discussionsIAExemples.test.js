@@ -5,6 +5,7 @@ import assert from "node:assert/strict";
 import { EXEMPLES_DISCUSSIONS, reconnaitreExemple } from "../src/discussionsIAExemples.js";
 import { indexer } from "../src/discussionsIAIndex.js";
 import { REGISTRE, validerCommande, selectionner } from "../src/discussionsIAMoteur.js";
+const PHRASE_RAPPORT_GENERAL = "Fais-moi un rapport sur les collisions avec les gaines au R+2";
 import { chargerDemo } from "./aide/demoMessagerie.js";
 
 const demo = await chargerDemo(new Date("2026-10-24T12:00:00"));
@@ -12,8 +13,8 @@ const index = indexer(demo.conversations, demo.personnes);
 const valeurs = { personnes: index.personnes.map((p) => p.nom) };
 const maintenant = new Date("2026-10-24T12:00:00").getTime();
 
-test("exemples : 6 a 9 phrases, toutes distinctes", () => {
-  assert.ok(EXEMPLES_DISCUSSIONS.length >= 6 && EXEMPLES_DISCUSSIONS.length <= 9);
+test("exemples : 6 a 10 phrases, toutes distinctes", () => {
+  assert.ok(EXEMPLES_DISCUSSIONS.length >= 6 && EXEMPLES_DISCUSSIONS.length <= 10);
   assert.equal(new Set(EXEMPLES_DISCUSSIONS.map((e) => e.demande)).size, EXEMPLES_DISCUSSIONS.length);
 });
 
@@ -56,8 +57,24 @@ test("reconnaitreExemple : phrase differente, vide ou absente -> null", () => {
   for (const p of ["Montre-moi les échanges avec Karim", "", "   ", null, undefined]) assert.equal(reconnaitreExemple(p), null);
 });
 
-test("ordre de la demo (28/10) : la recherche puis le rapport de la demo ouvrent la liste", () => {
-  assert.equal(EXEMPLES_DISCUSSIONS[0].demande, "Sors-moi toutes les conversations qui parlent de gaines en R+2");
-  assert.equal(EXEMPLES_DISCUSSIONS[1].demande, "Fais-moi un rapport sur la collision entre la gaine et la cloison");
-  assert.equal(EXEMPLES_DISCUSSIONS[0].commande.action, "retrouver_echange");
+test("ordre de la demo (28/10) : le rapport general ouvre la liste, puis la recherche, puis le rapport specifique", () => {
+  assert.equal(EXEMPLES_DISCUSSIONS[0].demande, PHRASE_RAPPORT_GENERAL);
+  assert.equal(EXEMPLES_DISCUSSIONS[1].demande, "Sors-moi toutes les conversations qui parlent de gaines en R+2");
+  assert.equal(EXEMPLES_DISCUSSIONS[2].demande, "Fais-moi un rapport sur la collision entre la gaine et la cloison");
+  assert.equal(EXEMPLES_DISCUSSIONS[1].commande.action, "retrouver_echange");
+});
+
+test("rapport general (28/10) : sujet general, reconnu en local, retient les messages sur les gaines au R+2 de la demo", () => {
+  const e = EXEMPLES_DISCUSSIONS[0];
+  assert.equal(e.commande.action, "rapport");
+  assert.equal(e.commande.parametres.sujet, "collisions avec les gaines au R+2");
+  const r = reconnaitreExemple("fais-moi un rapport sur les collisions avec les gaines au R+2");
+  assert.deepEqual(r.parametres, e.commande.parametres);
+  const v = validerCommande(e.commande, valeurs);
+  assert.equal(v.ok, true);
+  const s = selectionner(v.commande, index, { maintenant });
+  assert.ok(s.messages.length >= 10, "messages retenus : " + s.messages.length);
+  const textes = s.messages.map((m) => m.texte).join("\n");
+  assert.ok(textes.includes("la gaine rectangulaire, avec ses coudes et ses piquages"));
+  assert.ok(s.messages.some((m) => m.convId === "sophie" && m.sujetId === "s1"), "le sujet s1 de la conversation avec Sophie est retenu");
 });

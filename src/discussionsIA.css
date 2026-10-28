@@ -17,7 +17,7 @@
 .msg-racine .msg-ia-nouvelle:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
 
 /* ---------- Liste filtree par l'IA ---------- */
-/* Resume du resultat sur UNE SEULE ligne : « <- Retour », la demande et le compte (ellipsis si trop long), « Voir le rapport ». */
+/* Resume du resultat sur UNE SEULE ligne : « <- Retour », la demande et le compte (ellipsis si trop long). */
 .msg-ia-resume {
   position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 8px; padding: 4px 10px;
   background: var(--surface); border-bottom: 1px solid var(--border);
@@ -26,13 +26,11 @@
 .msg-ia-demande b { font-weight: 600; }
 .msg-ia-demande span { color: var(--muted); }
 .msg-ia-demande span::before { content: " \00b7 "; }
-.msg-ia-actions { flex: none; display: flex; }
-.msg-ia-actions button, .msg-ia-retour {
+.msg-ia-retour {
   min-height: 44px; padding: 4px 12px; background: none; color: var(--text); border: 1px solid var(--border); border-radius: 8px; font-size: 13px; font-weight: 700;
   white-space: nowrap; -webkit-tap-highlight-color: transparent;
 }
 .msg-racine .msg-ia-retour { flex: none; background: var(--msg-accent); color: var(--msg-sur-accent); border-color: var(--msg-accent); cursor: pointer; }
-@media (hover: hover) and (pointer: fine) { .msg-ia-actions button[data-act="ia-rapport"]:hover { border-color: var(--msg-accent); } }
 /* Mode resultat (classe posee par rendreListe sur .msg-lateral) : onglets masques, la liste des discussions remontees prend la place.
    Retirer ce bloc suffit pour revenir a l'ancien affichage. */
 .msg-lateral.msg-ia-resultat .msg-onglets { display: none; }
@@ -162,4 +160,10 @@ body.disc-rapport-retour-actif #view-discussions { padding-top: 44px; box-sizing
   #discussionsBandeau button:hover { border-color: var(--accent); }
   #discussionsBandeau button[data-act="oui"]:hover { background: color-mix(in srgb, #7fae84 86%, #fff); border-color: color-mix(in srgb, #7fae84 86%, #fff); }
   #discussionsRapportBandeauRetour button:hover { border-color: var(--accent); }
+}
+
+/* Survol des boutons oublies (28/10, Gilles) : « Fermer » du rapport est un bouton plein dont la bordure est deja a l'accent (« bordure accent » ne changeait rien) : meme teinte plus claire que « Valider ». */
+@media (hover: hover) and (pointer: fine) {
+  .disc-rapport-fermer:not(:disabled):hover { background: color-mix(in srgb, var(--accent) 86%, #fff); border-color: color-mix(in srgb, var(--accent) 86%, #fff); }
+  .msg-racine .msg-ia-retour:hover { background: color-mix(in srgb, var(--msg-accent) 86%, #fff); border-color: color-mix(in srgb, var(--msg-accent) 86%, #fff); }
 }
