@@ -1,4 +1,4 @@
-import { readFileSync, statSync } from "node:fs";
+import { readFileSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import ExcelJS from "exceljs";
 import { estA4Portrait, lirePdf } from "../fichiers.js";
@@ -63,8 +63,26 @@ function sommeColonne(t: ITableau): { somme: number; total: number } {
   return { somme: t.valeurs.reduce((a, v) => a + nombre(v), 0), total: nombre(t.valeurTotal ?? "") };
 }
 
+/** Exporte via le menu deroulant « Exporter » (29/10) : le bouton ouvre la liste des formats, puis un choix. Le PDF s'ouvre dans un onglet (blob lu depuis cet onglet), Excel et CSV se telechargent. */
 async function telecharger(ctx: IContexteTest, page: IPageSuivie, format: "Excel" | "PDF" | "CSV"): Promise<string> {
-  const [dl] = await Promise.all([page.waitForEvent("download", { timeout: 40_000 }), page.click(`button[aria-label="Exporter en ${format}"]`)]);
+  await page.click('button[aria-label="Exporter ce quantitatif"]');
+  await page.waitForSelector('[role="menu"][aria-label="Format d\'export"]', { timeout: 5_000 });
+  const choix = `[role="menuitem"][aria-label="Exporter en ${format}"]`;
+  if (format === "PDF") {
+    const [onglet] = await Promise.all([ctx.contexte.waitForEvent("page", { timeout: 40_000 }), page.click(choix)]);
+    await onglet.waitForLoadState("domcontentloaded").catch(() => undefined);
+    const base64 = await onglet.evaluate(async () => {
+      const octets = new Uint8Array(await (await fetch(location.href)).arrayBuffer());
+      let binaire = "";
+      octets.forEach((o) => { binaire += String.fromCharCode(o); });
+      return btoa(binaire);
+    });
+    await onglet.close();
+    const chemin = join(ctx.dossierTelechargements, "quantitatif.pdf");
+    writeFileSync(chemin, Buffer.from(base64, "base64"));
+    return chemin;
+  }
+  const [dl] = await Promise.all([page.waitForEvent("download", { timeout: 40_000 }), page.click(choix)]);
   const chemin = join(ctx.dossierTelechargements, dl.suggestedFilename());
   await dl.saveAs(chemin);
   return chemin;
@@ -94,7 +112,7 @@ async function laptop(ctx: IContexteTest): Promise<void> {
       };
     });
     verif.controle("R-39 « Nouvelle demande » presente", r.boutons.includes("Nouvelle demande"), r.boutons);
-    verif.controle("R-39 « Historique » grise tant que vide", r.boutons.some((b) => /^Historique.*\(grisé\)/.test(b)), r.boutons);
+    verif.controle("R-39 « Historique » present et actif des la premiere ouverture (2 demandes de demonstration amorcees)", r.boutons.some((b) => /^Historique · 2$/.test(b)), r.boutons);
     verif.controle("R-39 aucune introduction ni encart « Pose une question »", !/Pose une question/.test(r.texte) && !r.phrases, r.texte);
   }
 
@@ -151,7 +169,7 @@ async function laptop(ctx: IContexteTest): Promise<void> {
     await dormir(300);
   }
 
-  // R-43 : « Non » retire l'entree, « Oui » la garde dans l'historique avec Rouvrir / Supprimer.
+  // R-43 : « Non » retire l'entree, « Oui » la garde dans l'historique (cartes cliquables ; « Supprimer » vit dans le quantitatif ouvert, 28/10).
   {
     const lireHisto = (): Promise<string[]> => page.evaluate(() => [...document.querySelectorAll<HTMLElement>(".qt-histo-item")].map((li) => li.innerText.replace(/\s+/g, " ")));
     await lancerPhraseExemple(page, BOUTON_IA, "Liste des vannes de la maquette mécanique");
@@ -166,30 +184,29 @@ async function laptop(ctx: IContexteTest): Promise<void> {
     await page.click("#quantitatifHistoriqueBtn");
     await dormir(400);
     const h1 = await lireHisto();
-    await page.click("#view-quantitatif button:text-is('← Retour')").catch(() => undefined);
+    await page.click('#view-quantitatif button[aria-label="Retour"]').catch(() => undefined);
     await lancerPhraseExemple(page, BOUTON_IA, "Quantité de faux plafonds du niveau 1");
     await attendreTableau(page);
     await page.click(OUI);
     await dormir(300);
+    await page.click('#view-quantitatif button[aria-label="Retour"]'); // le bouton « Historique » ne vit que sur la carte de depart
     await page.click("#quantitatifHistoriqueBtn");
     await dormir(400);
     const h2 = await lireHisto();
-    const boutons = await page.evaluate(() => [...document.querySelectorAll<HTMLElement>(".qt-histo-item button")].map((b) => b.innerText.trim()));
+    const cartes = await page.locator(".qt-histo-item button.qt-histo-carte").count();
     verif.controle("R-43 « Non » : l'entree « vannes » n'est pas dans l'historique", !h1.some((x) => /vannes/i.test(x)), h1);
     verif.controle("R-43 « Oui » : l'entree « faux plafonds du niveau 1 » est dans l'historique", h2.some((x) => /faux plafonds du niveau 1/.test(x)), h2);
-    verif.controle("R-43 boutons « Rouvrir » et « Supprimer »", boutons.includes("Rouvrir") && boutons.includes("Supprimer"), [...new Set(boutons)]);
+    verif.controle("R-43 chaque entree est une carte cliquable (plus de boutons « Rouvrir » / « Supprimer »)", cartes === h2.length && (await page.locator(".qt-histo-item button:text-is('Supprimer'), .qt-histo-item button:text-is('Rouvrir')").count()) === 0, { cartes, entrees: h2.length });
   }
 
-  // R-44 : Rouvrir sans appel IA, Supprimer retire une entree.
+  // R-44 : rouvrir une carte sans appel IA, « Supprimer » (dans le quantitatif ouvert) retire une entree et ramene a l'historique.
   {
     const avant = ctx.appelsApi.length;
     const nb0 = await page.locator(".qt-histo-item").count();
-    await page.click('.qt-histo-item button:text-is("Rouvrir")');
+    await page.click(".qt-histo-item button.qt-histo-carte");
     await dormir(900);
     const t = await lireTableau(page);
-    await page.click("#quantitatifHistoriqueBtn");
-    await dormir(400);
-    await page.click('.qt-histo-item button:text-is("Supprimer")');
+    await page.click('button[aria-label="Supprimer ce quantitatif"]');
     await dormir(400);
     const nb1 = await page.locator(".qt-histo-item").count();
     verif.controle("R-44 « Rouvrir » : aucun appel IA et tableau affiche", ctx.appelsApi.length === avant && !!t, { appels: ctx.appelsApi.length - avant, lignes: t?.lignes.length });
@@ -286,7 +303,7 @@ async function laptop(ctx: IContexteTest): Promise<void> {
       await naviguer(page, "quantitatif");
       await page.click("#quantitatifHistoriqueBtn");
       await dormir(300);
-      await page.click('.qt-histo-item button:text-is("Rouvrir")');
+      await page.click(".qt-histo-item button.qt-histo-carte");
       await dormir(1500);
     };
     await page.reload();
@@ -389,6 +406,7 @@ async function mobile(ctx: IContexteTest): Promise<void> {
     verif.controle("R-53 boutons d'export de 40 px ou plus", g.boutons.length > 0 && g.boutons.every((b) => b.hauteur >= 40), g.boutons);
     verif.controle("R-53 en-tete et premiere colonne collants", /sticky|fixed/.test(g.enteteCollant) && /sticky|fixed/.test(g.colonne1Collante), { entete: g.enteteCollant, colonne1: g.colonne1Collante });
   }
+  await page.click('#view-quantitatif button[aria-label="Retour"]'); // le bouton « Historique » ne vit que sur la carte de depart
   await page.click("#quantitatifHistoriqueBtn");
   await dormir(400);
   const historique = await page.evaluate(() => {
