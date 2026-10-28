@@ -1754,6 +1754,8 @@ body.acc-actif #loadingOverlay { display: none; }
 }
 #view-accueil *, #view-accueil *::before, #view-accueil *::after { box-sizing: border-box; }
 #view-accueil .acc-page { flex: none; width: 100%; overflow-x: hidden; }
+/* « clip » ne cree pas de conteneur de defilement : sans lui, overflow-x: hidden ferait de .acc-page le parent de defilement et l'en-tete collant (.acc-top) ne collerait plus. */
+@supports (overflow: clip) { #view-accueil .acc-page { overflow-x: clip; } }
 #view-accueil img { max-width: 100%; display: block; }
 #view-accueil a { color: inherit; }
 #view-accueil :focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; border-radius: 6px; }
@@ -1764,11 +1766,17 @@ body.acc-actif #loadingOverlay { display: none; }
 
 #view-accueil .acc-wrap { width: 100%; max-width: 1120px; margin: 0 auto; padding-left: 16px; padding-right: 16px; }
 
-/* En-tête */
-#view-accueil .acc-top .acc-wrap { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-top: 8px; padding-bottom: 0; }
-#view-accueil .acc-logo { width: clamp(112px, 32vw, 136px); height: auto; }
+/* En-tête collant (28/10, M31) : logo + bouton « Ouvrir la maquette » toujours visibles au defilement. « Me contacter » n'y tient qu'a partir de 720 px
+   (en dessous, il reste dans le bloc de contact plus bas). */
+#view-accueil .acc-top { position: sticky; top: 0; z-index: 20; background: var(--bg); border-bottom: 1px solid var(--border); }
+#view-accueil .acc-top .acc-wrap { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 6px; padding-bottom: 6px; }
+#view-accueil .acc-top-actions { display: flex; align-items: center; gap: 12px; min-width: 0; }
+#view-accueil .acc-logo { width: 80px; height: auto; } /* petit : l'en-tete reste collant, il ne doit pas manger l'ecran */
+#view-accueil .acc-btn.acc-btn-top { min-height: 44px; padding: 8px 16px; font-size: 0.95rem; gap: 8px; width: auto; max-width: none; white-space: nowrap; box-shadow: none; }
+#view-accueil .acc-btn.acc-btn-top svg { width: 18px; height: 18px; }
+#view-accueil .acc-top-link { display: none; }
 #view-accueil .acc-top-link {
-  display: inline-flex; align-items: center; min-height: 44px; padding: 8px 16px;
+  align-items: center; min-height: 44px; padding: 8px 16px;
   border-radius: 999px; border: 2px solid var(--border); font-weight: 600; text-decoration: none;
 }
 #view-accueil .acc-top-link:hover { border-color: var(--brand); }
@@ -1820,21 +1828,17 @@ body.acc-actif #loadingOverlay { display: none; }
 #view-accueil .acc-steps h3 { margin: 2px 0 6px; font-size: 1.25rem; line-height: 1.25; }
 #view-accueil .acc-steps p { margin: 0; color: var(--muted); }
 
-/* Les trois pages (cartes : <button> dans l'app, remis a plat) */
+/* Les fonctions (cartes d'information, sans lien : le bouton « Ouvrir la maquette » suffit, M30) */
 #view-accueil .acc-cards { list-style: none; margin: 0; padding: 0; display: grid; gap: 16px; }
 #view-accueil .acc-card {
   display: flex; flex-direction: column; gap: 10px; height: 100%; min-height: 44px; width: 100%;
   background: var(--surface); color: var(--ink); border: 1px solid var(--border); border-top: 6px solid var(--brand);
-  border-radius: 20px; padding: 20px; text-align: left; font: inherit; cursor: pointer; box-shadow: var(--shadow);
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  border-radius: 20px; padding: 20px; text-align: left; font: inherit; box-shadow: var(--shadow);
 }
-#view-accueil .acc-card:hover { transform: translateY(-3px); }
 #view-accueil .acc-ico { width: 52px; height: 52px; border-radius: 14px; display: grid; place-items: center; background: var(--brand); color: var(--on-brand); }
 #view-accueil .acc-ico svg { width: 30px; height: 30px; }
 #view-accueil .acc-card h3 { margin: 4px 0 0; font-size: 1.3rem; }
 #view-accueil .acc-card p { margin: 0; color: var(--muted); }
-#view-accueil .acc-badge { align-self: flex-start; margin-top: auto; padding: 4px 12px; border-radius: 999px; font-size: 0.9rem; font-weight: 700; border: 2px solid var(--border); color: var(--ink); }
-#view-accueil .acc-badge-ok { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 
 /* Contact */
 #view-accueil .acc-contact { margin-top: 40px; padding: 0; }
@@ -1857,10 +1861,11 @@ body.acc-actif #loadingOverlay { display: none; }
 #view-accueil.acc-js .acc-reveal.in { opacity: 1; transform: none; }
 
 @media (min-width: 720px) {
+  #view-accueil .acc-top-link { display: inline-flex; }
   #view-accueil .acc-wrap { padding-left: 32px; padding-right: 32px; }
   #view-accueil .acc-steps { grid-template-columns: repeat(3, 1fr); }
   #view-accueil .acc-steps li { grid-template-columns: 1fr; }
-  #view-accueil .acc-cards { grid-template-columns: repeat(3, 1fr); }
+  #view-accueil .acc-cards { grid-template-columns: repeat(2, 1fr); }
   #view-accueil .acc-contact-box { grid-template-columns: 1.4fr 1fr; padding: 44px; gap: 32px; }
   #view-accueil .acc-contact-box .acc-side { justify-self: end; }
   #view-accueil section { padding-top: 56px; }
@@ -1870,11 +1875,10 @@ body.acc-actif #loadingOverlay { display: none; }
 
 /* Laptop : hero en deux colonnes, tient dans la hauteur de l'écran */
 @media (min-width: 900px) {
-  #view-accueil .acc-logo { width: 170px; }
   #view-accueil .acc-hero {
     max-width: 1120px; margin: 0 auto; padding: 0 32px;
     display: grid; grid-template-columns: 0.95fr 1.05fr; gap: 32px; align-items: center;
-    min-height: calc(100vh - 190px);
+    min-height: calc(100vh - 170px);
   }
   #view-accueil .acc-hero-text { margin: 0; padding: 0; text-align: left; max-width: none; }
   #view-accueil .acc-lead { margin: 0; }
@@ -1882,7 +1886,7 @@ body.acc-actif #loadingOverlay { display: none; }
   #view-accueil .acc-hero-img { margin: 0; }
   #view-accueil .acc-hero-img img { height: auto; aspect-ratio: 4 / 3; max-height: calc(100vh - 210px); }
   @supports (height: 1svh) {
-    #view-accueil .acc-hero { min-height: calc(100svh - 190px); }
+    #view-accueil .acc-hero { min-height: calc(100svh - 170px); }
     #view-accueil .acc-hero-img img { height: auto; max-height: calc(100svh - 210px); }
   }
 }
@@ -1890,8 +1894,8 @@ body.acc-actif #loadingOverlay { display: none; }
 @media (prefers-reduced-motion: reduce) {
   #view-accueil { scroll-behavior: auto; }
   #view-accueil.acc-js .acc-reveal { opacity: 1; transform: none; transition: none; }
-  #view-accueil .acc-btn, #view-accueil .acc-card { transition: none; }
-  #view-accueil .acc-btn-main:hover, #view-accueil .acc-card:hover, #view-accueil .acc-btn-contact:hover { transform: none; }
+  #view-accueil .acc-btn { transition: none; }
+  #view-accueil .acc-btn-main:hover, #view-accueil .acc-btn-contact:hover { transform: none; }
 }
 
 /* Sur l'accueil : navbar de l'app et bannière "Intéressé ?" masquées (l'accueil
