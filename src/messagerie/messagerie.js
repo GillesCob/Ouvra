@@ -349,8 +349,8 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
       '<div class="msg-vue-pendante" id="msgVuePendante" hidden></div>' +
       '<div class="msg-composer"><div class="msg-mentions" id="msgMentions" role="listbox" aria-label="Personnes à mentionner" hidden></div><button type="button" class="msg-icone" id="msgBoutonVue" data-act="prendre-vue" aria-label="Prendre une vue dans le Viewer" title="Prendre une vue dans le Viewer">' + ICONE_APPAREIL + "</button>" +
         '<textarea id="msgSaisie" rows="1" placeholder="Écrire un message" aria-label="Écrire un message" aria-autocomplete="list" aria-controls="msgMentions"></textarea>' +
-        '<button type="button" class="msg-envoyer" id="msgEnvoyer" data-act="envoyer">Envoyer</button>' +
-        '<button type="button" class="msg-envoyer msg-rouvrir-conv" id="msgRouvrirConv" data-act="rouvrir" hidden>Rouvrir la conversation</button></div>';
+        '<button type="button" class="btn-principal msg-envoyer" id="msgEnvoyer" data-act="envoyer">Envoyer</button>' +
+        '<button type="button" class="btn-principal msg-envoyer msg-rouvrir-conv" id="msgRouvrirConv" data-act="rouvrir" hidden>Rouvrir la conversation</button></div>';
     $("msgScroller").addEventListener("scroll", () => {
       if (racine.offsetParent !== null) defilementMemorise = $("msgScroller").scrollTop;
       synchroniserBoutonBas();
@@ -990,7 +990,7 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
       '<div class="msg-tags">' + candidatsAjout(cur).map((p) =>
         '<button type="button" data-act="choisir-ajout" data-p="' + echapper(p) + '" aria-pressed="false">' + avatarPersonne(p, "pt") + echapper(personne(p).nom) + "</button>").join("") + "</div>" +
       '<p class="msg-aide">Les personnes ajoutées verront tout l\'historique ' + (cur.sujet ? "de la conversation" : "du groupe") + " et recevront les nouveaux messages.</p>" +
-      '<div class="msg-rangee"><button type="button" class="msg-fantome" data-act="fermer-dialogue">Annuler</button><button type="button" class="msg-envoyer" data-act="valider-ajout" disabled>Valider</button></div>',
+      '<div class="msg-rangee"><button type="button" class="msg-fantome" data-act="fermer-dialogue">Annuler</button><button type="button" class="btn-principal msg-envoyer" data-act="valider-ajout" disabled>Valider</button></div>',
       "Ajouter des personnes", declencheur);
   }
 
@@ -1075,7 +1075,7 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
         '<div class="msg-champ-grand"><label for="msgAjMessage">Message (facultatif)</label><textarea id="msgAjMessage"></textarea></div>' +
         htmlVueJointe(vue) +
         '<p class="msg-aide">Les sujets clos ne sont pas proposés : rouvrez-les d\'abord depuis leur conversation.</p></div>' +
-        '<div class="msg-rangee"><button type="button" class="msg-fantome" data-act="fermer-dialogue">Annuler</button><button type="button" class="msg-envoyer" data-act="ajouter-vue"' + (c ? "" : " disabled") + ">Ajouter la vue</button></div>";
+        '<div class="msg-rangee"><button type="button" class="msg-fantome" data-act="fermer-dialogue">Annuler</button><button type="button" class="btn-principal msg-envoyer" data-act="ajouter-vue"' + (c ? "" : " disabled") + ">Ajouter la vue</button></div>";
     }
     return '<div class="msg-corps">' +
       (choixConversation ? htmlChoixConversation(typeConv, convId, false) : "") +
@@ -1084,7 +1084,7 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
       '<div class="msg-case"><button type="button" id="msgNsUrgent" class="msg-urgent-bouton" data-act="bascule-urgent-ns" aria-pressed="false">Urgent</button></div>' +
       htmlVueJointe(vue) +
       '<div id="msgNsTags"></div></div>' +
-      '<div class="msg-rangee"><button type="button" class="msg-fantome" data-act="fermer-dialogue">Annuler</button><button type="button" class="msg-envoyer" data-act="creer-sujet"' + (c ? "" : " disabled") + ">Créer le sujet</button></div>";
+      '<div class="msg-rangee"><button type="button" class="msg-fantome" data-act="fermer-dialogue">Annuler</button><button type="button" class="btn-principal msg-envoyer" data-act="creer-sujet"' + (c ? "" : " disabled") + ">Créer le sujet</button></div>";
   }
 
   // Contenu de la carte du dialogue (taille fixe, cf .msg-carte-sujet) : titre, bascule (si choix de la conversation), zone du mode « sujet » ou « conversation ».
@@ -1292,7 +1292,7 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
         '<div><label for="msgGrNom">Nom du groupe</label><input id="msgGrNom" maxlength="60" autocomplete="off" /></div>' +
         '<div><span class="msg-etiquette">Personnes</span><div class="msg-tags" id="msgGrPersonnes">' + boutonsPersonnes(Object.keys(personnes).filter((p) => p !== MOI), "choisir-membre") + "</div></div>" +
         '<div class="msg-vide" id="msgGrDoublon" role="alert" hidden></div>' +
-        '<div class="msg-rangee"><button type="button" class="msg-fantome" data-act="fermer-dialogue">Annuler</button><button type="button" class="msg-envoyer" data-act="creer-groupe" disabled>Valider</button></div>',
+        '<div class="msg-rangee"><button type="button" class="msg-fantome" data-act="fermer-dialogue">Annuler</button><button type="button" class="btn-principal msg-envoyer" data-act="creer-groupe" disabled>Valider</button></div>',
         "Nouveau groupe", declencheur);
       return;
     }
