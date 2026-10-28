@@ -24,8 +24,39 @@ test("rapportsDemo : deux rapports complets, intitule, date, tableau fourni, maq
     const t = tableauDe(rapport);
     assert.ok(t.lignes.length >= 12, "tableau fourni : " + t.lignes.length);
     assert.ok(t.total.quantite > 0);
-    assert.equal(comparerVersions(rapport.maquettes, versions).etat, "a_jour");
   }
+});
+
+test("rapportsDemo : statuts deterministes, la plus recente est a jour, l'autre obsolete (avec ou sans empreintes courantes)", () => {
+  const r = rapportsDemo({ maintenant, versions });
+  assert.deepEqual(r.map((x) => comparerVersions(x.maquettes, versions).etat), ["a_jour", "obsolete"]);
+  const autres = versions.map((v) => ({ ...v, empreinte: "etag:apres-deploiement" }));
+  assert.equal(comparerVersions(r[1].maquettes, autres).etat, "obsolete");
+});
+
+test("amorcerHistoriqueDemo : la demo a jour suit les empreintes courantes a chaque chargement, la demo obsolete reste obsolete", async () => {
+  const stockage = memoire();
+  const historique = creerHistorique({ depot: depotMemoire() });
+  await amorcerHistoriqueDemo({ historique, versions: async () => versions, stockage, maintenant });
+  const apres = versions.map((v) => ({ ...v, empreinte: "etag:nouveau-" + v.id }));
+  assert.equal(await amorcerHistoriqueDemo({ historique, versions: async () => apres, stockage, maintenant }), true);
+  const etats = (await historique.lister()).map((e) => comparerVersions(e.rapport.maquettes, apres).etat);
+  assert.deepEqual(etats, ["a_jour", "obsolete"]);
+  assert.equal(await amorcerHistoriqueDemo({ historique, versions: async () => apres, stockage, maintenant }), false);
+  assert.equal(await amorcerHistoriqueDemo({ historique, versions: async () => [], stockage, maintenant }), false);
+});
+
+test("amorcerHistoriqueDemo : ancien drapeau « 2 » : les demos sont reecrites, le rapport de l'utilisateur est intact", async () => {
+  const stockage = memoire();
+  stockage.setItem(CLE_DRAPEAU_DEMO, "2");
+  const historique = creerHistorique({ depot: depotMemoire() });
+  const [demo] = rapportsDemo({ maintenant });
+  await historique.ajouter({ ...demo, id: "perso-2", phrase: "Mon calcul" });
+  await historique.ajouter({ ...rapportsDemo({ maintenant, versions })[1], maquettes: [{ id: "hosp-arch", label: "Architecture", url: "", empreinte: "etag:a" }] });
+  assert.equal(await amorcerHistoriqueDemo({ historique, versions: async () => versions, stockage, maintenant }), true);
+  assert.equal((await historique.lister()).length, 3);
+  assert.equal((await historique.obtenir("perso-2")).rapport.phrase, "Mon calcul");
+  assert.equal(comparerVersions((await historique.obtenir("demo-quantitatif-architecture")).rapport.maquettes, versions).etat, "obsolete");
 });
 
 test("rapportsDemo : sans versions, la version est dite inconnue (jamais « a jour » sans preuve)", () => {
