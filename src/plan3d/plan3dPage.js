@@ -353,6 +353,7 @@ export function creerPlan3dPage({ racine, voirDansViewer = null }) {
     btnFond.disabled = !fond;
     btnVoir3d.disabled = modele.murs.length === 0;
     vide.hidden = Boolean(fond) || modele.murs.length > 0;
+    scene.classList.toggle("p3d-scene-vide", !vide.hidden); // carte de depart : le fond de l'application, pas le papier du plan
     // Etat de depart : tout passe par la carte « Commence par un plan » (importer, exemple). Ni outils ni en-tete (importer, voir en 3D) avant.
     const demarre = Boolean(fond) || modele.murs.length > 0;
     outils.hidden = !demarre;
