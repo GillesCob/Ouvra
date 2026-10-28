@@ -145,7 +145,7 @@ export function creerPlan3dPage({ racine, voirDansViewer = null, projets = creer
   const selectPage = creer("select", "p3d-select");
   selectPage.setAttribute("aria-label", "Page du PDF");
   selectPage.hidden = true;
-  const btnVoir3d = bouton("Voir en 3D", { ico: "cube" }); // style neutre comme les autres boutons : le vert (accent) se lirait comme « selectionne »
+  const btnVoir3d = bouton("Voir en 3D", { classe: "p3d-btn p3d-btn-voir3d", ico: "cube" }); // style neutre comme les autres boutons : le vert (accent) se lirait comme « selectionne »
   btnVoir3d.title = "Ouvre la maquette dans le Viewer d'Ouvra";
   btnVoir3d.setAttribute("aria-label", "Voir la maquette 3D dans le Viewer");
   zonePlan.append(btnRetour, champNom, selectPage, fichierInput);

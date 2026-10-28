@@ -227,7 +227,8 @@
   .p3d-nom-projet { flex: 1 1 0; max-width: none; padding: 0 8px; font-size: 13px; }
   .p3d-projets { padding: 12px; }
   .p3d-projets-action { padding: 24px 12px; }
-  .p3d-retour-texte, .p3d-btn-supprimer span { display: none; }
+  .p3d-retour-texte, .p3d-btn-supprimer span, .p3d-btn-voir3d span { display: none; } /* « Voir en 3D » reduit a l'icone (nom accessible : aria-label) pour laisser la place au nom du projet */
+  .p3d-btn-voir3d { min-width: 44px; padding: 0; }
   .p3d-btn-retour, .p3d-btn-supprimer { min-width: 44px; padding: 0; font-size: 18px; }
   .p3d-btn-supprimer { font-size: 12.5px; }
 }
