@@ -920,11 +920,11 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
   }
 
   // ---------- Dialogues (nouveau sujet, historique, agrandissement) ----------
-  function ouvrirDialogue(html, libelle, declencheur) {
+  function ouvrirDialogue(html, libelle, declencheur, classe) {
     const boite = $("msgDialogue");
     declencheurDialogue = declencheur || document.activeElement;
     boite.hidden = false;
-    boite.innerHTML = '<div class="msg-carte" role="dialog" aria-modal="true" aria-label="' + echapper(libelle) + '">' + html +
+    boite.innerHTML = '<div class="msg-carte' + (classe ? " " + classe : "") + '" role="dialog" aria-modal="true" aria-label="' + echapper(libelle) + '">' + html +
       '<button type="button" class="msg-croix" data-act="fermer-dialogue" aria-label="Fermer">\u2715</button></div>';
     const premierChamp = boite.querySelector("[autofocus], input, textarea, button");
     if (premierChamp) premierChamp.focus();
@@ -997,37 +997,48 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
       '<option value="' + echapper(s.id) + '"># ' + echapper(s.titre) + " (" + LIBELLES_STATUT[s.statut] + (s.nonLus ? ", " + s.nonLus + " non lus" : "") + ")</option>").join("");
   }
 
-  // Contenu de la carte du dialogue : mode « sujet » (nouveau sujet) ou « conversation » (ajouter la vue a un fil existant).
-  function htmlDialogueSujet(mode, convId, vue, choixConversation) {
-    const existant = mode === "conversation";
-    const bascule = choixConversation
-      ? '<div class="msg-bascule">' +
-        '<button type="button" data-act="mode-dialogue" data-v="sujet" aria-pressed="' + !existant + '">Nouveau sujet</button>' +
-        '<button type="button" data-act="mode-dialogue" data-v="conversation" aria-pressed="' + existant + '">Conversation existante</button></div>'
-      : "";
-    if (existant) {
+  function optionsConversations(liste, convId, avecNonLus) {
+    return liste.map((k) => {
+      const n = avecNonLus ? nonLusConv(k) : 0;
+      return '<option value="' + echapper(k.id) + '"' + (k.id === convId ? " selected" : "") + ">" + echapper(k.nom) + (n ? " : " + n + " non lus" : "") + "</option>";
+    }).join("");
+  }
+
+  // Bascule « Nouveau sujet » / « Conversation existante » : la pastille (meme composant que #navbarThumb) glisse sous le bouton actif, selon data-mode.
+  function htmlBasculeDialogue(existant) {
+    return '<div class="msg-bascule" data-mode="' + (existant ? "conversation" : "sujet") + '"><span class="msg-pastille" aria-hidden="true"></span>' +
+      '<button type="button" data-act="mode-dialogue" data-v="sujet" aria-pressed="' + !existant + '">Nouveau sujet</button>' +
+      '<button type="button" data-act="mode-dialogue" data-v="conversation" aria-pressed="' + existant + '">Conversation existante</button></div>';
+  }
+
+  // Corps (qui defile) + rangee de boutons du dialogue, selon le mode : seul ce bloc est redessine a la bascule, la carte et la bascule restent en place.
+  function htmlZoneDialogue(mode, convId, vue, choixConversation) {
+    if (mode === "conversation") {
       const c = convParId(conversations, convId);
-      return "<h3>Ajouter la vue à une conversation</h3>" + bascule +
-        '<div><label for="msgAjConv">Conversation</label><select id="msgAjConv">' +
-        conversationsParPriorite().map((k) => {
-          const n = nonLusConv(k);
-          return '<option value="' + echapper(k.id) + '"' + (k.id === convId ? " selected" : "") + ">" + echapper(k.nom) + (n ? " : " + n + " non lus" : "") + "</option>";
-        }).join("") + "</select></div>" +
+      return '<div class="msg-corps">' +
+        '<div><label for="msgAjConv">Conversation</label><select id="msgAjConv">' + optionsConversations(conversationsParPriorite(), convId, true) + "</select></div>" +
         '<div><label for="msgAjSujet">Où l\'ajouter</label><select id="msgAjSujet">' + optionsSujetsOuverts(c) + "</select></div>" +
         '<div><label for="msgAjMessage">Message (facultatif)</label><textarea id="msgAjMessage"></textarea></div>' +
         htmlVueJointe(vue) +
-        '<p class="msg-aide">Les sujets clos ne sont pas proposés : rouvrez-les d\'abord depuis leur conversation.</p>' +
+        '<p class="msg-aide">Les sujets clos ne sont pas proposés : rouvrez-les d\'abord depuis leur conversation.</p></div>' +
         '<div class="msg-rangee"><button type="button" class="msg-fantome" data-act="fermer-dialogue">Annuler</button><button type="button" class="msg-envoyer" data-act="ajouter-vue">Ajouter la vue</button></div>';
     }
-    return "<h3>Nouveau sujet</h3>" + bascule +
-      (choixConversation ? '<div><label for="msgNsConv">Conversation</label><select id="msgNsConv">' +
-        conversations.map((c) => '<option value="' + echapper(c.id) + '"' + (c.id === convId ? " selected" : "") + ">" + echapper(c.nom) + "</option>").join("") + "</select></div>" : "") +
+    return '<div class="msg-corps">' +
+      (choixConversation ? '<div><label for="msgNsConv">Conversation</label><select id="msgNsConv">' + optionsConversations(conversations, convId, false) + "</select></div>" : "") +
       '<div><label for="msgNsTitre">Titre</label><input id="msgNsTitre" placeholder="Ex. Collision gaine / cloison R+2" autocomplete="off" /></div>' +
       '<div><label for="msgNsMessage">Premier message</label><textarea id="msgNsMessage"></textarea></div>' +
       '<div class="msg-case"><button type="button" id="msgNsUrgent" class="msg-urgent-bouton" data-act="bascule-urgent-ns" aria-pressed="false">Urgent</button></div>' +
       htmlVueJointe(vue) +
-      '<div id="msgNsTags"></div>' +
+      '<div id="msgNsTags"></div></div>' +
       '<div class="msg-rangee"><button type="button" class="msg-fantome" data-act="fermer-dialogue">Annuler</button><button type="button" class="msg-envoyer" data-act="creer-sujet">Créer le sujet</button></div>';
+  }
+
+  // Contenu de la carte du dialogue (taille fixe, cf .msg-carte-sujet) : titre, bascule (si choix de la conversation), zone du mode « sujet » ou « conversation ».
+  function htmlDialogueSujet(mode, convId, vue, choixConversation) {
+    const existant = mode === "conversation";
+    return '<h3 class="msg-titre-sujet">' + (existant ? "Ajouter la vue à une conversation" : "Nouveau sujet") + "</h3>" +
+      (choixConversation ? htmlBasculeDialogue(existant) : "") +
+      '<div class="msg-zone">' + htmlZoneDialogue(mode, convId, vue, choixConversation) + "</div>";
   }
 
   // Apres (re)dessin de la carte : tags du mode « sujet », focus sur le premier champ du mode actif.
@@ -1045,19 +1056,23 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
   function ouvrirDialogueSujet({ convId, vue, choixConversation, declencheur }) {
     const idDefaut = convId || (conversations.find((c) => c.general) || conversations.find((c) => c.type === "groupe") || conversations[0]).id;
     const selection = { convId: idDefaut, vue: vue || null, choixConversation: !!choixConversation };
-    ouvrirDialogue(htmlDialogueSujet("sujet", idDefaut, selection.vue, selection.choixConversation), "Nouveau sujet", declencheur);
+    ouvrirDialogue(htmlDialogueSujet("sujet", idDefaut, selection.vue, selection.choixConversation), "Nouveau sujet", declencheur, "msg-carte-sujet");
     $("msgDialogue").dataset.convId = selection.convId;
     $("msgDialogue").dataset.choix = selection.choixConversation ? "1" : "";
     vueDialogue = selection.vue;
     activerDialogueSujet("sujet");
   }
 
-  // Bascule « Nouveau sujet » / « Conversation existante » : la carte est redessinee, la conversation choisie est conservee.
+  // Bascule « Nouveau sujet » / « Conversation existante » : seule la zone est redessinee (la carte garde sa taille et sa place, la pastille glisse), la conversation choisie est conservee.
   function changerModeDialogue(mode) {
     const boite = $("msgDialogue");
     const carte = boite.querySelector(".msg-carte");
     carte.setAttribute("aria-label", mode === "conversation" ? "Ajouter la vue à une conversation" : "Nouveau sujet");
-    carte.innerHTML = htmlDialogueSujet(mode, boite.dataset.convId, vueDialogue, true);
+    carte.querySelector(".msg-titre-sujet").textContent = mode === "conversation" ? "Ajouter la vue à une conversation" : "Nouveau sujet";
+    const bascule = carte.querySelector(".msg-bascule");
+    bascule.dataset.mode = mode;
+    bascule.querySelectorAll('[data-act="mode-dialogue"]').forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.v === mode)));
+    carte.querySelector(".msg-zone").innerHTML = htmlZoneDialogue(mode, boite.dataset.convId, vueDialogue, true);
     activerDialogueSujet(mode);
   }
 
