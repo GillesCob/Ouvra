@@ -9,9 +9,9 @@ const ICONES = [
 ];
 
 // Titre et logo dans l'onglet, texte d'attente dans la page. origine : adresse d'Ouvra (les chemins d'icone sont absolus, de meme origine, valables en production).
-export function preparerOngletPdf(onglet, { origine = globalThis.location ? globalThis.location.origin : "", texte = "Préparation du PDF…" } = {}) {
+export function preparerOngletPdf(onglet, { origine = globalThis.location ? globalThis.location.origin : "", texte = "Préparation du PDF…", titre = TITRE_ONGLET_PDF } = {}) {
   const doc = onglet.document;
-  doc.title = TITRE_ONGLET_PDF;
+  doc.title = titre; // paramétrable (28/10) : « Rapport Ouvra » par défaut, « Quantitatif Ouvra » pour le Quantitatif
   for (const i of ICONES) {
     const lien = doc.createElement("link");
     lien.rel = i.rel;
@@ -29,7 +29,7 @@ export function afficherPdfDansOnglet(onglet, urlPdf) {
   doc.body.style.cssText = "margin:0;height:100%;overflow:hidden";
   const cadre = doc.createElement("iframe");
   cadre.src = urlPdf;
-  cadre.title = TITRE_ONGLET_PDF;
+  cadre.title = doc.title || TITRE_ONGLET_PDF;
   cadre.style.cssText = "display:block;border:0;width:100%;height:100%";
   doc.body.textContent = "";
   doc.body.appendChild(cadre);

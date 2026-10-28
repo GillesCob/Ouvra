@@ -9,6 +9,7 @@
 import { tableauDe, informationsDe, formaterNombre, nomFichier } from "./quantitatifRapport.js";
 import { libelleStatut } from "./quantitatifVersions.js";
 import { VERT, sansSpecial, chargerLogo } from "./exportPdfCommun.js";
+import { livrerRapportPdf } from "./discussionsIARapportPdf.js";
 
 const ROUGE = [178, 34, 34];
 const ORANGE_PALE = [253, 236, 220];
@@ -113,10 +114,11 @@ export function construirePdf({ jsPDF, autoTable }, def, { logoPng = null, maint
   return doc;
 }
 
-// Declenche le telechargement. Les bibliotheques sont importees ici, au clic.
-export async function exporterPdf(rapport, statut, { telecharger, fetch: appel = (...a) => globalThis.fetch(...a) }) {
+// Livre le PDF (28/10) : ouvert dans l'onglet deja ouvert au clic (meme mecanisme que le rapport des discussions), sinon telecharge. Rend "ouvert" ou "telecharge".
+// Les bibliotheques sont importees ici, au clic. Le contenu du PDF est inchange.
+export async function exporterPdf(rapport, statut, { telecharger, onglet = null, fetch: appel = (...a) => globalThis.fetch(...a) }) {
   const [{ jsPDF }, autotable] = await Promise.all([import("jspdf"), import("jspdf-autotable")]);
   const def = definitionPdf(rapport, statut);
   const doc = construirePdf({ jsPDF, autoTable: autotable.autoTable || autotable.default }, def, { logoPng: await chargerLogo(appel) });
-  telecharger(def.nomFichier, doc.output("blob"));
+  return livrerRapportPdf(def.nomFichier, doc.output("blob"), { onglet, telecharger });
 }

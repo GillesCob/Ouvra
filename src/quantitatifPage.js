@@ -20,6 +20,9 @@ import { valeursPourQuantitatif } from "./quantitatifDonnees.js";
 import { EXEMPLES_QUANTITATIF, reconnaitreExemple } from "./quantitatifExemples.js";
 import { nettoyerPhrase } from "./reglesVoix.js";
 import { creerIASaisie } from "./iaSaisie.js";
+import { preparerOngletPdf } from "./discussionsIARapportOnglet.js";
+
+const TITRE_ONGLET_QUANTITATIF = "Quantitatif Ouvra";
 
 // MASQUE_INFOS_QUANTITATIF (27/10, demande de Gilles) : retire de l'ecran les informations de contexte du calcul (elements exclus, objets spatiaux,
 // niveaux regroupes, date de calcul, maquettes). Les donnees restent dans le rapport et les exports ne changent pas. Mettre false pour les reafficher.
@@ -250,17 +253,28 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
   // Exports : Excel et PDF chargent leur bibliotheque ICI, au clic (import dynamique), jamais au chargement de la page.
   async function exporter(format, rapport, statut) {
     dire("Préparation du fichier…");
+    // Le PDF s'ouvre dans un nouvel onglet (28/10), comme le rapport des discussions : onglet ouvert ICI, dans le geste du clic, avant toute attente
+    // (sinon les bloqueurs de pop-up le refusent). Bloque : onglet null, l'export retombe sur le telechargement.
+    let onglet = null;
+    if (format === "pdf") {
+      onglet = window.open("", "_blank");
+      if (onglet) {
+        onglet.opener = null;
+        preparerOngletPdf(onglet, { titre: TITRE_ONGLET_QUANTITATIF });
+      }
+    }
     try {
       if (format === "csv") {
         const remarques = [rapport.resultat.notes[0], ...(statut.etat === "a_jour" ? [] : [libelleStatut(statut)])];
         telecharger(nomFichier(rapport, "csv"), exporterCsv(rapport.resultat, remarques), "text/csv;charset=utf-8");
       } else if (format === "pdf") {
-        await (await import("./quantitatifExportPdf.js")).exporterPdf(rapport, statut, { telecharger: (n, c) => telecharger(n, c, "application/pdf") });
+        await (await import("./quantitatifExportPdf.js")).exporterPdf(rapport, statut, { telecharger: (n, c) => telecharger(n, c, "application/pdf"), onglet });
       } else {
         await (await import("./quantitatifExportXlsx.js")).exporterXlsx(rapport, statut, { telecharger: (n, c) => telecharger(n, c) });
       }
       dire("");
     } catch {
+      if (onglet && !onglet.closed) onglet.close();
       dire("L'export a échoué. Réessaie, ou utilise le format CSV.");
     }
   }
