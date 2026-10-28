@@ -3,7 +3,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { indexer } from "../src/discussionsIAIndex.js";
-import { construireRapportModele, PHRASE_MODELE } from "../src/discussionsIARapportModele.js";
+import { construireRapportModele, construireRapportModeleCoupeFeu, PHRASE_MODELE } from "../src/discussionsIARapportModele.js";
 import { EXEMPLES_DISCUSSIONS } from "../src/discussionsIAExemples.js";
 import { rapportEnTexte } from "../src/discussionsIARapportFormat.js";
 import { chargerDemo } from "./aide/demoMessagerie.js";
@@ -55,4 +55,19 @@ test("modele : la version texte (bouton Copier) reste lisible et ne contient auc
 test("modele : sans les messages de demonstration (index vide), pas de rapport invente", () => {
   const r = construireRapportModele(indexer([], []), { maintenant: Date.now() });
   assert.equal(r.ok, false);
+});
+
+test("second modele (coupe-feu R+2) : se construit, decision prise, sources retrouvees sur les vrais messages", async () => {
+  const maintenant = new Date("2026-10-28T09:00:00");
+  const demo = await chargerDemo(maintenant);
+  const r = construireRapportModeleCoupeFeu(indexer(demo.conversations, demo.personnes), { maintenant: maintenant.getTime() });
+  assert.equal(r.ok, true, r.erreur);
+  assert.equal(r.rapport.modele, true);
+  assert.equal(r.rapport.contexte.confirme, true);
+  assert.equal(r.rapport.decision.confirme, true);
+  assert.deepEqual(r.rapport.intervenants, ["Claire Martin", "Vous"]);
+});
+
+test("second modele : index vide, pas de rapport invente", () => {
+  assert.equal(construireRapportModeleCoupeFeu(indexer([], []), { maintenant: Date.now() }).ok, false);
 });

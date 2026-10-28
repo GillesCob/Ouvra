@@ -17,7 +17,8 @@ import { indexer } from "./discussionsIAIndex.js";
 import { rapportEnTexte } from "./discussionsIAMoteur.js";
 import { EXEMPLES_DISCUSSIONS } from "./discussionsIAExemples.js";
 import { demanderComprehension, demanderAnalyse } from "./discussionsIAClient.js";
-import { construireRapportModele } from "./discussionsIARapportModele.js";
+import { construireRapportModele, construireRapportModeleCoupeFeu } from "./discussionsIARapportModele.js";
+import { listerSyntheses, ajouterSynthese, DEMOS_SYNTHESES } from "./discussionsIAHistorique.js";
 
 const DELAI_ANALYSE_MS = 42000; // un rapport est plus long a ecrire : un peu plus que le delai du relais (32 s)
 
@@ -46,6 +47,7 @@ export function creerDiscussionsIAMontage() {
   let rapportVue = null;
   let ia = null;
   let retourRapport = null;
+  let rapportAProposer = null; // rapport en attente du « Oui » du bandeau : garde dans l'historique seulement s'il est accepte
 
   function monter(messagerieMontee) {
     messagerie = messagerieMontee;
@@ -72,9 +74,13 @@ export function creerDiscussionsIAMontage() {
     });
     bandeau = creerDiscussionsBandeau({
       retourFocus: bouton,
-      surOui: () => flux.accepter(),
+      surOui: () => {
+        flux.accepter();
+        if (rapportAProposer) { ajouterSynthese(rapportAProposer); ia.majHistorique(); rapportAProposer = null; }
+      },
       // « Non » : la demande est annulee, le panneau du rapport se ferme et la saisie se rouvre avec la phrase.
       surNon: () => {
+        rapportAProposer = null;
         rapportVue.fermer();
         const retour = flux.refuser();
         if (retour) ia.reformuler(retour.phrase);
@@ -102,15 +108,26 @@ export function creerDiscussionsIAMontage() {
           if (modele.ok) rapportVue.ouvrir(modele.rapport);
         }
       },
+      // Historique des syntheses (28/10) : une synthese enregistree rouvre son rapport tel quel ; une synthese de demonstration est construite a l'ouverture sur les vrais messages.
+      historique: { lister: () => listerSyntheses(), ouvrir: ouvrirSynthese },
       traiter: (phrase) => pipeline.traiter(phrase),
       proposer: (retour, phrase) => {
         const application = flux.proposer(retour, phrase);
         if (!application.ok) return application;
         bandeau.montrer({ relecture: application.relecture, resume: application.resume });
-        if (application.type === "rapport") rapportVue.ouvrir(retour.rapport);
+        if (application.type === "rapport") { rapportAProposer = retour.rapport; rapportVue.ouvrir(retour.rapport); }
         return { ok: true };
       }
     });
+  }
+
+  function ouvrirSynthese(entree) {
+    if (entree.rapport) { rapportVue.ouvrir(entree.rapport); return; }
+    const donnees = messagerie.donneesPourIA();
+    const index = indexer(donnees.conversations, donnees.personnes);
+    const construire = entree.demo === DEMOS_SYNTHESES.coupeFeu ? construireRapportModeleCoupeFeu : construireRapportModele;
+    const modele = construire(index, { maintenant: Date.now() });
+    if (modele.ok) rapportVue.ouvrir(modele.rapport);
   }
 
   // L'onglet IA vient d'etre choisi (clic) : la modale de demande s'ouvre en vocal.

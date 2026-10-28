@@ -51,6 +51,6 @@ test("panneau de gauche (28/10) : aucun bouton « Voir le rapport » ni action �
   assert.ok(!messagerie.includes("Voir le rapport</button>") && !messagerie.includes('data-act="ia-rapport"') && !messagerie.includes('case "ia-rapport"'));
   const montage = lire("src/discussionsIAMontage.js");
   assert.ok(!montage.includes('nom === "rapport"'));
-  assert.match(montage, /application\.type === "rapport"\) rapportVue\.ouvrir\(retour\.rapport\)/);
+  assert.match(montage, /application\.type === "rapport"\) \{ rapportAProposer = retour\.rapport; rapportVue\.ouvrir\(retour\.rapport\); \}/);
   assert.ok(montage.includes('libelle: "Retour au rapport"'));
 });

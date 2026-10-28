@@ -43,30 +43,69 @@ const SORTIE_MODELE = {
   }
 };
 
+// Second modele (28/10) : le desaccord sur le degre coupe-feu de la cloison du local technique R+2 (conversation avec Claire Martin), pour l'historique de demonstration.
+const COMMANDE_COUPE_FEU = { action: "rapport", parametres: { sujet: "degré coupe-feu du local technique R+2", mots: ["bureau de contrôle", "armoire", "ossature", "BA13"] } };
+const REPERES_COUPE_FEU = {
+  signalement: "@claire sur la V3 le local technique R+2",
+  armoire: "Dans la maquette Électricité il y a une armoire de distribution 400 A",
+  avisClaire: "OK je vois. Mon avis reste que 1h suffit",
+  avisBureau: "D'accord. On demande au bureau de contrôle",
+  provisoire: "Solution provisoire : on monte l'ossature",
+  accord: "Ça me va comme provisoire"
+};
+const SORTIE_COUPE_FEU = {
+  rien_a_dire: false,
+  titre: "Cloison coupe-feu du local technique R+2, 1h ou 2h",
+  contexte: {
+    texte: "Sur la V3, la cloison côté couloir du local technique R+2 est en CF 1h alors que le programme de sécurité parle de CF 2h pour les locaux techniques. Une armoire de distribution 400 A (repère TD-2.03) a été ajoutée en V3 dans ce local.",
+    sources: ["signalement", "armoire"]
+  },
+  intervenants: ["Claire Martin", "Vous"],
+  desaccords: [{
+    opposants: ["Claire Martin", "Vous"],
+    objet: "Claire Martin juge que 1h suffit avec un joint coupe-feu sur les passages de câbles, alors que le programme de sécurité parle de 2h pour les locaux techniques.",
+    sources: ["signalement", "avisClaire"]
+  }],
+  decision: {
+    statut: "prise",
+    texte: "Le degré définitif attend l'avis du bureau de contrôle. En attendant, l'ossature et le premier parement sont montés en 2 plaques BA13 sur chaque face, compatible avec 1h comme avec 2h, et la cloison L2-14 est notée en attente de degré définitif.",
+    sources: ["avisBureau", "provisoire", "accord"]
+  }
+};
+
 // index : celui de src/discussionsIAIndex.js ; rend { ok: true, rapport } ou { ok: false, erreur }.
-export function construireRapportModele(index, { maintenant = Date.now() } = {}) {
-  const exemple = EXEMPLES_DISCUSSIONS.find((e) => e.demande === PHRASE_MODELE);
-  if (!exemple || !index || !index.messages || !index.messages.length) return { ok: false, erreur: "Messages de démonstration absents." };
-  const verdict = validerCommande(exemple.commande, { personnes: index.personnes.map((p) => p.nom) });
+function construire({ commande, reperes, sortieModele }, index, maintenant) {
+  if (!index || !index.messages || !index.messages.length) return { ok: false, erreur: "Messages de démonstration absents." };
+  const verdict = validerCommande(commande, { personnes: index.personnes.map((p) => p.nom) });
   if (!verdict.ok) return { ok: false, erreur: verdict.erreur };
   const selection = selectionner(verdict.commande, index, { maintenant });
   if (selection.erreur) return { ok: false, erreur: selection.erreur };
   const { table } = preparerAnalyse(selection, index);
 
   const idDe = new Map();
-  for (const [nom, debut] of Object.entries(REPERES)) {
+  for (const [nom, debut] of Object.entries(reperes)) {
     const trouve = Array.from(table.entries()).find(([, entree]) => typeof entree.texte === "string" && entree.texte.startsWith(debut));
     if (!trouve) return { ok: false, erreur: "Message de démonstration introuvable : " + nom + "." };
     idDe.set(nom, trouve[0]);
   }
   const ids = (noms) => noms.map((n) => idDe.get(n));
   const sortie = {
-    ...SORTIE_MODELE,
-    contexte: { ...SORTIE_MODELE.contexte, sources: ids(SORTIE_MODELE.contexte.sources) },
-    desaccords: SORTIE_MODELE.desaccords.map((d) => ({ ...d, sources: ids(d.sources) })),
-    decision: { ...SORTIE_MODELE.decision, sources: ids(SORTIE_MODELE.decision.sources) }
+    ...sortieModele,
+    contexte: { ...sortieModele.contexte, sources: ids(sortieModele.contexte.sources) },
+    desaccords: sortieModele.desaccords.map((d) => ({ ...d, sources: ids(d.sources) })),
+    decision: { ...sortieModele.decision, sources: ids(sortieModele.decision.sources) }
   };
   const verdictRapport = conclureRapport(sortie, table, index, { sujet: verdict.commande.parametres.sujet, termes: selection.termes, maintenant });
   if (!verdictRapport.ok || verdictRapport.rapport.vide) return { ok: false, erreur: "Le rapport modèle n'a pas pu être vérifié." };
   return { ok: true, rapport: { ...verdictRapport.rapport, modele: true } };
+}
+
+export function construireRapportModele(index, { maintenant = Date.now() } = {}) {
+  const exemple = EXEMPLES_DISCUSSIONS.find((e) => e.demande === PHRASE_MODELE);
+  if (!exemple) return { ok: false, erreur: "Messages de démonstration absents." };
+  return construire({ commande: exemple.commande, reperes: REPERES, sortieModele: SORTIE_MODELE }, index, maintenant);
+}
+
+export function construireRapportModeleCoupeFeu(index, { maintenant = Date.now() } = {}) {
+  return construire({ commande: COMMANDE_COUPE_FEU, reperes: REPERES_COUPE_FEU, sortieModele: SORTIE_COUPE_FEU }, index, maintenant);
 }
