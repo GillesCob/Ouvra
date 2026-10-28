@@ -29,6 +29,7 @@ export function creerDiscussionsBandeau({ surOui, surNon, retourFocus = null }) 
     const b = creer("button", null, libelle);
     b.type = "button";
     b.dataset.act = action;
+    if (action === "oui") b.classList.add("btn-principal"); // aspect commun des boutons pleins (src/boutonPrincipal.css)
     return b;
   }
 

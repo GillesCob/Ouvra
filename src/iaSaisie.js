@@ -67,7 +67,7 @@ export function creerIASaisie({ exemples = [], libelle = "Demande par l'IA", pla
   champ.enterKeyHint = "go";
   champ.placeholder = placeholder;
   champ.setAttribute("aria-label", "La demande, en une phrase");
-  const valider = creer("button", "regles-ia-valider", "Valider");
+  const valider = creer("button", "regles-ia-valider btn-principal", "Valider");
   valider.type = "submit";
   const retourMicro = creer("button", "regles-ia-bascule", "Utiliser le micro");
   retourMicro.type = "button";

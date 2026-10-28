@@ -79,7 +79,7 @@ export function creerRapportVue({ surSource, texteRapport, exporterPdf }) {
     boutonCopier.type = "button";
     boutonPdf = creer("button", "disc-rapport-btn", "Exporter en PDF");
     boutonPdf.type = "button";
-    boutonFermer = creer("button", "disc-rapport-btn disc-rapport-fermer", "Fermer");
+    boutonFermer = creer("button", "disc-rapport-btn disc-rapport-fermer btn-principal", "Fermer");
     boutonFermer.type = "button";
     pied.append(boutonCopier, boutonPdf, boutonFermer);
     carte.append(entete, corps, pied);

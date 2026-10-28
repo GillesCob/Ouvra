@@ -6276,6 +6276,7 @@ function creerControleMenu(id, libelle, labels, champ, surChangement) {
       menu.style.top = (place >= mh + 8 ? r.bottom + 6 : Math.max(8, r.top - mh - 6)) + "px";
       menu.style.left = Math.max(8, Math.min(r.left, window.innerWidth - mw - 8)) + "px";
       menu.style.minWidth = mw + "px";
+      if (window.matchMedia("(max-width: 768px)").matches) cadrerMenuCollisionMobile(menu, r);
       menu.style.visibility = "";
       trigger.setAttribute("aria-expanded", "true");
       document.addEventListener("pointerdown", surClicExterieur, true);
@@ -6283,6 +6284,24 @@ function creerControleMenu(id, libelle, labels, champ, surChangement) {
     });
     field.append(lab, selectWrap);
     return { field, sel, selectWrap, maj };
+}
+
+// Mobile (retour 12) : le menu Priorite / Statut reste DANS l'ecran et sous le bandeau « ← Retour a la regle » s'il est affiche (il s'ouvre vers le bas, ou vers le haut
+// s'il y a plus de place, avec defilement interne si aucun des deux ne suffit) ; la largeur reelle (min-width + marges internes) ne deborde plus a droite.
+function cadrerMenuCollisionMobile(menu, declencheur) {
+  const bandeau = document.getElementById("reglesBandeauRetour");
+  const haut = Math.max(8, bandeau && !bandeau.hidden ? Math.ceil(bandeau.getBoundingClientRect().bottom) + 6 : 8);
+  const bas = window.innerHeight - 8;
+  const mh = menu.offsetHeight;
+  const sous = bas - (declencheur.bottom + 6);
+  const dessus = declencheur.top - 6 - haut;
+  const versBas = sous >= mh || sous >= dessus;
+  const dispo = Math.max(0, versBas ? sous : dessus);
+  menu.style.maxHeight = dispo < mh ? dispo + "px" : "";
+  menu.style.overflowY = dispo < mh ? "auto" : "";
+  const hauteur = Math.min(mh, dispo);
+  menu.style.top = (versBas ? declencheur.bottom + 6 : declencheur.top - 6 - hauteur) + "px";
+  menu.style.left = Math.max(8, Math.min(declencheur.left, window.innerWidth - menu.offsetWidth - 8)) + "px";
 }
 
 function finirControlesCollision(wrap, mk) {

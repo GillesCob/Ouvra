@@ -264,7 +264,7 @@ export function creerReglesModale({ libellesPriorite, libellesStatut, numero, cr
     corps.setAttribute("aria-label", "Collisions touchées par la règle");
     session.lignes.forEach((l, i) => corps.appendChild(creerLigne(l, i)));
 
-    actions.append(...actionReformuler(), creerAction("msg-fantome", "annuler", "Annuler"), creerAction("msg-primaire", "valider", "Valider"));
+    actions.append(...actionReformuler(), creerAction("msg-fantome", "annuler", "Annuler"), creerAction("msg-primaire btn-principal", "valider", "Valider"));
     carte.append(tete, corps, actions, croix);
     majCompteur();
   }

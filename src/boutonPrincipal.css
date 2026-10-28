@@ -1,0 +1,12 @@
+/* Bouton principal commun (28/10, retour 10) : un seul style pour tous les boutons pleins de l'application sur MOBILE (Valider, Envoyer, Rouvrir la conversation, Fermer du rapport,
+   Oui des bandeaux). Fond vert d'accent (--accent, #5c7a5f) et texte blanc (contraste 4,77:1, au-dessus du minimum de 4,5:1 : aucun assombrissement necessaire), 44 px de haut,
+   rayon 8 px, graisse 600. Les classes propres a chaque bouton (regles-ia-valider, msg-envoyer, ...) gardent le layout (largeur, marges) ; l'aspect vient d'ici.
+   Mobile seulement : le rendu ordinateur de chaque bouton reste celui de sa feuille d'origine. Selecteurs en « html button » : specificite superieure a « .regles-ia-fond button { font: inherit } » et aux regles des bandeaux (#xxxBandeau button[data-act="oui"]). */
+@media (max-width: 768px) {
+  html button.btn-principal,
+  html :is(#commandesBandeau, #quantitatifBandeau, #discussionsBandeau) button[data-act="oui"].btn-principal {
+    box-sizing: border-box; min-height: 44px; background: var(--accent); color: #fff; border: 1px solid var(--accent); border-radius: 8px;
+    font-weight: 600; -webkit-tap-highlight-color: transparent;
+  }
+  html button.btn-principal:disabled { opacity: 0.5; cursor: not-allowed; }
+}
