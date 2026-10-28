@@ -12,6 +12,16 @@ import { normaliser } from "./reglesCollision.js";
 
 export const EXEMPLES_DISCUSSIONS = [
   {
+    demande: "Sors-moi toutes les conversations qui parlent de gaines en R+2",
+    relecture: "Retrouver les conversations qui parlent de gaines au R+2.",
+    commande: { action: "retrouver_echange", parametres: { sujet: "gaines R+2", mots: ["gaine rectangulaire", "cloison", "R+2"] } }
+  },
+  {
+    demande: "Fais-moi un rapport sur la collision entre la gaine et la cloison",
+    relecture: "Faire un rapport sur la collision entre la gaine et la cloison.",
+    commande: { action: "rapport", parametres: { sujet: "collision gaine cloison", mots: ["gaine rectangulaire", "123 mm", "R+2"] } }
+  },
+  {
     demande: "Montre-moi tous les échanges avec Sophie Lambert",
     relecture: "Afficher tous les échanges avec Sophie Lambert.",
     commande: { action: "echanges_avec", parametres: { personne: "Sophie Lambert" } }
@@ -30,11 +40,6 @@ export const EXEMPLES_DISCUSSIONS = [
     demande: "Trouve l'échange sur l'accès de la grue",
     relecture: "Retrouver l'échange sur l'accès de la grue.",
     commande: { action: "retrouver_echange", parametres: { sujet: "accès grue", mots: ["levage"] } }
-  },
-  {
-    demande: "Fais-moi un rapport sur la collision entre la gaine et la cloison",
-    relecture: "Faire un rapport sur la collision entre la gaine et la cloison.",
-    commande: { action: "rapport", parametres: { sujet: "collision gaine cloison", mots: ["gaine rectangulaire", "123 mm", "R+2"] } }
   },
   {
     demande: "Fais-moi un rapport sur les réservations",

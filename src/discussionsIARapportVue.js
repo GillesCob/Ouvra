@@ -10,8 +10,8 @@
 // Accessibilite : role « dialog » modal, nom = le titre du rapport, focus sur « Fermer » a l'ouverture, tabulation gardee dans le panneau, Echap ferme,
 // le focus revient la ou il etait.
 //
-// Module sans dependance a main.js : surSource(mk) ouvre le message (apres la fermeture du panneau) ; texteRapport(rapport) : version texte a copier ;
-// exporterPdf(rapport) : telecharge le PDF (promesse).
+// Module sans dependance a main.js : surSource(mk, rapport) ouvre le message (apres la fermeture du panneau) ; texteRapport(rapport) : version texte a copier ;
+// exporterPdf(rapport, onglet) : ouvre le PDF dans l'onglet donne, sinon le telecharge (promesse de "ouvert" | "telecharge").
 
 import "./reglesIA.css";
 import "./discussionsIA.css";
@@ -35,6 +35,7 @@ export function creerRapportVue({ surSource, texteRapport, exporterPdf }) {
   let boutonCopier = null;
   let boutonPdf = null;
   let dateEl = null;
+  let modeleEl = null;
   let boutonFermer = null;
   let rapportCourant = null;
   let focusAvant = null;
@@ -62,7 +63,9 @@ export function creerRapportVue({ surSource, texteRapport, exporterPdf }) {
     titre.id = "discRapportTitre";
     compte = creer("p", "disc-rapport-compte");
     compte.id = "discRapportCompte";
-    entete.append(marque, titre, compte);
+    modeleEl = creer("p", "disc-rapport-modele", "Modèle de rapport");
+    modeleEl.hidden = true;
+    entete.append(marque, titre, compte, modeleEl);
     corps = creer("div", "disc-rapport-corps");
     const pied = creer("div", "disc-rapport-pied");
     boutonCopier = creer("button", "disc-rapport-btn", "Copier");
@@ -85,7 +88,7 @@ export function creerRapportVue({ surSource, texteRapport, exporterPdf }) {
       if (!source) return;
       const mk = source.dataset.mk;
       fermer(false);
-      surSource(mk);
+      surSource(mk, rapportCourant); // le rapport en cours : « Retour au rapport » le rouvre tel quel
     });
     document.addEventListener("keydown", (e) => {
       if (fond.hidden) return;
@@ -193,6 +196,7 @@ export function creerRapportVue({ surSource, texteRapport, exporterPdf }) {
     titre.textContent = rapport.titre;
     dateEl.textContent = dateDuRapport(rapport);
     compte.textContent = perimetreDe(rapport) + (rapport.vide ? "." : ". Ce rapport ne reprend que ce que disent ces messages ; chaque bloc renvoie à ses sources.");
+    modeleEl.hidden = !rapport.modele; // « Modèle de rapport » : exemple prepare a l'avance, jamais genere par l'IA
     corps.textContent = "";
     if (rapport.vide) {
       corps.appendChild(creer("p", "disc-rapport-rien", rapport.message));
@@ -228,10 +232,19 @@ export function creerRapportVue({ surSource, texteRapport, exporterPdf }) {
     if (!rapportCourant || rapportCourant.vide || boutonPdf.disabled) return;
     boutonPdf.disabled = true;
     boutonPdf.textContent = "Préparation du PDF…";
+    // Le PDF s'ouvre dans un nouvel onglet (28/10) : l'onglet est ouvert ICI, dans le geste du clic, avant toute attente (sinon les bloqueurs de pop-up le refusent).
+    // Bloque : onglet null, l'export retombe sur le telechargement.
+    const onglet = window.open("", "_blank");
+    if (onglet) {
+      onglet.opener = null; // l'onglet du PDF n'a aucun lien avec la page d'Ouvra
+      onglet.document.title = "Rapport Ouvra";
+      onglet.document.body.textContent = "Préparation du PDF…";
+    }
     try {
-      await exporterPdf(rapportCourant);
-      boutonPdf.textContent = "PDF téléchargé";
+      const livre = await exporterPdf(rapportCourant, onglet);
+      boutonPdf.textContent = livre === "ouvert" ? "PDF ouvert" : "PDF téléchargé";
     } catch {
+      if (onglet && !onglet.closed) onglet.close();
       boutonPdf.textContent = "Export impossible"; // le rapport reste lisible et copiable
     } finally {
       boutonPdf.disabled = false;

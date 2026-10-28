@@ -124,3 +124,21 @@ test("pdf : sans logo, sans decision et tres long (plusieurs pages) restent vali
   assert.ok(pages > 1);
   for (let p = 1; p <= pages; p += 1) assert.ok(textePdf(long).includes("Page " + p + " / " + pages), "pied de la page " + p);
 });
+
+// Filigrane « Modèle de présentation » (28/10) : seulement sur le PDF du rapport modèle (modele: true), jamais sur un rapport généré par l'IA.
+test("filigrane : defini seulement pour un rapport modele", () => {
+  assert.equal(definitionRapportPdf(complet()).filigrane, null);
+  assert.equal(definitionRapportPdf({ ...complet(), modele: true }).filigrane, "Modèle de présentation");
+});
+
+test("filigrane : present sur chaque page du PDF d'un rapport modele, absent d'un rapport normal", () => {
+  const normal = construireRapportPdf({ jsPDF, autoTable }, definitionRapportPdf(complet()), { logoPng: logo });
+  assert.equal(textePdf(normal).includes("Modèle de présentation"), false);
+  const longueSource = { rien_a_dire: false, titre: "Long", contexte: { texte: "Mot ".repeat(190), sources: ["M1"] }, intervenants: [], decision: aucune, desaccords: Array.from({ length: 8 }, (_, i) => ({ opposants: [], objet: "Désaccord numéro " + i + " " + "mot ".repeat(60), sources: ["M2"] })) };
+  const modele = { ...conclureRapport(longueSource, table, index, { sujet: "long", maintenant: DATE }).rapport, modele: true };
+  const doc = construireRapportPdf({ jsPDF, autoTable }, definitionRapportPdf(modele), { logoPng: logo });
+  const pages = doc.getNumberOfPages();
+  assert.ok(pages > 1);
+  assert.ok(textePdf(doc).split("Modèle de présentation").length - 1 >= pages, "un filigrane par page");
+  assert.match(textePdf(doc), /\/ca 0\.12/, "filigrane translucide (opacite de remplissage)");
+});

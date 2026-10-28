@@ -1115,6 +1115,7 @@ function activateView(viewName, options = {}) {
   if (quantitatif) quantitatif.surVueActivee(viewName);
   if (viewName === "plan3d") ouvrirPlan3d();
   else if (plan3d) plan3d.surVueActivee(viewName);
+  if (viewName !== "discussions") discussionsIA.effacerRetour(); // le bandeau « Retour au rapport » ne vit que sur la page Discussions
   if (retourQuantitatif && viewName !== "viewer") retourQuantitatif.effacer(); // le bandeau de retour ne vit que dans le Viewer ouvert par le Quantitatif
   if (viewName !== "viewer") {
     if (retourPlan3d) retourPlan3d.effacer(); // idem pour le bandeau du plan 2D -> 3D

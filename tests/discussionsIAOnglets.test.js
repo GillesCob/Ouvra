@@ -70,7 +70,7 @@ test("composant : l'onglet IA vide le centre, Individuel et Groupes ouvrent leur
   assert.equal((js.match(/choisirOnglet\("(individuel|groupe)"\)/g) || []).length >= 3, true);
 });
 
-test("panneau IA : plus de choix Texte / Vocal, « Nouvelle demande » et les phrases toutes faites", () => {
+test("panneau IA : plus de choix Texte / Vocal, seulement « Nouvelle demande » (les phrases toutes faites vivent dans la modale)", () => {
   const ia = lire("src/discussionsIA.js");
   const css = lire("src/discussionsIA.css");
   for (const mort of ["discussionsIAChoix", "msg-ia-choix", "choixTexte", "choixVocal", "noteVocal", "majChoixVocal", "rangee"]) {
@@ -78,7 +78,10 @@ test("panneau IA : plus de choix Texte / Vocal, « Nouvelle demande » et les ph
     assert.equal(css.includes(mort), false, mort);
   }
   assert.ok(ia.includes('creer("button", "msg-ia-nouvelle", "Nouvelle demande")'));
-  assert.ok(ia.includes("panneau.append(nouvelle, phrases)"));
+  assert.ok(ia.includes("panneau.append(nouvelle)"));
+  // 28/10 : plus de menu de phrases toutes faites dans le tiroir, ni dans son CSS.
+  for (const mort of ["msg-ia-phrases", "msg-ia-phrase\""]) assert.equal(ia.includes(mort), false, mort);
+  assert.equal(css.includes(".msg-ia-phrases"), false);
   assert.ok(ia.includes('nouvelle.addEventListener("click", () => { if (!saisie.ouvert()) saisie.ouvrir(); })'));
 });
 
@@ -90,14 +93,14 @@ test("modale de demande : la modale COMMUNE des IA (vocal d'abord, bascule texte
   for (const mort of ["creerDictee", "regles-ia-fond", "micro.focus", "ICONE_MICRO"]) assert.equal(ia.includes(mort), false, mort);
   // L'ecoute ne demarre jamais toute seule a l'ouverture (comportement de la modale commune, garde par tests/iaSaisie.test.js).
   assert.equal(ia.includes("dictee"), false);
-  // Les phrases toutes faites du panneau ouvrent le mode texte avec la phrase ecrite ; « Non » du bandeau fait de meme (montage).
-  assert.ok(ia.includes("saisie.reformuler(exemple.demande.slice(0, PHRASE_MAX))"));
+  // « Non » du bandeau rouvre la modale en mode texte avec la phrase ecrite (montage) ; les phrases toutes faites sont dans la modale commune.
+  assert.ok(ia.includes("reformuler: (phrase) => saisie.reformuler(phrase)"));
   assert.ok(lire("src/discussionsIAMontage.js").includes("ia.reformuler(retour.phrase)"));
 });
 
-test("cibles tactiles : « Nouvelle demande » et les phrases du panneau font au moins 44 px", () => {
+test("cibles tactiles : « Nouvelle demande » fait au moins 44 px", () => {
   const css = lire("src/discussionsIA.css");
-  for (const regle of [".msg-racine .msg-ia-nouvelle {", ".msg-racine .msg-ia-phrase {"]) {
+  for (const regle of [".msg-racine .msg-ia-nouvelle {"]) {
     const bloc = css.slice(css.indexOf(regle), css.indexOf("}", css.indexOf(regle)));
     assert.match(bloc, /min-height: 44px/, regle);
   }
@@ -111,7 +114,7 @@ test("clic sur l'onglet IA : la saisie s'ouvre aussi quand l'onglet est deja cho
 
 test("specificite : les boutons du panneau IA battent « .msg-racine button » (sinon leur couleur est ecrasee selon l'ordre de chargement)", () => {
   const css = lire("src/discussionsIA.css");
-  for (const bouton of ["msg-ia-nouvelle", "msg-ia-phrase"]) {
+  for (const bouton of ["msg-ia-nouvelle"]) {
     assert.equal(new RegExp("(^|\\n)\\." + bouton + "\\s*[{,:]").test(css), false, bouton + " sans .msg-racine");
     assert.ok(css.includes(".msg-racine ." + bouton), bouton);
   }

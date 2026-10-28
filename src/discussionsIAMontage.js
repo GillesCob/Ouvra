@@ -5,9 +5,11 @@
 //   monter(messagerie)   appele une fois le squelette de la messagerie construit (l'onglet #discussionsIABtn et le panneau #msgIAPanneau existent alors)
 //   ouvrirSaisie()   l'onglet IA vient d'etre choisi : ouvre la modale de demande en vocal
 //   action("tout" | "rapport")   boutons de la liste filtree : « Tout réafficher » et « Voir le rapport »
+//   effacerRetour()   efface le bandeau « ← Retour au rapport » (appele par main.js quand on quitte la page Discussions)
 
 import { creerDiscussionsIA } from "./discussionsIA.js";
 import { creerDiscussionsBandeau } from "./discussionsIABandeau.js";
+import { creerRetourContexte } from "./retourContexte.js";
 import { creerRapportVue } from "./discussionsIARapportVue.js";
 import { creerFlux } from "./discussionsIAFlux.js";
 import { creerPipeline } from "./discussionsIAPipeline.js";
@@ -15,6 +17,7 @@ import { indexer } from "./discussionsIAIndex.js";
 import { rapportEnTexte } from "./discussionsIAMoteur.js";
 import { EXEMPLES_DISCUSSIONS } from "./discussionsIAExemples.js";
 import { demanderComprehension, demanderAnalyse } from "./discussionsIAClient.js";
+import { construireRapportModele } from "./discussionsIARapportModele.js";
 
 const DELAI_ANALYSE_MS = 42000; // un rapport est plus long a ecrire : un peu plus que le delai du relais (32 s)
 
@@ -42,6 +45,7 @@ export function creerDiscussionsIAMontage() {
   let bandeau = null;
   let rapportVue = null;
   let ia = null;
+  let retourRapport = null;
 
   function monter(messagerieMontee) {
     messagerie = messagerieMontee;
@@ -52,8 +56,19 @@ export function creerDiscussionsIAMontage() {
     flux = creerFlux({ messagerie });
     rapportVue = creerRapportVue({
       texteRapport: rapportEnTexte,
-      exporterPdf: async (rapport) => (await import("./discussionsIARapportPdf.js")).exporterRapportPdf(rapport, { telecharger }),
-      surSource: (mk) => messagerie.montrerMessageIA(mk)
+      exporterPdf: async (rapport, onglet) => (await import("./discussionsIARapportPdf.js")).exporterRapportPdf(rapport, { telecharger, onglet }),
+      // Une source du rapport ouvre la discussion au message cite ; le bandeau « ← Retour au rapport » (meme principe que « ← Retour a la conversation » du Viewer)
+      // rouvre le MEME rapport pour continuer la verification des autres blocs.
+      surSource: (mk, rapport) => {
+        messagerie.montrerMessageIA(mk);
+        retourRapport.montrer({ libelle: "Retour au rapport", surRetour: () => rapportVue.ouvrir(rapport) });
+      }
+    });
+    retourRapport = creerRetourContexte({
+      id: "discussionsRapportBandeauRetour",
+      classeCorps: "disc-rapport-retour-actif",
+      ariaLabel: "Retour au rapport",
+      autresClasses: ["msg-retour-actif", "regles-retour-actif", "quantitatif-retour-actif", "plan3d-retour-actif", "discussions-confirm-actif"] // un seul bandeau a la fois : le plus recent gagne
     });
     bandeau = creerDiscussionsBandeau({
       retourFocus: bouton,
@@ -78,6 +93,15 @@ export function creerDiscussionsIAMontage() {
       panneau,
       retourFocus: bouton,
       exemples: EXEMPLES_DISCUSSIONS,
+      // Lien « Voir un exemple de rapport » (28/10) : le rapport modele s'ouvre dans la meme fenetre que le rapport de l'IA, sans appel reseau ni bandeau de confirmation.
+      exempleRapport: {
+        libelle: "Voir un exemple de rapport",
+        surClic: () => {
+          const donnees = messagerie.donneesPourIA();
+          const modele = construireRapportModele(indexer(donnees.conversations, donnees.personnes), { maintenant: Date.now() });
+          if (modele.ok) rapportVue.ouvrir(modele.rapport);
+        }
+      },
       traiter: (phrase) => pipeline.traiter(phrase),
       proposer: (retour, phrase) => {
         const application = flux.proposer(retour, phrase);
@@ -105,5 +129,10 @@ export function creerDiscussionsIAMontage() {
     }
   }
 
-  return { monter, action, ouvrirSaisie };
+  // Quitter la page Discussions : le bandeau « Retour au rapport » ne vit que sur cette page.
+  function effacerRetour() {
+    if (retourRapport) retourRapport.effacer();
+  }
+
+  return { monter, action, ouvrirSaisie, effacerRetour };
 }

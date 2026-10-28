@@ -22,6 +22,7 @@
 import "./reglesIA.css";
 import { MESSAGE_PHRASE_VIDE } from "./reglesVoix.js";
 import { creerIASaisie } from "./iaSaisie.js";
+import { messageRefus } from "./iaSaisieLogique.js";
 
 const MOBILE = "(max-width: 768px)";
 const LARGEUR_MOBILE = 44;
@@ -64,7 +65,7 @@ export function creerReglesIA({ parent, slot, boutonCollisions, masquerSurMobile
         ouvrirRegle({ ...reponse.regle, saisie: true }); // saisie : la modale propose « Reformuler »
         return { ok: true };
       }
-      return { ok: false, message: reponse.ok ? (reponse.resultat === "critere_introuvable" ? "Critère introuvable. " : "") + reponse.message : reponse.message };
+      return { ok: false, message: reponse.ok ? messageRefus(reponse.resultat, reponse.message) : reponse.message };
     }
   });
 

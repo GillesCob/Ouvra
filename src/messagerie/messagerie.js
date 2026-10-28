@@ -289,8 +289,6 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
     $("msgIAPanneau").hidden = onglet !== "ia";
     placerPastilleOnglets();
     if (change && onglet === "ia") fermerConversationCourante();
-    // Phrases toutes faites du panneau IA : depliees a l'arrivee sur ordinateur (lisibles a cote de la modale), repliees sur mobile (la modale couvre la page).
-    if (change && onglet === "ia") { const phrases = $("msgIAPanneau").querySelector(".msg-ia-phrases"); if (phrases) phrases.open = !mobile(); }
     const terminer = () => {
       rendreListe();
       if (!ouvrirPremiere || (!change && etat.convId)) return;

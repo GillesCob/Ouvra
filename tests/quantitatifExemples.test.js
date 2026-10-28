@@ -35,7 +35,7 @@ for (const exemple of EXEMPLES_QUANTITATIF) {
 }
 
 test("exemples « nombre » : resultat exact attendu sur la maquette reelle", () => {
-  const portes = calculer(ELEMENTS, EXEMPLES_QUANTITATIF[0].requete);
+  const portes = calculer(ELEMENTS, EXEMPLES_QUANTITATIF.find((e) => e.demande === "Combien de portes au niveau 2 ?").requete);
   assert.equal(portes.totaux.valeur, 56);
 });
 
@@ -59,4 +59,8 @@ test("aucun fichier du quantitatif ne contient de tiret quadratin", () => {
   ];
   assert.ok(fichiers.length >= 8);
   for (const f of fichiers) assert.ok(!readFileSync(new URL(f, racine), "utf8").includes(TIRET_QUADRATIN), f);
+});
+
+test("ordre de la demo (28/10) : la phrase du Quantitatif est la premiere de la liste", () => {
+  assert.equal(EXEMPLES_QUANTITATIF[0].demande, "Compte les gaines, les raccords de gaine et les faux plafonds du niveau 2, par famille");
 });

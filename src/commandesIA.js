@@ -16,6 +16,7 @@
 
 import "./commandesIA.css";
 import { creerIASaisie } from "./iaSaisie.js";
+import { messageRefus } from "./iaSaisieLogique.js";
 
 const PLACEHOLDER_TEXTE = "Ex. : affiche-moi les gaines au niveau 2";
 const MESSAGE_PHRASE_VIDE = "Écris ce que tu veux voir, par exemple « affiche-moi les gaines au niveau 2 ».";
@@ -37,7 +38,7 @@ export function creerCommandesIA({ bouton, exemples, proposerCommande, traduire,
         const application = proposerCommande({ ...reponse.commande, demande: phrase });
         return application.ok ? { ok: true } : { ok: false, message: application.message }; // ok : le bandeau a deja pris le focus (« Oui »)
       }
-      return { ok: false, message: reponse.ok ? (reponse.resultat === "critere_introuvable" ? "Critère introuvable. " : "") + reponse.message : reponse.message };
+      return { ok: false, message: reponse.ok ? messageRefus(reponse.resultat, reponse.message) : reponse.message };
     }
   });
 

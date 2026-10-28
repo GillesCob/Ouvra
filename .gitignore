@@ -11,3 +11,7 @@ tools/clash-test/venv
 # Plans de test personnels (2D -> 3D) : jamais commites ni deployes
 public/plan3d-local/
 .certs/
+
+# Maquettes non utilisées par défaut (?legere=1 et ?v12=1), gardées en local
+public/models/hospital/legere/*.xkt
+public/models/hospital/v12/

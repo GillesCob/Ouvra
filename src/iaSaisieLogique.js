@@ -30,3 +30,13 @@ export function suiteFinEcoute({ termineParUtilisateur, phrase }) {
   if (!String(phrase || "").trim()) return "rien";
   return termineParUtilisateur ? "envoyer" : "texte";
 }
+
+// Message de refus d'une demande (28/10) : pour « critere_introuvable », la formule « Critère introuvable. » est ajoutee devant l'explication du relais, SAUF si
+// elle y est deja (le modele l'ecrit parfois lui-meme) : jamais deux fois de suite dans la modale. Les autres resultats gardent le message tel quel.
+const sansAccentBas = (t) => String(t).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+export function messageRefus(resultat, message) {
+  if (resultat !== "critere_introuvable") return message;
+  const texte = String(message == null ? "" : message).trim();
+  if (sansAccentBas(texte).startsWith("critere introuvable")) return texte;
+  return ("Critère introuvable. " + texte).trim();
+}

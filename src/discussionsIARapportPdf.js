@@ -14,6 +14,7 @@ import {
 } from "./discussionsIARapportFormat.js";
 
 export const TITRE_DOCUMENT = "Récapitulatif de discussion";
+export const FILIGRANE_MODELE = "Modèle de présentation";
 const EXTRAIT_PDF_MAX = 160;
 const SUJET_FICHIER_MAX = 40;
 
@@ -32,7 +33,8 @@ export function definitionRapportPdf(rapport) {
   const t = sansSpecial;
   const base = {
     titreDocument: TITRE_DOCUMENT, titre: t(rapport.titre), sujet: t(rapport.sujet), date: dateJJMMAAAA(rapport.date), dateLibelle: dateDuRapport(rapport),
-    vide: !!rapport.vide, nomFichier: nomFichierRapport(rapport.sujet, rapport.date), pied: "Généré par Ouvra"
+    vide: !!rapport.vide, nomFichier: nomFichierRapport(rapport.sujet, rapport.date), pied: "Généré par Ouvra",
+    filigrane: rapport.modele ? t(FILIGRANE_MODELE) : null // 28/10 : seulement le rapport modele prepare a l'avance, jamais un rapport genere par l'IA
   };
   if (rapport.vide) return { ...base, perimetre: t(perimetreDe(rapport)), message: t(rapport.message), sources: [] };
   const decision = rapport.decision;
@@ -143,6 +145,17 @@ export function construireRapportPdf({ jsPDF, autoTable }, def, { logoPng = null
   const pages = doc.getNumberOfPages();
   for (let p = 1; p <= pages; p += 1) {
     doc.setPage(p);
+    if (def.filigrane) {
+      // Filigrane : texte vert tres clair a 45 degres, centre sur la page. Position calculee ici (le centrage de jsPDF n'est pas fiable avec un angle) :
+      // le texte part de (centre - demi-largeur le long de la diagonale), la page etant orientee vers le bas.
+      doc.saveGraphicsState();
+      doc.setGState(new doc.GState({ opacity: 0.12 }));
+      doc.setFont("helvetica", "bold").setFontSize(44).setTextColor(...VERT);
+      const demi = doc.getTextWidth(def.filigrane) / 2;
+      const c = Math.SQRT1_2;
+      doc.text(def.filigrane, largeur / 2 - demi * c, hauteur / 2 + demi * c, { angle: 45 });
+      doc.restoreGraphicsState();
+    }
     const hautLogo = 6;
     if (logoPng) doc.addImage(logoPng, "PNG", marge, hautLogo, 11, 11);
     doc.setFont("helvetica", "bold").setFontSize(13).setTextColor(...VERT).text("OUVRA", marge + (logoPng ? 14 : 0), hautLogo + 7.5);
@@ -156,10 +169,24 @@ export function construireRapportPdf({ jsPDF, autoTable }, def, { logoPng = null
   return doc;
 }
 
-// Declenche le telechargement. Les bibliotheques sont importees ici, au clic.
-export async function exporterRapportPdf(rapport, { telecharger, fetch: appel = (...a) => globalThis.fetch(...a), maintenant = new Date() }) {
+// Livre le PDF (28/10) : dans l'onglet deja ouvert au clic (le lecteur PDF du navigateur l'affiche, avec son propre bouton de telechargement : rien ne tombe
+// dans le dossier Telechargements devant le public), sinon, onglet bloque ou ferme, en telechargement comme avant. Rend "ouvert" ou "telecharge".
+// L'adresse du blob est revoquee apres un delai : le temps que le lecteur la charge et que l'utilisateur le telecharge depuis le lecteur.
+export function livrerRapportPdf(nomFichier, blob, { onglet = null, telecharger, creerUrl = (b) => URL.createObjectURL(b), revoquer = (u) => URL.revokeObjectURL(u), delaiRevocationMs = 600000 }) {
+  if (onglet && !onglet.closed) {
+    const url = creerUrl(blob);
+    onglet.location.href = url;
+    setTimeout(() => revoquer(url), delaiRevocationMs);
+    return "ouvert";
+  }
+  telecharger(nomFichier, blob);
+  return "telecharge";
+}
+
+// Les bibliotheques sont importees ici, au clic. onglet : fenetre ouverte par la page pendant le geste de l'utilisateur (sinon les bloqueurs de pop-up la refusent).
+export async function exporterRapportPdf(rapport, { telecharger, onglet = null, fetch: appel = (...a) => globalThis.fetch(...a), maintenant = new Date() }) {
   const [{ jsPDF }, autotable] = await Promise.all([import("jspdf"), import("jspdf-autotable")]);
   const def = definitionRapportPdf(rapport);
   const doc = construireRapportPdf({ jsPDF, autoTable: autotable.autoTable || autotable.default }, def, { logoPng: await chargerLogo(appel), maintenant });
-  telecharger(def.nomFichier, doc.output("blob"));
+  return livrerRapportPdf(def.nomFichier, doc.output("blob"), { onglet, telecharger });
 }
