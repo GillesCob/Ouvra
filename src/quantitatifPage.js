@@ -76,8 +76,11 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
   const boutonHistorique = creer("button", "qt-btn", "Historique");
   boutonHistorique.type = "button";
   boutonHistorique.id = "quantitatifHistoriqueBtn";
-  const boutonRetour = creer("button", "qt-btn qt-btn-discret", "← Retour");
+  // Sur mobile, le bouton n'a plus de ligne dediee : il se loge en icone « ← » au debut de la premiere ligne du contenu (placerRetour). Le nom accessible reste « Retour ».
+  const boutonRetour = creer("button", "qt-btn qt-btn-discret qt-btn-retour", "← ");
   boutonRetour.type = "button";
+  boutonRetour.setAttribute("aria-label", "Retour");
+  boutonRetour.appendChild(creer("span", "qt-retour-texte", "Retour"));
   const departCarte = creer("section", "qt-depart");
   departCarte.setAttribute("aria-label", "Choisir une action");
   // Barre des vues « resultat » et « historique » : « ← Retour » seulement (28/10). Nouvelle demande et Historique ne vivent que sur la carte de depart.
@@ -147,7 +150,24 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
     zoneHistorique.hidden = v !== "historique";
     racine.dataset.vue = v;
     racine.classList.toggle("qt-confirmation", bandeau.visible()); // sous le bandeau de confirmation, le titre de la page est retire (28/10)
+    placerRetour();
   }
+  // Mobile : « Retour » se loge dans la premiere ligne du quantitatif ou de l'historique affiche (gain d'une ligne entiere) ; sinon il reste dans la barre des vues.
+  function placerRetour() {
+    const mobile = ecranMobile();
+    const cible = !mobile ? null : racine.dataset.vue === "resultat" ? resultatZone.querySelector(".qt-resultat-tete") : racine.dataset.vue === "historique" ? histoBloc.querySelector(".qt-histo-tete") : null;
+    const destination = cible || barre;
+    if (boutonRetour.parentElement === destination && (!cible || destination.firstChild === boutonRetour)) return;
+    const avaitLeFocus = document.activeElement === boutonRetour;
+    if (cible) cible.prepend(boutonRetour); else barre.appendChild(boutonRetour);
+    if (avaitLeFocus) boutonRetour.focus({ preventScroll: true });
+  }
+  // Une zone qu'on vide ne doit pas emporter le bouton « Retour » : il retourne d'abord dans la barre.
+  function viderZone(zone) {
+    if (zone.contains(boutonRetour)) barre.appendChild(boutonRetour);
+    zone.textContent = "";
+  }
+  window.addEventListener("resize", placerRetour);
   function allerA(nouvelle) { vue = nouvelle; majVue(); }
   // « ← Retour » depuis un quantitatif rouvert depuis l'historique ramene aux cartes de l'historique, sinon au depart (28/10).
   let retourVers = "depart";
@@ -173,7 +193,7 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
     dernierResultat = null;
     bandeau.masquer(false);
     resultatZone.hidden = true;
-    resultatZone.textContent = "";
+    viderZone(resultatZone);
     majVue();
   }
 
@@ -301,7 +321,7 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
       dire("");
     } catch {
       if (onglet && !onglet.closed) onglet.close();
-      dire("L'export a échoué. Réessaie, ou utilise le format CSV.");
+      dire("L'export a échoué. Réessayer, ou utiliser le format CSV.");
     }
   }
 
@@ -312,16 +332,48 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
     return creer("span", "qt-pastille qt-pastille-ajour", "À jour");
   }
 
-  // Liste des formats d'export : un seul menu ouvert a la fois, ferme par un clic en dehors, par Echap ou par le choix d'un format.
-  let menuExport = null; // { bouton, choix } du menu ouvert
+  // Liste des formats d'export (29/10) : un vrai menu deroulant, le MEME que les selecteurs Priorite / Statut (classes .collision-menu*, src/style.css), pose en
+  // position fixe pres du bouton « Exporter » (le panneau coupe tout ce qui deborde). Un seul ouvert a la fois ; ferme par un clic en dehors, Echap, le choix
+  // d'un format, un defilement ou un redimensionnement.
+  const FORMATS_EXPORT = [["xlsx", "Excel"], ["pdf", "PDF"], ["csv", "CSV"]];
+  let menuExport = null; // { bouton, menu } du menu ouvert
   function fermerMenuExport() {
     if (!menuExport) return;
-    menuExport.choix.hidden = true;
+    menuExport.menu.remove();
     menuExport.bouton.setAttribute("aria-expanded", "false");
     menuExport = null;
   }
+  function ouvrirMenuExport(bouton, rapport, statut) {
+    const menu = creer("div", "collision-menu");
+    menu.id = "quantitatifExportChoix";
+    menu.setAttribute("role", "menu");
+    menu.setAttribute("aria-label", "Format d'export");
+    menu.appendChild(creer("div", "collision-menu-titre", "Exporter en"));
+    FORMATS_EXPORT.forEach(([format, libelle]) => {
+      const option = creer("button", "collision-menu-option", libelle);
+      option.type = "button";
+      option.setAttribute("role", "menuitem");
+      option.setAttribute("aria-label", "Exporter en " + libelle);
+      option.addEventListener("click", () => { fermerMenuExport(); bouton.focus(); exporter(format, rapport, statut); });
+      menu.appendChild(option);
+    });
+    menu.style.visibility = "hidden";
+    document.body.appendChild(menu);
+    // Ancre sous le bouton si la place suffit, sinon au-dessus ; jamais hors de l'ecran (360 et 390 px compris).
+    const r = bouton.getBoundingClientRect();
+    const largeur = Math.max(menu.offsetWidth, r.width);
+    const dessous = window.innerHeight - r.bottom >= menu.offsetHeight + 8;
+    menu.style.top = (dessous ? r.bottom + 6 : Math.max(8, r.top - menu.offsetHeight - 6)) + "px";
+    menu.style.left = Math.max(8, Math.min(r.left, window.innerWidth - largeur - 8)) + "px";
+    menu.style.minWidth = largeur + "px";
+    menu.style.visibility = "";
+    bouton.setAttribute("aria-expanded", "true");
+    menuExport = { bouton, menu };
+    const premier = menu.querySelector(".collision-menu-option");
+    if (premier) premier.focus({ preventScroll: true });
+  }
   document.addEventListener("click", (e) => {
-    if (menuExport && !menuExport.choix.parentElement.contains(e.target)) fermerMenuExport();
+    if (menuExport && !menuExport.menu.contains(e.target) && !menuExport.bouton.contains(e.target)) fermerMenuExport();
   });
   document.addEventListener("keydown", (e) => {
     if (e.key !== "Escape" || !menuExport) return;
@@ -329,6 +381,8 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
     fermerMenuExport();
     bouton.focus();
   });
+  window.addEventListener("resize", fermerMenuExport);
+  window.addEventListener("scroll", fermerMenuExport, true);
 
   // Mobile : une info secondaire passe dans un menu deroulant ferme ; sur laptop elle reste affichee telle quelle.
   function infoSecondaire(libelle, noeud) {
@@ -343,7 +397,7 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
   function dessinerRapport(rapport, statut, confirmation = false) {
     const resultat = rapport.resultat;
     fermerMenuExport();
-    resultatZone.textContent = "";
+    viderZone(resultatZone);
     const tete = creer("div", "qt-resultat-tete");
     const titres = creer("div", "qt-resultat-titres");
     titres.appendChild(creer("h3", "qt-resultat-titre", rapport.relecture));
@@ -403,34 +457,23 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
     const exports = creer("div", "qt-exports");
     exports.setAttribute("role", "group");
     exports.setAttribute("aria-label", "Exporter ou supprimer ce rapport");
-    const choix = creer("div", "qt-exports-choix");
-    choix.id = "quantitatifExportChoix";
-    choix.hidden = true;
-    choix.setAttribute("role", "group");
-    choix.setAttribute("aria-label", "Format d'export");
-    const boutonExporter = creer("button", "qt-btn", "Exporter");
+    const boutonExporter = creer("button", "qt-btn qt-btn-exporter", "Exporter");
     boutonExporter.type = "button";
+    boutonExporter.setAttribute("aria-haspopup", "menu");
     boutonExporter.setAttribute("aria-expanded", "false");
-    boutonExporter.setAttribute("aria-controls", choix.id);
+    boutonExporter.setAttribute("aria-controls", "quantitatifExportChoix");
     boutonExporter.setAttribute("aria-label", "Exporter ce quantitatif");
-    [["xlsx", "Excel"], ["pdf", "PDF"], ["csv", "CSV"]].forEach(([format, libelle]) => {
-      const b = creer("button", "qt-btn", libelle);
-      b.type = "button";
-      b.setAttribute("aria-label", "Exporter en " + libelle);
-      b.addEventListener("click", () => { fermerMenuExport(); exporter(format, rapport, statut); });
-      choix.appendChild(b);
-    });
+    boutonExporter.appendChild(creer("span", "qt-chevron"));
     boutonExporter.addEventListener("click", () => {
-      const ouvrir = choix.hidden;
-      choix.hidden = !ouvrir;
-      boutonExporter.setAttribute("aria-expanded", String(ouvrir));
-      menuExport = ouvrir ? { bouton: boutonExporter, choix } : null;
+      const etaitOuvert = !!menuExport;
+      fermerMenuExport();
+      if (!etaitOuvert) ouvrirMenuExport(boutonExporter, rapport, statut);
     });
     const supprimer = creer("button", "qt-btn qt-btn-supprimer", "Supprimer");
     supprimer.type = "button";
     supprimer.setAttribute("aria-label", "Supprimer ce quantitatif");
     supprimer.addEventListener("click", () => supprimerRapport(rapport));
-    exports.append(choix, boutonExporter, supprimer);
+    exports.append(boutonExporter, supprimer);
     resultatZone.appendChild(exports);
     resultatZone.hidden = !!confirmation;
   }
@@ -468,12 +511,13 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
     const entrees = await historique.lister();
     boutonHistorique.textContent = entrees.length ? "Historique · " + entrees.length : "Historique";
     boutonHistorique.disabled = entrees.length === 0;
-    histoBloc.textContent = "";
+    viderZone(histoBloc);
     const versions = await obtenirVersions();
     const tete = creer("div", "qt-histo-tete");
     tete.appendChild(creer("h3", "qt-carte-titre", "Historique"));
     tete.appendChild(creer("span", "qt-pastille qt-pastille-neutre", String(entrees.length)));
     histoBloc.appendChild(tete);
+    placerRetour();
     if (!entrees.length) {
       histoBloc.appendChild(creer("p", "qt-histo-vide", "Les quantitatifs apparaîtront ici, avec leur date. Ils pourront être rouverts sans rappeler l'IA."));
       return;
@@ -509,7 +553,7 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
   async function enregistrer(rapport) {
     if (!historique) return;
     const r = await historique.ajouter(rapport);
-    if (!r.ok) dire(r.raison === "trop_volumineux" ? "Ce rapport est trop volumineux pour l'historique. Il reste affiché, exporte-le pour le garder." : "L'historique n'est pas disponible sur cet appareil. Le rapport reste affiché, exporte-le pour le garder.");
+    if (!r.ok) dire(r.raison === "trop_volumineux" ? "Ce rapport est trop volumineux pour l'historique. Il reste affiché, l'exporter permet de le garder." : "L'historique n'est pas disponible sur cet appareil. Le rapport reste affiché, l'exporter permet de le garder.");
     rafraichirHistorique();
   }
 

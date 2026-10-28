@@ -76,7 +76,7 @@ test("dateRelative : instant, minutes, heures, hier, jours, date, entree invalid
 test("retours mobile du 28/10 : cartes cliquables, Exporter + Supprimer, pas d'Historique ni de Nouvelle demande dans un quantitatif, un seul name de details", () => {
   assert.match(js, /creer\("button", "qt-histo-carte"\)/);
   assert.doesNotMatch(js, /Supprimer de l'historique|creer\("button", "qt-btn", "Rouvrir"\)/);
-  assert.match(js, /creer\("button", "qt-btn", "Exporter"\)/);
+  assert.match(js, /creer\("button", "qt-btn qt-btn-exporter", "Exporter"\)/);
   assert.match(js, /"Supprimer ce quantitatif"/);
   assert.match(js, /barre\.appendChild\(boutonRetour\)/);
   assert.doesNotMatch(js, /barre\.append\([^)]*(boutonIA|boutonHistorique)/); // la barre des vues ne porte que « Retour »
@@ -90,4 +90,16 @@ test("page : « Retour » depuis un quantitatif rouvert de l'historique ramene a
   assert.match(js, /const cible = vue === "resultat" \? retourVers : "depart"/);
   assert.match(js, /retourVers = "historique";\s*await afficherRapport\(rapport, \{ nouveau: false \}\)/); // rouvrir
   assert.match(js, /retourVers = "depart";\s*await afficherRapport\(rapport, \{ nouveau: true \}\)/); // nouvelle demande
+});
+
+test("29/10 : formats d'export en vrai menu deroulant (memes classes que Priorite / Statut), « Retour » sans ligne dediee sur mobile", () => {
+  assert.match(js, /creer\("div", "collision-menu"\)/);
+  assert.match(js, /collision-menu-option/);
+  assert.doesNotMatch(js, /qt-exports-choix/);
+  assert.match(js, /e\.key !== "Escape" \|\| !menuExport/); // Echap ferme
+  assert.match(js, /!menuExport\.menu\.contains\(e\.target\)/); // clic exterieur ferme
+  assert.match(js, /boutonRetour\.setAttribute\("aria-label", "Retour"\)/);
+  assert.match(js, /cible\.prepend\(boutonRetour\)/);
+  assert.match(css, /\.qt-barre:empty \{ display: none; \}/);
+  assert.doesNotMatch(js, /Réessaie|exporte-le|Pose une/);
 });
