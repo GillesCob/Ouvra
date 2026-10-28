@@ -1,4 +1,4 @@
-// Interface des retours de visiteurs (28/10) : bouton « Donner mon avis » (barre de navigation) -> modale -> POST /api/retour. Logique pure testee ici ;
+// Interface des retours de visiteurs (28/10) : bouton « Bug ou idée ? » (barre de navigation) -> modale -> POST /api/retour. Logique pure testee ici ;
 // le comportement de la modale est verifie a part dans un navigateur.
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -48,8 +48,8 @@ test("envoyerRetour : POST JSON vers /api/retour ; succes -> ok ; refus serveur 
 test("page : le bouton est dans la barre de navigation, hors des onglets (.nav-link) ; branche dans main.js ; route montee en local", () => {
   const html = lire("index.html");
   // Deux exemplaires, un seul visible a la fois : dans la barre (ordinateur, a droite, loin de « Me contacter » centre) et dans le menu ☰ (mobile).
-  assert.match(html, /<button type="button" class="nav-avis" id="navbarAvisBarre">Donner mon avis<\/button>/);
-  assert.match(html, /<button type="button" class="nav-avis" id="navbarAvisTiroir">Donner mon avis<\/button>/);
+  assert.match(html, /<button type="button" class="nav-avis" id="navbarAvisBarre">Bug ou idée \?<\/button>/);
+  assert.match(html, /<button type="button" class="nav-avis" id="navbarAvisTiroir">Bug ou idée \?<\/button>/);
   assert.ok(html.indexOf('id="navbarAvisBarre"') > html.indexOf("</nav>") && html.indexOf('id="navbarAvisBarre"') < html.indexOf('id="projectSelect"'), "exemplaire de la barre apres le menu, hors du menu");
   assert.ok(html.indexOf('id="navbarAvisTiroir"') < html.indexOf("</nav>"), "exemplaire du tiroir dans le menu");
   assert.equal(/class="nav-link[^"]*" id="navbarAvis/.test(html), false);
@@ -86,4 +86,14 @@ test("modale : le choix Bug / Idee reprend la pastille qui glisse de la barre de
   const code = lire("src/retourVisiteur.js");
   assert.ok(code.includes("retour-pastille") && code.includes("offsetLeft") && code.includes("offsetWidth"), "pastille placee comme placerPastilleNavbar");
   assert.ok(code.includes("placeholderRetour(") && code.includes('addEventListener("change"'));
+});
+
+test("libelle : « Bug ou idée ? » (les deux choix de la modale), titre « Un bug, une idée ? », plus aucune trace des anciens noms", () => {
+  const code = lire("src/retourVisiteur.js");
+  assert.ok(code.includes('creer("h2", "retour-titre", "Un bug, une idée ?")'));
+  for (const f of ["index.html", "src/retourVisiteur.js", "src/retourVisiteur.css", "src/main.js", "src/style.css", "tests/retour.test.js", "tests/navbarSeuil.test.js"]) {
+    const texte = lire(f);
+    assert.equal(texte.includes("Donner mon " + "avis"), false, f + " : ancien nom");
+    assert.equal(texte.includes("Faire un " + "retour"), false, f + " : nom intermediaire");
+  }
 });
