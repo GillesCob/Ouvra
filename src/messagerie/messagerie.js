@@ -933,14 +933,28 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
     boite.hidden = false;
     boite.innerHTML = '<div class="msg-carte' + (classe ? " " + classe : "") + '" role="dialog" aria-modal="true" aria-label="' + echapper(libelle) + '">' + html +
       '<button type="button" class="msg-croix" data-act="fermer-dialogue" aria-label="Fermer">\u2715</button></div>';
+    if (classe && classe.includes("msg-carte-sujet")) suivreZoneVisible();
     const premierChamp = boite.querySelector("[autofocus], input, textarea, button");
     if (premierChamp) premierChamp.focus();
+  }
+  // Mobile : le dialogue « Nouveau sujet » suit la zone reellement visible (clavier iOS ouvert : la fenetre de mise en page ne retrecit pas, visualViewport oui), pour que la carte reste entiere au-dessus du clavier.
+  function suivreZoneVisible() {
+    const vv = window.visualViewport;
+    const boite = $("msgDialogue");
+    if (!vv || boite.dataset.vv) return;
+    boite.dataset.vv = "1";
+    const maj = () => { boite.style.setProperty("--msg-vv", Math.round(vv.height) + "px"); boite.style.top = Math.round(vv.offsetTop) + "px"; };
+    maj();
+    vv.addEventListener("resize", maj);
+    vv.addEventListener("scroll", maj);
+    boite._finVv = () => { vv.removeEventListener("resize", maj); vv.removeEventListener("scroll", maj); boite.style.removeProperty("--msg-vv"); boite.style.removeProperty("top"); delete boite.dataset.vv; };
   }
   function fermerDialogue() {
     fermerMenuStatut();
     menuChoix.fermer();
     const boite = $("msgDialogue");
     if (boite.hidden) return;
+    if (boite._finVv) { boite._finVv(); boite._finVv = null; }
     boite.hidden = true;
     boite.innerHTML = "";
     if (declencheurDialogue && document.contains(declencheurDialogue) && declencheurDialogue.focus) declencheurDialogue.focus();

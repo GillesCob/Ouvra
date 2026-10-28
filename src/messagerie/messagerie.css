@@ -424,6 +424,14 @@ body.msg-retour-actif #viewerToolbar { top: 56px; }
   .msg-zone .msg-corps { overscroll-behavior: contain; }
   .msg-carte, .msg-carte.msg-carte-sujet { width: 100%; height: 100vh; height: 100dvh; max-height: none; border: 0; border-radius: 0; padding: calc(14px + env(safe-area-inset-top)) 16px calc(14px + env(safe-area-inset-bottom)); }
   .msg-carte.msg-carte-sujet-bascule { height: 100vh; height: 100dvh; }
+  /* « Nouveau sujet » (28/10, Gilles) : seule exception aux pages pleine ecran, une carte compacte a la hauteur de son contenu, centree dans la zone visible (--msg-vv = visualViewport, clavier iOS compris, pose par messagerie.js).
+     Elle ne defile (dans la zone .msg-corps, jamais dans la page) que si le contenu depasse vraiment cette zone ; la page derriere est verrouillee. Avec la bascule (Viewer) : hauteur fixe min(680px, zone visible). */
+  .msg-dialogue:has(> .msg-carte-sujet) { bottom: auto; height: var(--msg-vv, 100dvh); padding: 12px; background: rgba(0, 0, 0, 0.5); align-items: center; justify-content: center; }
+  .msg-carte.msg-carte-sujet { width: min(480px, 100%); height: auto; max-height: 100%; border: 1px solid var(--border); border-radius: 14px; padding: 18px 16px; }
+  .msg-carte.msg-carte-sujet-bascule { height: min(680px, 100%); }
+  .msg-carte.msg-carte-sujet .msg-croix { top: 6px; right: 6px; }
+  #msgNsMessage { height: auto; }
+  html:has(.msg-dialogue:not([hidden]) > .msg-carte-sujet), html:has(.msg-dialogue:not([hidden]) > .msg-carte-sujet) body { overflow: hidden; overscroll-behavior: none; }
   .msg-carte .msg-croix { top: calc(4px + env(safe-area-inset-top)); right: 4px; width: 44px; height: 44px; }
   .msg-pastille, .msg-ajout { min-height: 40px; }
   .msg-composer textarea, .msg-barre-recherche input, .msg-carte :is(input, textarea, select) { font-size: 16px; }
