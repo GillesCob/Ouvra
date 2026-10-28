@@ -276,8 +276,6 @@
 .collision-trigger.msg-choix-trigger { min-height: 44px; font-size: 16px; }
 .msg-choix-trigger[hidden] { display: none; }
 .msg-choix-trigger .collision-trigger-val { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: 16px; font-weight: 500; }
-.collision-menu.msg-menu-choix { box-sizing: border-box; overflow-y: auto; overscroll-behavior: contain; }
-.msg-menu-choix .collision-menu-texte { overflow-wrap: anywhere; }
 /* Dialogue Nouveau sujet : la carte s'adapte a son contenu (boutons juste sous le dernier champ). Avec la bascule « Nouveau sujet / Conversation existante » (depuis le Viewer seulement),
    meme place et meme taille dans les deux modes (hauteur fixe, bornee par la fenetre) ; si le contenu ne tient pas,
    seule la zone .msg-zone defile, la carte ne grandit ni ne bouge, la rangee de boutons reste visible. 680 px = la hauteur naturelle du mode le plus haut (« Nouveau sujet » avec le choix de la conversation : 662 px a 769, 1024 et 1440 px, un peu de marge pour la liste qui apparait apres le choix du type). */

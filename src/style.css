@@ -2592,6 +2592,10 @@ body.acc-actif #chargementSuite { display: none; }
 .collision-menu-texte { flex: 1; }
 .collision-menu-coche { width: 14px; text-align: right; color: var(--accent); }
 @media (min-width: 769px) { .collision-menu-option { min-height: 34px; } }
+/* Menu de liste de choix commun (src/menuChoix.js : conversation, sujet, Type, Genre, Page du PDF, Exporter en) : une seule source, memes lignes de 44 px sur laptop et mobile, largeur du champ, liste plafonnee a la place libre. */
+.collision-menu.msg-menu-choix { box-sizing: border-box; overflow-y: auto; overscroll-behavior: contain; }
+.msg-menu-choix .collision-menu-option { min-height: 44px; }
+.msg-menu-choix .collision-menu-texte { overflow-wrap: anywhere; }
 .collision-menu[data-champ="prio"] [data-valeur="urgente"] .collision-select-dot { background: #f85149; }
 .collision-menu[data-champ="prio"] [data-valeur="haute"] .collision-select-dot { background: #f0883e; }
 .collision-menu[data-champ="prio"] [data-valeur="normale"] .collision-select-dot { background: #6e8bb5; }
