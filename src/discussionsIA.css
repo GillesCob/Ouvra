@@ -154,3 +154,12 @@ body.discussions-confirm-actif .disc-rapport-fond { padding-top: calc(52px + var
 #discussionsRapportBandeauRetour button:focus-visible { outline: 2px solid var(--text); outline-offset: 1px; }
 body.disc-rapport-retour-actif #view-discussions { padding-top: 44px; box-sizing: border-box; }
 @media (max-width: 768px) { #discussionsRapportBandeauRetour { padding: 0 12px; } #discussionsRapportBandeauRetour button { min-height: 44px; } }
+
+/* Survol des boutons de l'IA de Discussions (28/10, Gilles) : memes motifs que le reste de l'application (bouton neutre : bordure accent, bouton plein : teinte plus claire). */
+@media (hover: hover) and (pointer: fine) {
+  .disc-rapport-btn:not(:disabled):hover { border-color: var(--accent); }
+  .msg-racine .msg-ia-nouvelle:hover { background: color-mix(in srgb, var(--msg-accent) 86%, #fff); }
+  #discussionsBandeau button:hover { border-color: var(--accent); }
+  #discussionsBandeau button[data-act="oui"]:hover { background: color-mix(in srgb, #7fae84 86%, #fff); border-color: color-mix(in srgb, #7fae84 86%, #fff); }
+  #discussionsRapportBandeauRetour button:hover { border-color: var(--accent); }
+}
