@@ -6,8 +6,10 @@
    - boutons : meme gabarit que #reglesIABtn / .msg-bouton-petit (fond --surface, bordure --border, survol et focus en --accent) ;
    - titres de page : 16 px, comme #discussionsListPane h2 ; textes secondaires en --muted. */
 
-#view-quantitatif { flex-direction: column; overflow-y: auto; overscroll-behavior: contain; }
-.qt-page { box-sizing: border-box; width: 100%; max-width: 1320px; margin: 0 auto; padding: 24px 24px 56px; color: var(--text); }
+/* Page sans defilement (28/10) : la page tient dans la fenetre, jamais de scroll vertical sur #view-quantitatif. Le groupe « Exporter » reste toujours visible en bas ;
+   seuls le tableau du resultat et la liste de l'historique defilent, dans leur propre conteneur. */
+#view-quantitatif { flex-direction: column; overflow: hidden; }
+.qt-page { box-sizing: border-box; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; width: 100%; max-width: 1320px; margin: 0 auto; padding: 24px 24px 24px; color: var(--text); }
 .qt-page *, .qt-page *::before, .qt-page *::after { box-sizing: border-box; }
 .qt-page [hidden] { display: none !important; }
 
@@ -17,8 +19,12 @@
 .qt-statut { margin: 6px 0 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
 
 /* Deux colonnes sur laptop : demande + resultat | historique */
-.qt-principal { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.qt-entete { flex: none; }
+.qt-principal { flex: 0 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.qt-principal > * { flex: none; }
+.qt-principal > .qt-zone:not([hidden]) { flex: 0 1 auto; min-height: 0; }
 .qt-zone { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.qt-zone > .qt-carte:not([hidden]) { flex: 0 1 auto; min-height: 0; }
 /* Carte de depart (25/10) : deux choix, centres, comme la carte « Commence par un plan » de la page 2D -> 3D. La barre prend le relais dans les autres vues. */
 .qt-depart { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 16px; padding: 56px 16px; }
 .qt-depart .qt-btn-ia, .qt-depart .qt-btn { min-width: 200px; min-height: 64px; padding: 0 28px; font-size: 15px; }
@@ -76,7 +82,9 @@
 .qt-pastille-obsolete { color: #160b0a; background: #f85149; letter-spacing: 0.06em; }
 
 /* Carte Resultat */
-.qt-resultat { padding: 0; overflow: hidden; }
+.qt-resultat { display: flex; flex-direction: column; padding: 0; overflow: hidden; }
+.qt-resultat > * { flex: none; }
+.qt-resultat > .qt-tableau-enveloppe { flex: 0 1 auto; min-height: 0; }
 .qt-resultat-tete { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px 16px; padding: 16px 16px 12px; }
 .qt-resultat-titres { flex: 1 1 280px; min-width: 0; }
 .qt-resultat-titre { margin: 0 0 8px; font-size: 15px; line-height: 1.4; overflow-wrap: anywhere; }
@@ -95,7 +103,7 @@
 .qt-vide { margin: 0; padding: 8px 16px 20px; color: var(--muted); font-size: 13.5px; }
 
 /* Tableau : en-tete et premiere colonne collants, lignes aerees et bandees, nombres a droite en chiffres tabulaires */
-.qt-tableau-enveloppe { max-width: 100%; max-height: min(62vh, 640px); overflow: auto; border-top: 1px solid var(--border); overscroll-behavior: contain; }
+.qt-tableau-enveloppe { max-width: 100%; overflow: auto; border-top: 1px solid var(--border); overscroll-behavior: contain; }
 .qt-tableau { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 14px; }
 .qt-legende { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .qt-tableau th, .qt-tableau td { padding: 11px 16px; text-align: left; vertical-align: middle; border-bottom: 1px solid var(--border); }
@@ -115,13 +123,15 @@
 .qt-cle { overflow-wrap: anywhere; }
 .qt-origine-cellule { white-space: nowrap; }
 .qt-total { font-weight: 700; }
-.qt-historique { min-width: 0; }
+.qt-historique { min-width: 0; display: flex; flex-direction: column; overflow: hidden; }
+.qt-historique > * { flex: none; }
+.qt-historique > .qt-histo-liste { flex: 0 1 auto; min-height: 0; }
 .qt-notes { margin: 0; padding: 12px 16px 16px 34px; border-top: 1px solid var(--border); color: var(--muted); font-size: 12.5px; line-height: 1.65; }
 
 /* Historique : liste de cartes */
 .qt-histo-tete { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
 .qt-histo-vide { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.55; }
-.qt-histo-liste { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; max-height: calc(100vh - 220px); overflow-y: auto; overscroll-behavior: contain; }
+.qt-histo-liste { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; overflow-y: auto; overscroll-behavior: contain; }
 .qt-histo-item { padding: 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); }
 .qt-histo-ligne { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .qt-histo-date { color: var(--muted); font-size: 11.5px; }
@@ -130,11 +140,8 @@
 .qt-histo-actions { display: flex; gap: 6px; margin-top: 10px; }
 
 /* Mobile : une colonne, historique sous le resultat, cibles tactiles de 40 a 44 px, aucun debordement horizontal de la page */
-@media (max-width: 900px) {
-  .qt-histo-liste { max-height: none; overflow: visible; }
-}
 @media (max-width: 768px) {
-  .qt-page { padding: 16px 16px 40px; }
+  .qt-page { padding: 16px; }
   .qt-carte { padding: 14px; }
   .qt-resultat { padding: 0; }
   .qt-btn-ia { min-height: 44px; min-width: 72px; }
@@ -152,7 +159,6 @@
   .qt-tableau .qt-origine { padding: 3px 6px; font-size: 9.5px; letter-spacing: 0; }
   .qt-tableau .qt-voir { padding: 0 8px; }
   .qt-tableau .qt-action { padding-right: 6px; }
-  .qt-tableau-enveloppe { max-height: 70vh; }
   .qt-statut-rapport .qt-btn { flex: 1 1 100%; }
 }
 @media (prefers-reduced-motion: reduce) { .qt-btn, .qt-voir, .qt-btn-ia { transition: none; } }
