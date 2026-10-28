@@ -12,6 +12,7 @@
 
 import { REGISTRE, validerCommande, selectionner, resultatLocal, construireResultat, preparerAnalyse, conclureClassement, conclureRapport, resultatClasse, MESSAGE_RIEN } from "./discussionsIAMoteur.js";
 import { reconnaitreExemple, EXEMPLES_DISCUSSIONS } from "./discussionsIAExemples.js";
+import { messageRefus } from "./iaSaisieLogique.js";
 
 const MESSAGE_INDEX_VIDE = "Il n'y a encore aucune discussion à explorer.";
 const MESSAGE_ANALYSE = "L'analyse par l'IA a échoué.";
@@ -26,7 +27,7 @@ export function creerPipeline({ lireIndex, comprendre, analyser, maintenant = Da
     }
     const reponse = await comprendre({ phrase, valeurs });
     if (!reponse.ok) return { ok: false, message: reponse.message };
-    if (reponse.resultat !== "commande") return { ok: false, message: (reponse.resultat === "critere_introuvable" ? "Critère introuvable. " : "") + reponse.message };
+    if (reponse.resultat !== "commande") return { ok: false, message: messageRefus(reponse.resultat, reponse.message) };
     // La commande du modele est reverifiee ici : rien n'est suppose.
     const verdict = validerCommande(reponse.commande, valeurs, registre);
     if (!verdict.ok) return { ok: false, message: verdict.erreur };
