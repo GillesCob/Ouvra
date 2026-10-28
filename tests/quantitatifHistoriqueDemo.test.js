@@ -46,11 +46,30 @@ test("amorcerHistoriqueDemo : amorce une fois, puis plus jamais (meme apres supp
   assert.equal((await historique.lister()).length, 0);
 });
 
-test("amorcerHistoriqueDemo : n'ecrase pas un historique deja rempli, ne leve pas sans stockage", async () => {
+test("amorcerHistoriqueDemo : navigateur avec une entree utilisateur et sans demos : les 2 demos s'ajoutent, une seule fois, sans ecraser", async () => {
+  const [demo] = rapportsDemo({ maintenant });
+  const perso = { ...demo, id: "perso-1", phrase: "Combien de portes au niveau 2", calculeLe: "2026-10-28T09:00:00.000Z" };
+  const historique = creerHistorique({ depot: depotMemoire() });
+  await historique.ajouter(perso);
+  const stockage = memoire();
+  assert.equal(await amorcerHistoriqueDemo({ historique, versions: async () => versions, stockage, maintenant }), true);
+  assert.equal((await historique.lister()).length, 3);
+  assert.equal((await historique.obtenir("perso-1")).rapport.phrase, perso.phrase);
+  assert.equal(await amorcerHistoriqueDemo({ historique, versions: async () => versions, stockage, maintenant }), false);
+  assert.equal((await historique.lister()).length, 3);
+});
+
+test("amorcerHistoriqueDemo : ancien drapeau « 1 » sans demos : reamorce une fois ; une demo deja presente n'est pas dupliquee", async () => {
+  const stockage = memoire();
+  stockage.setItem(CLE_DRAPEAU_DEMO, "1");
   const historique = creerHistorique({ depot: depotMemoire() });
   await historique.ajouter(rapportsDemo({ maintenant })[0]);
-  assert.equal(await amorcerHistoriqueDemo({ historique, stockage: memoire(), maintenant }), false);
-  assert.equal((await historique.lister()).length, 1);
+  assert.equal(await amorcerHistoriqueDemo({ historique, versions: async () => versions, stockage, maintenant }), true);
+  assert.equal((await historique.lister()).length, 2);
+});
+
+test("amorcerHistoriqueDemo : ne leve pas sans stockage", async () => {
+  const historique = creerHistorique({ depot: depotMemoire() });
   const sans = { getItem() { throw new Error("bloque"); }, setItem() { throw new Error("bloque"); } };
   assert.equal(await amorcerHistoriqueDemo({ historique, stockage: sans, maintenant }), false);
 });

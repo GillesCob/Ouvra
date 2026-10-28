@@ -1,12 +1,13 @@
 // Historique de demonstration du Quantitatif (28/10, retour de recette mobile) : deux demandes deja passees, bien fournies (date, intitule, tableau de lignes),
 // pour que le menu « Historique » ne soit pas vide a la premiere ouverture. Ce sont des quantites FICTIVES de demonstration, calculees par le vrai moteur
 // (calculer) sur une liste d'elements synthetiques : le rapport a exactement la forme d'un rapport reel, il se rouvre et s'exporte comme lui.
-// Amorcage une seule fois par navigateur (drapeau dans le stockage) : une demonstration supprimee ne revient pas.
+// Amorcage une seule fois par navigateur et par version du drapeau : une demonstration supprimee ne revient pas.
 
 import { calculer } from "./quantitatif.js";
 import { construireRapport } from "./quantitatifRapport.js";
 
 export const CLE_DRAPEAU_DEMO = "ouvra-quantitatif-historique-demo";
+const VERSION_DEMO = "2";
 const JOUR = 24 * 3600 * 1000;
 
 const filtres = (f) => ({ typesIfc: [], niveaux: [], maquettes: [], noms: [], ...f });
@@ -62,17 +63,20 @@ export function rapportsDemo({ maintenant = new Date(), versions = [] } = {}) {
   });
 }
 
-// Amorce l'historique avec la demonstration, une seule fois par navigateur, et seulement s'il est vide. Ne leve jamais.
+// Amorce les demonstrations ABSENTES de l'historique (jamais une entree de l'utilisateur ecrasee ni dupliquee), une seule fois par version du drapeau.
+// Avant le 28/10 le drapeau etait pose des qu'une entree utilisateur existait : ces navigateurs n'avaient aucune demonstration. Le drapeau versionne
+// les reamorce proprement une fois. Le drapeau n'est pose qu'apres l'ecriture reussie. Ne leve jamais ; rend true si au moins une demonstration a ete ajoutee.
 export async function amorcerHistoriqueDemo({ historique, versions = async () => [], stockage = null, maintenant = new Date() }) {
   const acces = () => { try { return stockage || globalThis.localStorage || null; } catch { return null; } };
   try {
     const s = acces();
-    if (!s || s.getItem(CLE_DRAPEAU_DEMO)) return false;
-    s.setItem(CLE_DRAPEAU_DEMO, "1");
-    if ((await historique.lister()).length) return false;
-    const rapports = rapportsDemo({ maintenant, versions: await versions() });
-    for (const r of rapports) await historique.ajouter(r);
-    return true;
+    if (!s || s.getItem(CLE_DRAPEAU_DEMO) === VERSION_DEMO) return false;
+    const presents = new Set((await historique.lister()).map((e) => e.id));
+    const manquants = rapportsDemo({ maintenant, versions: await versions() }).filter((r) => !presents.has(r.id));
+    let ajoute = false;
+    for (const r of manquants) ajoute = (await historique.ajouter(r)).ok || ajoute;
+    if (ajoute || !manquants.length) s.setItem(CLE_DRAPEAU_DEMO, VERSION_DEMO);
+    return ajoute;
   } catch {
     return false;
   }
