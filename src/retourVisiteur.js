@@ -7,6 +7,7 @@
 
 export const MESSAGE_MAX = 1000; // meme plafond que relais/entreeRetour.js
 const DELAI_ENVOI_MS = 12000;
+const ICONE_VALIDE = '<svg viewBox="0 0 24 24" width="56" height="56" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M7.5 12.5l3 3 6-6.5"/></svg>';
 
 const LIBELLES_PAGES = { accueil: "Accueil", viewer: "Viewer", collision: "Collision", discussions: "Discussions", quantitatif: "Quantitatif", plan3d: "2D → 3D", projeteur: "Todo", admin: "Admin" };
 export const libellePage = (vue) => (vue ? LIBELLES_PAGES[vue] || String(vue) : "Application");
@@ -14,7 +15,7 @@ export const libellePage = (vue) => (vue ? LIBELLES_PAGES[vue] || String(vue) : 
 // Texte d'aide du champ selon le choix : un bug se decrit (ce qui s'est passe, ce qu'on attendait), une idee se raconte (a quoi elle sert).
 const PLACEHOLDERS = {
   bug: "Qu'est-ce qui s'est passé ? Ce que tu as fait, et ce que tu attendais.",
-  idee: "Ton idée, et ce qu'elle te permettrait de faire."
+  idee: "Ton idée et ce qu'elle permettrait de faire"
 };
 export const placeholderRetour = (type) => PLACEHOLDERS[type] || PLACEHOLDERS.idee;
 
@@ -126,18 +127,28 @@ export function creerRetourVisiteur({ declencheurs, pageCourante }) {
     actions.append(envoyer, fermerBtn);
     formulaire.append(groupe, labelMessage, compteur, labelContact, piege, etat, actions);
 
+    // Ecran de remerciement (28/10) : pas de titre de modale, une icone, « Merci ! », une ligne, un lien pour envoyer un autre retour, et la croix de fermeture du design
+    // des modales de la messagerie (.msg-croix de src/messagerie/messagerie.css) : plus de gros bouton « Fermer ». Echap et un clic sur le fond ferment aussi.
     const merci = creer("div", "retour-merci");
     merci.hidden = true;
-    const texteMerci = creer("p", "retour-merci-texte", "Merci, ton retour est bien parti.");
-    texteMerci.setAttribute("role", "status");
-    const fermerMerci = creer("button", "regles-ia-valider", "Fermer");
-    fermerMerci.type = "button";
-    merci.append(texteMerci, fermerMerci);
+    const icone = creer("span", "retour-merci-icone");
+    icone.setAttribute("aria-hidden", "true");
+    icone.innerHTML = ICONE_VALIDE;
+    const merciTitre = creer("p", "retour-merci-titre", "Merci !");
+    merciTitre.id = "retourMerciTitre";
+    const merciTexte = creer("p", "retour-merci-texte", "Ton retour est bien parti.");
+    const autre = creer("button", "regles-ia-lien", "Envoyer un autre retour");
+    autre.type = "button";
+    merci.append(icone, merciTitre, merciTexte, autre);
+    const croix = creer("button", "retour-croix", "\u2715");
+    croix.type = "button";
+    croix.setAttribute("aria-label", "Fermer");
+    croix.hidden = true;
 
-    carte.append(titre, formulaire, merci);
+    carte.append(titre, formulaire, merci, croix);
     fond.appendChild(carte);
     document.body.appendChild(fond);
-    champs = { carte, formulaire, radios, message, compteur, contact, piege, etat, envoyer, merci, fermerMerci, groupe, pastille };
+    champs = { carte, titre, formulaire, radios, message, compteur, contact, piege, etat, envoyer, merci, croix, autre, groupe, pastille };
 
     // Le choix change : le texte d'aide suit, la pastille glisse sous le nouveau choix.
     Object.values(radios).forEach((radio) => radio.addEventListener("change", () => {
@@ -149,7 +160,8 @@ export function creerRetourVisiteur({ declencheurs, pageCourante }) {
     message.addEventListener("input", majCompteur);
     majCompteur();
     fermerBtn.addEventListener("click", () => fermer());
-    fermerMerci.addEventListener("click", () => fermer());
+    croix.addEventListener("click", () => fermer());
+    autre.addEventListener("click", () => { afficherFormulaire(); champs.message.focus({ preventScroll: true }); }); // un autre retour : le formulaire revient, vide
     fond.addEventListener("click", (e) => { if (e.target === fond) fermer(); });
     document.addEventListener("keydown", (e) => {
       if (!ouverte) return;
@@ -206,17 +218,23 @@ export function creerRetourVisiteur({ declencheurs, pageCourante }) {
     if (!ouverte) return; // fermee pendant l'envoi : rien a afficher
     if (resultat.ok) {
       champs.formulaire.hidden = true;
+      champs.titre.hidden = true; // pas de titre de modale sur l'ecran de remerciement
       champs.merci.hidden = false;
-      champs.fermerMerci.focus({ preventScroll: true });
+      champs.croix.hidden = false;
+      champs.carte.setAttribute("aria-labelledby", "retourMerciTitre");
+      champs.croix.focus({ preventScroll: true });
     } else {
       afficherEtat(resultat.message);
     }
   }
 
-  function ouvrir() {
-    if (!fond) construire();
+  // Le formulaire, vide, avec son titre : a l'ouverture et quand on choisit « Envoyer un autre retour ».
+  function afficherFormulaire() {
+    champs.titre.hidden = false;
+    champs.carte.setAttribute("aria-labelledby", "retourTitre");
     champs.formulaire.hidden = false;
     champs.merci.hidden = true;
+    champs.croix.hidden = true;
     champs.message.value = "";
     champs.contact.value = "";
     champs.piege.value = "";
@@ -224,6 +242,13 @@ export function creerRetourVisiteur({ declencheurs, pageCourante }) {
     champs.message.placeholder = placeholderRetour("bug");
     champs.compteur.textContent = "0 / " + MESSAGE_MAX;
     afficherEtat("");
+    pastillePosee = false;
+    placerPastille();
+  }
+
+  function ouvrir() {
+    if (!fond) construire();
+    afficherFormulaire();
     fond.hidden = false;
     ouverte = true;
     pastillePosee = false; // la modale vient d'apparaitre : la pastille se repose sans glisser

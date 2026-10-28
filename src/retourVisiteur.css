@@ -48,5 +48,15 @@
 .retour-etat[hidden] { display: none; }
 .retour-actions { display: flex; gap: 8px; }
 .retour-actions .regles-ia-valider { flex: 1 1 auto; }
-.retour-merci { display: flex; flex-direction: column; gap: 14px; align-items: stretch; }
-.retour-merci-texte { margin: 0; font-size: 15px; line-height: 1.4; text-align: center; }
+.retour-carte { position: relative; }
+.retour-titre[hidden] { display: none; }
+/* Ecran de remerciement : icone, « Merci ! », une ligne, lien pour un autre retour. */
+.retour-merci { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 14px 8px 4px; text-align: center; }
+.retour-merci-icone { display: flex; color: var(--accent); }
+.retour-merci-titre { margin: 8px 0 0; font-size: 20px; font-weight: 700; color: var(--text); }
+.retour-merci-texte { margin: 0 0 8px; font-size: 14px; line-height: 1.4; color: var(--muted); }
+/* Croix de fermeture : memes valeurs que .msg-croix, la croix des modales de la messagerie (src/messagerie/messagerie.css). */
+.retour-croix { position: absolute; top: 6px; right: 6px; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; padding: 0; background: transparent; border: 1px solid var(--border); border-radius: 6px; color: var(--muted); font-size: 16px; line-height: 1; cursor: pointer; }
+.retour-croix[hidden] { display: none; }
+@media (hover: hover) and (pointer: fine) { .retour-croix:hover { color: var(--text); } }
+@media (max-width: 768px) { .retour-croix { top: 4px; right: 4px; width: 44px; height: 44px; } }
