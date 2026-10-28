@@ -181,7 +181,7 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
   const saisie = creerIASaisie({
     exemples: EXEMPLES_QUANTITATIF,
     libelle: "Demande de quantitatif par l'IA",
-    placeholder: "Ex. : combien de portes au niveau 2 ?",
+    placeholder: "Ex. : portes du niveau 2",
     messageVide: MESSAGE_VIDE,
     retourFocus: boutonIA,
     surEnvoi: (phrase, { annule }) => traiter(phrase, annule)

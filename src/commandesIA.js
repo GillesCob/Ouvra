@@ -18,7 +18,7 @@ import "./commandesIA.css";
 import { creerIASaisie } from "./iaSaisie.js";
 import { messageRefus } from "./iaSaisieLogique.js";
 
-const PLACEHOLDER_TEXTE = "Ex. : affiche-moi les gaines au niveau 2";
+const PLACEHOLDER_TEXTE = "Ex. : gaines au niveau 2";
 const MESSAGE_PHRASE_VIDE = "Écrire ce qui est à voir, par exemple « affiche-moi les gaines au niveau 2 ».";
 
 export function creerCommandesIA({ bouton, exemples, proposerCommande, traduire, fermerAutres }) {

@@ -30,7 +30,7 @@ const ECART = 8;
 const MARGE = 16;
 const IMAGES_CALMES = 24; // images sans mouvement des boutons voisins avant d'arreter le suivi
 
-const PLACEHOLDER_TEXTE = "Ex. : écarte les collisions avec un diffuseur";
+const PLACEHOLDER_TEXTE = "Ex. : écarter les diffuseurs";
 
 function creer(tag, classe, texte) {
   const el = document.createElement(tag);

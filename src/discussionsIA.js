@@ -16,7 +16,7 @@ import "./discussionsIA.css";
 import { creerIASaisie, PHRASE_MAX } from "./iaSaisie.js";
 import { dateSynthese } from "./discussionsIAHistorique.js";
 
-const PLACEHOLDER_TEXTE = "Ex. : montre-moi tous les échanges avec Sophie Lambert";
+const PLACEHOLDER_TEXTE = "Ex. : échanges avec Sophie Lambert";
 const MESSAGE_PHRASE_VIDE = "Écrire ce qui est recherché, par exemple « montre-moi tous les échanges avec Sophie Lambert ».";
 
 function creer(tag, classe, texte) {
