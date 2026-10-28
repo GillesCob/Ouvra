@@ -2028,7 +2028,7 @@ body.acc-actif #appBody { height: 100%; }
 }
 
 /* Accueil : logo de l'auteur dans le pied de page (19/10) */
-#view-accueil .acc-auteur { display: flex; align-items: center; gap: 10px; }
+#view-accueil .acc-auteur { display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; margin-left: auto; margin-right: auto; }
 #view-accueil .acc-auteur-logo { display: block; height: 40px; width: auto; }
 #view-accueil .acc-auteur a { gap: 10px; }
 
