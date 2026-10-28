@@ -3,6 +3,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { validerRegle, appliquerRegle, validerCritereDate, periodeEnMs } from "../src/reglesCollision.js";
+import { HOSPITAL_CLASHES } from "../src/clashesHospital.js";
+import { EXEMPLES_REGLES } from "../src/reglesExemples.js";
 
 const permises = { priorite: ["urgente", "haute", "normale", "basse"], statut: ["nouveau", "confirme", "ecarte"] };
 const MAINTENANT = new Date(2026, 9, 23, 12, 0, 0).getTime(); // 23/10/2026 12h, heure locale
@@ -198,4 +200,34 @@ test("evenement sans date lisible ignore ; contexte absent : aucun evenement con
 test("collisions fictives ou sans deux elements : jamais touchees, meme pour afficher", () => {
   const t = appliquerRegle(regleAfficher({ etat: { statut: "nouveau" } }), [...clashes, { id: "c5", entityIds: ["m1"], priorite: "haute", statut: "nouveau" }], lire, etat);
   assert.deepEqual(ids(t), ["c1"]); // c4 est factice, c5 n'a qu'un element
+});
+
+// ---------- Scenario de la demo (28/10) : « Passe en urgent toutes les collisions qui impliquent des gaines du niveau 2 » ----------
+// Scene factice avec les metadonnees de l'hopital : type IFC et niveau deduits de la zone de chaque collision (noms Revit, niveau en fin de ligne).
+const typeDeLaZone = (nom) => /Duct :/.test(nom) ? "IfcDuctSegment" : /Pipe Types/.test(nom) ? "IfcPipeSegment" : /Wall/.test(nom) ? "IfcWallStandardCase" : "IfcCovering";
+const sceneHopital = {};
+HOSPITAL_CLASHES.forEach((c) => {
+  const [noms, niveau] = c.zone.split(" · ");
+  const [a, b] = noms.split(" ↔ ");
+  sceneHopital[c.entityIds[0]] = { nom: a, typeIfc: typeDeLaZone(a), niveau, maquette: "Architecture" };
+  sceneHopital[c.entityIds[1]] = { nom: b, typeIfc: typeDeLaZone(b), niveau, maquette: "Mecanique" };
+});
+const etatHopital = (c) => ({ priorite: c.priorite, statut: c.statut });
+
+test("demo : la collision n°2 de l'hopital demarre en priorite haute", () => {
+  assert.equal(HOSPITAL_CLASHES.find((c) => c.id === "hosp-clash-2").priorite, "haute");
+});
+
+test("demo : la phrase « gaines du niveau 2 » touche exactement hosp-clash-2 et la change de haute a urgente", () => {
+  const t = appliquerRegle(EXEMPLES_REGLES[0], HOSPITAL_CLASHES, (id) => sceneHopital[id] || null, etatHopital);
+  assert.deepEqual(ids(t), ["hosp-clash-2"]);
+  assert.deepEqual(t.map((x) => [x.de, x.vers, x.inchange]), [["haute", "urgente", false]]);
+});
+
+test("demo : « urgentes sans message depuis 3 jours » trouve toujours au moins une collision (hosp-clash-10)", () => {
+  const evenements = (c) => (c.discussion || []).map((m) => ({ type: "message", quand: Date.parse(m.quand) }))
+    .concat((c.historique || []).map((h) => ({ type: "modification", quand: Date.parse(h.quand) })));
+  const regle = EXEMPLES_REGLES.find((e) => e.demande === "Affiche les collisions urgentes sans message depuis 3 jours");
+  const t = appliquerRegle(regle, HOSPITAL_CLASHES, (id) => sceneHopital[id] || null, etatHopital, { maintenant: new Date(2026, 9, 28, 12).getTime(), evenements });
+  assert.deepEqual(ids(t), ["hosp-clash-10"]);
 });

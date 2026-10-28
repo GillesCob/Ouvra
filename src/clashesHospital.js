@@ -45,8 +45,8 @@ export const HOSPITAL_DETECTIONS = [
 
 // Priorite (19/10, COLLISION_PRIORITES) : "urgente" | "haute" | "normale" |
 // "basse" ; valeur par defaut "normale" si absent. Repartition CHOISIE POUR LA
-// DEMONSTRATION (pas issue d'IfcClash) : urgentes 2 et 10 (confirmees), hautes
-// 1, 5, 6, 15, normales 3, 4, 9, 11, 12, 13, basses 7, 8 (ecartees) et 14.
+// DEMONSTRATION (pas issue d'IfcClash) : urgente 10 (confirmee), hautes
+// 1, 2 (28/10 : pour que la regle de la demo la passe en urgente), 5, 6, 15, normales 3, 4, 9, 11, 12, 13, basses 7, 8 (ecartees) et 14.
 // Statut (ou en est la collision) et priorite (urgence) sont deux notions
 // separees.
 const CLASHES_BRUTS = [
@@ -70,7 +70,7 @@ const CLASHES_BRUTS = [
   // Level 2 : IfcWallStandardCase (Architecture) contre IfcDuctSegment (Mecanique)
   {
     id: "hosp-clash-2",
-    priorite: "urgente",
+    priorite: "haute",
     detectionId: "hopital-arch-mep",
     zone: "Basic Wall : Interior - 123mm Partition (#753881) ↔ Rectangular Duct : Mitered Elbows / Taps (#967393) · Level 2",
     disciplineA: "Architecture",
