@@ -1785,7 +1785,8 @@ body.acc-actif #loadingOverlay { display: none; }
 #view-accueil .acc-top-link:hover { border-color: var(--brand); }
 
 /* Hero : mobile en colonne, image courte sous le bouton */
-#view-accueil .acc-hero-text { max-width: 760px; margin: 0 auto; padding: 8px 16px 0; text-align: center; }
+/* Marge sous l'en-tete collant : meme rythme que les sections (40 px mobile, 56 px des 720 px). */
+#view-accueil .acc-hero-text { max-width: 760px; margin: 0 auto; padding: 40px 16px 0; text-align: center; }
 #view-accueil h1 { margin: 0 0 10px; font-size: clamp(1.75rem, 7.4vw, 3.2rem); line-height: 1.1; font-weight: 800; letter-spacing: -0.015em; }
 #view-accueil .acc-lead { margin: 0 auto; font-size: 1.0625rem; line-height: 1.5; max-width: 52ch; color: var(--muted); }
 #view-accueil .acc-cta { margin-top: 16px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
@@ -1877,6 +1878,7 @@ body.acc-actif #loadingOverlay { display: none; }
   #view-accueil .acc-contact-box { grid-template-columns: 1.4fr 1fr; padding: 44px; gap: 32px; }
   #view-accueil .acc-contact-box .acc-side { justify-self: end; }
   #view-accueil section { padding-top: 56px; }
+  #view-accueil .acc-hero-text { padding-top: 56px; }
   #view-accueil .acc-what { margin-top: 32px; padding: 40px 0; }
   #view-accueil .acc-hero-img img { height: clamp(220px, 34vh, 340px); }
 }
@@ -1884,7 +1886,7 @@ body.acc-actif #loadingOverlay { display: none; }
 /* Laptop : hero en deux colonnes, tient dans la hauteur de l'écran */
 @media (min-width: 900px) {
   #view-accueil .acc-hero {
-    max-width: 1120px; margin: 0 auto; padding: 0 32px;
+    max-width: 1120px; margin: 0 auto; padding: 56px 32px 0;
     display: grid; grid-template-columns: 0.95fr 1.05fr; gap: 32px; align-items: center;
     min-height: calc(100vh - 170px);
   }
