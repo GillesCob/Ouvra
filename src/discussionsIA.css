@@ -14,21 +14,7 @@
   width: 100%; min-height: 44px; padding: 6px 14px; background: var(--msg-accent); color: var(--msg-sur-accent); border: 1px solid var(--msg-accent); border-radius: 8px;
   font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; -webkit-tap-highlight-color: transparent;
 }
-.msg-racine .msg-ia-nouvelle:focus-visible, .msg-ia-phrases summary:focus-visible, .msg-racine .msg-ia-phrase:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
-.msg-ia-phrases summary {
-  display: flex; align-items: center; justify-content: space-between; min-height: 36px; padding: 0 4px; cursor: pointer; list-style: none;
-  font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted);
-}
-.msg-ia-phrases summary::-webkit-details-marker { display: none; }
-.msg-ia-phrases summary::after { content: "▾"; font-size: 12px; transition: transform 0.18s ease; }
-.msg-ia-phrases[open] summary::after { transform: rotate(180deg); }
-.msg-ia-phrases ul { margin: 4px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 2px; max-height: 38vh; overflow-y: auto; }
-.msg-racine .msg-ia-phrase {
-  display: block; width: 100%; min-height: 44px; padding: 9px 10px; background: transparent; color: var(--text); border: 1px solid transparent; border-radius: 8px;
-  font: inherit; font-size: 13px; line-height: 1.3; text-align: left; cursor: pointer; -webkit-tap-highlight-color: transparent;
-}
-@media (hover: hover) and (pointer: fine) { .msg-racine .msg-ia-phrase:hover { background: var(--bg); } }
-@media (prefers-reduced-motion: reduce) { .msg-ia-phrases summary::after { transition: none; } }
+.msg-racine .msg-ia-nouvelle:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
 
 /* ---------- Liste filtree par l'IA ---------- */
 /* Resume du resultat sur UNE SEULE ligne : « <- Retour », la demande et le compte (ellipsis si trop long), « Voir le rapport ». */
@@ -47,9 +33,9 @@
 }
 .msg-racine .msg-ia-retour { flex: none; background: var(--msg-accent); color: var(--msg-sur-accent); border-color: var(--msg-accent); cursor: pointer; }
 @media (hover: hover) and (pointer: fine) { .msg-ia-actions button[data-act="ia-rapport"]:hover { border-color: var(--msg-accent); } }
-/* Mode resultat (classe posee par rendreListe sur .msg-lateral) : onglets et phrases toutes faites masques, la liste des discussions remontees prend la place.
-   Retirer ce bloc suffit pour revenir a l'ancien affichage ; l'etat deplie des phrases n'est pas modifie (display seulement). */
-.msg-lateral.msg-ia-resultat .msg-onglets, .msg-lateral.msg-ia-resultat .msg-ia-phrases { display: none; }
+/* Mode resultat (classe posee par rendreListe sur .msg-lateral) : onglets masques, la liste des discussions remontees prend la place.
+   Retirer ce bloc suffit pour revenir a l'ancien affichage. */
+.msg-lateral.msg-ia-resultat .msg-onglets { display: none; }
 /* Ligne de resultat : le format d'une conversation (.msg-conv), l'extrait passe sur deux lignes avec ses mots trouves en evidence. */
 .msg-ia-res .msg-conv-nom { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .msg-ia-res .msg-conv-heure { font-size: 11.5px; white-space: nowrap; }
@@ -109,6 +95,8 @@ body.discussions-confirm-actif .disc-rapport-fond { padding-top: calc(52px + var
 .regles-ia-carte.disc-rapport-carte > .disc-rapport-corps { flex: 1 1 auto; min-height: 0; }
 .disc-rapport-entete { display: flex; flex-direction: column; gap: 4px; }
 .disc-rapport-titre { margin: 0; font-size: 19px; font-weight: 700; line-height: 1.3; overflow-wrap: anywhere; }
+.disc-rapport-modele { margin: 6px 0 0; display: inline-block; padding: 2px 10px; border: 1px solid var(--border); border-radius: 10px; font-size: 11.5px; font-weight: 700; color: var(--muted); }
+.disc-rapport-modele[hidden] { display: none; }
 .disc-rapport-compte { margin: 0; font-size: 12.5px; line-height: 1.4; color: var(--muted); }
 .disc-rapport-corps { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: 16px; padding-right: 2px; }
 .disc-rapport-bloc h3 { margin: 0 0 8px; font-size: 13px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }

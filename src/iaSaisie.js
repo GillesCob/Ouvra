@@ -9,6 +9,7 @@
 //   creerIASaisie({ exemples, libelle, placeholder, messageVide, retourFocus, surEnvoi })
 //     exemples : [{ demande }] ; libelle : nom accessible de la modale ; placeholder : exemple du champ ; messageVide : message d'une phrase vide ;
 //     retourFocus : element qui reprend le focus a la fermeture ;
+//     lienBas : { libelle, surClic } facultatif (28/10) : un lien en bas de la modale, sous les propositions ; un clic ferme la modale puis appelle surClic() ;
 //     surEnvoi(phrase, { annule }) : promesse de { ok: true } | { ok: false, message } ; annule() est vrai si la modale a ete fermee depuis l'envoi
 //     (la reponse est alors ignoree : n'applique rien a l'insu de l'utilisateur) ; ne doit pas rejeter (une exception est rattrapee).
 //   rend { ouvrir({ phraseInitiale, modeInitial }), fermer(), ouvert(), reformuler(phrase) }  (reformuler = ouvrir en texte, phrase ecrite)
@@ -32,7 +33,7 @@ function creer(tag, classe, texte) {
   return el;
 }
 
-export function creerIASaisie({ exemples = [], libelle = "Demande par l'IA", placeholder = "", messageVide = MESSAGE_VIDE_DEFAUT, retourFocus = null, surEnvoi }) {
+export function creerIASaisie({ exemples = [], libelle = "Demande par l'IA", placeholder = "", messageVide = MESSAGE_VIDE_DEFAUT, retourFocus = null, surEnvoi, lienBas = null }) {
   const Reconnaissance = detecterReconnaissance(window);
   const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
   const dicteeDisponible = !!Reconnaissance;
@@ -111,9 +112,16 @@ export function creerIASaisie({ exemples = [], libelle = "Demande par l'IA", pla
   });
   propositions.append(creer("summary", null, "Proposition d'instruction"), liste);
   propositions.hidden = exemples.length === 0;
-  carte.addEventListener("pointerdown", (e) => { if (propositions.open && !propositions.contains(e.target)) propositions.open = false; });
+  // Un appui en dehors de la liste la referme, sauf sur le lien du bas : la liste qui se replie decalerait le lien sous le doigt et le clic le manquerait.
+  carte.addEventListener("pointerdown", (e) => { if (propositions.open && !propositions.contains(e.target) && !e.target.closest(".regles-ia-lien")) propositions.open = false; });
 
   carte.append(formulaire, vocal, chargement, etat, propositions);
+  if (lienBas) {
+    const lien = creer("button", "regles-ia-lien", lienBas.libelle);
+    lien.type = "button";
+    lien.addEventListener("click", () => { fermer(false); lienBas.surClic(); }); // la modale se ferme sans rendre le focus : le contenu ouvert prend le relais
+    carte.appendChild(lien);
+  }
   document.body.appendChild(fond);
 
   const ouvert = () => !fond.hidden;

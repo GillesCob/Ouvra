@@ -15,6 +15,7 @@ import { indexer } from "./discussionsIAIndex.js";
 import { rapportEnTexte } from "./discussionsIAMoteur.js";
 import { EXEMPLES_DISCUSSIONS } from "./discussionsIAExemples.js";
 import { demanderComprehension, demanderAnalyse } from "./discussionsIAClient.js";
+import { construireRapportModele } from "./discussionsIARapportModele.js";
 
 const DELAI_ANALYSE_MS = 42000; // un rapport est plus long a ecrire : un peu plus que le delai du relais (32 s)
 
@@ -78,6 +79,15 @@ export function creerDiscussionsIAMontage() {
       panneau,
       retourFocus: bouton,
       exemples: EXEMPLES_DISCUSSIONS,
+      // Lien « Voir un exemple de rapport » (28/10) : le rapport modele s'ouvre dans la meme fenetre que le rapport de l'IA, sans appel reseau ni bandeau de confirmation.
+      exempleRapport: {
+        libelle: "Voir un exemple de rapport",
+        surClic: () => {
+          const donnees = messagerie.donneesPourIA();
+          const modele = construireRapportModele(indexer(donnees.conversations, donnees.personnes), { maintenant: Date.now() });
+          if (modele.ok) rapportVue.ouvrir(modele.rapport);
+        }
+      },
       traiter: (phrase) => pipeline.traiter(phrase),
       proposer: (retour, phrase) => {
         const application = flux.proposer(retour, phrase);

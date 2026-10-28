@@ -35,6 +35,7 @@ export function creerRapportVue({ surSource, texteRapport, exporterPdf }) {
   let boutonCopier = null;
   let boutonPdf = null;
   let dateEl = null;
+  let modeleEl = null;
   let boutonFermer = null;
   let rapportCourant = null;
   let focusAvant = null;
@@ -62,7 +63,9 @@ export function creerRapportVue({ surSource, texteRapport, exporterPdf }) {
     titre.id = "discRapportTitre";
     compte = creer("p", "disc-rapport-compte");
     compte.id = "discRapportCompte";
-    entete.append(marque, titre, compte);
+    modeleEl = creer("p", "disc-rapport-modele", "Modèle de rapport");
+    modeleEl.hidden = true;
+    entete.append(marque, titre, compte, modeleEl);
     corps = creer("div", "disc-rapport-corps");
     const pied = creer("div", "disc-rapport-pied");
     boutonCopier = creer("button", "disc-rapport-btn", "Copier");
@@ -193,6 +196,7 @@ export function creerRapportVue({ surSource, texteRapport, exporterPdf }) {
     titre.textContent = rapport.titre;
     dateEl.textContent = dateDuRapport(rapport);
     compte.textContent = perimetreDe(rapport) + (rapport.vide ? "." : ". Ce rapport ne reprend que ce que disent ces messages ; chaque bloc renvoie à ses sources.");
+    modeleEl.hidden = !rapport.modele; // « Modèle de rapport » : exemple prepare a l'avance, jamais genere par l'IA
     corps.textContent = "";
     if (rapport.vide) {
       corps.appendChild(creer("p", "disc-rapport-rien", rapport.message));

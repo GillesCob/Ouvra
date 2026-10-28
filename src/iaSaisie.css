@@ -5,6 +5,14 @@
   font-size: 13px; font-weight: 600; -webkit-tap-highlight-color: transparent; transition: color 0.18s ease, border-color 0.18s ease;
 }
 .regles-ia-bascule[hidden] { display: none; }
+/* Lien du bas de la modale (28/10, ex. « Voir un exemple de rapport ») : discret, souligne, cible tactile de 44 px sur mobile. */
+.regles-ia-lien {
+  align-self: center; min-height: 40px; padding: 0 8px; background: none; border: 0; color: var(--muted); font-size: 13px; font-weight: 600; text-decoration: underline;
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+@media (hover: hover) and (pointer: fine) { .regles-ia-lien:hover { color: var(--text); } }
+.regles-ia-lien:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+@media (max-width: 768px) { .regles-ia-lien { min-height: 44px; } }
 @media (hover: hover) and (pointer: fine) { .regles-ia-bascule:hover { color: var(--text); border-color: var(--accent); } }
 @media (max-width: 768px) { .regles-ia-bascule { min-height: 44px; } }
 @media (prefers-reduced-motion: reduce) { .regles-ia-bascule { transition: none; } }
