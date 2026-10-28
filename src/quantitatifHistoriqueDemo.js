@@ -5,11 +5,10 @@
 
 import { calculer } from "./quantitatif.js";
 import { construireRapport } from "./quantitatifRapport.js";
+import { EMPREINTE_DEMO_A_JOUR, EMPREINTE_DEMO_ANCIENNE } from "./quantitatifVersions.js";
 
 export const CLE_DRAPEAU_DEMO = "ouvra-quantitatif-historique-demo";
-const VERSION_DEMO = "3";
-// Empreinte factice d'une version anterieure des maquettes : la demonstration « obsolete » ne correspond JAMAIS a la version courante, quel que soit le moment du chargement.
-const EMPREINTE_ANCIENNE = "etag:demo-version-anterieure";
+const VERSION_DEMO = "4";
 const JOUR = 24 * 3600 * 1000;
 
 const filtres = (f) => ({ typesIfc: [], niveaux: [], maquettes: [], noms: [], ...f });
@@ -42,7 +41,8 @@ const DEMANDES = [
     phrase: "Compte les gaines, les raccords de gaine, les tuyaux et les vannes de la maquette mécanique, par niveau et par type",
     ilYa: 1,
     heure: 16,
-    aJour: true, // la demonstration « a jour » : ses empreintes suivent celles des maquettes courantes (voir resynchroniser)
+    aJour: true, // la demonstration « a jour » (empreinte factice a jour) ; l'autre est « obsolete »
+    maquette: "Mechanical (CVC)", maquetteId: "hosp-mep",
     elements: () => elementsSynthetiques(MECANIQUE, "Mechanical (CVC)", "hosp-mep"),
     requete: { mesure: "nombre", filtres: filtres({ typesIfc: ["IfcDuctSegment", "IfcDuctFitting", "IfcPipeSegment", "IfcValve"], maquettes: ["Mechanical (CVC)"] }), regroupements: ["niveau", "typeIfc"] }
   },
@@ -51,53 +51,36 @@ const DEMANDES = [
     phrase: "Combien de portes, de fenêtres et de murs par niveau ?",
     ilYa: 4,
     heure: 10,
+    maquette: "Architecture", maquetteId: "hosp-arch",
     elements: () => elementsSynthetiques(ARCHITECTURE, "Architecture", "hosp-arch"),
     requete: { mesure: "nombre", filtres: filtres({ typesIfc: ["IfcDoor", "IfcWindow", "IfcWallStandardCase"] }), regroupements: ["niveau", "typeIfc"] }
   }
 ];
 
-// versions : [{ id, label, url, empreinte }] des maquettes chargees (les rapports de demonstration y prennent l'empreinte reelle ; sans elle, version « inconnue »).
-export function rapportsDemo({ maintenant = new Date(), versions = [] } = {}) {
+// Chaque demonstration porte des maquettes EXPLICITES (identifiants reels des maquettes de l'hopital) et une empreinte factice : son statut ne depend ni des
+// en-tetes HEAD ni du moment du chargement des maquettes (au premier amorcage la liste des versions est souvent encore vide). Voir statutRapport.
+export function rapportsDemo({ maintenant = new Date() } = {}) {
   return DEMANDES.map((d) => {
     const resultat = calculer(d.elements(), d.requete);
     const jour = new Date(maintenant.getTime() - d.ilYa * JOUR);
     jour.setHours(d.heure, 12, 0, 0);
-    const rapport = construireRapport({ resultat, phrase: d.phrase, calculeLe: jour, versions, id: d.id });
-    if (!d.aJour) rapport.maquettes = rapport.maquettes.map((m) => ({ ...m, empreinte: EMPREINTE_ANCIENNE }));
+    const rapport = construireRapport({ resultat, phrase: d.phrase, calculeLe: jour, versions: [], id: d.id });
+    rapport.maquettes = [{ id: d.maquetteId, label: d.maquette, url: "", empreinte: d.aJour ? EMPREINTE_DEMO_A_JOUR : EMPREINTE_DEMO_ANCIENNE }];
     return rapport;
   });
 }
 
-// Remet la demonstration « a jour » en phase avec les empreintes COURANTES des maquettes (elles changent a chaque deploiement) : elle reste « À jour »
-// de facon deterministe. Ne touche ni aux demonstrations obsoletes ni aux rapports de l'utilisateur. Sans empreinte courante connue, ne change rien.
-// Rend true si une entree a ete reecrite.
-async function resynchroniser(historique, versions) {
-  let change = false;
-  for (const d of DEMANDES.filter((x) => x.aJour)) {
-    const entree = await historique.obtenir(d.id);
-    if (!entree) continue;
-    const courantes = new Map(versions.map((v) => [v.id, v.empreinte]));
-    if (!entree.rapport.maquettes.every((m) => courantes.get(m.id))) continue;
-    if (entree.rapport.maquettes.every((m) => m.empreinte === courantes.get(m.id))) continue;
-    const rapport = { ...entree.rapport, maquettes: entree.rapport.maquettes.map((m) => ({ ...m, empreinte: courantes.get(m.id) })) };
-    change = (await historique.ajouter(rapport)).ok || change;
-  }
-  return change;
-}
-
 // Amorce les demonstrations (reecrites par identifiant « demo-... », jamais une entree de l'utilisateur ecrasee ni dupliquee), une seule fois par version du drapeau ;
-// ensuite, a chaque chargement, resynchronise seulement la demonstration « a jour ».
 // Avant le 28/10 le drapeau etait pose des qu'une entree utilisateur existait : ces navigateurs n'avaient aucune demonstration. Le drapeau versionne
 // les reamorce proprement une fois. Le drapeau n'est pose qu'apres l'ecriture reussie. Ne leve jamais ; rend true si au moins une demonstration a ete ajoutee.
-export async function amorcerHistoriqueDemo({ historique, versions = async () => [], stockage = null, maintenant = new Date() }) {
+export async function amorcerHistoriqueDemo({ historique, stockage = null, maintenant = new Date() }) {
   const acces = () => { try { return stockage || globalThis.localStorage || null; } catch { return null; } };
   try {
     const s = acces();
     if (!s) return false;
-    const courantes = await versions();
-    if (s.getItem(CLE_DRAPEAU_DEMO) === VERSION_DEMO) return await resynchroniser(historique, courantes);
+    if (s.getItem(CLE_DRAPEAU_DEMO) === VERSION_DEMO) return false;
     // Changement de version du drapeau : les demonstrations (identifiants « demo-... », jamais les rapports de l'utilisateur) sont reecrites a leur etat voulu.
-    const manquants = rapportsDemo({ maintenant, versions: courantes });
+    const manquants = rapportsDemo({ maintenant });
     let ajoute = false;
     for (const r of manquants) ajoute = (await historique.ajouter(r)).ok || ajoute;
     if (ajoute) s.setItem(CLE_DRAPEAU_DEMO, VERSION_DEMO);

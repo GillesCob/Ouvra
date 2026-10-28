@@ -15,7 +15,7 @@
 import "./quantitatif.css";
 import { calculer, exporterCsv } from "./quantitatif.js";
 import { construireRapport, tableauDe, nomFichier, dateRelative } from "./quantitatifRapport.js";
-import { comparerVersions, libelleStatut } from "./quantitatifVersions.js";
+import { statutRapport, libelleStatut } from "./quantitatifVersions.js";
 import { valeursPourQuantitatif } from "./quantitatifDonnees.js";
 import { EXEMPLES_QUANTITATIF, reconnaitreExemple } from "./quantitatifExemples.js";
 import { nettoyerPhrase } from "./reglesVoix.js";
@@ -437,7 +437,7 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
 
   // Affiche un rapport (nouveau ou rouvert) avec son etat de version actuel, recalcule a chaque affichage.
   async function afficherRapport(rapport, { nouveau }) {
-    const statut = comparerVersions(rapport.maquettes, await obtenirVersions());
+    const statut = statutRapport(rapport, await obtenirVersions());
     dernierResultat = { rapport, phrase: rapport.phrase, nouveau };
     dessinerRapport(rapport, statut, nouveau); // nouveau : le resultat reste cache tant que « Oui » n'est pas cliquee
     if (nouveau) bandeau.montrer({ relecture: rapport.relecture }); else bandeau.masquer(false);
@@ -482,7 +482,7 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
     const liste = creer("ul", "qt-histo-liste");
     entrees.forEach((entree) => {
       const rapport = entree.rapport;
-      const statut = comparerVersions(rapport.maquettes, versions);
+      const statut = statutRapport(rapport, versions);
       const li = creer("li", "qt-histo-item");
       // Toute la carte est le bouton qui rouvre le quantitatif (28/10) : plus de boutons Rouvrir / Supprimer ; la suppression vit dans le quantitatif ouvert.
       const carte = creer("button", "qt-histo-carte");
@@ -590,7 +590,7 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
 
   // Reouverture de la page : l'etat de version du rapport affiche est recalcule (une maquette a pu changer entre-temps).
   async function rafraichirRapportAffiche() {
-    if (dernierResultat && !resultatZone.hidden) dessinerRapport(dernierResultat.rapport, comparerVersions(dernierResultat.rapport.maquettes, await obtenirVersions()));
+    if (dernierResultat && !resultatZone.hidden) dessinerRapport(dernierResultat.rapport, statutRapport(dernierResultat.rapport, await obtenirVersions()));
   }
 
   // Passage du seuil mobile / laptop : les infos secondaires changent de forme, le rapport affiche est redessine.

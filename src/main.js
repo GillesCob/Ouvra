@@ -7005,7 +7005,7 @@ quantitatif = creerQuantitatifPage({
   historique: quantitatifHistorique
 });
 // Historique de demonstration (28/10) : deux quantitatifs deja passes, amorces une seule fois par navigateur.
-amorcerHistoriqueDemo({ historique: quantitatifHistorique, versions: versionsQuantitatif }).then((ajoute) => { if (ajoute) quantitatif.rafraichirHistorique(); });
+amorcerHistoriqueDemo({ historique: quantitatifHistorique }).then((ajoute) => { if (ajoute) quantitatif.rafraichirHistorique(); });
 // Rechargement direct sur la page (hash ou dernier onglet) : activateView s'est execute avant la creation de la page.
 // Differe d'un cran : appelee pendant l'initialisation du module, la page lirait des constantes declarees plus bas (HOSPITAL_MISPLACED_RAILING_IDS...) avant leur initialisation.
 if (!document.getElementById("view-quantitatif").hidden) setTimeout(() => quantitatif.surVueActivee("quantitatif"), 0);
