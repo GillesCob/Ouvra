@@ -47,7 +47,6 @@ export function creerDiscussionsIAMontage() {
   let rapportVue = null;
   let ia = null;
   let retourRapport = null;
-  let rapportAProposer = null; // rapport en attente du « Oui » du bandeau : garde dans l'historique seulement s'il est accepte
 
   function monter(messagerieMontee) {
     messagerie = messagerieMontee;
@@ -74,13 +73,9 @@ export function creerDiscussionsIAMontage() {
     });
     bandeau = creerDiscussionsBandeau({
       retourFocus: bouton,
-      surOui: () => {
-        flux.accepter();
-        if (rapportAProposer) { ajouterSynthese(rapportAProposer); ia.majHistorique(); rapportAProposer = null; }
-      },
+      surOui: () => { flux.accepter(); },
       // « Non » : la demande est annulee, le panneau du rapport se ferme et la saisie se rouvre avec la phrase.
       surNon: () => {
-        rapportAProposer = null;
         rapportVue.fermer();
         const retour = flux.refuser();
         if (retour) ia.reformuler(retour.phrase);
@@ -115,7 +110,8 @@ export function creerDiscussionsIAMontage() {
         const application = flux.proposer(retour, phrase);
         if (!application.ok) return application;
         bandeau.montrer({ relecture: application.relecture, resume: application.resume });
-        if (application.type === "rapport") { rapportAProposer = retour.rapport; rapportVue.ouvrir(retour.rapport); }
+        // Le rapport de l'IA est garde dans l'historique des qu'il s'affiche (29/10) : le « Oui » du bandeau n'est pas toujours visible sur mobile. Jamais le « Voir un exemple ».
+        if (application.type === "rapport") { ajouterSynthese(retour.rapport); ia.majHistorique(); rapportVue.ouvrir(retour.rapport); }
         return { ok: true };
       }
     });

@@ -1,4 +1,4 @@
-// Historique des syntheses de conversation (28/10) : chaque rapport accepte par l'utilisateur (« Oui » du bandeau « Est-ce bien votre demande ? ») est garde avec son
+// Historique des syntheses de conversation (28/10) : chaque rapport produit par l'IA et affiche (jamais « Voir un exemple de rapport ») est garde avec son
 // nom (le titre du rapport) et sa date, puis rouvrable d'un clic SANS rappeler l'IA. Persistance : localStorage du navigateur (cle CLE_SYNTHESES).
 // Premiere utilisation (cle absente) : deux syntheses de demonstration, construites a la demande sur les vrais messages de la demo (champ `demo`, pas de rapport stocke).
 // Le stockage peut manquer ou etre plein (navigation privee) : rien ne leve d'exception, l'historique de la session reste affiche.
