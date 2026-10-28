@@ -1,6 +1,8 @@
 // Page « 2D -> 3D » (25/10) : un plan 2D (PDF, PNG ou JPEG) devient un plan editable, puis une maquette 3D et un IFC.
 // Le MODELE (src/plan3d/modele.js) est la seule source de verite : l'editeur 2D (editeur2d.js) et l'IFC (exportIfc.js) en sont derives.
-// Interface : le plan occupe tout l'ecran, avec des cartes flottantes (outils, proprietes de l'element selectionne, informations libres) ; la page ne defile jamais.
+// La page s'ouvre sur la LISTE DES PROJETS (28/10) : un projet = un plan importe + son etat (src/plan3d/projets.js). Ouvrir un projet affiche l'editeur ;
+// « ← » revient a la liste apres une sauvegarde automatique. Plus de « Changer de plan » : un autre plan est un autre projet.
+// Interface d'un projet : le plan occupe tout l'ecran, avec des cartes flottantes (outils, proprietes de l'element selectionne, informations libres) ; la page ne defile jamais.
 // La maquette 3D n'est PAS dessinee ici : « Voir en 3D » genere l'IFC et l'ouvre dans le vrai Viewer d'Ouvra (voirDansViewer, fourni par main.js), avec
 // tous ses outils (coupe, vitesse, isolation, commande IA, discussions) et un bandeau « ← Retour au plan 2D ».
 // Premiere version : un seul niveau, murs droits, portes, fenetres, pieces, dalle. Pas de lecture par IA.
@@ -11,6 +13,10 @@ import { creerEditeur2d } from "./editeur2d.js";
 import { lireFichierPlan, libererFond } from "./importPlan.js";
 import { genererIfc } from "./exportIfc.js";
 import { planchePiece } from "./texteSol.js";
+import { creerProjets, nomDepuisFichier, nettoyerNom, NOM_EXEMPLE, PROJETS_MAX } from "./projets.js";
+import { creerDepotImagesIdb } from "./projetsImages.js";
+import { creerDepotLocal } from "../quantitatifHistorique.js";
+import { dateRelative } from "../quantitatifRapport.js";
 import { creerIASaisie } from "../iaSaisie.js";
 import { demanderPlan } from "./ia/planIAClient.js";
 import { creerFluxPlanIA } from "./ia/planIAFlux.js";
@@ -20,6 +26,9 @@ import {
 } from "./modele.js";
 
 const HISTORIQUE_MAX = 100;
+const DELAI_SAUVEGARDE_MS = 600;
+const COTE_VIGNETTE = 112; // pixels, plus grand cote de la vignette gardee avec le projet
+const MSG_STOCKAGE = "Le stockage de cet appareil est indisponible ou plein : les projets restent disponibles jusqu'à la fermeture de la page.";
 const EXEMPLE_JSON = "/plan3d-local/plan-salome.json";
 const EXEMPLE_IMAGE = "/plan3d-local/plan-salome.jpg";
 
@@ -39,6 +48,7 @@ const ICONES = {
   vitesse: '<path d="M4 17a8 8 0 1 1 16 0"/><path d="M12 17l4-5"/>',
   oeil: '<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
   importer: '<path d="M12 15V4M7 9l5-5 5 5"/><path d="M4 15v5h16v-5"/>',
+  corbeille: '<path d="M4 7h16M10 7V4h4v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/>',
   cube: '<path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M12 12l8-4.5M12 12v9M12 12L4 7.5"/>'
 };
 
@@ -92,8 +102,15 @@ const cm = (m) => Math.round(m * 1000) / 10;
 const m2 = (v) => `${v.toFixed(2).replace(".", ",")} m²`;
 const metres = (v) => `${cm(v)} cm`;
 
-export function creerPlan3dPage({ racine, voirDansViewer = null }) {
+const pluriel = (n, mot) => `${n} ${mot}${n > 1 ? "s" : ""}`;
+
+export function creerPlan3dPage({ racine, voirDansViewer = null, projets = creerProjets({ depotMeta: creerDepotLocal(null, "ouvra-plan3d-projets"), depotImages: creerDepotImagesIdb() }) }) {
   let modele = creerModeleVide();
+  let projetId = null; // projet ouvert dans l'editeur, null = liste des projets
+  let nomProjet = "";
+  let sauvegardeEnAttente = false;
+  let minuterie = null;
+  let stockageSignale = false;
   let fond = null;
   let pile = [];
   let reprise = [];
@@ -114,19 +131,54 @@ export function creerPlan3dPage({ racine, voirDansViewer = null }) {
   fichierInput.type = "file";
   fichierInput.accept = ".pdf,.png,.jpg,.jpeg,.webp,application/pdf,image/png,image/jpeg,image/webp";
   fichierInput.hidden = true;
-  const btnImport = bouton("Changer de plan", { ico: "importer" });
-  btnImport.title = "Importer un autre plan (PDF, PNG ou JPEG)";
+  // « ← » ramene a la liste des projets. Sur mobile : la fleche seule, dans la ligne deja occupee par « Voir en 3D » (aucune ligne dediee).
+  const btnRetour = creer("button", "p3d-btn p3d-btn-retour", "← ");
+  btnRetour.type = "button";
+  btnRetour.setAttribute("aria-label", "Retour aux projets");
+  btnRetour.title = "Retour aux projets";
+  btnRetour.appendChild(creer("span", "p3d-retour-texte", "Projets"));
+  const champNom = creer("input", "p3d-nom-projet");
+  champNom.type = "text";
+  champNom.maxLength = 60;
+  champNom.setAttribute("aria-label", "Nom du projet");
+  const btnSupprimer = bouton("Supprimer", { classe: "p3d-btn p3d-btn-supprimer", ico: "corbeille" });
+  btnSupprimer.setAttribute("aria-label", "Supprimer ce projet");
   const selectPage = creer("select", "p3d-select");
   selectPage.setAttribute("aria-label", "Page du PDF");
   selectPage.hidden = true;
   const btnVoir3d = bouton("Voir en 3D", { ico: "cube" }); // style neutre comme les autres boutons : le vert (accent) se lirait comme « selectionne »
   btnVoir3d.title = "Ouvre la maquette dans le Viewer d'Ouvra";
   btnVoir3d.setAttribute("aria-label", "Voir la maquette 3D dans le Viewer");
-  zonePlan.append(btnImport, selectPage, fichierInput);
+  zonePlan.append(btnRetour, champNom, selectPage, btnSupprimer, fichierInput);
   const zone3d = creer("div", "p3d-actions p3d-actions-3d");
   zone3d.append(btnVoir3d);
   entete.append(zonePlan, zone3d);
   page.appendChild(entete);
+
+  // ---- Ecran de depart : les projets en cours + « Nouveau projet » (meme patron que le Quantitatif : cartes cliquables en entier, date, detail) ----
+  const projetsEl = creer("section", "p3d-projets");
+  projetsEl.setAttribute("aria-label", "Projets");
+  const projetsCol = creer("div", "p3d-projets-col");
+  const btnNouveau = bouton("Nouveau projet", { classe: "p3d-btn p3d-btn-fort p3d-btn-grand", ico: "importer" });
+  const videExemple = bouton("Essayer avec un plan d'exemple", { classe: "p3d-lien" });
+  videExemple.hidden = true;
+  const listeAction = creer("div", "p3d-projets-action");
+  listeAction.append(btnNouveau, videExemple);
+  const listeMessage = creer("p", "p3d-projets-message");
+  listeMessage.setAttribute("role", "status");
+  listeMessage.hidden = true;
+  const listeAvertissement = creer("p", "p3d-projets-avertissement");
+  listeAvertissement.hidden = true;
+  const listeTete = creer("div", "p3d-projets-tete");
+  const listeTitre = creer("h3", "p3d-projets-titre", "Projets en cours");
+  const listeCompte = creer("span", "p3d-pastille");
+  listeTete.append(listeTitre, listeCompte);
+  listeTete.hidden = true;
+  const listeVide = creer("p", "p3d-projets-vide", "Un projet commence par un plan : PDF, PNG ou JPEG. Il est gardé sur cet appareil et rouvrable ici.");
+  const liste = creer("ul", "p3d-projets-liste");
+  projetsCol.append(listeAction, listeMessage, listeAvertissement, listeTete, liste, listeVide);
+  projetsEl.appendChild(projetsCol);
+  page.appendChild(projetsEl);
 
   // ---- Scene : les deux vues se superposent, une seule est affichee ----
   const scene = creer("div", "p3d-scene");
@@ -234,12 +286,18 @@ export function creerPlan3dPage({ racine, voirDansViewer = null }) {
   astuce.setAttribute("role", "status");
   astuce.setAttribute("aria-live", "polite");
 
-  const vide = creer("div", "p3d-vide");
-  vide.append(creer("p", "p3d-vide-titre", "Commence par un plan"), creer("p", "p3d-vide-texte", "PDF, PNG ou JPEG."));
-  const videImport = bouton("Importer un plan", { ico: "importer", classe: "p3d-btn p3d-btn-fort" });
-  const videExemple = bouton("Essayer avec un plan d'exemple", { classe: "p3d-lien" });
-  videExemple.hidden = true;
-  vide.append(videImport, videExemple);
+  // Confirmation de suppression d'un projet : bandeau du plan (pas de modale), meme gabarit que la verification de la demande IA.
+  const confirmation = creer("div", "p3d-bandeau");
+  confirmation.setAttribute("role", "group");
+  confirmation.setAttribute("aria-label", "Suppression du projet");
+  confirmation.hidden = true;
+  const confirmationBoutons = creer("div", "p3d-bandeau-boutons");
+  const confirmationOui = creer("button", "p3d-btn p3d-btn-danger", "Supprimer");
+  confirmationOui.type = "button";
+  const confirmationNon = creer("button", "p3d-btn", "Annuler");
+  confirmationNon.type = "button";
+  confirmationBoutons.append(confirmationOui, confirmationNon);
+  confirmation.append(creer("p", "p3d-bandeau-question", "Supprimer ce projet ?"), creer("p", "p3d-bandeau-texte", "Le plan et ses modifications seront définitivement perdus."), confirmationBoutons);
 
   const panneau = creer("aside", "p3d-carte p3d-carte-plan");
 
@@ -258,7 +316,7 @@ export function creerPlan3dPage({ racine, voirDansViewer = null }) {
   if (window.visualViewport) { window.visualViewport.addEventListener("resize", majDecalages); window.visualViewport.addEventListener("scroll", majDecalages); }
 
   panneau.setAttribute("aria-label", "Propriétés");
-  surface2d.append(outils, typeMur, vitesse, fondVolet, bandeau, btnTerminer, astuce, vide, panneau);
+  surface2d.append(outils, typeMur, vitesse, fondVolet, bandeau, confirmation, btnTerminer, astuce, panneau);
   etagePlan.appendChild(surface2d);
   scene.appendChild(etagePlan);
   page.appendChild(scene);
@@ -322,10 +380,14 @@ export function creerPlan3dPage({ racine, voirDansViewer = null }) {
   maquetteValeur.textContent = "100 %";
 
   // L'encart du bas ne montre plus d'aides ni de confirmations : seulement une erreur (fichier refuse, distance invalide, export impossible).
+  // Dans un projet : seulement les erreurs, dans l'encart du bas. Sur la liste des projets : toute information (lecture du plan, erreur).
   function dire(texte, erreur = false) {
     astuce.textContent = erreur ? texte : "";
     astuce.classList.toggle("p3d-astuce-erreur", erreur);
     astuce.hidden = !(erreur && texte);
+    listeMessage.textContent = texte;
+    listeMessage.classList.toggle("p3d-astuce-erreur", erreur);
+    listeMessage.hidden = !texte;
   }
 
   // ---- Historique et diffusion du modele ----
@@ -334,6 +396,7 @@ export function creerPlan3dPage({ racine, voirDansViewer = null }) {
     if (!fusion) { pile.push(modele); if (pile.length > HISTORIQUE_MAX) pile.shift(); reprise = []; }
     modele = m;
     apresChangement();
+    planifierSauvegarde();
   }
 
   // Changement venu de la page (panneaux, import) : l'editeur doit etre mis a jour aussi.
@@ -353,12 +416,6 @@ export function creerPlan3dPage({ racine, voirDansViewer = null }) {
     btnRetablir.disabled = reprise.length === 0;
     btnFond.disabled = !fond;
     btnVoir3d.disabled = modele.murs.length === 0;
-    vide.hidden = Boolean(fond) || modele.murs.length > 0;
-    scene.classList.toggle("p3d-scene-vide", !vide.hidden); // carte de depart : le fond de l'application, pas le papier du plan
-    // Etat de depart : tout passe par la carte « Commence par un plan » (importer, exemple). Ni outils ni en-tete (importer, voir en 3D) avant.
-    const demarre = Boolean(fond) || modele.murs.length > 0;
-    outils.hidden = !demarre;
-    entete.hidden = !demarre;
   }
 
   const annuler = () => {
@@ -367,6 +424,7 @@ export function creerPlan3dPage({ racine, voirDansViewer = null }) {
     modele = pile.pop();
     editeur.definirModele(modele);
     apresChangement();
+    planifierSauvegarde();
   };
   const retablir = () => {
     if (!reprise.length) return;
@@ -374,6 +432,7 @@ export function creerPlan3dPage({ racine, voirDansViewer = null }) {
     modele = reprise.pop();
     editeur.definirModele(modele);
     apresChangement();
+    planifierSauvegarde();
   };
   btnAnnuler.addEventListener("click", annuler);
   btnRetablir.addEventListener("click", retablir);
@@ -620,27 +679,215 @@ export function creerPlan3dPage({ racine, voirDansViewer = null }) {
   boutonOui.addEventListener("click", () => flux.confirmer());
   boutonNon.addEventListener("click", () => saisie.reformuler(flux.refuser()));
 
-  // ---- Import ----
-  async function importerFichier(fichier, pageDemandee = 1) {
+  // ---- Projets : liste, creation, ouverture, sauvegarde, suppression ----
+  function afficherVue(vue) {
+    page.dataset.vue = vue;
+    const dansProjet = vue === "projet";
+    projetsEl.hidden = dansProjet;
+    entete.hidden = !dansProjet;
+    scene.hidden = !dansProjet;
+    if (dansProjet) requestAnimationFrame(() => { editeur.cadrer(); placerPastille(true); }); // la scene etait masquee : sa taille est remesuree
+  }
+
+  // Installe un plan et son etat dans l'editeur (ouverture d'un projet, import, exemple) : nouveau depart, rien a annuler.
+  function installer(m, f) {
+    libererFond(fond);
+    fond = f;
+    pile = [];
+    reprise = [];
+    selection = null;
+    calibration = null;
+    modele = m;
+    selectPage.replaceChildren();
+    selectPage.hidden = true;
+    selectPage.onchange = null;
+    confirmation.hidden = true;
+    editeur.definirFond(fond);
+    reinitialiserFond();
+    editeur.definirModele(modele);
+    editeur.cadrer();
+    apresChangement();
+    dessinerPanneau();
+  }
+
+  function planifierSauvegarde() {
+    if (!projetId) return;
+    sauvegardeEnAttente = true;
+    clearTimeout(minuterie);
+    minuterie = setTimeout(viderSauvegarde, DELAI_SAUVEGARDE_MS);
+  }
+
+  async function viderSauvegarde() {
+    clearTimeout(minuterie);
+    if (!sauvegardeEnAttente || !projetId) return;
+    sauvegardeEnAttente = false;
+    const r = await projets.enregistrer(projetId, modele);
+    signalerStockage(r.persistant);
+  }
+
+  // Le stockage a echoue : le dire une fois par ouverture de projet, sans bloquer le travail.
+  function signalerStockage(persistant) {
+    if (persistant || stockageSignale) return;
+    stockageSignale = true;
+    dire(MSG_STOCKAGE, true);
+  }
+
+  // Vignette du projet : version reduite du plan, en JPEG (quelques Ko). Sans vignette (image illisible), la carte montre l'initiale du nom.
+  async function vignetteDe(f) {
+    try {
+      const img = new Image();
+      await new Promise((resolve, reject) => { img.onload = resolve; img.onerror = reject; img.src = f.url; });
+      const k = COTE_VIGNETTE / Math.max(f.l, f.h);
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(f.l * k));
+      canvas.height = Math.max(1, Math.round(f.h * k));
+      const ctx = canvas.getContext("2d");
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      return canvas.toDataURL("image/jpeg", 0.6);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  const MESSAGES_CREATION = {
+    limite: `${PROJETS_MAX} projets au maximum : supprimer un projet avant d'en créer un autre.`,
+    nom_invalide: "Le nom du projet est vide.",
+    modele_invalide: "Le plan n'a pas pu être enregistré comme projet."
+  };
+
+  // Cree le projet, l'ouvre dans l'editeur. Rend true si le projet est ouvert.
+  async function creerEtOuvrir({ nom, m, f, exemple = false }) {
+    const r = await projets.creer({ nom, modele: m, image: f.blob, l: f.l, h: f.h, imageNom: f.nom, vignette: await vignetteDe(f), exemple });
+    if (!r.ok) { libererFond(f); dire(MESSAGES_CREATION[r.raison] || MESSAGES_CREATION.modele_invalide, true); return false; }
+    projetId = r.id;
+    nomProjet = nettoyerNom(nom);
+    champNom.value = nomProjet;
+    stockageSignale = false;
+    installer(m, f);
+    afficherVue("projet");
+    choisirMode(m.murs.length === 0 ? "calibrer" : "selection");
+    signalerStockage(r.persistant);
+    btnRetour.focus({ preventScroll: true });
+    return true;
+  }
+
+  async function ouvrirProjet(id) {
+    const p = await projets.obtenir(id);
+    if (!p) { dire("Ce projet n'existe plus.", true); await rafraichirListe(); return; }
+    const f = p.image ? { url: URL.createObjectURL(p.image), l: p.l, h: p.h, nom: p.imageNom, pages: 1, blob: p.image } : null;
+    projetId = id;
+    nomProjet = p.nom;
+    champNom.value = p.nom;
+    stockageSignale = false;
+    dire("");
+    installer(p.modele, f);
+    afficherVue("projet");
+    choisirMode("selection");
+    if (!f) dire("L'image du plan n'est plus disponible sur cet appareil : seuls le plan redessiné et ses informations sont conservés.", true);
+    btnRetour.focus({ preventScroll: true });
+  }
+
+  // « ← » : sauvegarde, puis retour a la liste. Une verification IA en attente est gardee (le plan est deja modifie).
+  async function retourProjets() {
+    flux.confirmer();
+    basculerVitesse(false);
+    basculerFond(false);
+    confirmation.hidden = true;
+    await viderSauvegarde();
+    const quitte = projetId;
+    projetId = null;
+    dire("");
+    afficherVue("projets");
+    await rafraichirListe();
+    const carte = liste.querySelector(`[data-id="${quitte}"]`);
+    (carte || btnNouveau).focus({ preventScroll: true });
+  }
+
+  async function supprimerProjet() {
+    const id = projetId;
+    confirmation.hidden = true;
+    clearTimeout(minuterie);
+    sauvegardeEnAttente = false;
+    projetId = null;
+    await projets.supprimer(id);
+    dire("");
+    afficherVue("projets");
+    await rafraichirListe();
+    btnNouveau.focus({ preventScroll: true });
+  }
+
+  async function rafraichirListe() {
+    const entrees = await projets.lister();
+    listeCompte.textContent = String(entrees.length);
+    listeTete.hidden = entrees.length === 0;
+    listeVide.hidden = entrees.length > 0;
+    listeAvertissement.textContent = projets.persistant() ? "" : MSG_STOCKAGE;
+    listeAvertissement.hidden = projets.persistant();
+    liste.replaceChildren();
+    for (const e of entrees) {
+      const li = creer("li", "p3d-projet-item");
+      const carte = creer("button", "p3d-projet-carte");
+      carte.type = "button";
+      carte.dataset.id = e.id;
+      carte.setAttribute("aria-label", `Ouvrir le projet : ${e.nom}`);
+      const vignette = e.vignette ? creer("img", "p3d-projet-vignette") : creer("span", "p3d-projet-vignette p3d-projet-initiale", e.nom.charAt(0).toUpperCase());
+      if (e.vignette) { vignette.src = e.vignette; vignette.alt = ""; }
+      const textes = creer("span", "p3d-projet-textes");
+      const quand = creer("time", "p3d-projet-date", dateRelative(e.modifieLe));
+      quand.dateTime = e.modifieLe;
+      quand.title = new Date(e.modifieLe).toLocaleString("fr-FR");
+      const detail = e.murs === 0 && e.pieces === 0 ? "Aucun mur" : `${pluriel(e.murs, "mur")} · ${pluriel(e.pieces, "pièce")}`;
+      textes.append(creer("span", "p3d-projet-nom", e.nom), quand, creer("span", "p3d-projet-detail", detail));
+      carte.append(vignette, textes);
+      carte.addEventListener("click", () => ouvrirProjet(e.id));
+      li.appendChild(carte);
+      liste.appendChild(li);
+    }
+  }
+
+  // ---- Import (nouveau projet) ----
+  async function nouveauProjet() {
+    if ((await projets.lister()).length >= PROJETS_MAX) { dire(MESSAGES_CREATION.limite, true); return; }
+    dire("");
+    fichierInput.click();
+  }
+
+  async function importerFichier(fichier) {
     dire("Lecture du plan…");
+    try {
+      const f = await lireFichierPlan(fichier);
+      // Echelle de depart arbitraire (le plan fait 12 m de large), a caler avec l'outil « Échelle ».
+      const m = { ...creerModeleVide(), fond: { echelle: 12 / f.l, x: 0, y: 0 } };
+      if (await creerEtOuvrir({ nom: nomDepuisFichier(fichier.name) || "Nouveau plan", m, f })) {
+        dire("");
+        remplirPages(f, fichier);
+      }
+    } catch (erreur) {
+      dire(erreur.message, true);
+    }
+  }
+
+  // Autre page d'un PDF de plusieurs pages : l'image du projet change, son etat (murs, echelle) est conserve.
+  async function changerPagePdf(fichier, pageDemandee) {
     try {
       const f = await lireFichierPlan(fichier, { page: pageDemandee });
       libererFond(fond);
       fond = f;
-      // Echelle de depart arbitraire (le plan fait 12 m de large), a caler avec l'outil « Échelle ».
-      const echelle = modele.fond ? modele.fond.echelle : 12 / f.l;
-      pile = []; // plan charge : nouveau depart, rien a annuler
+      modele = { ...modele, fond: { echelle: modele.fond ? modele.fond.echelle : 12 / f.l, x: modele.fond ? modele.fond.x : 0, y: modele.fond ? modele.fond.y : 0 } };
+      pile = [];
       reprise = [];
-      modele = { ...modele, fond: { echelle, x: modele.fond ? modele.fond.x : 0, y: modele.fond ? modele.fond.y : 0 } };
       editeur.definirFond(fond);
       reinitialiserFond();
       editeur.definirModele(modele);
       editeur.cadrer();
       apresChangement();
-      remplirPages(f, fichier);
-      const sansMurs = modele.murs.length === 0;
-      choisirMode(sansMurs ? "calibrer" : "selection");
-      dire(sansMurs ? "Plan importé. Cale l'échelle : clique deux points dont tu connais la distance." : "Plan importé. Vérifie l'échelle avec l'outil Échelle.");
+      if (projetId) {
+        const r = await projets.remplacerImage(projetId, { image: f.blob, l: f.l, h: f.h, imageNom: f.nom, vignette: await vignetteDe(f) });
+        await projets.enregistrer(projetId, modele);
+        signalerStockage(r.persistant);
+      }
     } catch (erreur) {
       dire(erreur.message, true);
     }
@@ -652,23 +899,37 @@ export function creerPlan3dPage({ racine, voirDansViewer = null }) {
     if (f.pages > 1) {
       for (let i = 1; i <= f.pages; i++) { const o = creer("option", null, `Page ${i} / ${f.pages}`); o.value = String(i); selectPage.appendChild(o); }
       selectPage.value = String(f.page || 1);
-      selectPage.onchange = () => importerFichier(fichier, Number(selectPage.value));
+      selectPage.onchange = () => changerPagePdf(fichier, Number(selectPage.value));
     }
   }
 
-  btnImport.addEventListener("click", () => fichierInput.click());
-  videImport.addEventListener("click", () => fichierInput.click());
+  btnNouveau.addEventListener("click", nouveauProjet);
+  btnRetour.addEventListener("click", retourProjets);
+  btnSupprimer.addEventListener("click", () => { confirmation.hidden = false; confirmationNon.focus({ preventScroll: true }); });
+  confirmationNon.addEventListener("click", () => { confirmation.hidden = true; btnSupprimer.focus({ preventScroll: true }); });
+  confirmationOui.addEventListener("click", supprimerProjet);
+  const renommerProjet = async () => {
+    const nom = await projets.renommer(projetId, champNom.value);
+    if (nom !== null) nomProjet = nom;
+    champNom.value = nomProjet; // un nom vide est refuse : l'ancien revient
+  };
+  champNom.addEventListener("change", renommerProjet);
+  champNom.addEventListener("keydown", (e) => { if (e.key === "Enter") champNom.blur(); });
   fichierInput.addEventListener("change", () => {
     const f = fichierInput.files && fichierInput.files[0];
     fichierInput.value = "";
     if (f) importerFichier(f);
   });
+  // Derniere sauvegarde avant de quitter la page ou de la mettre en arriere-plan (onglet ferme, application iOS quittee).
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") viderSauvegarde(); });
+  window.addEventListener("pagehide", viderSauvegarde);
 
   // Plan d'exemple : fichiers locaux de public/plan3d-local/ (ignores par git, donc absents d'un deploiement). Le lien n'apparait que s'ils repondent.
   fetch(EXEMPLE_JSON, { method: "HEAD" })
     .then((r) => { videExemple.hidden = !(r.ok && !(r.headers.get("content-type") || "").includes("text/html")); })
     .catch(() => { videExemple.hidden = true; }); // reseau coupe ou serveur sans ces fichiers : le lien reste cache
   videExemple.addEventListener("click", async () => {
+    if ((await projets.lister()).length >= PROJETS_MAX) { dire(MESSAGES_CREATION.limite, true); return; }
     dire("Chargement de l'exemple…");
     try {
       const [rj, ri] = await Promise.all([fetch(EXEMPLE_JSON), fetch(EXEMPLE_IMAGE)]);
@@ -677,18 +938,7 @@ export function creerPlan3dPage({ racine, voirDansViewer = null }) {
       const f = await lireFichierPlan(new File([await ri.blob()], "plan-exemple.jpg", { type: "image/jpeg" }));
       const verdict = validerModele(m);
       if (!verdict.valide) throw new Error(verdict.erreurs[0]);
-      libererFond(fond);
-      fond = f;
-      pile = []; // plan charge : nouveau depart, rien a annuler
-      reprise = [];
-      modele = m;
-      selectPage.hidden = true;
-      editeur.definirFond(fond);
-      reinitialiserFond();
-      editeur.definirModele(modele);
-      editeur.cadrer();
-      apresChangement();
-      choisirMode("selection");
+      if (await creerEtOuvrir({ nom: NOM_EXEMPLE, m, f, exemple: true })) dire("");
     } catch (erreur) {
       dire(erreur.message === "absent" ? "Le plan d'exemple n'est pas disponible ici." : `Exemple illisible : ${erreur.message}`, true);
     }
@@ -715,9 +965,14 @@ export function creerPlan3dPage({ racine, voirDansViewer = null }) {
 
   choisirMode("selection");
   majEtat();
+  afficherVue("projets");
+  rafraichirListe();
 
   return {
-    // Page affichee : le plan est recadre (la page peut avoir ete masquee avec une taille nulle).
-    surVueActivee(nom) { if (nom === "plan3d") { editeur.cadrer(); placerPastille(true); } }
+    // Page affichee : dans un projet, le plan est recadre (la page peut avoir ete masquee avec une taille nulle) ; sur la liste, elle est rafraichie.
+    surVueActivee(nom) {
+      if (nom !== "plan3d") return;
+      if (projetId) { editeur.cadrer(); placerPastille(true); } else rafraichirListe();
+    }
   };
 }

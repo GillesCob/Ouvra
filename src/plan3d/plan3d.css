@@ -98,9 +98,6 @@
   background: var(--surface); border: 1px solid var(--border); border-radius: 10px; color: var(--muted); font-size: 12.5px; line-height: 1.5; box-shadow: 0 6px 24px rgba(0, 0, 0, 0.25);
 }
 .p3d-astuce-erreur { color: #f85149; border-color: rgba(248, 81, 73, 0.5); }
-.p3d-vide { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 4; display: flex; flex-direction: column; align-items: center; gap: 8px; max-width: 360px; padding: 24px; text-align: center; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; box-shadow: 0 10px 32px rgba(0, 0, 0, 0.3); }
-.p3d-vide-titre { margin: 0; font-size: 16px; font-weight: 700; }
-.p3d-vide-texte { margin: 0 0 8px; color: var(--muted); font-size: 13px; line-height: 1.55; }
 
 /* Maquette 3D */
 
@@ -117,8 +114,6 @@
 /* ---- Le plan : rendu d'architecte sur fond papier ---- */
 .p3d-svg { display: block; width: 100%; height: 100%; background: #f4f2ec; touch-action: none; user-select: none; -webkit-user-select: none; }
 .p3d-fond { pointer-events: none; }
-/* Etat de depart (aucun plan) : le papier clair n'apparait pas derriere la carte « Commence par un plan », le fond de base de l'application reste visible. */
-.p3d-scene-vide .p3d-svg { background: var(--bg); }
 .p3d-piece { fill-opacity: 0.2; stroke: none; cursor: pointer; }
 .p3d-piece.sel { fill-opacity: 0.42; stroke: #f0883e; stroke-width: 2.5; vector-effect: non-scaling-stroke; }
 .p3d-piece-etiquette { pointer-events: none; }
@@ -173,8 +168,7 @@
   .p3d-carte-plan[data-sel="non"] { display: none; }
   .p3d-astuce { top: 62px; bottom: auto; max-width: calc(100% - 24px); }
   .p3d-type-mur { top: 110px; }
-  .p3d-vide { left: 50%; width: calc(100% - 24px); }
-}
+  }
 
 /* ---- Mobile (a tester sur telephone) ----
    Ecran etroit : la barre d'outils passe sur deux lignes au lieu de deborder (Recadrer et Vitesse sortaient de l'ecran). Les chips et l'erreur descendent sous les deux lignes.
@@ -197,4 +191,46 @@
 @media (hover: hover) and (pointer: fine) {
   .p3d-btn-fort:not(:disabled):hover { background: color-mix(in srgb, var(--accent) 86%, #fff); border-color: color-mix(in srgb, var(--accent) 86%, #fff); }
   .p3d-lien:hover, .p3d-puce:not([aria-pressed="true"]):hover { color: var(--text); }
+}
+
+/* ---- Projets (28/10, retour 26) : ecran de depart de la page, meme patron que le Quantitatif (carte de depart, « Historique », cartes cliquables en entier) ---- */
+.p3d-projets { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 24px; }
+.p3d-projets-col { width: 100%; max-width: 720px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+.p3d-projets-action { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 32px 16px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; }
+.p3d-btn-grand { min-width: 200px; min-height: 64px; padding: 0 28px; font-size: 15px; }
+.p3d-projets-message { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
+.p3d-projets-avertissement { margin: 0; padding: 10px 12px; color: #f0883e; background: rgba(240, 136, 62, 0.15); border-radius: 8px; font-size: 12.5px; line-height: 1.5; }
+.p3d-projets-tete { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.p3d-projets-titre { margin: 0; font-size: 13px; font-weight: 700; }
+.p3d-pastille { display: inline-block; padding: 3px 9px; border-radius: 20px; font-size: 10.5px; font-weight: 700; letter-spacing: 0.03em; line-height: 1.3; color: var(--muted); background: var(--bg); }
+.p3d-projets-vide { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.55; text-align: center; }
+.p3d-projets-liste { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.p3d-projet-item { border: 1px solid var(--border); border-radius: 8px; background: var(--surface); transition: border-color 0.18s ease; }
+.p3d-projet-item:focus-within { border-color: var(--accent); }
+.p3d-projet-carte { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 72px; padding: 10px 12px; background: none; border: 0; border-radius: 8px; color: inherit; font: inherit; text-align: left; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.p3d-projet-carte:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+@media (hover: hover) and (pointer: fine) { .p3d-projet-item:hover { border-color: var(--accent); } }
+.p3d-projet-vignette { flex: none; width: 52px; height: 52px; object-fit: cover; border-radius: 6px; background: #fff; border: 1px solid var(--border); }
+.p3d-projet-initiale { display: flex; align-items: center; justify-content: center; background: var(--bg); color: var(--muted); font-size: 18px; font-weight: 700; }
+.p3d-projet-textes { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.p3d-projet-nom { font-size: 13.5px; font-weight: 600; line-height: 1.4; overflow-wrap: anywhere; }
+.p3d-projet-date, .p3d-projet-detail { color: var(--muted); font-size: 12px; line-height: 1.45; }
+
+/* En-tete d'un projet : « ← », nom modifiable, Supprimer, puis « Voir en 3D » a droite */
+.p3d-actions-plan { flex: 1 1 0; min-width: 0; flex-wrap: nowrap; }
+.p3d-nom-projet { flex: 1 1 120px; min-width: 0; max-width: 360px; min-height: 36px; padding: 0 10px; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 8px; font: inherit; font-size: 13px; font-weight: 600; }
+.p3d-btn-retour { flex: none; }
+.p3d-btn-supprimer { flex: none; color: #f85149; border-color: rgba(248, 81, 73, 0.5); }
+.p3d-btn-supprimer, .p3d-bandeau .p3d-btn-danger { margin-top: 0; }
+.p3d-actions-3d { flex: none; }
+@media (max-width: 768px) {
+  .p3d-projets { padding: 12px; }
+  .p3d-projets-action { padding: 24px 12px; }
+  .p3d-retour-texte, .p3d-btn-supprimer span { display: none; }
+  .p3d-btn-retour, .p3d-btn-supprimer { min-width: 44px; padding: 0; font-size: 18px; }
+  .p3d-btn-supprimer { font-size: 12.5px; }
+}
+@media (pointer: coarse) {
+  .p3d-nom-projet { min-height: 44px; font-size: 16px; }
+  .p3d-btn-grand { min-height: 64px; }
 }
