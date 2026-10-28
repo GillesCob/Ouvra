@@ -149,7 +149,14 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
     racine.classList.toggle("qt-confirmation", bandeau.visible()); // sous le bandeau de confirmation, le titre de la page est retire (28/10)
   }
   function allerA(nouvelle) { vue = nouvelle; majVue(); }
-  boutonRetour.addEventListener("click", () => allerA("depart"));
+  // « ← Retour » depuis un quantitatif rouvert depuis l'historique ramene aux cartes de l'historique, sinon au depart (28/10).
+  let retourVers = "depart";
+  boutonRetour.addEventListener("click", () => {
+    const cible = vue === "resultat" ? retourVers : "depart";
+    retourVers = "depart";
+    allerA(cible);
+    if (cible === "historique") rafraichirHistorique();
+  });
   boutonHistorique.addEventListener("click", () => { allerA("historique"); rafraichirHistorique(); });
 
   // ---------- Etat visuel ----------
@@ -442,6 +449,7 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
     jeton += 1;
     occuper(false);
     dire("");
+    retourVers = "historique";
     await afficherRapport(rapport, { nouveau: false });
     if (resultatZone.scrollIntoView) resultatZone.scrollIntoView({ block: "start" });
   }
@@ -528,6 +536,7 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
     const resultat = calculer(donnees.elements, requete);
     if (!resultat.ok) return { ok: false, message: resultat.message };
     const rapport = construireRapport({ resultat, phrase, versions: await obtenirVersions() });
+    retourVers = "depart";
     await afficherRapport(rapport, { nouveau: true }); // enregistre dans l'historique seulement apres « Oui »
     return { ok: true };
   }

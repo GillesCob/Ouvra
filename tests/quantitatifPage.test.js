@@ -84,3 +84,10 @@ test("retours mobile du 28/10 : cartes cliquables, Exporter + Supprimer, pas d'H
   assert.equal((js.match(/setAttribute\("name"/g) || []).length, 1); // un seul name, partage par tous les <details> de la page
   assert.match(css, /\.qt-page\.qt-confirmation \.qt-entete \{ display: none; \}/); // titre retire sous le bandeau de confirmation
 });
+
+test("page : « Retour » depuis un quantitatif rouvert de l'historique ramene aux cartes de l'historique, sinon au depart", () => {
+  assert.match(js, /let retourVers = "depart"/);
+  assert.match(js, /const cible = vue === "resultat" \? retourVers : "depart"/);
+  assert.match(js, /retourVers = "historique";\s*await afficherRapport\(rapport, \{ nouveau: false \}\)/); // rouvrir
+  assert.match(js, /retourVers = "depart";\s*await afficherRapport\(rapport, \{ nouveau: true \}\)/); // nouvelle demande
+});
