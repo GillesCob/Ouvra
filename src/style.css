@@ -77,12 +77,14 @@ html, body {
 .nav-link { position: relative; z-index: 1; }
 .nav-link:hover { color: var(--text); }
 .nav-link.active { color: var(--text); background: var(--bg); }
-@media (min-width: 769px) {
+@media (min-width: 961px) {
   .nav-link { transition: color 0.3s ease; }
   .nav-link.active { background: none; }
 }
+@media (max-width: 960px) {
+  #navbarThumb { display: none; } /* barre en menu hamburger (seuil de la barre : 960 px) */
+}
 @media (max-width: 768px) {
-  #navbarThumb { display: none; }
   /* Mobile : pas de :hover collant (iOS le laisse apres un appui, meme absorbe en clic neutre). */
   #navbarBrand { -webkit-tap-highlight-color: transparent; }
   #navbarBrand:hover, #navbarBrand:active, #navbarBrand:focus { color: var(--text); }
@@ -152,8 +154,9 @@ html, body {
 }
 
 /* Mobile (05/09) : la navbar (4 onglets + marque) ne tient pas sur un petit
-   ecran, le menu passe en tiroir derriere un bouton hamburger. */
-@media (max-width: 768px) {
+   ecran, le menu passe en tiroir derriere un bouton hamburger. Seuil releve a 960 px le 28/10 (barre seulement, le reste de l'application garde 768 px) :
+   en dessous, « Me contacter » centre n'a plus la place entre les onglets et « Donner mon avis ». */
+@media (max-width: 960px) {
   #navbarToggle { display: block; font-size: 26px; padding: 6px 10px; margin-left: 0; }
   #navbar #navbarContact { position: static; transform: none; margin: 0 auto; }
   #navbarLinks {
@@ -215,7 +218,7 @@ html, body {
 #navbarContact {
   /* Ordinateur : centre dans la navbar (position absolue sur #navbar, qui est relative). */
   position: absolute;
-  left: 50%;
+  left: var(--contact-x, 50%); /* centre de la page, ou 16 px apres le dernier onglet quand la place manque (placerContactNavbar, src/main.js) */
   transform: translateX(-50%);
   background: #e8935c;
   color: #1f2b24;

@@ -11,7 +11,7 @@
 @media (hover: hover) and (pointer: fine) { .nav-avis:hover { color: var(--text); border-color: var(--accent); } }
 #navbarAvisBarre { margin-left: auto; margin-right: 16px; }
 #navbarAvisTiroir { display: none; }
-@media (max-width: 768px) {
+@media (max-width: 960px) { /* seuil du menu hamburger de la barre (src/style.css) */
   #navbarAvisBarre { display: none; }
   /* Encadre (valide par Gilles le 28/10) : le distingue des onglets de la demo dans le menu. */
   #navbarAvisTiroir { display: block; width: 100%; margin: 14px 0 0; padding: 10px 12px; min-height: 44px; text-align: left; box-sizing: border-box; border: 1px solid var(--accent); color: var(--text); }

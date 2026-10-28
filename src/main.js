@@ -457,6 +457,28 @@ const observateurNavbar = new ResizeObserver(() => placerPastilleNavbar());
 navLinks.forEach((l) => observateurNavbar.observe(l));
 const navbarLinksEl = document.getElementById("navbarLinks");
 const navbarEl = document.getElementById("navbar");
+
+// « Me contacter » (28/10) : centre sur la page tant qu'il y a la place, sinon il s'arrete ECART_CONTACT_PX apres le dernier onglet visible, meme si la fenetre
+// se reduit. Mesure sur la barre (comme placerPastilleNavbar), donc valable quel que soit le nombre d'onglets affiches (profils). Menu hamburger (960 px) : position
+// statique, rien a poser. Recalcule a chaque changement de taille de la barre ou de ses onglets, au choix d'une vue (la barre est masquee sur l'accueil) et quand les polices sont chargees.
+const ECART_CONTACT_PX = 16;
+const navbarContactEl = document.getElementById("navbarContact");
+const requeteBarreHamburger = window.matchMedia("(max-width: 960px)");
+function placerContactNavbar() {
+  if (!navbarContactEl) return;
+  const onglets = navLinks.filter((l) => !l.hidden && l.offsetWidth);
+  if (requeteBarreHamburger.matches || !onglets.length) { navbarEl.style.removeProperty("--contact-x"); return; }
+  const barre = navbarEl.getBoundingClientRect();
+  const dernierBord = onglets[onglets.length - 1].getBoundingClientRect().right - barre.left;
+  const demi = navbarContactEl.offsetWidth / 2;
+  const centre = Math.max(navbarEl.clientWidth / 2, dernierBord + ECART_CONTACT_PX + demi);
+  navbarEl.style.setProperty("--contact-x", Math.round(centre) + "px");
+}
+new ResizeObserver(placerContactNavbar).observe(navbarEl);
+new ResizeObserver(placerContactNavbar).observe(navbarLinksEl);
+requeteBarreHamburger.addEventListener("change", placerContactNavbar);
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(placerContactNavbar);
+placerContactNavbar();
 const adminFrame = document.getElementById("adminFrame");
 const personaSelect = document.getElementById("personaSelect");
 const activateProfilesBtn = document.getElementById("activateProfilesBtn");
@@ -1115,6 +1137,7 @@ function activateView(viewName, options = {}) {
   document.documentElement.classList.remove("demarrage");
   navLinks.forEach((l) => l.classList.toggle("active", l.dataset.view === viewName));
   placerPastilleNavbar();
+  placerContactNavbar(); // la barre vient d'etre affichee (masquee sur l'accueil) : « Me contacter » se replace
   document.querySelectorAll(".view").forEach((view) => {
     view.hidden = view.id !== "view-" + viewName;
   });
@@ -2040,7 +2063,7 @@ personaSelect.addEventListener("change", () => {
 // au changement de largeur, les listeners restent attaches aux memes
 // noeuds, rien a reconnecter. Desktop retrouve exactement son emplacement
 // d'origine dans #navbar (inchange).
-const navbarMobileQuery = window.matchMedia("(max-width: 768px)");
+const navbarMobileQuery = window.matchMedia("(max-width: 960px)"); // menu hamburger de la barre : seuil propre a la barre (28/10), le reste de l'application garde 768 px
 function applyNavbarResponsiveLayout(isMobile) {
   if (isMobile) {
     navbarLinksEl.appendChild(activateProfilesBtn);
@@ -2052,6 +2075,7 @@ function applyNavbarResponsiveLayout(isMobile) {
 }
 applyNavbarResponsiveLayout(navbarMobileQuery.matches);
 navbarMobileQuery.addEventListener("change", (e) => applyNavbarResponsiveLayout(e.matches));
+
 
 // Choisir un profil (bouton d'activation ou select une fois active) referme
 // le tiroir mobile, meme reflexe que les nav-link : les 2 vivent desormais
