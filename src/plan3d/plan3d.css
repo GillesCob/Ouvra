@@ -224,7 +224,7 @@
 .p3d-btn-supprimer, .p3d-bandeau .p3d-btn-danger { margin-top: 0; }
 .p3d-actions-3d { flex: none; flex-wrap: nowrap; }
 @media (max-width: 768px) {
-  .p3d-nom-projet { flex: 1 1 0; max-width: none; padding: 0 8px; font-size: 13px; }
+  .p3d-nom-projet { flex: 1 1 0; max-width: none; padding: 0 8px; } /* 16 px sur mobile : regle partagee des champs (style.css, fin de fichier) */
   .p3d-projets { padding: 12px; }
   .p3d-projets-action { padding: 24px 12px; }
   .p3d-retour-texte, .p3d-btn-supprimer span, .p3d-btn-voir3d span { display: none; } /* « Voir en 3D » reduit a l'icone (nom accessible : aria-label) pour laisser la place au nom du projet */

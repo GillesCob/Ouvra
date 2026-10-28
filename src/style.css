@@ -3452,3 +3452,10 @@ button.disc-pin:hover { transform: scale(1.18); box-shadow: 0 0 0 3px color-mix(
 .select-habille { display: none !important; }
 .collision-trigger.select-declencheur { display: flex; }
 .collision-trigger.select-declencheur[hidden] { display: none; }
+
+/* Champs de saisie sur mobile (28/10) : 16 px minimum. Safari iOS zoome la page au focus d'un champ dont la taille de police calculee est inferieure a 16 px et ne la
+   dezoome pas au retour du clavier. Regle partagee par tous les champs (jamais de desactivation du zoom : maximum-scale et user-scalable restent absents du viewport).
+   Specificite elevee voulue : elle l'emporte sur les regles de classe des feuilles chargees plus tard (plan 2D -> 3D, retour visiteur, fil...). */
+@media (max-width: 768px) {
+  html body :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="hidden"]):not([type="button"]):not([type="submit"]), textarea, select, [contenteditable]:not([contenteditable="false"])) { font-size: 16px; }
+}
