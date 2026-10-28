@@ -247,13 +247,16 @@
 .msg-carte { width: min(480px, 100%); max-height: 100%; overflow-y: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 12px; }
 .msg-carte { position: relative; }
 .msg-carte h3 { margin: 0; font-size: 16px; padding-right: 44px; }
+/* Titre du dialogue : marge (et non padding) a droite, pour que son rectangle ne recouvre jamais la croix (40 px a 6 px du bord sur ordinateur, 44 px a 4 px sur mobile). */
+.msg-carte .msg-titre-sujet { padding-right: 0; margin-right: 36px; }
 .msg-croix { position: absolute; top: 6px; right: 6px; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; padding: 0; background: transparent; border: 1px solid var(--border); border-radius: 6px; color: var(--muted); font-size: 16px; line-height: 1; cursor: pointer; }
 .msg-croix:hover { color: var(--text); }
 .msg-carte label, .msg-etiquette { font-size: 12px; font-weight: 700; color: var(--muted); display: block; margin-bottom: 4px; }
 .msg-carte :is(input, textarea, select) { width: 100%; min-height: 40px; padding: 8px 10px; }
+.msg-carte :is(input, select) { min-height: 44px; }
 .msg-carte textarea { resize: none; height: 72px; }
 /* Menus deroulants du dialogue (conversation, sujet) : <select> natif, pleine largeur du champ, meme hauteur que les boutons voisins. */
-.msg-carte select { min-height: 44px; }
+.msg-carte select { height: 44px; min-height: 44px; }
 .msg-carte select[hidden] { display: none; }
 /* Bascule « Nouveau sujet / Conversation existante » (28/10) : meme composant et memes valeurs que les onglets de la barre de navigation (#navbarThumb et .nav-link de src/style.css) :
    une pastille accent translucide glisse sous le bouton actif (0,3 s, ease) ; le texte du bouton actif passe de --muted a --text. Deux boutons de meme largeur : la position suit data-mode, sans mesure JS. */
@@ -264,7 +267,7 @@
   transition: transform 0.3s ease, width 0.3s ease;
 }
 .msg-bascule[data-mode="conversation"] .msg-bascule-pastille { transform: translateX(calc(100% + 4px)); }
-.msg-bascule button { position: relative; z-index: 1; flex: 1 1 0; min-width: 0; min-height: 40px; border: 0; background: none; color: var(--muted); border-radius: 6px; padding: 8px 10px; font-weight: 600; font-size: 13px; transition: color 0.3s ease; }
+.msg-bascule button { position: relative; z-index: 1; flex: 1 1 0; min-width: 0; min-height: 44px; border: 0; background: none; color: var(--muted); border-radius: 6px; padding: 8px 10px; font-weight: 600; font-size: 13px; transition: color 0.3s ease; }
 .msg-bascule button[aria-pressed="true"] { color: var(--text); }
 @media (hover: hover) and (pointer: fine) { .msg-bascule button:hover { color: var(--text); } }
 .msg-bascule button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -288,7 +291,7 @@
 .msg-carte .msg-case input { width: 18px; min-height: 0; height: 18px; padding: 0; flex-shrink: 0; accent-color: var(--msg-mention); }
 .msg-carte .msg-case label { margin: 0; display: inline; font-size: 13px; color: var(--text); cursor: pointer; }
 .msg-urgent-bouton { -webkit-tap-highlight-color: transparent; }
-:is(.msg-carte, .msg-feuille) .msg-urgent-bouton { min-height: 40px; display: inline-flex; align-items: center; border: 1px solid var(--border); background: var(--bg); color: var(--muted); border-radius: 999px; padding: 4px 16px; font-size: 12.5px; font-weight: 600; }
+:is(.msg-carte, .msg-feuille) .msg-urgent-bouton { min-height: 44px; display: inline-flex; align-items: center; border: 1px solid var(--border); background: var(--bg); color: var(--muted); border-radius: 999px; padding: 4px 16px; font-size: 12.5px; font-weight: 600; }
 :is(.msg-carte, .msg-feuille) .msg-urgent-bouton[aria-pressed="true"] { color: #1b1007; background: var(--msg-mention); border-color: var(--msg-mention); }
 @media (max-width: 768px) { :is(.msg-carte, .msg-feuille) .msg-urgent-bouton { min-height: 44px; } }
 :is(.msg-carte-infos, .msg-feuille) .msg-fiche-actions .msg-urgent-bouton { align-self: flex-start; }
@@ -345,7 +348,7 @@ body.msg-retour-actif #viewerToolbar { top: 56px; }
 .msg-choix { display: flex; flex-direction: column; gap: 6px; }
 .msg-choix-type { flex-direction: row; }
 .msg-choix button { width: 100%; min-height: 44px; display: flex; align-items: center; gap: 10px; text-align: left; border: 1px solid var(--border); background: var(--bg); color: var(--muted); border-radius: 8px; padding: 4px 12px; font-size: 13.5px; font-weight: 600; }
-.msg-choix-type button { flex: 1 1 0; min-width: 0; justify-content: center; text-align: center; }
+.msg-choix-type button { flex: 1 1 0; min-width: 0; justify-content: center; text-align: center; height: 44px; padding-top: 0; padding-bottom: 0; } /* 44 px fixes : a 360-390 px le libelle passe sur 2 lignes (39,8 px) et la hauteur montait a 47,8 px */
 .msg-choix button[aria-pressed="true"] { color: var(--text); border-color: var(--msg-accent); background: var(--msg-releve); }
 @media (hover: hover) and (pointer: fine) { .msg-choix button:not([aria-pressed="true"]):hover { border-color: var(--msg-accent); } }
 /* Menu de statut (22/10) : bouton et menu de la page Collision (.collision-trigger / .collision-menu), pastilles de statut du module. */
