@@ -231,3 +231,13 @@ test("demo : « urgentes sans message depuis 3 jours » trouve toujours au moins
   const t = appliquerRegle(regle, HOSPITAL_CLASHES, (id) => sceneHopital[id] || null, etatHopital, { maintenant: new Date(2026, 9, 28, 12).getTime(), evenements });
   assert.deepEqual(ids(t), ["hosp-clash-10"]);
 });
+
+test("demo : le dernier message de la discussion de hosp-clash-2 renvoie vers les autres conversations", async () => {
+  const { ECHANGES_HOSPITAL } = await import("../src/clashesHospitalEchanges.js");
+  const d = ECHANGES_HOSPITAL["hosp-clash-2"].discussion;
+  const dernier = d[d.length - 1];
+  assert.equal(dernier.auteur, "Vous");
+  assert.ok(dernier.texte.includes("conversation avec Sophie") && dernier.texte.includes("le groupe") && dernier.texte.includes("celle avec Claire"));
+  assert.ok(Date.parse(dernier.quand) > Date.parse(d[d.length - 2].quand));
+  assert.ok(Date.parse(dernier.quand) < Date.parse("2026-11-03"));
+});

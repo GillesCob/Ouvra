@@ -46,7 +46,8 @@ export const ECHANGES_HOSPITAL = {
       msg(VOUS, "2026-10-16T10:15:00", "Ça bloque la suite des réseaux de ce niveau. Je la garde en haute priorité."),
       msg(CLAIRE, "2026-10-16T11:30:00", "Le local voisin tient si je décale la cloison de 15 cm, mais je ne dépose rien avant d'avoir vu ce que coûte chaque option : décaler la cloison, prévoir une réservation avec renfort, ou dévoyer la gaine."),
       msg(SOPHIE, "2026-10-16T11:45:00", "Ok, je garde le tracé actuel comme tracé de travail. Je ne fige rien avant le métré du niveau 2 : linéaire de gaines, raccords, faux plafond et cloison touchés."),
-      msg(MARC, "2026-10-16T14:10:00", "Je sors les quantités du niveau 2 de la maquette par famille, coudes, piquages et gaines droites, et je relancerai la détection sur l'option retenue.")
+      msg(MARC, "2026-10-16T14:10:00", "Je sors les quantités du niveau 2 de la maquette par famille, coudes, piquages et gaines droites, et je relancerai la détection sur l'option retenue."),
+      msg(VOUS, "2026-10-17T09:20:00", "Ce fil ne dit pas tout : sur cette collision, les échanges sont répartis entre ma conversation avec Sophie, le groupe et celle avec Claire. Ce que chaque option fait toucher et le métré du niveau 2 sont dans ces conversations, pas ici. Je rassemble tout avant qu'on tranche.")
     ],
     historique: [
       modif("2026-10-14T14:30:00", "statut", "nouveau", "confirme"),
