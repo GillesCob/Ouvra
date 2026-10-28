@@ -20,6 +20,7 @@ import { creerDictee, detecterReconnaissance, motifDicteeIndisponible, nettoyerP
 import { demarrerNiveauVoix } from "./niveauVoix.js";
 import { verrouillerArrierePlan } from "./verrouDefilement.js";
 import { modeOuverture, modeApresBascule, annonceMode, aideVocal, suiteFinEcoute } from "./iaSaisieLogique.js";
+import { REQUETE_MOBILE } from "./seuilMobile.js";
 
 export const CLASSE_VERROU_SAISIE = "ia-saisie-ouverte"; // posee sur le corps tant que la modale est ouverte (iaSaisie.css : page figee)
 export const PHRASE_MAX = 200; // meme plafond que les relais (relais/entree.js)
@@ -356,7 +357,7 @@ export function creerIASaisie({ exemples = [], libelle = "Demande par l'IA", pla
   // Mobile : le clavier virtuel d'iOS ne reduit pas la page, seulement la partie visible (visualViewport). Le fond suit cette zone visible (haut et hauteur),
   // la carte se plafonne dedans et defile en interne : champ, propositions et « Valider » restent atteignables clavier ouvert.
   const vv = window.visualViewport;
-  const ecranEtroit = window.matchMedia ? window.matchMedia("(max-width: 768px)") : { matches: false };
+  const ecranEtroit = window.matchMedia ? window.matchMedia(REQUETE_MOBILE) : { matches: false };
   const suivreZoneVisible = () => {
     const actif = ecranEtroit.matches && vv && !fond.hidden;
     fond.style.setProperty("--ia-vv-haut", actif ? `${Math.round(vv.offsetTop)}px` : "0px");

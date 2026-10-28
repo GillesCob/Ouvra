@@ -23,6 +23,7 @@ import { creerIASaisie } from "./iaSaisie.js";
 import { creerMenuChoix } from "./menuChoix.js";
 import { creerCommandesBandeau } from "./commandesBandeau.js";
 import { preparerOngletPdf } from "./discussionsIARapportOnglet.js";
+import { REQUETE_MOBILE } from "./seuilMobile.js";
 
 const TITRE_ONGLET_QUANTITATIF = "Quantitatif Ouvra";
 
@@ -36,7 +37,7 @@ const nombre = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 2 });
 
 // Mobile (28/10) : mise en page dediee, le tableau d'abord ; les infos secondaires passent dans un menu deroulant. Meme seuil que quantitatif.css.
 // Regle de Gilles : UN seul `name` partage par tous les <details> de la page (ouvrir l'un referme les autres).
-const MEDIA_MOBILE = "(max-width: 768px)";
+const MEDIA_MOBILE = REQUETE_MOBILE;
 const NOM_DETAILS = "qt-infos";
 const ecranMobile = () => !!window.matchMedia && window.matchMedia(MEDIA_MOBILE).matches;
 

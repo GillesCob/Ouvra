@@ -19,9 +19,10 @@ import { dateDuRapport, perimetreDe, libelleDecision, nomsEnPhrase, MESSAGE_AUCU
 import { preparerOngletPdf } from "./discussionsIARapportOnglet.js";
 import { defilementVersTitre, CLASSE_VERROU } from "./discussionsIARapportDefilement.js";
 import { verrouillerArrierePlan } from "./verrouDefilement.js";
+import { REQUETE_MOBILE } from "./seuilMobile.js";
 
 export const LOGO_RAPPORT = "/images/ouvra-logo.svg";
-const MOBILE = "(max-width: 768px)";
+const MOBILE = REQUETE_MOBILE;
 export const NOM_DEPLIANTS_PAGE = "ouvra-depliants"; // un seul name pour tous les <details> de la page (regle : ouvrir un menu deroulant ferme les autres)
 
 function creer(tag, classe, texte) {

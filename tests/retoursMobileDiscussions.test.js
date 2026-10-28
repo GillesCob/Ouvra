@@ -88,7 +88,7 @@ test("rapport mobile : arriere-plan fige (classe sur le corps, glissements annul
 test("M17 : en mode resultat le panneau IA cede la place a la liste, et « Oui » rouvre le rapport propose s'il a ete ferme", () => {
   assert.match(lire("src/discussionsIA.css"), /max-width: 768px\) \{ \.msg-lateral\.msg-ia-resultat \.msg-ia-panneau\s*\{\s*display:\s*none/);
   const montage = lire("src/discussionsIAMontage.js");
-  assert.match(montage, /rapportEnAttente && !rapportVue\.ouvert\(\) && window\.matchMedia\("\(max-width: 768px\)"\)\.matches\) rapportVue\.ouvrir\(rapportEnAttente\)/);
+  assert.match(montage, /rapportEnAttente && !rapportVue\.ouvert\(\) && window\.matchMedia\(REQUETE_MOBILE\)\.matches\) rapportVue\.ouvrir\(rapportEnAttente\)/);
 });
 
 test("M20/M21 : menus du dialogue = <select> toujours rendu, habille par habillerSelect (menu commun sur mobile), premier message sur 2 lignes qui grandit", () => {

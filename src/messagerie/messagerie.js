@@ -19,11 +19,12 @@ import { creerMenuChoix, habillerSelect } from "../menuChoix.js";
 import { requeteMention, filtrerPersonnes, occurrences } from "./mentions.js";
 import { cleFil, cleMessage, lireCleMessage } from "../discussionsIAIndex.js"; // Discussions par commande IA (24/10)
 import { plagesCorrespondantes, htmlSurligne } from "../discussionsIATexte.js";
+import { REQUETE_MOBILE } from "../seuilMobile.js";
 
 const ICONE_APPAREIL = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l1.5-2h7L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>';
 const ICONE_LOUPE = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>';
 const VERBES_JOURNAL = { ouverture: "ouvert le sujet", cloture: "clos le sujet", reouverture: "rouvert le sujet" };
-const MOBILE = "(max-width: 768px)";
+const MOBILE = REQUETE_MOBILE;
 
 // surMonte() : appelee une fois le squelette construit (le bouton « IA » #discussionsIABtn existe alors) ; surActionIA("tout") : boutons de la liste filtree par l'IA ; surOngletIA() : clic sur l'onglet IA (ouvre la saisie).
 export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvrirDansViewer, glisserPourFermer, surMonte, surActionIA, surOngletIA }) {
@@ -87,7 +88,7 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
     // Menu « ⋯ » (mobile) : l'appui qui le ferme en dehors est un clic neutre (rien d'autre ne se declenche).
     document.addEventListener("pointerdown", (e) => {
       const menu = $("msgMenu");
-      if (!menu || menu.hidden || !window.matchMedia("(max-width: 768px)").matches) return;
+      if (!menu || menu.hidden || !window.matchMedia(REQUETE_MOBILE).matches) return;
       if (e.target.closest("#msgOptions, #msgMenu")) return;
       fermerMenu();
       absorberGesteNeutre();

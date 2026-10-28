@@ -21,8 +21,9 @@
 
 import "./reglesModale.css";
 import { messageAucuneCollision } from "./reglesCollision.js";
+import { REQUETE_MOBILE } from "./seuilMobile.js";
 
-const MOBILE = "(max-width: 768px)";
+const MOBILE = REQUETE_MOBILE;
 const DUREE_FERMETURE_MS = 350;
 
 export function creerReglesModale({ libellesPriorite, libellesStatut, numero, creerCarte, lireElement, voirEn3D, imageDe, appliquer, reformuler, glisserPourFermer }) {

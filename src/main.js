@@ -32,6 +32,7 @@ import { vitesseCameraInitiale } from "./vitesseCamera.js";
 import { cadrerCentre } from "./cadrageCentre.js";
 import { creerHistorique, creerDepotLocal } from "./quantitatifHistorique.js";
 import { amorcerHistoriqueDemo } from "./quantitatifHistoriqueDemo.js";
+import { REQUETE_MOBILE } from "./seuilMobile.js";
 
 // ============================================================================
 // INTERRUPTEURS DE MASQUAGE : base propre du 19/10
@@ -277,7 +278,7 @@ const HOPITAL_SANS_WEBIFC = !reglageUrl("webifc", false);
 // iPhone : la maquette apparaissait puis disparaissait (contexte WebGL perdu).
 // false = aretes partout.
 const MOBILE_SANS_ARETES = !reglageUrl("aretes", false);
-const APPAREIL_MOBILE = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || window.matchMedia("(max-width: 768px)").matches;
+const APPAREIL_MOBILE = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || window.matchMedia(REQUETE_MOBILE).matches;
 // Architecture et mecanique de l'hopital reconverties en XKT v12 avec buffers compresses (20/10, IFC d'origine de
 // Chantier/public/models/hospital, xeokit-convert -b) : memes objets et memes identifiants IFC, 3,9 et 3,0 Mo au lieu
 // de 26 et 20 Mo. Contenu identique (memes tailles une fois decompresse, memes nombres d'elements). Mesure sur
@@ -1494,7 +1495,7 @@ let gesteNeutre = false;
 let gesteNeutreTimer = 0;
 const EVENEMENTS_ABSORBES = ["pointerdown", "pointermove", "pointerup", "touchstart", "touchmove", "touchend", "mousedown", "mousemove", "mouseup", "click", "dblclick", "contextmenu"];
 function absorberGesteNeutre() {
-  if (!window.matchMedia("(max-width: 768px)").matches) return;
+  if (!window.matchMedia(REQUETE_MOBILE).matches) return;
   gesteNeutre = true;
   clearTimeout(gesteNeutreTimer);
   gesteNeutreTimer = setTimeout(() => { gesteNeutre = false; }, 5000);
@@ -1545,7 +1546,7 @@ if (infoPanelCloseBtn) infoPanelCloseBtn.addEventListener("click", closeInfoPane
 // les gestes avant le reste ; le geste continue ensuite normalement (la selection ou la rotation se font).
 document.addEventListener("pointerdown", (e) => {
   if (e.target !== viewerCanvas || !infoPanel.classList.contains("open")) return;
-  if (window.matchMedia("(max-width: 768px)").matches) closeInfoPanelDrawer();
+  if (window.matchMedia(REQUETE_MOBILE).matches) closeInfoPanelDrawer();
 }, true);
 
 // Ordinateur uniquement (bouton masque sur mobile, cf style.css) : reduit le
@@ -3474,7 +3475,7 @@ function mesurerFilLayout() {
 }
 function filPleinPage(actif) {
   if (discussionsDetailPane.classList.contains("plein") === actif || filEnAnimation) return;
-  const animer = discussionsDetailPane.offsetParent !== null && !window.matchMedia("(max-width: 768px)").matches &&
+  const animer = discussionsDetailPane.offsetParent !== null && !window.matchMedia(REQUETE_MOBILE).matches &&
     !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const options = { duration: 300, easing: "ease" };
   const clip = (dx) => "inset(0 0 0 " + Math.max(0, dx) + "px)";
@@ -4170,7 +4171,7 @@ function openDetection(detection, options = {}) {
   // bouton "Infos" a chercher.
   // Mobile (<= 768 px) : tiroir ferme par defaut pour ne pas masquer la 3D
   // (decision du 19/10). Ordinateur : le panneau est un volet fixe, toujours ouvert.
-  const collisionMobile = window.matchMedia("(max-width: 768px)").matches;
+  const collisionMobile = window.matchMedia(REQUETE_MOBILE).matches;
   // options.garderTiroir (changement de paire de maquettes) : le tiroir reste ouvert, seule la liste des collisions se met a jour.
   collisionInfoPanel.classList.toggle("open", !collisionMobile || !detection || !!options.garderTiroir);
   collisionInfoPanelBackdrop.hidden = true;
@@ -4234,7 +4235,7 @@ function cadrageBatimentDansZone() {
   const canevas = viewer.scene.canvas.canvas;
   if (!canevas || !canevas.clientWidth || !canevas.clientHeight) return Object.assign({}, base);
   // Mobile (<= 768 px) : pas de recul (la zone 3D portrait donnerait un facteur de 3 : maquette minuscule), meme vue que « Recentrer ».
-  const facteur = window.matchMedia("(max-width: 768px)").matches ? 1 : Math.max(1, 1.6 / (canevas.clientWidth / canevas.clientHeight));
+  const facteur = window.matchMedia(REQUETE_MOBILE).matches ? 1 : Math.max(1, 1.6 / (canevas.clientWidth / canevas.clientHeight));
   const dir = [base.eye[0] - base.look[0], base.eye[1] - base.look[1], base.eye[2] - base.look[2]];
   return {
     eye: [base.look[0] + dir[0] * facteur, base.look[1] + dir[1] * facteur, base.look[2] + dir[2] * facteur],
@@ -6276,7 +6277,7 @@ function creerControleMenu(id, libelle, labels, champ, surChangement) {
       menu.style.top = (place >= mh + 8 ? r.bottom + 6 : Math.max(8, r.top - mh - 6)) + "px";
       menu.style.left = Math.max(8, Math.min(r.left, window.innerWidth - mw - 8)) + "px";
       menu.style.minWidth = mw + "px";
-      if (window.matchMedia("(max-width: 768px)").matches) cadrerMenuCollisionMobile(menu, r);
+      if (window.matchMedia(REQUETE_MOBILE).matches) cadrerMenuCollisionMobile(menu, r);
       menu.style.visibility = "";
       trigger.setAttribute("aria-expanded", "true");
       document.addEventListener("pointerdown", surClicExterieur, true);
@@ -7087,7 +7088,7 @@ let bandeauEnAnimation = false;
 function basculerBandeauAnime(reduire) {
   const el = collisionDiscussion;
   if (bandeauEnAnimation) return;
-  const mobileMq = window.matchMedia("(max-width: 768px)").matches;
+  const mobileMq = window.matchMedia(REQUETE_MOBILE).matches;
   // Mobile, appui sur le numero : meme mouvement que le glissement (sans redimensionner la 3D a chaque image).
   if (reduire && mobileMq && preparerFermetureBandeau()) { animerFermetureBandeau(0, 0); return; }
   const h0 = el.offsetHeight;
@@ -7660,7 +7661,7 @@ function classesEchangesGrand(actif, etaitReplie, recaler = true) {
 // fermeture) ; la hauteur figee est celle d'avant l'ouverture, donc identique a celle d'apres la fermeture.
 function figerZone3dMobile() {
   const slot = collisionViewerSlot;
-  if (!window.matchMedia("(max-width: 768px)").matches || slot.dataset.fige) return;
+  if (!window.matchMedia(REQUETE_MOBILE).matches || slot.dataset.fige) return;
   const h = slot.getBoundingClientRect().height;
   // Hauteur du bandeau sous la photo : le bouton « Collisions » s'en sert pour rejoindre la ligne du bouton « Message » (style.css, 22/10).
   collisionLeft.style.setProperty("--bas-fiche", (collisionLeft.getBoundingClientRect().bottom - slot.getBoundingClientRect().bottom) + "px");
@@ -7719,7 +7720,7 @@ function basculerGrandAnime(actif, etaitReplie) {
   const el = collisionDiscussion;
   const reduit = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const visible = el.offsetParent !== null;
-  const mobile = window.matchMedia("(max-width: 768px)").matches;
+  const mobile = window.matchMedia(REQUETE_MOBILE).matches;
   const btnCollisions = mobile ? collisionInfoPanelToggle : null;
   const btnMessage = mobile && messageOuvrirBtn && !messageOuvrirBtn.hidden ? messageOuvrirBtn : null;
   if (messageOuvrirBtn) { messageOuvrirBtn.style.width = ""; messageOuvrirBtn.style.transform = ""; } // le suivi du doigt laisse la main a l'animation
@@ -7909,7 +7910,7 @@ function fermerEchangesGrand(rendreFocus) {
   }, true);
   // Pleine page : un clic sur la photo de la 3D ramene a la vue normale.
   collisionViewerSlot.addEventListener("click", (e) => {
-    if (!echangesGrandOuvert || window.matchMedia("(max-width: 768px)").matches) return;
+    if (!echangesGrandOuvert || window.matchMedia(REQUETE_MOBILE).matches) return;
     e.stopPropagation();
     if (clicQuiAFermeLaCarte === e) return; // ce clic vient de fermer la carte d'infos : on reste en pleine page
     fermerEchangesGrand(true);
@@ -8079,7 +8080,7 @@ if (collisionInfoPanelCloseBtn) collisionInfoPanelCloseBtn.addEventListener("cli
 // et "Collisions" : le tiroir suit le doigt seulement si tout contenu defilable sous le doigt est en haut ; au
 // relachement, on ferme via la fermeture existante (celle de la croix) si le geste est assez long ou rapide.
 function enableDrawerSwipeToClose(drawer, closeFn, isOpen = () => drawer.classList.contains("open"), ignoreSel = 'input[type="range"]', swipeUpFn = null, hooks = null) {
-  const mobile = window.matchMedia("(max-width: 768px)");
+  const mobile = window.matchMedia(REQUETE_MOBILE);
   let startX = 0, startY = 0, startT = 0, dy = 0, tracking = false, dragging = false, scrollers = [], upOk = false, up = 0, replie = false, upFn = swipeUpFn;
   const scrollersFrom = (el) => {
     const list = [];
@@ -8857,7 +8858,7 @@ function showSelection(rows, docs) {
 }
 
 function isMobileViewport() {
-  return window.matchMedia("(max-width: 768px)").matches;
+  return window.matchMedia(REQUETE_MOBILE).matches;
 }
 
 function openFicheSheet() {

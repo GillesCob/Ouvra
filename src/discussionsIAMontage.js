@@ -19,6 +19,7 @@ import { EXEMPLES_DISCUSSIONS } from "./discussionsIAExemples.js";
 import { demanderComprehension, demanderAnalyse } from "./discussionsIAClient.js";
 import { construireRapportModele, construireRapportModeleCoupeFeu } from "./discussionsIARapportModele.js";
 import { listerSyntheses, ajouterSynthese, DEMOS_SYNTHESES } from "./discussionsIAHistorique.js";
+import { REQUETE_MOBILE } from "./seuilMobile.js";
 
 const DELAI_ANALYSE_MS = 42000; // un rapport est plus long a ecrire : un peu plus que le delai du relais (32 s)
 
@@ -77,7 +78,7 @@ export function creerDiscussionsIAMontage() {
       retourFocus: bouton,
       surOui: () => {
         flux.accepter();
-        if (rapportEnAttente && !rapportVue.ouvert() && window.matchMedia("(max-width: 768px)").matches) rapportVue.ouvrir(rapportEnAttente); // mobile : le rapport est ce que « Oui » doit montrer, meme s'il a ete ferme sous le bandeau
+        if (rapportEnAttente && !rapportVue.ouvert() && window.matchMedia(REQUETE_MOBILE).matches) rapportVue.ouvrir(rapportEnAttente); // mobile : le rapport est ce que « Oui » doit montrer, meme s'il a ete ferme sous le bandeau
         rapportEnAttente = null;
       },
       // « Non » : la demande est annulee, le panneau du rapport se ferme et la saisie se rouvre avec la phrase.

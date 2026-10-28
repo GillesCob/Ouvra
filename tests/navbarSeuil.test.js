@@ -32,6 +32,7 @@ test("JS : la requete du menu hamburger est celle de 960 px ; « Me contacter »
 });
 
 test("les autres mises en page de l'application gardent leur seuil mobile de 768 px (la barre seule change)", () => {
-  assert.ok(lire("src/main.js").includes('const APPAREIL_MOBILE = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || window.matchMedia("(max-width: 768px)").matches;'));
+  assert.ok(lire("src/main.js").includes('const APPAREIL_MOBILE = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || window.matchMedia(REQUETE_MOBILE).matches;'));
+  assert.ok(lire("src/seuilMobile.js").includes('REQUETE_MOBILE = "(max-width: 768px)"'));
   assert.ok((lire("src/style.css").match(/@media \(max-width: 768px\)/g) || []).length >= 20);
 });
