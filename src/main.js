@@ -28,6 +28,7 @@ import "./retourContexte.css";
 import "./retourVisiteur.css";
 import { creerRetourVisiteur } from "./retourVisiteur.js";
 import { creerRetourContexte } from "./retourContexte.js";
+import { vitesseCameraInitiale } from "./vitesseCamera.js";
 import { creerHistorique, creerDepotLocal } from "./quantitatifHistorique.js";
 
 // ============================================================================
@@ -2124,9 +2125,8 @@ Object.values(viewer.scene.lights).forEach((lumiere) => { lumiere.intensity = lu
 // qui envoient la camera beaucoup trop loin au doigt sur mobile. Slider
 // #cameraSpeedControl (tous ecrans) en % de ces valeurs par defaut (10 a
 // 200 %, au dela de 100 % pour accelerer sur une grande maquette), persiste
-// en localStorage. Depart a 30% sur mobile (premiere visite, pas encore de
-// preference enregistree) ; 100% sur ordinateur (comportement inchange tant
-// que le slider n'est pas touche). Cle de stockage conservee telle quelle
+// en localStorage. Depart a 50% pour tous (28/10, pave tactile ; src/vitesseCamera.js) tant
+// qu'aucune preference n'est enregistree. Cle de stockage conservee telle quelle
 // (preferences deja enregistrees).
 const CAMERA_TOUCH_DEFAULTS = { dragRotationRate: 360.0, mouseWheelDollyRate: 100.0, touchPanRate: 1.0, touchDollyRate: 0.2 };
 function applyCameraTouchSpeed(percent) {
@@ -2142,9 +2142,7 @@ try {
 } catch (e) {
   // localStorage indisponible, pas bloquant.
 }
-const initialCameraSpeed = savedCameraSpeed
-  ? Math.min(100, parseInt(savedCameraSpeed, 10))
-  : (window.matchMedia("(max-width: 768px)").matches ? 30 : 100);
+const initialCameraSpeed = vitesseCameraInitiale(savedCameraSpeed);
 cameraSpeedSlider.value = String(initialCameraSpeed);
 cameraSpeedValue.textContent = initialCameraSpeed + " %";
 applyCameraTouchSpeed(initialCameraSpeed);
