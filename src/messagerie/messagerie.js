@@ -933,7 +933,10 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
     boite.hidden = false;
     boite.innerHTML = '<div class="msg-carte' + (classe ? " " + classe : "") + '" role="dialog" aria-modal="true" aria-label="' + echapper(libelle) + '">' + html +
       '<button type="button" class="msg-croix" data-act="fermer-dialogue" aria-label="Fermer">\u2715</button></div>';
-    if (classe && classe.includes("msg-carte-sujet")) suivreZoneVisible();
+    const sujet = !!(classe && classe.includes("msg-carte-sujet"));
+    boite.classList.toggle("msg-dialogue-sujet", sujet);
+    document.documentElement.classList.toggle("msg-dialogue-sujet-ouvert", sujet);
+    if (sujet) suivreZoneVisible();
     const premierChamp = boite.querySelector("[autofocus], input, textarea, button");
     if (premierChamp) premierChamp.focus();
   }
@@ -954,6 +957,8 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
     menuChoix.fermer();
     const boite = $("msgDialogue");
     if (boite.hidden) return;
+    boite.classList.remove("msg-dialogue-sujet");
+    document.documentElement.classList.remove("msg-dialogue-sujet-ouvert");
     if (boite._finVv) { boite._finVv(); boite._finVv = null; }
     boite.hidden = true;
     boite.innerHTML = "";
