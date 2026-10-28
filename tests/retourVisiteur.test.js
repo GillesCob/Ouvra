@@ -3,7 +3,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { corpsRetour, libellePage, messageEchec, envoyerRetour, MESSAGE_MAX } from "../src/retourVisiteur.js";
+import { corpsRetour, libellePage, messageEchec, envoyerRetour, placeholderRetour, MESSAGE_MAX } from "../src/retourVisiteur.js";
 
 const lire = (chemin) => readFileSync(new URL("../" + chemin, import.meta.url), "utf8");
 
@@ -62,4 +62,28 @@ test("modale : piege a robots invisible, e-mail facultatif, aucun tiret quadrati
   assert.ok(code.includes('name = "site"') && code.includes('tabIndex = -1') && code.includes('aria-hidden'));
   assert.equal(code.includes(String.fromCharCode(0x2014)), false);
   assert.equal(lire("src/retourVisiteur.css").includes(String.fromCharCode(0x2014)), false);
+});
+
+test("placeholderRetour : un texte d'aide different pour un bug et pour une idee, jamais vide", () => {
+  const bug = placeholderRetour("bug");
+  const idee = placeholderRetour("idee");
+  assert.notEqual(bug, idee);
+  assert.match(bug, /attendais|passé/i);
+  assert.match(idee, /idée|permettrait/i);
+  assert.equal(placeholderRetour("autre"), idee, "type inconnu : texte de l'idee (le plus general)");
+});
+
+test("modale : le choix Bug / Idee reprend la pastille qui glisse de la barre de navigation (memes valeurs que #navbarThumb)", () => {
+  const css = lire("src/retourVisiteur.css");
+  const barre = lire("src/style.css");
+  const bloc = (texte, selecteur) => texte.slice(texte.indexOf(selecteur), texte.indexOf("}", texte.indexOf(selecteur)));
+  const thumb = bloc(barre, "#navbarThumb {");
+  const pastille = bloc(css, ".retour-pastille {");
+  for (const valeur of ["border-radius: 6px", "background: color-mix(in srgb, var(--accent) 24%, transparent)", "border: 1px solid color-mix(in srgb, var(--accent) 60%, transparent)", "transition: transform 0.3s ease, width 0.3s ease"]) {
+    assert.ok(thumb.includes(valeur), "valeur absente de #navbarThumb : " + valeur);
+    assert.ok(pastille.includes(valeur), "valeur absente de .retour-pastille : " + valeur);
+  }
+  const code = lire("src/retourVisiteur.js");
+  assert.ok(code.includes("retour-pastille") && code.includes("offsetLeft") && code.includes("offsetWidth"), "pastille placee comme placerPastilleNavbar");
+  assert.ok(code.includes("placeholderRetour(") && code.includes('addEventListener("change"'));
 });

@@ -21,13 +21,22 @@
 .retour-intro { margin: 0; font-size: 13.5px; line-height: 1.4; color: var(--muted); }
 .retour-formulaire { display: flex; flex-direction: column; gap: 12px; }
 .retour-formulaire[hidden], .retour-intro[hidden], .retour-merci[hidden] { display: none; }
-.retour-types { display: flex; gap: 8px; }
-.retour-type {
-  flex: 1 1 0; display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 6px 12px;
-  border: 1px solid var(--border); border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer;
+/* Choix Bug / Idee : meme animation et memes valeurs que les onglets de la barre de navigation (#navbarThumb et .nav-link de src/style.css), valides le 28/10 :
+   une pastille accent translucide glisse sous le choix actif ; le texte du choix actif passe de --muted a --text. */
+.retour-types { position: relative; display: flex; gap: 4px; }
+.retour-pastille {
+  position: absolute; top: 0; bottom: 0; left: 0; width: 0; border-radius: 6px; z-index: 0; pointer-events: none; box-sizing: border-box;
+  background: color-mix(in srgb, var(--accent) 24%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 60%, transparent);
+  transition: transform 0.3s ease, width 0.3s ease;
 }
-.retour-type:has(input:checked) { border-color: var(--accent); color: var(--accent); }
+.retour-type {
+  position: relative; z-index: 1; flex: 1 1 0; display: flex; align-items: center; justify-content: center; min-height: 44px; padding: 6px 10px;
+  border-radius: 6px; color: var(--muted); font-size: 13px; cursor: pointer; transition: color 0.3s ease;
+}
+.retour-type input { position: absolute; opacity: 0; width: 100%; height: 100%; inset: 0; margin: 0; cursor: pointer; }
+.retour-type:has(input:checked), .retour-type:hover { color: var(--text); }
 .retour-type:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .retour-pastille, .retour-type { transition: none; } }
 .retour-label { display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; font-weight: 600; color: var(--muted); }
 .retour-message, .retour-contact {
   width: 100%; padding: 10px 12px; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 8px;
