@@ -1,26 +1,24 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { regrouperConversations, GROUPES_CONVERSATIONS } from "../src/messagerie/groupesConversations.js";
+import { conversationsDuType, TYPES_CONVERSATION } from "../src/messagerie/groupesConversations.js";
 
 const c = (id, type) => ({ id, type });
+const liste = [c("g1", "groupe"), c("i1", "individuel"), c("g2", "groupe"), c("i2", "individuel")];
 
-test("deux groupes, libelles des onglets de Discussions, ordre conserve dans chaque groupe", () => {
-  const r = regrouperConversations([c("g1", "groupe"), c("i1", "individuel"), c("g2", "groupe"), c("i2", "individuel")]);
-  assert.deepEqual(r.map((g) => g.libelle), ["Individuel", "Groupes"]);
-  assert.deepEqual(r[0].conversations.map((x) => x.id), ["i1", "i2"]);
-  assert.deepEqual(r[1].conversations.map((x) => x.id), ["g1", "g2"]);
+test("les conversations du type choisi, ordre conserve", () => {
+  assert.deepEqual(conversationsDuType(liste, "individuel").map((x) => x.id), ["i1", "i2"]);
+  assert.deepEqual(conversationsDuType(liste, "groupe").map((x) => x.id), ["g1", "g2"]);
 });
 
-test("un groupe vide n'est pas rendu, liste vide donne aucun groupe", () => {
-  assert.deepEqual(regrouperConversations([c("g1", "groupe")]).map((g) => g.type), ["groupe"]);
-  assert.deepEqual(regrouperConversations([c("i1", "individuel")]).map((g) => g.type), ["individuel"]);
-  assert.deepEqual(regrouperConversations([]), []);
+test("type absent ou inconnu : aucune conversation proposee ; liste vide : rien", () => {
+  assert.deepEqual(conversationsDuType(liste, ""), []);
+  assert.deepEqual(conversationsDuType(liste, null), []);
+  assert.deepEqual(conversationsDuType(liste, "autre"), []);
+  assert.deepEqual(conversationsDuType([], "groupe"), []);
 });
 
-test("les libelles sont ceux des onglets de la messagerie", async () => {
-  const fs = await import("node:fs");
-  const src = fs.readFileSync(new URL("../src/messagerie/messagerie.js", import.meta.url), "utf8");
-  for (const { libelle } of GROUPES_CONVERSATIONS) assert.ok(src.includes(">" + libelle + " <span"), libelle);
+test("deux types, individuelle puis de groupe", () => {
+  assert.deepEqual(TYPES_CONVERSATION.map((t) => t.libelle), ["Conversation individuelle", "Conversation de groupe"]);
 });
 
 test("dialogue Nouveau sujet : bascule a pastille et zone defilante dans une carte de taille fixe", async () => {

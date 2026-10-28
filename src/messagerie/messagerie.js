@@ -13,7 +13,7 @@ import {
   changerStatut, ajouterPersonne, ajouterAuGroupe, basculerUrgence, estUrgent, convAUrgent, cloturer, rouvrir, creerSujet, creerConversation, vueOrigine, sujetsClos, sujetsTries, convParId
 } from "./messagerieDonnees.js";
 import { echapper, heureMinute, cleJour, libelleJour, heureCourte, initiales, prenom } from "./format.js";
-import { regrouperConversations } from "./groupesConversations.js";
+import { TYPES_CONVERSATION, conversationsDuType } from "./groupesConversations.js";
 import { imageVue, chargerBanque, attribuerBanque } from "./vuesMessagerie.js";
 import { requeteMention, filtrerPersonnes, occurrences } from "./mentions.js";
 import { cleFil, cleMessage, lireCleMessage } from "../discussionsIAIndex.js"; // Discussions par commande IA (24/10)
@@ -70,7 +70,6 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
     racine.addEventListener("click", surClic);
     racine.addEventListener("input", surSaisie);
     racine.addEventListener("keydown", surTouche);
-    racine.addEventListener("change", surChangement);
     // Liste des mentions (@) : un appui dessus ne doit pas retirer le focus du champ (clavier iOS ouvert) ni le fermer avant le clic.
     // pointerdown n'est pas annule (sinon WebKit supprime aussi le clic tactile) : seul mousedown l'est, et un drapeau protege la liste d'un focusout.
     racine.addEventListener("pointerdown", (e) => {
@@ -348,7 +347,8 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
       '<div class="msg-vue-pendante" id="msgVuePendante" hidden></div>' +
       '<div class="msg-composer"><div class="msg-mentions" id="msgMentions" role="listbox" aria-label="Personnes à mentionner" hidden></div><button type="button" class="msg-icone" id="msgBoutonVue" data-act="prendre-vue" aria-label="Prendre une vue dans le Viewer" title="Prendre une vue dans le Viewer">' + ICONE_APPAREIL + "</button>" +
         '<textarea id="msgSaisie" rows="1" placeholder="Écrire un message" aria-label="Écrire un message" aria-autocomplete="list" aria-controls="msgMentions"></textarea>' +
-        '<button type="button" class="msg-envoyer" id="msgEnvoyer" data-act="envoyer">Envoyer</button></div>';
+        '<button type="button" class="msg-envoyer" id="msgEnvoyer" data-act="envoyer">Envoyer</button>' +
+        '<button type="button" class="msg-envoyer msg-rouvrir-conv" id="msgRouvrirConv" data-act="rouvrir" hidden>Rouvrir la conversation</button></div>';
     $("msgScroller").addEventListener("scroll", () => {
       if (racine.offsetParent !== null) defilementMemorise = $("msgScroller").scrollTop;
       synchroniserBoutonBas();
@@ -560,7 +560,10 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
     saisie.disabled = clos;
     envoyer.disabled = clos;
     boutonVue.disabled = clos;
-    saisie.placeholder = clos ? "Sujet clos : rouvrez-le pour répondre" : "Écrire un message";
+    saisie.placeholder = "Écrire un message";
+    // Sujet clos (28/10, laptop et mobile) : ni champ ni boutons d'envoi, un seul bouton pour rouvrir la conversation.
+    [saisie, envoyer, boutonVue].forEach((el) => { el.hidden = clos; });
+    $("msgRouvrirConv").hidden = !clos;
   }
 
   // Carte « Infos du sujet » (ou « Participants » hors sujet) : feuille qui monte du bas sur mobile, modale centree sur laptop (meme rendu).
@@ -992,18 +995,26 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
     return vue ? '<div><span class="msg-etiquette">Prise de vue jointe</span><div class="msg-vue-jointe">' + imageVue(vue) + "</div></div>" : "";
   }
 
-  // Sujets non clos de la conversation, avec leur statut : les sujets clos ne sont jamais proposes.
-  function optionsSujetsOuverts(c) {
-    return '<option value="">Conversation principale</option>' + c.sujets.filter((s) => s.statut !== "clos").map((s) =>
-      '<option value="' + echapper(s.id) + '"># ' + echapper(s.titre) + " (" + LIBELLES_STATUT[s.statut] + (s.nonLus ? ", " + s.nonLus + " non lus" : "") + ")</option>").join("");
+  // Choix de la conversation du dialogue (28/10) : d'abord le TYPE (individuelle ou de groupe), puis la liste des conversations de ce type, rien de presélectionné
+  // (une liste deja defilee sur un groupe masquait les premiers contacts individuels). Boutons pleine largeur, jamais de liste native (sa fenetre est plus etroite que le champ).
+  function htmlListeConversations(typeConv, convId, avecNonLus) {
+    return conversationsDuType(conversations, typeConv).map((k) => {
+      const n = avecNonLus ? nonLusConv(k) : 0;
+      return '<button type="button" data-act="choisir-conv" data-id="' + echapper(k.id) + '" aria-pressed="' + (k.id === convId) + '">' + avatarConv(k, "pt") +
+        '<span class="msg-choix-nom">' + echapper(k.nom) + "</span>" + (n ? '<span class="msg-choix-note">' + n + " non lus</span>" : "") + "</button>";
+    }).join("");
+  }
+  function htmlChoixConversation(typeConv, convId, avecNonLus) {
+    return '<div><span class="msg-etiquette" id="msgChoixLbl">Conversation</span><div class="msg-choix msg-choix-type" role="group" aria-labelledby="msgChoixLbl">' +
+      TYPES_CONVERSATION.map((t) => '<button type="button" data-act="type-conv" data-v="' + t.type + '" aria-pressed="' + (t.type === typeConv) + '">' + t.libelle + "</button>").join("") + "</div></div>" +
+      '<div class="msg-choix" id="msgChoixConv" role="group" aria-label="Conversations existantes"' + (typeConv ? "" : " hidden") + ">" + htmlListeConversations(typeConv, convId, avecNonLus) + "</div>";
   }
 
-  // Liste « Conversation » : individuelles et groupes separes par un en-tete (<optgroup>), ordre recu conserve dans chaque groupe.
-  function optionsConversations(liste, convId, avecNonLus) {
-    return regrouperConversations(liste).map((g) => '<optgroup label="' + echapper(g.libelle) + '">' + g.conversations.map((k) => {
-      const n = avecNonLus ? nonLusConv(k) : 0;
-      return '<option value="' + echapper(k.id) + '"' + (k.id === convId ? " selected" : "") + ">" + echapper(k.nom) + (n ? " : " + n + " non lus" : "") + "</option>";
-    }).join("") + "</optgroup>").join("");
+  // « Où l'ajouter » : conversation principale et sujets non clos (les sujets clos ne sont jamais proposes), choix visible sans liste native.
+  function htmlChoixSujet(c, sujetId) {
+    const option = (id, libelle) => '<button type="button" data-act="choisir-sujet-ajout" data-s="' + echapper(id) + '" aria-pressed="' + (id === (sujetId || "")) + '">' + libelle + "</button>";
+    return option("", "Conversation principale") + c.sujets.filter((s) => s.statut !== "clos").map((s) =>
+      option(s.id, "# " + echapper(s.titre) + " (" + LIBELLES_STATUT[s.statut] + (s.nonLus ? ", " + s.nonLus + " non lus" : "") + ")")).join("");
   }
 
   // Bascule « Nouveau sujet » / « Conversation existante » : la pastille (meme composant que #navbarThumb) glisse sous le bouton actif, selon data-mode.
@@ -1014,52 +1025,56 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
   }
 
   // Corps (qui defile) + rangee de boutons du dialogue, selon le mode : seul ce bloc est redessine a la bascule, la carte et la bascule restent en place.
-  function htmlZoneDialogue(mode, convId, vue, choixConversation) {
+  // convId vide : aucune conversation choisie (Viewer), les boutons de validation restent inactifs.
+  function htmlZoneDialogue(mode, convId, vue, choixConversation, typeConv) {
+    const c = convId ? convParId(conversations, convId) : null;
     if (mode === "conversation") {
-      const c = convParId(conversations, convId);
-      return '<div class="msg-corps">' +
-        '<div><label for="msgAjConv">Conversation</label><select id="msgAjConv">' + optionsConversations(conversationsParPriorite(), convId, true) + "</select></div>" +
-        '<div><label for="msgAjSujet">Où l\'ajouter</label><select id="msgAjSujet">' + optionsSujetsOuverts(c) + "</select></div>" +
+      return '<div class="msg-corps">' + htmlChoixConversation(typeConv, convId, true) +
+        '<div id="msgAjOu"' + (c ? "" : " hidden") + '><span class="msg-etiquette" id="msgAjOuLbl">Où l\'ajouter</span><div class="msg-choix" id="msgAjSujet" role="group" aria-labelledby="msgAjOuLbl">' + (c ? htmlChoixSujet(c, null) : "") + "</div></div>" +
         '<div><label for="msgAjMessage">Message (facultatif)</label><textarea id="msgAjMessage"></textarea></div>' +
         htmlVueJointe(vue) +
         '<p class="msg-aide">Les sujets clos ne sont pas proposés : rouvrez-les d\'abord depuis leur conversation.</p></div>' +
-        '<div class="msg-rangee"><button type="button" class="msg-fantome" data-act="fermer-dialogue">Annuler</button><button type="button" class="msg-envoyer" data-act="ajouter-vue">Ajouter la vue</button></div>';
+        '<div class="msg-rangee"><button type="button" class="msg-fantome" data-act="fermer-dialogue">Annuler</button><button type="button" class="msg-envoyer" data-act="ajouter-vue"' + (c ? "" : " disabled") + ">Ajouter la vue</button></div>";
     }
     return '<div class="msg-corps">' +
-      (choixConversation ? '<div><label for="msgNsConv">Conversation</label><select id="msgNsConv">' + optionsConversations(conversations, convId, false) + "</select></div>" : "") +
+      (choixConversation ? htmlChoixConversation(typeConv, convId, false) : "") +
       '<div><label for="msgNsTitre">Titre</label><input id="msgNsTitre" placeholder="Ex. Collision gaine / cloison R+2" autocomplete="off" /></div>' +
       '<div><label for="msgNsMessage">Premier message</label><textarea id="msgNsMessage"></textarea></div>' +
       '<div class="msg-case"><button type="button" id="msgNsUrgent" class="msg-urgent-bouton" data-act="bascule-urgent-ns" aria-pressed="false">Urgent</button></div>' +
       htmlVueJointe(vue) +
       '<div id="msgNsTags"></div></div>' +
-      '<div class="msg-rangee"><button type="button" class="msg-fantome" data-act="fermer-dialogue">Annuler</button><button type="button" class="msg-envoyer" data-act="creer-sujet">Créer le sujet</button></div>';
+      '<div class="msg-rangee"><button type="button" class="msg-fantome" data-act="fermer-dialogue">Annuler</button><button type="button" class="msg-envoyer" data-act="creer-sujet"' + (c ? "" : " disabled") + ">Créer le sujet</button></div>";
   }
 
   // Contenu de la carte du dialogue (taille fixe, cf .msg-carte-sujet) : titre, bascule (si choix de la conversation), zone du mode « sujet » ou « conversation ».
-  function htmlDialogueSujet(mode, convId, vue, choixConversation) {
+  function htmlDialogueSujet(mode, convId, vue, choixConversation, typeConv) {
     const existant = mode === "conversation";
     return '<h3 class="msg-titre-sujet">' + (existant ? "Ajouter la vue à une conversation" : "Nouveau sujet") + "</h3>" +
       (choixConversation ? htmlBasculeDialogue(existant) : "") +
-      '<div class="msg-zone">' + htmlZoneDialogue(mode, convId, vue, choixConversation) + "</div>";
+      '<div class="msg-zone">' + htmlZoneDialogue(mode, convId, vue, choixConversation, typeConv) + "</div>";
   }
 
   // Apres (re)dessin de la carte : tags du mode « sujet », focus sur le premier champ du mode actif.
   function activerDialogueSujet(mode) {
     const boite = $("msgDialogue");
     if (mode === "conversation") {
-      $("msgAjConv").focus();
+      boite.querySelector('[data-act="type-conv"]').focus({ preventScroll: true });
       return;
     }
     rendreTags(boite.dataset.convId);
-    const champ = $("msgNsTitre");
-    if (champ) champ.focus();
+    // Avec le choix de la conversation, le focus va sur le premier choix (le titre n'a pas de sens avant la conversation) ; sinon sur le titre (pas de clavier force sur mobile).
+    const champ = boite.dataset.choix === "1" ? boite.querySelector('[data-act="type-conv"]') : $("msgNsTitre");
+    if (champ) champ.focus({ preventScroll: true });
   }
 
   function ouvrirDialogueSujet({ convId, vue, choixConversation, declencheur }) {
-    const idDefaut = convId || (conversations.find((c) => c.general) || conversations.find((c) => c.type === "groupe") || conversations[0]).id;
+    // Depuis le Viewer (choix de la conversation) : aucune conversation presélectionnée ; sinon la conversation courante.
+    const idDefaut = choixConversation ? "" : convId || (conversations.find((c) => c.general) || conversations.find((c) => c.type === "groupe") || conversations[0]).id;
     const selection = { convId: idDefaut, vue: vue || null, choixConversation: !!choixConversation };
-    ouvrirDialogue(htmlDialogueSujet("sujet", idDefaut, selection.vue, selection.choixConversation), "Nouveau sujet", declencheur, "msg-carte-sujet");
+    ouvrirDialogue(htmlDialogueSujet("sujet", idDefaut, selection.vue, selection.choixConversation, ""), "Nouveau sujet", declencheur, "msg-carte-sujet");
     $("msgDialogue").dataset.convId = selection.convId;
+    $("msgDialogue").dataset.typeConv = "";
+    $("msgDialogue").dataset.sujetAjout = "";
     $("msgDialogue").dataset.choix = selection.choixConversation ? "1" : "";
     vueDialogue = selection.vue;
     activerDialogueSujet("sujet");
@@ -1073,9 +1088,44 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
     carte.querySelector(".msg-titre-sujet").textContent = mode === "conversation" ? "Ajouter la vue à une conversation" : "Nouveau sujet";
     const bascule = carte.querySelector(".msg-bascule");
     bascule.dataset.mode = mode;
+    boite.dataset.sujetAjout = "";
     bascule.querySelectorAll('[data-act="mode-dialogue"]').forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.v === mode)));
-    carte.querySelector(".msg-zone").innerHTML = htmlZoneDialogue(mode, boite.dataset.convId, vueDialogue, true);
+    carte.querySelector(".msg-zone").innerHTML = htmlZoneDialogue(mode, boite.dataset.convId, vueDialogue, true, boite.dataset.typeConv);
     activerDialogueSujet(mode);
+  }
+
+  // Type de conversation choisi : la liste des conversations de ce type apparait, rien n'est choisi (la conversation precedente est oubliee).
+  function choisirTypeConversation(type) {
+    const boite = $("msgDialogue");
+    boite.dataset.typeConv = type;
+    boite.dataset.convId = "";
+    boite.querySelectorAll('[data-act="type-conv"]').forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.v === type)));
+    const liste = $("msgChoixConv");
+    liste.hidden = false;
+    liste.innerHTML = htmlListeConversations(type, "", !!$("msgAjSujet"));
+    liste.scrollTop = 0;
+    majApresChoixConversation();
+  }
+
+  function choisirConversationDialogue(id) {
+    const boite = $("msgDialogue");
+    boite.dataset.convId = id;
+    $("msgChoixConv").querySelectorAll('[data-act="choisir-conv"]').forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.id === id)));
+    majApresChoixConversation();
+  }
+
+  // Apres un choix de type ou de conversation : tags (mode sujet) ou choix du sujet (mode conversation), boutons de validation actifs seulement avec une conversation.
+  function majApresChoixConversation() {
+    const boite = $("msgDialogue");
+    const c = boite.dataset.convId ? convParId(conversations, boite.dataset.convId) : null;
+    boite.dataset.sujetAjout = "";
+    if ($("msgAjSujet")) {
+      $("msgAjOu").hidden = !c;
+      $("msgAjSujet").innerHTML = c ? htmlChoixSujet(c, null) : "";
+    } else {
+      rendreTags(boite.dataset.convId);
+    }
+    boite.querySelectorAll('[data-act="creer-sujet"], [data-act="ajouter-vue"]').forEach((b) => { b.disabled = !c; });
   }
 
   // « Liste de noms » en francais : A, B et C.
@@ -1119,7 +1169,13 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
   }
 
   function rendreTags(convId) {
-    const c = convParId(conversations, convId);
+    const c = convId ? convParId(conversations, convId) : null;
+    if (!c) { // aucune conversation choisie (Viewer) : pas de tags
+      $("msgNsTags").innerHTML = "";
+      $("msgNsTags").hidden = true;
+      return;
+    }
+    $("msgNsTags").hidden = false;
     const autres = c.membres.filter((m) => m !== MOI);
     // Sujet dans la conversation courante (22/10, laptop et mobile) : aucune phrase de placement, le conteneur est masque pour ne pas ajouter d'espace (gap de la carte).
     if (sujetDansConversationCourante()) {
@@ -1160,9 +1216,9 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
   }
 
   function ajouterVueDepuisDialogue() {
-    const c = convParId(conversations, $("msgAjConv").value);
+    const c = convParId(conversations, $("msgDialogue").dataset.convId);
     if (!c) return;
-    const sujetId = $("msgAjSujet").value || null;
+    const sujetId = $("msgDialogue").dataset.sujetAjout || null;
     const fil = filActif(c, sujetId);
     if (!fil || fil.statut === "clos") return;
     const texte = $("msgAjMessage").value.trim();
@@ -1535,7 +1591,20 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
     $("msgOptions").setAttribute("aria-expanded", "false");
   }
 
+  // Recherche dans la conversation (28/10) : la barre disparait des qu'on appuie ailleurs que dedans (ou sur la loupe), la recherche en cours est effacee.
+  function fermerRecherche() {
+    const barre = $("msgBarreRecherche");
+    if (!barre || barre.hidden) return;
+    barre.hidden = true;
+    racine.querySelector('[data-act="recherche-conv"]').setAttribute("aria-expanded", "false");
+    etat.recherche = "";
+    $("msgChampRecherche").value = "";
+    rendreMessages(false);
+    allerAuRepere();
+  }
+
   function surClic(e) {
+    if (!e.target.closest("#msgBarreRecherche, [data-act='recherche-conv']")) fermerRecherche();
     if (clicFondAbsorbe && (e.target === $("msgDialogue") || e.target === $("msgFeuille"))) { clicFondAbsorbe = false; return; }
     // Clic sur le fond sombre autour d'un dialogue : on le ferme (comme Échap)
     if (e.target === $("msgDialogue")) { fermerDialogue(); return; }
@@ -1566,11 +1635,11 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
       case "infos-sujet": ouvrirInfosLaptop(cible); break;
       case "fermer-feuille": fermerFeuille(); $("msgOptions").focus(); break;
       case "recherche-conv": {
-        const barre = $("msgBarreRecherche");
-        barre.hidden = !barre.hidden;
-        cible.setAttribute("aria-expanded", String(!barre.hidden));
-        if (!barre.hidden) $("msgChampRecherche").focus();
-        else { etat.recherche = ""; $("msgChampRecherche").value = ""; rendreMessages(false); allerAuRepere(); }
+        if ($("msgBarreRecherche").hidden) {
+          $("msgBarreRecherche").hidden = false;
+          cible.setAttribute("aria-expanded", "true");
+          $("msgChampRecherche").focus();
+        } else fermerRecherche();
         break;
       }
       case "sujet": ouvrirConversation(etat.convId, cible.dataset.s || null); break;
@@ -1614,6 +1683,12 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
       case "bascule-urgent-ns": cible.setAttribute("aria-pressed", String(cible.getAttribute("aria-pressed") !== "true")); break;
       case "mode-dialogue": if (cible.getAttribute("aria-pressed") !== "true") changerModeDialogue(cible.dataset.v); break;
       case "ajouter-vue": ajouterVueDepuisDialogue(); break;
+      case "type-conv": choisirTypeConversation(cible.dataset.v); break;
+      case "choisir-conv": choisirConversationDialogue(cible.dataset.id); break;
+      case "choisir-sujet-ajout":
+        $("msgDialogue").dataset.sujetAjout = cible.dataset.s;
+        $("msgAjSujet").querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b === cible)));
+        break;
       case "tag": cible.setAttribute("aria-pressed", String(cible.getAttribute("aria-pressed") !== "true")); majOuSujet(); break;
       case "ouvrir-ajout": {
         const depuisFeuille = !!cible.closest("#msgFeuille");
@@ -1650,16 +1725,6 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
     } else if (id === "msgSaisie") { ajusterSaisie(e.target); majMentions(); }
     else if (id === "msgNcQ") filtrerContacts(e.target.value);
     else if (id === "msgGrNom") majBoutonCreerGroupe();
-  }
-
-  function surChangement(e) {
-    if (e.target.id === "msgNsConv") {
-      $("msgDialogue").dataset.convId = e.target.value;
-      rendreTags(e.target.value);
-    } else if (e.target.id === "msgAjConv") {
-      $("msgDialogue").dataset.convId = e.target.value;
-      $("msgAjSujet").innerHTML = optionsSujetsOuverts(convParId(conversations, e.target.value));
-    }
   }
 
   function surTouche(e) {
