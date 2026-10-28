@@ -835,7 +835,7 @@ function renderPresentation() {
     panelFooter.rel = "noopener noreferrer";
     panelFooter.innerHTML = `
       <img src="/images/logo-gc-white.png" alt="">
-      <span class="footer-credit-name">Gilles Cobigo</span>
+      <span>Réalisé par <span class="footer-credit-name">Gilles Cobigo</span></span>
     `;
     panel.appendChild(panelFooter);
 
