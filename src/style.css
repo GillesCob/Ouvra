@@ -1828,17 +1828,22 @@ body.acc-actif #loadingOverlay { display: none; }
 #view-accueil .acc-steps h3 { margin: 2px 0 6px; font-size: 1.25rem; line-height: 1.25; }
 #view-accueil .acc-steps p { margin: 0; color: var(--muted); }
 
-/* Les fonctions (cartes d'information, sans lien : le bouton « Ouvrir la maquette » suffit, M30) */
-#view-accueil .acc-cards { list-style: none; margin: 0; padding: 0; display: grid; gap: 16px; }
+/* Les fonctions (28/10, nouveau design) : liste en lignes (pastille, titre, description, exemple de phrase), sur fond de bande pour rythmer la page.
+   Cartes d'information sans lien : le bouton « Ouvrir la maquette » suffit (M30). */
+#view-accueil .acc-fonctions { margin-top: 40px; padding: 36px 0 40px; background: var(--band); }
+#view-accueil .acc-fonctions .acc-wrap { max-width: 860px; }
+#view-accueil .acc-cards { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
 #view-accueil .acc-card {
-  display: flex; flex-direction: column; gap: 10px; height: 100%; min-height: 44px; width: 100%;
-  background: var(--surface); color: var(--ink); border: 1px solid var(--border); border-top: 6px solid var(--brand);
-  border-radius: 20px; padding: 20px; text-align: left; font: inherit; box-shadow: var(--shadow);
+  display: grid; grid-template-columns: 48px 1fr; gap: 14px; align-items: start;
+  background: var(--surface); color: var(--ink); border: 1px solid var(--border);
+  border-radius: 20px; padding: 16px; box-shadow: var(--shadow);
 }
-#view-accueil .acc-ico { width: 52px; height: 52px; border-radius: 14px; display: grid; place-items: center; background: var(--brand); color: var(--on-brand); }
-#view-accueil .acc-ico svg { width: 30px; height: 30px; }
-#view-accueil .acc-card h3 { margin: 4px 0 0; font-size: 1.3rem; }
+#view-accueil .acc-ico { width: 48px; height: 48px; border-radius: 14px; display: grid; place-items: center; background: var(--brand); color: var(--on-brand); }
+#view-accueil .acc-ico svg { width: 28px; height: 28px; }
+#view-accueil .acc-card h3 { margin: 2px 0 4px; font-size: 1.25rem; line-height: 1.25; }
 #view-accueil .acc-card p { margin: 0; color: var(--muted); }
+#view-accueil .acc-card .acc-ex { margin-top: 10px; padding: 8px 12px; border-left: 4px solid var(--accent); background: var(--bg); border-radius: 0 10px 10px 0; color: var(--ink); font-size: 0.95rem; }
+#view-accueil .acc-ex span { display: block; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
 
 /* Contact */
 #view-accueil .acc-contact { margin-top: 40px; padding: 0; }
@@ -1865,7 +1870,8 @@ body.acc-actif #loadingOverlay { display: none; }
   #view-accueil .acc-wrap { padding-left: 32px; padding-right: 32px; }
   #view-accueil .acc-steps { grid-template-columns: repeat(3, 1fr); }
   #view-accueil .acc-steps li { grid-template-columns: 1fr; }
-  #view-accueil .acc-cards { grid-template-columns: repeat(2, 1fr); }
+  #view-accueil .acc-card { grid-template-columns: 56px 1fr; padding: 22px 24px; gap: 20px; }
+  #view-accueil .acc-ico { width: 56px; height: 56px; }
   #view-accueil .acc-contact-box { grid-template-columns: 1.4fr 1fr; padding: 44px; gap: 32px; }
   #view-accueil .acc-contact-box .acc-side { justify-self: end; }
   #view-accueil section { padding-top: 56px; }
