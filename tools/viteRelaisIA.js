@@ -25,12 +25,15 @@ const ROUTES = {
   "/api/commande": () => import("../api/commande.js"),
   "/api/discussions": () => import("../api/discussions.js"),
   "/api/quantitatif": () => import("../api/quantitatif.js"),
-  "/api/plan": () => import("../api/plan.js")
+  "/api/plan": () => import("../api/plan.js"),
+  "/api/retour": () => import("../api/retour.js")
 };
 
 function monter(serveur, mode) {
   const env = loadEnv(mode, process.cwd(), "");
   if (!process.env.ANTHROPIC_API_KEY && env.ANTHROPIC_API_KEY) process.env.ANTHROPIC_API_KEY = env.ANTHROPIC_API_KEY;
+  // Retours des visiteurs (api/retour.js) : memes variables que sur Vercel, lues dans .env.local en local (jamais dans le depot).
+  for (const nom of ["RESEND_API_KEY", "RETOUR_DESTINATAIRE", "RETOUR_EXPEDITEUR"]) if (!process.env[nom] && env[nom]) process.env[nom] = env[nom];
   Object.entries(ROUTES).forEach(([route, charger]) => serveur.middlewares.use(route, async (req, res) => {
     try {
       const { default: fonction } = await charger();

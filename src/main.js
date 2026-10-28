@@ -26,6 +26,8 @@ import { demanderQuantitatif } from "./quantitatifIAClient.js";
 import { elementsDepuisScene, chargerElementsJson } from "./quantitatifDonnees.js";
 import { lireEmpreintes } from "./quantitatifVersions.js";
 import "./retourContexte.css";
+import "./retourVisiteur.css";
+import { creerRetourVisiteur } from "./retourVisiteur.js";
 import { creerRetourContexte } from "./retourContexte.js";
 import { creerHistorique, creerDepotLocal } from "./quantitatifHistorique.js";
 
@@ -1068,6 +1070,11 @@ const messagerie = DISCUSSIONS_MESSAGERIE ? creerMessagerie({
 // Modale « Regle a valider » des regles de collision (etapes 2 et 3), creee plus bas une fois les libelles de priorite et de statut definis.
 let reglesModale = null;
 let reglesIA = null; // cree plus bas ; « Reformuler » de la modale y rouvre le panneau
+// Retours des visiteurs (28/10) : bouton « Donner mon avis » de la barre de navigation, la page d'origine est lue sur la vue affichee.
+creerRetourVisiteur({
+  declencheur: document.getElementById("navbarAvis"),
+  pageCourante: () => { const vue = document.querySelector(".view:not([hidden])"); return vue ? vue.id.replace("view-", "") : ""; }
+});
 let retourQuantitatif = null; // bandeau « ← Retour au quantitatif » (src/retourContexte.js), cree plus bas ; relu par activateView avant sa definition
 let quantitatif = null; // page Quantitatif (creee plus bas) ; relue par activateView avant sa definition
 let plan3d = null; // page 2D -> 3D (src/plan3d/plan3dPage.js), chargee a la premiere ouverture ; relue par activateView avant sa definition
