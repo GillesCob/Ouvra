@@ -1072,7 +1072,7 @@ let reglesModale = null;
 let reglesIA = null; // cree plus bas ; « Reformuler » de la modale y rouvre le panneau
 // Retours des visiteurs (28/10) : bouton « Donner mon avis » de la barre de navigation, la page d'origine est lue sur la vue affichee.
 creerRetourVisiteur({
-  declencheur: document.getElementById("navbarAvis"),
+  declencheurs: [...document.querySelectorAll(".nav-avis")], // deux exemplaires : la barre (ordinateur) et le menu ☰ (mobile), un seul est visible
   pageCourante: () => { const vue = document.querySelector(".view:not([hidden])"); return vue ? vue.id.replace("view-", "") : ""; }
 });
 let retourQuantitatif = null; // bandeau « ← Retour au quantitatif » (src/retourContexte.js), cree plus bas ; relu par activateView avant sa definition

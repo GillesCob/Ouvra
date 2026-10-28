@@ -49,8 +49,9 @@ function creer(tag, classe, texte) {
   return el;
 }
 
-// declencheur : le bouton de la barre ; pageCourante() : nom de la vue affichee (« viewer », « discussions »...).
-export function creerRetourVisiteur({ declencheur, pageCourante }) {
+// declencheurs : les boutons « Donner mon avis » (barre et menu ☰) ; pageCourante() : nom de la vue affichee (« viewer », « discussions »...).
+export function creerRetourVisiteur({ declencheurs, pageCourante }) {
+  let declencheur = null; // l'exemplaire du bouton qui a ouvert la modale : il reprend le focus a la fermeture
   let fond = null;
   let ouverte = false;
   let envoiEnCours = false;
@@ -203,11 +204,12 @@ export function creerRetourVisiteur({ declencheur, pageCourante }) {
     if (declencheur && document.contains(declencheur)) declencheur.focus({ preventScroll: true });
   }
 
-  declencheur.addEventListener("click", () => {
+  declencheurs.forEach((bouton) => bouton.addEventListener("click", () => {
+    declencheur = bouton;
     const navigation = document.getElementById("navbarLinks");
     if (navigation) navigation.classList.remove("open"); // menu mobile : replie avant d'ouvrir la modale
     ouvrir();
-  });
+  }));
 
   return { ouvrir, fermer, ouverte: () => ouverte };
 }
