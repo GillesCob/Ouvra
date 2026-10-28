@@ -78,3 +78,28 @@ body.commandes-confirm-actif #view-viewer #viewerToolbar { top: calc(var(--comma
 @media (hover: hover) and (pointer: fine) {
   .commandes-zones-actions button:hover, .commandes-zones-fermer:hover, .commandes-zones-supprimer:hover { border-color: var(--accent); }
 }
+
+/* Confirmation de la demande (28/10) : meme bandeau que le Viewer (src/commandesBandeau.js, styles de base dans src/commandesIA.css). Place sous la barre de
+   navigation (comme #discussionsBandeau), meme fond, meme bordure, memes boutons ; la page descend d'autant (variable posee par le script). */
+#quantitatifBandeau {
+  position: fixed; top: 53px; left: 0; right: 0; z-index: 56; box-sizing: border-box; min-height: 44px; display: flex; align-items: center; justify-content: center;
+  flex-wrap: wrap; gap: 8px 16px; padding: 6px 12px; background: var(--surface); border-bottom: 1px solid var(--border); color: var(--text);
+  font-size: 13px; -webkit-tap-highlight-color: transparent;
+}
+#quantitatifBandeau[hidden] { display: none !important; }
+#quantitatifBandeau *, #quantitatifBandeau *::before, #quantitatifBandeau *::after { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+#quantitatifBandeau button {
+  flex: none; white-space: nowrap; min-height: 40px; min-width: 72px; border-radius: 8px; padding: 6px 16px; font: inherit; font-weight: 700; cursor: pointer;
+  border: 1px solid var(--border); background: none; color: var(--text);
+}
+#quantitatifBandeau button[data-act="oui"] { background: #7fae84; color: #0f1612; border-color: #7fae84; }
+#quantitatifBandeau button:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+body.quantitatif-confirm-actif #view-quantitatif { padding-top: var(--quantitatif-bandeau-h, 44px); box-sizing: border-box; }
+@media (hover: hover) and (pointer: fine) {
+  #quantitatifBandeau button:hover { border-color: var(--accent); }
+  #quantitatifBandeau button[data-act="oui"]:hover { background: color-mix(in srgb, #7fae84 86%, #fff); border-color: color-mix(in srgb, #7fae84 86%, #fff); }
+}
+@media (max-width: 768px) {
+  #quantitatifBandeau { padding: 8px 12px; }
+  #quantitatifBandeau button { flex: 1 1 0; min-height: 44px; }
+}

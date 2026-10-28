@@ -7,8 +7,8 @@ import { simulateurQuantitatif } from "../mocksApi.js";
 import type { IContexteTest, IPageSuivie, ITestDef } from "../types.js";
 
 const BOUTON_IA = "#quantitatifIABtn";
-const OUI = '.qt-bandeau button:text-is("Oui")';
-const NON = '.qt-bandeau button:text-is("Non")';
+const OUI = '#quantitatifBandeau button:text-is("Oui")';
+const NON = '#quantitatifBandeau button:text-is("Non")';
 
 interface ITableau {
   entetes: string[];
@@ -37,7 +37,7 @@ async function lireTableau(page: IPageSuivie): Promise<ITableau | null> {
 
 async function bandeauVisible(page: IPageSuivie): Promise<boolean> {
   return page.evaluate(() => {
-    const b = document.querySelector<HTMLElement>(".qt-bandeau");
+    const b = document.querySelector<HTMLElement>("#quantitatifBandeau");
     return !!b && getComputedStyle(b).display !== "none" && !b.hidden && b.getBoundingClientRect().height > 0;
   });
 }
@@ -51,7 +51,7 @@ async function viewerPuisQuantitatif(page: IPageSuivie): Promise<void> {
 
 /** Attend la relecture « Est-ce bien votre demande ? ». Pendant la confirmation l'application n'affiche que ce bandeau (le tableau est dans le DOM mais masque jusqu'a « Oui »). */
 async function attendreTableau(page: IPageSuivie): Promise<void> {
-  await page.waitForSelector(".qt-bandeau:not([hidden])", { timeout: 25_000 });
+  await page.waitForSelector("#quantitatifBandeau:not([hidden])", { timeout: 25_000 });
   await dormir(400);
 }
 
@@ -155,7 +155,7 @@ async function laptop(ctx: IContexteTest): Promise<void> {
   {
     const lireHisto = (): Promise<string[]> => page.evaluate(() => [...document.querySelectorAll<HTMLElement>(".qt-histo-item")].map((li) => li.innerText.replace(/\s+/g, " ")));
     await lancerPhraseExemple(page, BOUTON_IA, "Liste des vannes de la maquette mécanique");
-    await page.waitForSelector(".qt-bandeau", { timeout: 25_000 });
+    await page.waitForSelector("#quantitatifBandeau", { timeout: 25_000 });
     await dormir(300);
     await page.click(NON);
     await dormir(500);
@@ -364,7 +364,7 @@ async function mobile(ctx: IContexteTest): Promise<void> {
   await dormir(700);
   await lancerPhraseExemple(page, BOUTON_IA, "Combien de murs par niveau et par type ?");
   await attendreTableau(page);
-  const boutonsBandeau = await page.evaluate(() => [...document.querySelectorAll<HTMLElement>(".qt-bandeau button")].map((b) => ({ texte: b.innerText.trim(), hauteur: Math.round(b.getBoundingClientRect().height) })));
+  const boutonsBandeau = await page.evaluate(() => [...document.querySelectorAll<HTMLElement>("#quantitatifBandeau button")].map((b) => ({ texte: b.innerText.trim(), hauteur: Math.round(b.getBoundingClientRect().height) })));
   await page.click(OUI);
   await dormir(500);
   const g = await page.evaluate(() => {
