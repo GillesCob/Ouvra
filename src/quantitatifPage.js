@@ -35,10 +35,8 @@ const MESSAGE_VIDE = "Écrire la demande, par exemple « Combien de portes au ni
 const MESSAGE_SANS_DONNEES = "Aucune maquette lisible pour le moment. Ouvrir d'abord le Viewer et attendre la fin du chargement.";
 const nombre = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 2 });
 
-// Mobile (28/10) : mise en page dediee, le tableau d'abord ; les infos secondaires passent dans un menu deroulant. Meme seuil que quantitatif.css.
-// Regle de Gilles : UN seul `name` partage par tous les <details> de la page (ouvrir l'un referme les autres).
+// Mobile (28/10) : mise en page dediee, le tableau d'abord. Meme seuil que quantitatif.css.
 const MEDIA_MOBILE = REQUETE_MOBILE;
-const NOM_DETAILS = "qt-infos";
 const ecranMobile = () => !!window.matchMedia && window.matchMedia(MEDIA_MOBILE).matches;
 
 function creer(tag, classe, texte) {
@@ -353,16 +351,6 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
     });
   }
 
-  // Mobile : une info secondaire passe dans un menu deroulant ferme ; sur laptop elle reste affichee telle quelle.
-  function infoSecondaire(libelle, noeud) {
-    if (!ecranMobile()) return noeud;
-    const d = creer("details", "qt-infos");
-    d.setAttribute("name", NOM_DETAILS);
-    d.appendChild(creer("summary", "qt-infos-titre", libelle));
-    d.appendChild(noeud);
-    return d;
-  }
-
   function dessinerRapport(rapport, statut, confirmation = false) {
     const resultat = rapport.resultat;
     fermerMenuExport();
@@ -370,7 +358,6 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
     const tete = creer("div", "qt-resultat-tete");
     const titres = creer("div", "qt-resultat-titres");
     const titre = creer("h3", "qt-resultat-titre", rapport.relecture);
-    if (ecranMobile()) titre.title = rapport.relecture; // texte complet quand le titre est tronque a 2 lignes (mobile seulement)
     titres.appendChild(titre);
     const pastilles = creer("div", "qt-pastilles");
     pastilles.appendChild(creer("span", "qt-pastille qt-pastille-" + resultat.mesure.origine, resultat.mesure.origineLibelle.charAt(0).toUpperCase() + resultat.mesure.origineLibelle.slice(1)));
@@ -381,10 +368,9 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
     const badge = badgeStatut(statut, () => recalculer(rapport));
     if (badge) resultatZone.appendChild(badge);
 
-    // Avertissement compte / estime en toutes lettres, au-dessus du tableau (jamais seulement dans une infobulle).
-    // Sur mobile, l'explication « compté » se replie ; l'avertissement « estimé » (ne pas chiffrer ferme) reste toujours visible.
-    const avertissement = creer("p", "qt-avertissement qt-avertissement-" + resultat.mesure.origine, tableauDe(rapport).metre.explication);
-    resultatZone.appendChild(resultat.mesure.origine === "estime" ? avertissement : infoSecondaire("Sur ces chiffres", avertissement));
+    // Avertissement « estimé » (ne pas chiffrer ferme) en toutes lettres, au-dessus du tableau, jamais seulement dans une infobulle, sur mobile comme sur laptop.
+    // L'explication « compté » n'a plus de bandeau sur la page (retour du 28/10) : elle reste dans le rapport exporté.
+    if (resultat.mesure.origine === "estime") resultatZone.appendChild(creer("p", "qt-avertissement qt-avertissement-estime", tableauDe(rapport).metre.explication));
 
     if (resultat.aucunResultat) {
       resultatZone.appendChild(creer("p", "qt-vide", "Aucun élément ne correspond à cette demande dans les maquettes chargées."));

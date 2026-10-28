@@ -80,8 +80,7 @@ test("retours mobile du 28/10 : cartes cliquables, Exporter + Supprimer, pas d'H
   assert.match(js, /"Supprimer ce quantitatif"/);
   assert.match(js, /barre\.appendChild\(boutonRetour\)/);
   assert.doesNotMatch(js, /barre\.append\([^)]*(boutonIA|boutonHistorique)/); // la barre des vues ne porte que « Retour »
-  assert.match(js, /const NOM_DETAILS = "qt-infos"/);
-  assert.equal((js.match(/setAttribute\("name"/g) || []).length, 1); // un seul name, partage par tous les <details> de la page
+  assert.doesNotMatch(js, /<details|"details"/); // plus aucun menu replie sur la page (le bandeau « Sur ces chiffres » est retire)
   assert.match(css, /\.qt-page\.qt-confirmation \.qt-entete \{ display: none; \}/); // titre retire sous le bandeau de confirmation
 });
 
