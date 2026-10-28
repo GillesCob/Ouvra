@@ -38,7 +38,7 @@ function concernePersonne(index, id) {
 // Preselection locale par mots, commune a la recherche par sujet et au rapport.
 function preselectionnerParMots(p, index, contexte, { max, avecVoisins }) {
   const termes = construireTermes([p.sujet, ...(p.mots || [])]);
-  if (!termes.length) return vide({ erreur: "Le sujet ne contient aucun mot exploitable. Précise-le un peu." });
+  if (!termes.length) return vide({ erreur: "Le sujet ne contient aucun mot exploitable. Préciser un peu le sujet." });
   const dans = dansPeriode(p.periode, contexte);
   let id = null;
   if (p.personne) {
@@ -127,7 +127,7 @@ export const ACTIONS = [
       { nom: "urgent", genre: "booleen", description: "vrai si la phrase demande les sujets urgents" },
       PARAM_PERSONNE_FILTRE
     ],
-    verifier: (p) => (!(p.statuts && p.statuts.length) && !p.nonLus && !p.urgent ? "Précise l'état voulu : non lues, non clôturées, urgentes..." : null),
+    verifier: (p) => (!(p.statuts && p.statuts.length) && !p.nonLus && !p.urgent ? "Préciser l'état voulu : non lues, non clôturées, urgentes..." : null),
     selectionner(p, index) {
       const personne = p.personne ? personneParNom(index, p.personne) : null;
       if (p.personne && !personne) return vide({ erreur: "Personne inconnue : " + p.personne + "." });

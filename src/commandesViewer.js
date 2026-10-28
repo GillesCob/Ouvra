@@ -142,7 +142,7 @@ const ACTION_AFFICHER = {
     // Un critere de selection OU un reglage du contexte (« sans contexte », « avec la structure en contexte ») suffit.
     const vide = SELECTEURS.toutes().every((s) => !s.fabriquer(parametres, {}))
       && FILTRES_CONTEXTE.toutes().every((s) => !s.fabriquer(parametres, {})) && !parametres.sansContexte;
-    if (vide) return "Précise au moins un critère : un type d'élément, un niveau, une maquette, un nom, un élément précis ou une zone.";
+    if (vide) return "Préciser au moins un critère : un type d'élément, un niveau, une maquette, un nom, un élément précis ou une zone.";
     return PRESENTATIONS.trouver(parametres.presentation).valider?.(parametres) || null;
   },
   preparer: (parametres, contexte, options) => ({ ids: trouverElements(parametres, contexte, SELECTEURS, options) }),

@@ -28,7 +28,7 @@ test("annonces et aide : un texte par mode, l'aide change pendant l'ecoute", () 
   assert.match(annonceMode("texte"), /Mode texte/);
   assert.equal(aideVocal(false), AIDE_VOCAL);
   assert.equal(aideVocal(true), AIDE_ECOUTE);
-  assert.match(AIDE_VOCAL, /micro.*voix haute.*écris-la/);
+  assert.match(AIDE_VOCAL, /micro.*voix haute.*l'écrire/);
 });
 
 test("fin d'ecoute : second clic + phrase = envoi ; arret spontane avec phrase = texte ; rien reconnu = rien", () => {

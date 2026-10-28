@@ -25,8 +25,8 @@ import { creerIASaisie } from "./iaSaisie.js";
 // niveaux regroupes, date de calcul, maquettes). Les donnees restent dans le rapport et les exports ne changent pas. Mettre false pour les reafficher.
 const MASQUE_INFOS_QUANTITATIF = true;
 
-const MESSAGE_VIDE = "Écris ta demande, par exemple « Combien de portes au niveau 2 ? ».";
-const MESSAGE_SANS_DONNEES = "Aucune maquette lisible pour le moment. Ouvre d'abord le Viewer et attends la fin du chargement.";
+const MESSAGE_VIDE = "Écrire la demande, par exemple « Combien de portes au niveau 2 ? ».";
+const MESSAGE_SANS_DONNEES = "Aucune maquette lisible pour le moment. Ouvrir d'abord le Viewer et attendre la fin du chargement.";
 const nombre = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 2 });
 
 function creer(tag, classe, texte) {
@@ -467,7 +467,7 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
     dire("");
     if (!phrase) { dire(MESSAGE_VIDE); return; }
     occuper(true);
-    dire("Prise en compte de ta demande…");
+    dire("Prise en compte de la demande…");
     const r = await traiter(phrase);
     occuper(false);
     dire(r.ok ? "" : r.message || "");

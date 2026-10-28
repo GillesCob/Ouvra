@@ -197,7 +197,7 @@ PRESENTATIONS.enregistrer({
   nom: "focus",
   composition: "focus",
   description: "Vue façon collision sur un élément précis : le modèle devient fantôme, les éléments dans un rayon (en mètres) sont transparents, l'élément reste plein. Pour « montre-moi la vanne X » ou « montre ce qu'il y a autour de X dans un rayon de 5 m ».",
-  valider: (parametres) => (parametres.elements && parametres.elements.length ? null : "Précise l'élément à montrer, par son nom complet."),
+  valider: (parametres) => (parametres.elements && parametres.elements.length ? null : "Préciser l'élément à montrer, par son nom complet."),
   relire: (parametres, criteres) => "Montrer " + criteres,
   cible(plan, { scene }) {
     const boite = unionAabb(plan.ids.map((id) => aabbDe(scene, id)));
@@ -285,7 +285,7 @@ PRESENTATIONS.enregistrer({
   nom: "zone",
   composition: "restreint",
   description: "Isole une zone nommée : son contenu reste plein, les murs, dalles et plafonds qui l'entourent sont transparents, tout le reste est masqué. Pour « affiche la zone Bloc opératoire ».",
-  valider: (parametres) => (parametres.zones && parametres.zones.length ? null : "Précise la zone à afficher."),
+  valider: (parametres) => (parametres.zones && parametres.zones.length ? null : "Préciser la zone à afficher."),
   relire: (parametres) => "Afficher la zone " + (parametres.zones || []).map((z) => "« " + z + " »").join(" et "),
   cible(plan, contexte, parametres) {
     return unionAabb((parametres.zones || []).map((nom) => (contexte.zones ? contexte.zones.trouver(nom) : null)));

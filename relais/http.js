@@ -9,11 +9,11 @@ import { creerLimiteur } from "./limite.js";
 
 export const MESSAGES = {
   entree_invalide: "La demande n'est pas valide (phrase vide ou de plus de 200 caractères).",
-  trop_de_requetes: "Tu as envoyé beaucoup de demandes. Réessaie dans quelques minutes.", // repli : le message reel precise la duree
-  budget_epuise: "Le budget mis à disposition pour tester l'IA est épuisé. Choisis une phrase d'exemple.",
-  ia_indisponible: "L'IA est injoignable pour le moment. Choisis une phrase d'exemple.",
-  refus: "L'IA n'a pas voulu traiter cette phrase. Reformule-la ou choisis une phrase d'exemple.",
-  sortie_invalide: "L'IA n'a pas renvoyé de règle exploitable. Reformule la phrase ou choisis une phrase d'exemple."
+  trop_de_requetes: "Trop de demandes envoyées. Réessayer dans quelques minutes.", // repli : le message reel precise la duree
+  budget_epuise: "Le budget mis à disposition pour tester l'IA est épuisé. Choisir une phrase d'exemple.",
+  ia_indisponible: "L'IA est injoignable pour le moment. Choisir une phrase d'exemple.",
+  refus: "L'IA n'a pas voulu traiter cette phrase. La reformuler ou choisir une phrase d'exemple.",
+  sortie_invalide: "L'IA n'a pas renvoyé de règle exploitable. Reformuler la phrase ou choisir une phrase d'exemple."
 };
 const STATUT = { entree_invalide: 400, trop_de_requetes: 429, budget_epuise: 503, ia_indisponible: 503, refus: 502, sortie_invalide: 502 };
 
@@ -29,7 +29,7 @@ const echec = (code, statut = STATUT[code], precision = null) => reponse(statut,
 function refusLimite(attenteMs) {
   const secondes = Math.max(1, Math.ceil(attenteMs / 1000));
   const duree = secondes <= 60 ? secondes + (secondes === 1 ? " seconde" : " secondes") : "environ " + Math.ceil(secondes / 60) + " minutes";
-  return reponse(429, { ok: false, code: "trop_de_requetes", message: "Tu as envoyé beaucoup de demandes. Réessaie dans " + duree + "." }, { "retry-after": String(secondes) });
+  return reponse(429, { ok: false, code: "trop_de_requetes", message: "Trop de demandes envoyées. Réessayer dans " + duree + "." }, { "retry-after": String(secondes) });
 }
 
 // Sur Vercel, x-forwarded-for porte l'IP publique du client et est ecrase par la plateforme (pas d'usurpation par le client) :

@@ -64,9 +64,9 @@ test("messages d'erreur : jamais muets, sauf l'arret volontaire", () => {
   assert.match(messageErreurVoix("not-allowed"), /autoris/i);
   assert.match(messageErreurVoix("network"), /Chrome ou Safari/);
   assert.match(messageErreurVoix("no-speech"), /micro/);
-  assert.equal(messageErreurVoix("network"), "Ce navigateur n'accepte pas la dictée vocale.\nOuvre Ouvra dans Chrome ou Safari pour l'utiliser.");
+  assert.equal(messageErreurVoix("network"), "Ce navigateur n'accepte pas la dictée vocale.\nOuvrir Ouvra dans Chrome ou Safari pour l'utiliser.");
   assert.equal(messageErreurVoix("service-not-allowed"), messageErreurVoix("network"));
-  assert.equal(messageErreurVoix("not-allowed"), "Le micro est refusé. Autorise-le pour ce site dans le navigateur.");
+  assert.equal(messageErreurVoix("not-allowed"), "Le micro est refusé. L'autoriser pour ce site dans le navigateur.");
   assert.doesNotMatch(messageErreurVoix("not-allowed"), /Chrome/); // ouvrir un autre navigateur n'y changerait rien
   // iPhone : tous les navigateurs y utilisent WebKit, proposer Chrome serait trompeur.
   assert.doesNotMatch(messageErreurVoix("network", { ios: true }), /Chrome|Safari/);
@@ -238,7 +238,7 @@ test("messages de la modale : ni « Envoyer » ni « Traduire » (boutons qui n'
 });
 
 test("navigateur sans API : un seul motif, message navigateur ; sur iPhone, message sans Chrome", () => {
-  assert.equal(motifSansAPI(), "Ce navigateur n'accepte pas la dictée vocale.\nOuvre Ouvra dans Chrome ou Safari pour l'utiliser.");
+  assert.equal(motifSansAPI(), "Ce navigateur n'accepte pas la dictée vocale.\nOuvrir Ouvra dans Chrome ou Safari pour l'utiliser.");
   assert.doesNotMatch(motifSansAPI(true), /Chrome|Safari/);
 });
 

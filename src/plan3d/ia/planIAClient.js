@@ -7,8 +7,8 @@ import { validerCommande } from "./commandesPlan.js";
 import { texteDuPlan } from "./descriptionPlan.js";
 import { DELAI_MS } from "../../reglesIAClient.js";
 
-const MESSAGE_INDISPONIBLE = "L'IA est injoignable pour le moment. Utilise les outils du plan.";
-const MESSAGE_DELAI = "L'IA met trop de temps à répondre. Réessaie ou utilise les outils du plan.";
+const MESSAGE_INDISPONIBLE = "L'IA est injoignable pour le moment. Utiliser les outils du plan.";
+const MESSAGE_DELAI = "L'IA met trop de temps à répondre. Réessayer ou utiliser les outils du plan.";
 const indisponible = () => ({ ok: false, code: "ia_indisponible", message: MESSAGE_INDISPONIBLE });
 
 export async function demanderPlan({ phrase, description }, { fetch: appel = (...a) => globalThis.fetch(...a), delaiMs = DELAI_MS, url = "/api/plan" } = {}) {

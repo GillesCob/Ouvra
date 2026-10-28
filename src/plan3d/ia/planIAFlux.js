@@ -30,12 +30,12 @@ export function creerFluxPlanIA({ obtenirModele, appliquer, annuler, demander, s
     try {
       reponse = await demander({ phrase, description });
     } catch {
-      return { ok: false, message: "L'IA est injoignable pour le moment. Utilise les outils du plan." };
+      return { ok: false, message: "L'IA est injoignable pour le moment. Utiliser les outils du plan." };
     }
     if (annule()) return { ok: false, message: "" }; // modale fermee entre-temps : rien n'est applique a l'insu de l'utilisateur
     if (!reponse.ok) return { ok: false, message: reponse.message };
     if (reponse.resultat !== "commandes") return { ok: false, message: reponse.message };
-    if (obtenirModele() !== modele) return { ok: false, message: "Le plan a changé pendant la demande. Redis ta demande." };
+    if (obtenirModele() !== modele) return { ok: false, message: "Le plan a changé pendant la demande. La demande est à redire." };
     const resultat = appliquerCommandes(modele, reponse.commandes);
     if (!resultat.ok) return { ok: false, message: resultat.message };
     attente = { phrase, apres: resultat.modele }; // avant appliquer : surChangement reconnait notre propre modification
