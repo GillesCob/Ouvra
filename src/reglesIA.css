@@ -86,7 +86,16 @@
 .regles-ia-micro:disabled { opacity: 0.5; cursor: default; }
 .regles-ia-micro.ecoute {
   color: var(--accent); border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, var(--bg));
-  animation: regles-ia-halo 1.6s ease-in-out infinite;
+}
+.regles-ia-micro.ecoute:not(.niveau) { animation: regles-ia-halo 1.6s ease-in-out infinite; } /* repli : rythme fixe, tant qu'aucun niveau reel n'est disponible */
+/* Halo reactif (28/10) : disque d'accent derriere le micro, mis a l'echelle par --ia-niveau (0 a 1, pose par src/iaSaisie.js). Echelle max 1,292 = 96 px + 14 px de chaque cote,
+   soit la meme enveloppe que le halo fixe (14 px) : aucune collision nouvelle. Seuls transform et opacity bougent. */
+.regles-ia-vue-vocal { isolation: isolate; } /* le halo (z-index -1) reste derriere le micro mais devant le fond de la carte */
+.regles-ia-micro { position: relative; }
+.regles-ia-micro.niveau::before {
+  content: ""; position: absolute; inset: -1px; z-index: -1; border-radius: 50%; pointer-events: none; will-change: transform, opacity;
+  background: radial-gradient(circle closest-side, color-mix(in srgb, var(--accent) 70%, #fff) 0%, var(--accent) 74%, transparent 100%);
+  transform: scale(calc(1 + var(--ia-niveau, 0) * 0.292)); opacity: calc(0.12 + var(--ia-niveau, 0) * 0.78);
 }
 @keyframes regles-ia-halo {
   0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 45%, transparent); }
@@ -128,7 +137,8 @@
 }
 @media (prefers-reduced-motion: reduce) {
   #reglesIABtn, .regles-ia-micro, .regles-ia-propositions summary::after { transition: none; }
-  .regles-ia-micro.ecoute { animation: none; box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 25%, transparent); }
+  .regles-ia-micro.niveau::before { display: none; }
+  .regles-ia-micro.ecoute, .regles-ia-micro.ecoute:not(.niveau) { animation: none; box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 25%, transparent); }
 }
 #reglesIA[style*="hidden"] { pointer-events: none; }
 
