@@ -97,3 +97,33 @@ test("libelle : « Bug ou idée ? » (les deux choix de la modale), titre « Un 
     assert.equal(texte.includes("Faire un " + "retour"), false, f + " : nom intermediaire");
   }
 });
+
+test("modale : plus de phrase d'introduction sous le titre (retiree le 28/10, demande de Gilles)", () => {
+  const code = lire("src/retourVisiteur.js");
+  assert.equal(code.includes("retour-intro"), false);
+  assert.equal(code.includes("dis-moi ce que tu as vu"), false);
+  assert.equal(lire("src/retourVisiteur.css").includes("retour-intro"), false);
+});
+
+test("placeholder de l'idee : le texte propose par Gilles, tel quel", () => {
+  assert.equal(placeholderRetour("idee"), "Ton idée et ce qu'elle permettrait de faire");
+});
+
+test("ecran de remerciement (28/10) : pas de titre de modale, icone, « Merci ! », croix de fermeture du design de la messagerie, plus de gros bouton Fermer", () => {
+  const code = lire("src/retourVisiteur.js");
+  const css = lire("src/retourVisiteur.css");
+  const messagerie = lire("src/messagerie/messagerie.css");
+  assert.ok(code.includes("retour-merci-icone") && code.includes('"Merci !"') && code.includes("Ton retour est bien parti."));
+  assert.ok(code.includes("titre.hidden = true"), "le titre de la modale disparait au remerciement");
+  assert.ok(code.includes("Envoyer un autre retour"));
+  assert.equal(code.includes("fermerMerci"), false, "plus de gros bouton Fermer");
+  // la croix reprend les valeurs de .msg-croix (croix des modales de la messagerie)
+  const bloc = (texte, selecteur) => texte.slice(texte.indexOf(selecteur), texte.indexOf("}", texte.indexOf(selecteur)));
+  const modele = bloc(messagerie, ".msg-croix {");
+  const croix = bloc(css, ".retour-croix {");
+  for (const valeur of ["position: absolute", "top: 6px", "right: 6px", "width: 40px", "height: 40px", "border: 1px solid var(--border)", "border-radius: 6px", "color: var(--muted)"]) {
+    assert.ok(modele.includes(valeur), ".msg-croix : " + valeur);
+    assert.ok(croix.includes(valeur), ".retour-croix : " + valeur);
+  }
+  assert.ok(code.includes('aria-label", "Fermer"') && code.includes('"retourMerciTitre"'));
+});
