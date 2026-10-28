@@ -1071,7 +1071,7 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
       '<div class="msg-rangee"><button type="button" class="msg-fantome" data-act="fermer-dialogue">Annuler</button><button type="button" class="btn-principal msg-envoyer" data-act="creer-sujet"' + (c ? "" : " disabled") + ">Créer le sujet</button></div>";
   }
 
-  // Contenu de la carte du dialogue (taille fixe, cf .msg-carte-sujet) : titre, bascule (si choix de la conversation), zone du mode « sujet » ou « conversation ».
+  // Contenu de la carte du dialogue (taille fixe seulement avec la bascule, cf .msg-carte-sujet-bascule) : titre, bascule (si choix de la conversation), zone du mode « sujet » ou « conversation ».
   function htmlDialogueSujet(mode, convId, vue, choixConversation, typeConv) {
     const existant = mode === "conversation";
     return '<h3 class="msg-titre-sujet">' + (existant ? "Ajouter la vue à une conversation" : "Nouveau sujet") + "</h3>" +
@@ -1096,7 +1096,7 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
     // Depuis le Viewer (choix de la conversation) : aucune conversation presélectionnée ; sinon la conversation courante.
     const idDefaut = choixConversation ? "" : convId || (conversations.find((c) => c.general) || conversations.find((c) => c.type === "groupe") || conversations[0]).id;
     const selection = { convId: idDefaut, vue: vue || null, choixConversation: !!choixConversation };
-    ouvrirDialogue(htmlDialogueSujet("sujet", idDefaut, selection.vue, selection.choixConversation, ""), "Nouveau sujet", declencheur, "msg-carte-sujet");
+    ouvrirDialogue(htmlDialogueSujet("sujet", idDefaut, selection.vue, selection.choixConversation, ""), "Nouveau sujet", declencheur, "msg-carte-sujet" + (selection.choixConversation ? " msg-carte-sujet-bascule" : ""));
     $("msgDialogue").dataset.convId = selection.convId;
     $("msgDialogue").dataset.typeConv = "";
     $("msgDialogue").dataset.sujetAjout = "";

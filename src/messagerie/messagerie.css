@@ -278,9 +278,11 @@
 .msg-choix-trigger .collision-trigger-val { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: 16px; font-weight: 500; }
 .collision-menu.msg-menu-choix { box-sizing: border-box; overflow-y: auto; overscroll-behavior: contain; }
 .msg-menu-choix .collision-menu-texte { overflow-wrap: anywhere; }
-/* Dialogue Nouveau sujet / Conversation existante : meme place et meme taille dans les deux modes (hauteur fixe, bornee par la fenetre) ; si le contenu ne tient pas,
-   seule la zone .msg-zone defile, la carte ne grandit ni ne bouge, la rangee de boutons reste visible. 680 px = la hauteur naturelle de « Conversation existante » (636 a 671 px selon la largeur). */
-.msg-carte.msg-carte-sujet { height: min(680px, 100%); overflow: hidden; }
+/* Dialogue Nouveau sujet : la carte s'adapte a son contenu (boutons juste sous le dernier champ). Avec la bascule « Nouveau sujet / Conversation existante » (depuis le Viewer seulement),
+   meme place et meme taille dans les deux modes (hauteur fixe, bornee par la fenetre) ; si le contenu ne tient pas,
+   seule la zone .msg-zone defile, la carte ne grandit ni ne bouge, la rangee de boutons reste visible. 680 px = la hauteur naturelle du mode le plus haut (« Nouveau sujet » avec le choix de la conversation : 662 px a 769, 1024 et 1440 px, un peu de marge pour la liste qui apparait apres le choix du type). */
+.msg-carte.msg-carte-sujet { overflow: hidden; }
+.msg-carte.msg-carte-sujet-bascule { height: min(680px, 100%); }
 .msg-carte-sujet > :is(h3, .msg-bascule) { flex-shrink: 0; }
 .msg-zone { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 12px; }
 .msg-zone .msg-corps { flex: 1 1 auto; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding: 2px; margin: -2px; }
@@ -422,7 +424,7 @@ body.msg-retour-actif #viewerToolbar { top: 56px; }
   .msg-zone .msg-corps > .msg-champ-grand:has(#msgNsMessage) { flex: 0 0 auto; min-height: 0; }
   #msgNsMessage { flex: none; min-height: 0; max-height: 40vh; }
   .msg-zone .msg-corps { overscroll-behavior: contain; }
-  .msg-carte, .msg-carte.msg-carte-sujet { width: 100%; height: 100vh; height: 100dvh; max-height: none; border: 0; border-radius: 0; padding: calc(14px + env(safe-area-inset-top)) 16px calc(14px + env(safe-area-inset-bottom)); }
+  .msg-carte, .msg-carte.msg-carte-sujet, .msg-carte.msg-carte-sujet-bascule { width: 100%; height: 100vh; height: 100dvh; max-height: none; border: 0; border-radius: 0; padding: calc(14px + env(safe-area-inset-top)) 16px calc(14px + env(safe-area-inset-bottom)); }
   .msg-carte .msg-croix { top: calc(4px + env(safe-area-inset-top)); right: 4px; width: 44px; height: 44px; }
   .msg-pastille, .msg-ajout { min-height: 40px; }
   .msg-composer textarea, .msg-barre-recherche input, .msg-carte :is(input, textarea, select) { font-size: 16px; }
