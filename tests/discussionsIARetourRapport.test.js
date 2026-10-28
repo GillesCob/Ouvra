@@ -45,3 +45,12 @@ test("coeur : « Retour au rapport » appelle le rappel une seule fois et dispar
   assert.equal(appels, 1);
   assert.equal(coeur.actif(), false);
 });
+
+test("panneau de gauche (28/10) : aucun bouton « Voir le rapport » ni action « rapport » ; le rapport s'ouvre seul a la fin de la demande", () => {
+  const messagerie = lire("src/messagerie/messagerie.js");
+  assert.ok(!messagerie.includes("Voir le rapport</button>") && !messagerie.includes('data-act="ia-rapport"') && !messagerie.includes('case "ia-rapport"'));
+  const montage = lire("src/discussionsIAMontage.js");
+  assert.ok(!montage.includes('nom === "rapport"'));
+  assert.match(montage, /application\.type === "rapport"\) rapportVue\.ouvrir\(retour\.rapport\)/);
+  assert.ok(montage.includes('libelle: "Retour au rapport"'));
+});

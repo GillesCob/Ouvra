@@ -24,7 +24,7 @@ const ICONE_LOUPE = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none"
 const VERBES_JOURNAL = { ouverture: "ouvert le sujet", cloture: "clos le sujet", reouverture: "rouvert le sujet" };
 const MOBILE = "(max-width: 768px)";
 
-// surMonte() : appelee une fois le squelette construit (le bouton « IA » #discussionsIABtn existe alors) ; surActionIA("tout" | "rapport") : boutons de la liste filtree par l'IA ; surOngletIA() : clic sur l'onglet IA (ouvre la saisie).
+// surMonte() : appelee une fois le squelette construit (le bouton « IA » #discussionsIABtn existe alors) ; surActionIA("tout") : boutons de la liste filtree par l'IA ; surOngletIA() : clic sur l'onglet IA (ouvre la saisie).
 export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvrirDansViewer, glisserPourFermer, surMonte, surActionIA, surOngletIA }) {
   let personnes = {};
   let conversations = [];
@@ -1465,11 +1465,11 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
     const f = etat.filtreIA;
     if (!f) { $("msgListe").innerHTML = '<div class="msg-vide">Choisis Texte ou Vocal pour décrire ce que tu cherches dans les discussions.</div>'; return; }
     const compte = nombreFr(f.fils.length, "discussion", "discussions") + (f.surlignes.size ? ", " + nombreFr(f.surlignes.size, "message trouvé", "messages trouvés") : "");
-    // Une seule ligne : « Retour » en tete, la demande et le compte (ellipsis si trop long, texte complet en title), « Voir le rapport » a droite.
+    // Une seule ligne : « Retour » en tete, la demande et le compte (ellipsis si trop long, texte complet en title). Aucun bouton du rapport ici : il s'ouvre seul a la fin de la demande.
     const resume = echapper((f.relecture || "") + (f.relecture ? " \u00b7 " : "") + compte);
     const bandeau = '<div class="msg-ia-resume" role="status"><button type="button" class="msg-ia-retour" data-act="ia-tout" aria-label="Retour aux discussions">\u2190 Retour</button>' +
       '<div class="msg-ia-demande" title="' + resume + '"><b>' + echapper(f.relecture || "") + "</b><span>" + echapper(compte) + "</span></div>" +
-      (f.rapport ? '<div class="msg-ia-actions"><button type="button" data-act="ia-rapport">Voir le rapport</button></div>' : "") + "</div>";
+      "</div>";
     const lignes = f.fils.length ? f.fils.map(ligneResultatIA).join("") : '<div class="msg-vide">Aucune discussion à afficher.</div>';
     $("msgListe").innerHTML = bandeau + lignes;
   }
@@ -1527,7 +1527,6 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
 
   // Donnees lues par la commande IA (moteur src/discussionsIAIndex.js) : jamais modifiees par lui.
   const donneesPourIA = () => ({ conversations, personnes });
-  const rapportIA = () => (etat.filtreIA ? etat.filtreIA.rapport : null);
 
   function fermerMenu() {
     const menu = $("msgMenu");
@@ -1581,7 +1580,6 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
       case "bas": allerAuDernier(); break;
       case "ia-fil": ouvrirResultatIA(Number(cible.dataset.i)); break;
       case "ia-tout": if (surActionIA) surActionIA("tout"); else retirerFiltreIA(); break;
-      case "ia-rapport": if (surActionIA) surActionIA("rapport"); break;
       case "agrandir": { const m = vuesAffichees[Number(cible.dataset.vp)]; memoriserDepart(m); ouvrirDansViewer(m.vue); break; }
       case "agrandir-origine": {
         const depuisInfos = !!cible.closest("#msgFeuille, .msg-carte-infos");
@@ -1691,6 +1689,6 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
 
   return {
     preparer, surVueActivee, vueDeConversation, nouveauSujetDepuisViewer, rechargerVues, priseDeVueEnCours: () => priseDeVueEnCours,
-    donneesPourIA, appliquerFiltreIA, retirerFiltreIA, montrerMessageIA, rapportIA
+    donneesPourIA, appliquerFiltreIA, retirerFiltreIA, montrerMessageIA
   };
 }
