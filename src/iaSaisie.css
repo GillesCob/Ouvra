@@ -31,8 +31,10 @@
   overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; max-height: var(--ia-liste-max, none);
 }
 
-/* Arriere-plan fige tant que la modale est ouverte (28/10, src/verrouDefilement.js) : le corps ne defile ni ne rebondit, le fond ne transmet rien a la page.
-   touch-action: none sur le fond et la carte (aucun glissement ne les deplace), pan-y seulement sur la liste des propositions et le champ, qui peuvent defiler en interne. */
-body.ia-saisie-ouverte { overflow: hidden; overscroll-behavior: none; }
-.regles-ia-fond-saisie { overscroll-behavior: contain; touch-action: none; }
-.regles-ia-fond-saisie :is(.regles-ia-propositions ul, textarea) { overscroll-behavior: contain; touch-action: pan-y; }
+/* Arriere-plan fige tant que la modale est ouverte (28/10, src/verrouDefilement.js), MOBILE seulement (le laptop garde son rendu) : le corps ne defile ni ne rebondit, le fond ne
+   transmet rien a la page. touch-action: none sur le fond (aucun glissement ne le deplace), pan-y seulement sur la liste des propositions et le champ, qui defilent en interne. */
+@media (max-width: 768px) {
+  body.ia-saisie-ouverte { overflow: hidden; overscroll-behavior: none; }
+  .regles-ia-fond-saisie { overscroll-behavior: contain; touch-action: none; }
+  .regles-ia-fond-saisie :is(.regles-ia-propositions ul, textarea) { overscroll-behavior: contain; touch-action: pan-y; }
+}

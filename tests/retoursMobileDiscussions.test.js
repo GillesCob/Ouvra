@@ -33,8 +33,8 @@ test("M6/M27 : sur mobile, tout dialogue de la messagerie est une page pleine ec
 });
 
 test("M7/M8 puis retour du 29/10 : le type en boutons, puis la conversation et le sujet en menus deroulants, rien de preselectionne", () => {
-  assert.match(js, /id="msgChoixConv" data-act="choisir-conv"/);
-  assert.match(js, /id="msgAjSujet" data-act="choisir-sujet-ajout"/);
+  assert.match(js, /htmlChoix\("msgChoixConv", "choisir-conv"/);
+  assert.match(js, /htmlChoix\("msgAjSujet", "choisir-sujet-ajout"/);
   assert.match(js, /PLACEHOLDER_CONVERSATION = "Choisir une conversation"/);
   assert.match(js, /data-act="type-conv"/);
   assert.match(js, /const idDefaut = choixConversation \? ""/);
@@ -47,7 +47,7 @@ test("retours du 29/10 : le dialogue entre en fondu (meme duree que la liste), l
 });
 
 test("M22 : le sujet ou ajouter la vue est un choix visible (principal et sujets non clos)", () => {
-  assert.match(js, /data-act="choisir-sujet-ajout"/);
+  assert.match(js, /"choisir-sujet-ajout"/);
   assert.match(js, /c\.sujets\.filter\(\(s\) => s\.statut !== "clos"\)/);
 });
 
@@ -86,7 +86,14 @@ test("rapport mobile : arriere-plan fige (classe sur le corps, glissements annul
 });
 
 test("M17 : en mode resultat le panneau IA cede la place a la liste, et « Oui » rouvre le rapport propose s'il a ete ferme", () => {
-  assert.match(lire("src/discussionsIA.css"), /\.msg-lateral\.msg-ia-resultat \.msg-ia-panneau\s*\{\s*display:\s*none/);
+  assert.match(lire("src/discussionsIA.css"), /max-width: 768px\) \{ \.msg-lateral\.msg-ia-resultat \.msg-ia-panneau\s*\{\s*display:\s*none/);
   const montage = lire("src/discussionsIAMontage.js");
-  assert.match(montage, /rapportEnAttente && !rapportVue\.ouvert\(\)\) rapportVue\.ouvrir\(rapportEnAttente\)/);
+  assert.match(montage, /rapportEnAttente && !rapportVue\.ouvert\(\) && window\.matchMedia\("\(max-width: 768px\)"\)\.matches\) rapportVue\.ouvrir\(rapportEnAttente\)/);
+});
+
+test("M20/M21 : menus du dialogue personnalises sur mobile seulement, premier message sur 2 lignes qui grandit", () => {
+  assert.match(js, /if \(!mobile\(\)\) \{\s*return '<select id="'/); // laptop : <select> natif inchange
+  assert.match(js, /data-act="menu-choix"/);
+  assert.match(js, /<textarea id="msgNsMessage" rows="2">/);
+  assert.match(css, /#msgNsMessage\s*\{[^}]*max-height:\s*40vh/);
 });

@@ -77,7 +77,7 @@ export function creerDiscussionsIAMontage() {
       retourFocus: bouton,
       surOui: () => {
         flux.accepter();
-        if (rapportEnAttente && !rapportVue.ouvert()) rapportVue.ouvrir(rapportEnAttente); // le rapport est ce que « Oui » doit montrer, meme s'il a ete ferme sous le bandeau
+        if (rapportEnAttente && !rapportVue.ouvert() && window.matchMedia("(max-width: 768px)").matches) rapportVue.ouvrir(rapportEnAttente); // mobile : le rapport est ce que « Oui » doit montrer, meme s'il a ete ferme sous le bandeau
         rapportEnAttente = null;
       },
       // « Non » : la demande est annulee, le panneau du rapport se ferme et la saisie se rouvre avec la phrase.

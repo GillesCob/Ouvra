@@ -30,5 +30,6 @@ test("dialogue Nouveau sujet : bascule a pastille et zone defilante dans une car
   assert.match(css, /\.msg-carte-sujet\s*\{[^}]*height:/);
   assert.match(css, /\.msg-corps\s*\{[^}]*overflow-y:\s*auto/);
   assert.match(css, /\.msg-pastille\s*\{[^}]*transition:\s*transform 0\.3s ease, width 0\.3s ease/);
+  assert.match(css, /max-width: 768px\) and \(prefers-reduced-motion: no-preference\) \{ \.msg-bascule \.msg-pastille \{ transition: transform 0\.3s ease/);
   assert.match(css, /prefers-reduced-motion[^}]*msg-pastille/);
 });

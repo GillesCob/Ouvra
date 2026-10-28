@@ -269,6 +269,16 @@
 @media (hover: hover) and (pointer: fine) { .msg-bascule button:hover { color: var(--text); } }
 .msg-bascule button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) { .msg-pastille, .msg-bascule button { transition: none; } }
+/* Mobile (28/10) : « .msg-pastille » est aussi la classe des pastilles de sujet, dont la regle de transition (plus bas, mouvement autorise) ecrasait celle de la bascule : la pastille
+   sautait au lieu de glisser. Cette regle plus specifique redonne a la bascule la meme transition que la navbar (0,3 s, ease). Laptop inchange. */
+@media (max-width: 768px) and (prefers-reduced-motion: no-preference) { .msg-bascule .msg-pastille { transition: transform 0.3s ease, width 0.3s ease; } }
+@media (max-width: 768px) { .msg-bascule button { padding: 8px 4px; white-space: nowrap; } } /* 360 px : « Conversation existante » tient sur une ligne, le dialogue sans defilement */
+/* Menu deroulant du dialogue sur mobile (src/messagerie/menuChoix.js) : meme hauteur que les champs voisins, texte tronque, liste plafonnee a la place libre. Jamais rendu sur laptop. */
+.collision-trigger.msg-choix-trigger { min-height: 44px; font-size: 16px; }
+.msg-choix-trigger[hidden] { display: none; }
+.msg-choix-trigger .collision-trigger-val { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: 16px; font-weight: 500; }
+.collision-menu.msg-menu-choix { box-sizing: border-box; overflow-y: auto; overscroll-behavior: contain; }
+.msg-menu-choix .collision-menu-texte { overflow-wrap: anywhere; }
 /* Dialogue Nouveau sujet / Conversation existante : meme place et meme taille dans les deux modes (hauteur fixe, bornee par la fenetre) ; si le contenu ne tient pas,
    seule la zone .msg-zone defile, la carte ne grandit ni ne bouge, la rangee de boutons reste visible. 680 px = la hauteur naturelle de « Conversation existante » (636 a 671 px selon la largeur). */
 .msg-carte.msg-carte-sujet { height: min(680px, 100%); overflow: hidden; }
@@ -411,6 +421,9 @@ body.msg-retour-actif #viewerToolbar { top: 56px; }
   /* « Nouveau sujet » (29/10) : le message prend la place libre (mise en page flex plein ecran), la zone ne defile que si le contenu depasse vraiment (clavier ouvert). */
   .msg-zone .msg-corps > .msg-champ-grand { flex: 1 0 auto; min-height: 120px; display: flex; flex-direction: column; }
   .msg-champ-grand textarea { flex: 1 1 auto; height: auto; min-height: 72px; }
+  /* « Nouveau sujet » : le premier message part sur 2 lignes (rows) et grandit avec le texte jusqu'a 40 % de l'ecran (ajusterMessageNouveauSujet), le dialogue tient sans defilement. */
+  .msg-zone .msg-corps > .msg-champ-grand:has(#msgNsMessage) { flex: 0 0 auto; min-height: 0; }
+  #msgNsMessage { flex: none; min-height: 0; max-height: 40vh; }
   .msg-zone .msg-corps { overscroll-behavior: contain; }
   .msg-carte, .msg-carte.msg-carte-sujet { width: 100%; height: 100vh; height: 100dvh; max-height: none; border: 0; border-radius: 0; padding: calc(14px + env(safe-area-inset-top)) 16px calc(14px + env(safe-area-inset-bottom)); }
   .msg-carte .msg-croix { top: calc(4px + env(safe-area-inset-top)); right: 4px; width: 44px; height: 44px; }
