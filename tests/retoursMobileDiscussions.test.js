@@ -32,11 +32,18 @@ test("M6/M27 : sur mobile, tout dialogue de la messagerie est une page pleine ec
   assert.match(mobile, /\.msg-carte\.msg-carte-sujet\s*\{[^}]*height:\s*100dvh/);
 });
 
-test("M7/M8 : d'abord le type de conversation, rien de preselectionne, pas de liste native", () => {
-  assert.ok(!js.includes('id="msgNsConv"') && !js.includes('id="msgAjConv"') && !js.includes("<select"));
+test("M7/M8 puis retour du 29/10 : le type en boutons, puis la conversation et le sujet en menus deroulants, rien de preselectionne", () => {
+  assert.match(js, /id="msgChoixConv" data-act="choisir-conv"/);
+  assert.match(js, /id="msgAjSujet" data-act="choisir-sujet-ajout"/);
+  assert.match(js, /PLACEHOLDER_CONVERSATION = "Choisir une conversation"/);
   assert.match(js, /data-act="type-conv"/);
   assert.match(js, /const idDefaut = choixConversation \? ""/);
-  assert.match(css, /\.msg-choix button\s*\{[^}]*width:\s*100%/);
+  assert.match(js, /racine\.addEventListener\("change", surChangement\)/);
+});
+
+test("retours du 29/10 : le dialogue entre en fondu (meme duree que la liste), le message occupe l'espace libre", () => {
+  assert.match(css, /\.msg-dialogue:not\(\[hidden\]\)\s*\{\s*animation:\s*msg-dialogue-entree 0\.3s ease-in-out/);
+  assert.match(css, /\.msg-zone \.msg-corps > \.msg-champ-grand\s*\{\s*flex:\s*1 0 auto/);
 });
 
 test("M22 : le sujet ou ajouter la vue est un choix visible (principal et sujets non clos)", () => {
@@ -57,5 +64,24 @@ test("M25/M26 : l'historique des syntheses est dans le panneau IA, une carte cli
   const ia = lire("src/discussionsIA.js");
   assert.match(ia, /msg-ia-histo-carte/);
   assert.match(ia, /carte\.addEventListener\("click", \(\) => historique\.ouvrir\(entree\)\)/);
-  assert.match(lire("src/discussionsIAMontage.js"), /ajouterSynthese\(rapportAProposer\)/);
+  assert.match(lire("src/discussionsIAMontage.js"), /ajouterSynthese\(retour\.rapport\)/);
+});
+
+import { ajustementOuverture } from "../src/discussionsIARapportDefilement.js";
+
+test("rapport mobile : le titre du menu ouvert reste en place, le contenu deplie est amene en vue sans cacher le titre", () => {
+  const zone = { zoneHaut: 0, zoneBas: 700 };
+  // Un menu au-dessus s'est replie : le titre est monte de 120 px, on le remet ou il etait.
+  assert.equal(ajustementOuverture({ hautAvant: 300, haut: 180, bas: 400, ...zone }), -120);
+  // Contenu qui depasse de 100 px sous la zone visible : defilement de 100 px, titre encore visible.
+  assert.equal(ajustementOuverture({ hautAvant: 400, haut: 400, bas: 800, ...zone }), 100);
+  // Contenu tres long : le titre ne passe jamais au-dessus de la zone (marge de 8 px).
+  assert.equal(ajustementOuverture({ hautAvant: 200, haut: 200, bas: 2000, ...zone }), 192);
+  assert.equal(ajustementOuverture({ hautAvant: NaN, haut: 1, bas: 2, ...zone }), 0);
+});
+
+test("rapport mobile : arriere-plan fige (classe sur le corps, glissements annules hors de la zone defilante)", () => {
+  assert.match(rapportCss, /body\.disc-rapport-ouvert\s*\{[^}]*overflow:\s*hidden/);
+  assert.match(rapportVue, /verrou\.verrouiller\(\)/);
+  assert.match(rapportVue, /verrou\.deverrouiller\(\)/);
 });

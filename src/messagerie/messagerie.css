@@ -252,6 +252,9 @@
 .msg-carte label, .msg-etiquette { font-size: 12px; font-weight: 700; color: var(--muted); display: block; margin-bottom: 4px; }
 .msg-carte :is(input, textarea, select) { width: 100%; min-height: 40px; padding: 8px 10px; }
 .msg-carte textarea { resize: none; height: 72px; }
+/* Menus deroulants du dialogue (conversation, sujet) : <select> natif, pleine largeur du champ, meme hauteur que les boutons voisins. */
+.msg-carte select { min-height: 44px; }
+.msg-carte select[hidden] { display: none; }
 /* Bascule « Nouveau sujet / Conversation existante » (28/10) : meme composant et memes valeurs que les onglets de la barre de navigation (#navbarThumb et .nav-link de src/style.css) :
    une pastille accent translucide glisse sous le bouton actif (0,3 s, ease) ; le texte du bouton actif passe de --muted a --text. Deux boutons de meme largeur : la position suit data-mode, sans mesure JS. */
 .msg-bascule { position: relative; display: flex; gap: 4px; flex-shrink: 0; }
@@ -337,8 +340,6 @@ body.msg-retour-actif #viewerToolbar { top: 56px; }
 .msg-choix button { width: 100%; min-height: 44px; display: flex; align-items: center; gap: 10px; text-align: left; border: 1px solid var(--border); background: var(--bg); color: var(--muted); border-radius: 8px; padding: 4px 12px; font-size: 13.5px; font-weight: 600; }
 .msg-choix-type button { flex: 1 1 0; min-width: 0; justify-content: center; text-align: center; }
 .msg-choix button[aria-pressed="true"] { color: var(--text); border-color: var(--msg-accent); background: var(--msg-releve); }
-.msg-choix-nom { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.msg-choix-note { flex: none; font-size: 12px; color: var(--msg-accent); }
 @media (hover: hover) and (pointer: fine) { .msg-choix button:not([aria-pressed="true"]):hover { border-color: var(--msg-accent); } }
 /* Menu de statut (22/10) : bouton et menu de la page Collision (.collision-trigger / .collision-menu), pastilles de statut du module. */
 .collision-trigger.msg-statut-trigger { padding: 0 16px 0 14px; min-height: 40px; }
@@ -401,7 +402,16 @@ body.msg-retour-actif #viewerToolbar { top: 56px; }
   .msg-sujets { padding-top: 2px; padding-bottom: 2px; }
   .msg-sujets, .msg-entete, .msg-defile, .msg-composer, .msg-barre-recherche, .msg-vue-pendante { padding-left: 12px; padding-right: 12px; }
   /* Dialogues (28/10, Gilles) : jamais de modale sur mobile, chaque dialogue est une page pleine ecran (meme gabarit que la carte « Infos du sujet »). Laptop inchange. */
-  .msg-dialogue { position: fixed; inset: 0; z-index: 60; padding: 0; background: var(--surface); align-items: stretch; }
+  .msg-dialogue { position: fixed; inset: 0; z-index: 60; padding: 0; background: var(--surface); align-items: stretch; overscroll-behavior: contain; }
+  /* Entree en fondu avec un leger glissement (0,3 s, ease-in-out : meme duree et meme courbe que la liste .msg-liste et le fil .msg-zone-fil) : la page pleine ecran recouvre la navbar
+     au lieu de la faire disparaitre d'un coup (ouverture depuis le Viewer : la page Discussions s'affiche puis le dialogue la recouvre). */
+  .msg-dialogue:not([hidden]) { animation: msg-dialogue-entree 0.3s ease-in-out; }
+  @keyframes msg-dialogue-entree { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .msg-dialogue:not([hidden]) { animation: none; } }
+  /* « Nouveau sujet » (29/10) : le message prend la place libre (mise en page flex plein ecran), la zone ne defile que si le contenu depasse vraiment (clavier ouvert). */
+  .msg-zone .msg-corps > .msg-champ-grand { flex: 1 0 auto; min-height: 120px; display: flex; flex-direction: column; }
+  .msg-champ-grand textarea { flex: 1 1 auto; height: auto; min-height: 72px; }
+  .msg-zone .msg-corps { overscroll-behavior: contain; }
   .msg-carte, .msg-carte.msg-carte-sujet { width: 100%; height: 100vh; height: 100dvh; max-height: none; border: 0; border-radius: 0; padding: calc(14px + env(safe-area-inset-top)) 16px calc(14px + env(safe-area-inset-bottom)); }
   .msg-carte .msg-croix { top: calc(4px + env(safe-area-inset-top)); right: 4px; width: 44px; height: 44px; }
   .msg-composer .msg-rouvrir-conv { min-height: 48px; }
