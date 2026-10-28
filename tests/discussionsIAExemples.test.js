@@ -12,8 +12,8 @@ const index = indexer(demo.conversations, demo.personnes);
 const valeurs = { personnes: index.personnes.map((p) => p.nom) };
 const maintenant = new Date("2026-10-24T12:00:00").getTime();
 
-test("exemples : 6 a 8 phrases, toutes distinctes", () => {
-  assert.ok(EXEMPLES_DISCUSSIONS.length >= 6 && EXEMPLES_DISCUSSIONS.length <= 8);
+test("exemples : 6 a 9 phrases, toutes distinctes", () => {
+  assert.ok(EXEMPLES_DISCUSSIONS.length >= 6 && EXEMPLES_DISCUSSIONS.length <= 9);
   assert.equal(new Set(EXEMPLES_DISCUSSIONS.map((e) => e.demande)).size, EXEMPLES_DISCUSSIONS.length);
 });
 
@@ -45,7 +45,7 @@ test("exemples : les noms cites existent vraiment dans la messagerie", () => {
 });
 
 test("reconnaitreExemple : meme phrase a la casse, aux accents et a la ponctuation pres -> commande, sans IA", () => {
-  const e = EXEMPLES_DISCUSSIONS[0];
+  const e = EXEMPLES_DISCUSSIONS.find((x) => x.demande === "Montre-moi tous les échanges avec Sophie Lambert");
   const r = reconnaitreExemple("  montre-moi TOUS les echanges avec sophie lambert ! ");
   assert.equal(r.action, e.commande.action);
   assert.deepEqual(r.parametres, e.commande.parametres);
@@ -54,4 +54,10 @@ test("reconnaitreExemple : meme phrase a la casse, aux accents et a la ponctuati
 
 test("reconnaitreExemple : phrase differente, vide ou absente -> null", () => {
   for (const p of ["Montre-moi les échanges avec Karim", "", "   ", null, undefined]) assert.equal(reconnaitreExemple(p), null);
+});
+
+test("ordre de la demo (28/10) : la recherche puis le rapport de la demo ouvrent la liste", () => {
+  assert.equal(EXEMPLES_DISCUSSIONS[0].demande, "Sors-moi toutes les conversations qui parlent de gaines en R+2");
+  assert.equal(EXEMPLES_DISCUSSIONS[1].demande, "Fais-moi un rapport sur la collision entre la gaine et la cloison");
+  assert.equal(EXEMPLES_DISCUSSIONS[0].commande.action, "retrouver_echange");
 });

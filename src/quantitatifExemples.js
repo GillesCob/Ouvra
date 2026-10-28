@@ -10,13 +10,13 @@ import { normaliser } from "./reglesCollision.js";
 const filtres = (f) => ({ typesIfc: [], niveaux: [], maquettes: [], noms: [], ...f });
 
 export const EXEMPLES_QUANTITATIF = [
+  { demande: "Compte les gaines, les raccords de gaine et les faux plafonds du niveau 2, par famille", requete: { mesure: "nombre", filtres: filtres({ typesIfc: ["IfcDuctSegment", "IfcDuctFitting", "IfcCovering"], niveaux: ["Level 2"] }), regroupements: ["famille"] } },
   { demande: "Combien de portes au niveau 2 ?", requete: { mesure: "nombre", filtres: filtres({ typesIfc: ["IfcDoor"], niveaux: ["Level 2"] }), regroupements: [] } },
   { demande: "Le nombre de gaines par niveau", requete: { mesure: "nombre", filtres: filtres({ typesIfc: ["IfcDuctSegment", "IfcDuctFitting"] }), regroupements: ["niveau"] } },
   { demande: "Liste des vannes de la maquette mécanique", requete: { mesure: "nombre", filtres: filtres({ typesIfc: ["IfcValve"], maquettes: ["Mechanical (CVC)"] }), regroupements: ["famille"] } },
   { demande: "Combien de murs par niveau et par type ?", requete: { mesure: "nombre", filtres: filtres({ typesIfc: ["IfcWallStandardCase"] }), regroupements: ["niveau", "famille"] } },
   { demande: "Quantité de faux plafonds du niveau 1", requete: { mesure: "nombre", filtres: filtres({ typesIfc: ["IfcCovering"], niveaux: ["Level 1"] }), regroupements: [] } },
   { demande: "Longueur totale des tuyaux (estimée)", requete: { mesure: "longueur_estimee", filtres: filtres({ typesIfc: ["IfcPipeSegment"] }), regroupements: [] } },
-  { demande: "Compte les gaines, les raccords de gaine et les faux plafonds du niveau 2, par famille", requete: { mesure: "nombre", filtres: filtres({ typesIfc: ["IfcDuctSegment", "IfcDuctFitting", "IfcCovering"], niveaux: ["Level 2"] }), regroupements: ["famille"] } },
   { demande: "Nombre de poteaux par niveau et par maquette", requete: { mesure: "nombre", filtres: filtres({ typesIfc: ["IfcColumn"] }), regroupements: ["niveau", "maquette"] } },
   { demande: "Surface estimée des faux plafonds par niveau", requete: { mesure: "surface_estimee", filtres: filtres({ typesIfc: ["IfcCovering"] }), regroupements: ["niveau"] } }
 ];
