@@ -1044,7 +1044,7 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
 
   // Bascule « Nouveau sujet » / « Conversation existante » : la pastille (meme composant que #navbarThumb) glisse sous le bouton actif, selon data-mode.
   function htmlBasculeDialogue(existant) {
-    return '<div class="msg-bascule" data-mode="' + (existant ? "conversation" : "sujet") + '"><span class="msg-pastille" aria-hidden="true"></span>' +
+    return '<div class="msg-bascule" data-mode="' + (existant ? "conversation" : "sujet") + '"><span class="msg-bascule-pastille" aria-hidden="true"></span>' +
       '<button type="button" data-act="mode-dialogue" data-v="sujet" aria-pressed="' + !existant + '">Nouveau sujet</button>' +
       '<button type="button" data-act="mode-dialogue" data-v="conversation" aria-pressed="' + existant + '">Conversation existante</button></div>';
   }
