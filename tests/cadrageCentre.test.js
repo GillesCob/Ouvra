@@ -43,3 +43,15 @@ test("une boite decentree et tres excentree par rapport a la vue est centree aus
 test("coinsDeBoite donne 8 coins distincts", () => {
   assert.equal(new Set(coinsDeBoite(BOITE).map(String)).size, 8);
 });
+
+// Retour 6 (28/10) : apres une commande IA du Viewer, le cadrage de la selection doit REMPLIR la zone 3D (le cadrage par defaut de xeokit, flyTo({ aabb }),
+// n'en occupait que 60 a 66 % de la demi-largeur). Boite reelle du niveau 2 de l'hopital, mesuree dans le Viewer.
+const NIVEAU_2 = [-12, 170, -140, 87, 172, -45];
+for (const [largeur, hauteur] of [[390, 748], [360, 700], [979, 748]]) {
+  test("la selection remplit la zone 3D (au moins 90 % de la demi-largeur ou demi-hauteur), " + largeur + "x" + hauteur, () => {
+    const cadre = cadrerCentre({ aabb: NIVEAU_2, ...HOPITAL, largeur, hauteur });
+    const m = mesurerCadrage({ aabb: NIVEAU_2, ...cadre, largeur, hauteur });
+    const rempli = Math.max(1 - Math.min(m.margeGauche, m.margeDroite) / (largeur / 2), 1 - Math.min(m.margeHaut, m.margeBas) / (hauteur / 2));
+    assert.ok(rempli >= 0.9, "part remplie " + rempli);
+  });
+}
