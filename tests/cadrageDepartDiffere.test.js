@@ -42,7 +42,7 @@ test("main.js : le cadrage de depart sans canvas mesurable est retenu puis refai
   assert.match(js, /memePose\(\{ eye: cam\.eye, look: cam\.look, up: cam\.up \}, pose\)\) viewer\.cameraFlight\.jumpTo\(recalculer\(\)\)/); // une camera deplacee entre-temps n'est jamais ecrasee
   // Collision <-> Viewer : le cadrage global du batiment est ajuste a la zone 3D courante (plus la pose brute de l'hopital).
   assert.match(js, /const centree = boiteBatiment \? poseCentreeSurBoite\(base, boiteBatiment\) : base;/);
-  assert.match(js, /if \(centree !== base\) return viewer\.scene\.visibleObjectIds\.length === nbVisiblesBatiment \? affinerSurSilhouette\(centree, cadrageBatimentDansZone\) : centree;/);
+  assert.match(js, /if \(centree !== base\) return affinerSurSilhouette\(centree, cadrageBatimentDansZone\);/); // affine aussi quand seule la paire est visible (Collision)
   assert.match(js, /boiteBatiment = viewer\.scene\.visibleObjectIds\.length \? viewer\.scene\.getAABB/);
 });
 
@@ -51,4 +51,16 @@ test("main.js : la position initiale et « Recentrer » sont affinees sur la sil
   assert.match(js, /const REMPLISSAGE_SILHOUETTE = 0\.9;/);
   assert.match(js, /return affinerSurSilhouette\(poseCentreeSurBoite\(pose, boite\), vueDepartCentree\);/);
   assert.match(js, /cam\.eye = avant\.eye; cam\.look = avant\.look; cam\.up = avant\.up;/); // la camera est toujours rendue apres les essais
+});
+
+test("main.js : « Recentrer » de la page Collision sans collision choisie reprend le cadrage global affine de l'arrivee (29/10, 47 % de largeur sur Architecture/CVC)", () => {
+  const js = readFileSync(new URL("../src/main.js", import.meta.url), "utf8");
+  assert.doesNotMatch(js, /nbVisiblesBatiment/);
+  const m = js.match(/recenterBtn\.addEventListener\("click", \(\) => \{([\s\S]*?)\n\}\);/);
+  assert.ok(m, "gestionnaire de Recentrer introuvable");
+  const corps = m[1];
+  const iCible = corps.indexOf("if (recenterTarget)");
+  const iCollision = corps.indexOf("if (!collisionDetail.hidden) { viewer.cameraFlight.flyTo(cadrageBatimentDansZone()); return; }");
+  const iViewer = corps.indexOf("recentrerSurMaquettes();");
+  assert.ok(iCible >= 0 && iCollision > iCible && iViewer > iCollision, "ordre : collision choisie, puis page Collision, puis Viewer");
 });

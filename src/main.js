@@ -2256,7 +2256,6 @@ function silhouetteRendue() {
 // et le Viewer vient d'etre affiche (la taille du canvas est connue de la page mais pas encore de xeokit : tampon de 1 x 1 pixel, rien a mesurer). La pose rendue est alors retenue
 // avec sa fonction de calcul ; des que le canvas est pret, si la camera n'a pas bougé depuis, la pose est recalculee et appliquee sans animation.
 let affinageEnAttente = null; // { pose, recalculer }
-let nbVisiblesBatiment = 0; // nombre d'objets visibles quand la boite du batiment a ete prise
 let boiteBatiment = null; // boite du batiment entier (objets visibles a la fin du chargement), base du cadrage global de Collision et du retour au Viewer
 
 function canvasMesurable() {
@@ -2340,6 +2339,9 @@ function recentrerSurMaquettes() {
 recenterBtn.addEventListener("click", () => {
   if (vueAvantDessus) { appliquerVueDessus(); return; }
   if (recenterTarget) { recenterTarget(); return; }
+  // Page Collision sans collision choisie (29/10) : meme cadrage global que l'arrivee sur la page, jamais le cadrage « maquettes cochees » du Viewer
+  // (la paire seule est cochee : boite des fichiers, direction de regard courante, sans affinage, la maquette se dezoomait a 47 % de la largeur).
+  if (!collisionDetail.hidden) { viewer.cameraFlight.flyTo(cadrageBatimentDansZone()); return; }
   recentrerSurMaquettes();
 });
 
@@ -4322,8 +4324,9 @@ function cadrageBatimentDansZone() {
   // Retour du 28/10 (« toujours dezoomee ») : la pose brute de l'hopital, reglee pour un ecran large, coupait la maquette en portrait et sur Collision. Quand la boite
   // du batiment est connue, le cadrage est calcule pour la zone 3D courante (meme calcul que la position initiale et « Recentrer »).
   const centree = boiteBatiment ? poseCentreeSurBoite(base, boiteBatiment) : base;
-  // Affinage sur la silhouette reellement dessinee seulement si tout le batiment est visible (sinon la mesure porterait sur une partie).
-  if (centree !== base) return viewer.scene.visibleObjectIds.length === nbVisiblesBatiment ? affinerSurSilhouette(centree, cadrageBatimentDansZone) : centree;
+  // Affinage sur la silhouette reellement dessinee, quelles que soient les maquettes visibles (29/10) : sur la page Collision seule la paire est montree (Architecture et
+  // Mecanique, ou Structure et Mecanique), la boite du batiment entier surestimait alors le contour et la maquette restait a 70 % de la largeur au lieu de 90 %.
+  if (centree !== base) return affinerSurSilhouette(centree, cadrageBatimentDansZone);
   // Mobile (<= 768 px) : pas de recul (la zone 3D portrait donnerait un facteur de 3 : maquette minuscule), meme vue que « Recentrer ».
   const facteur = window.matchMedia(REQUETE_MOBILE).matches ? 1 : Math.max(1, 1.6 / (canevas.clientWidth / canevas.clientHeight));
   const dir = [base.eye[0] - base.look[0], base.eye[1] - base.look[1], base.eye[2] - base.look[2]];
@@ -9496,7 +9499,6 @@ function loadProject(projectKey) {
         document.addEventListener("pointerdown", effacer, true);
         setTimeout(effacer, 6000);
       }
-      nbVisiblesBatiment = viewer.scene.visibleObjectIds.length;
       boiteBatiment = viewer.scene.visibleObjectIds.length ? viewer.scene.getAABB(viewer.scene.visibleObjectIds) : null; // le batiment entier, tel que montre a l'arrivee
       // 20/10 : 1 s de pause pour lire le temps de la derniere maquette (la 3D se dessine derriere),
       // puis le logo s'ouvre sur la maquette. Affichage immediat en mode progressif.
