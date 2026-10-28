@@ -55,3 +55,26 @@ for (const [largeur, hauteur] of [[390, 748], [360, 700], [979, 748]]) {
     assert.ok(rempli >= 0.9, "part remplie " + rempli);
   });
 }
+
+// Silhouette reellement dessinee (28/10) : la boite englobante surestime le contour (96 % annonces pour 70,8 % de pixels occupes). Silhouette simulee : un nuage de points
+// bien plus etroit que la boite ; la correction mesure / corrige doit converger vers 90 % de la dimension limitante, centre.
+import { corrigerSurSilhouette, silhouetteDePoints } from "../src/cadrageCentre.js";
+const NUAGE = (() => {
+  const pts = [];
+  for (let i = 0; i <= 12; i++) for (let j = 0; j <= 4; j++) pts.push([-10 + i * 8, 172 + j * 6 + (i % 3) * 2, -150 + i * 11 - j * 6]); // bande oblique dans la boite
+  return pts;
+})();
+for (const [largeur, hauteur] of [[390, 792], [360, 588], [1139, 848], [1940, 974]]) {
+  test("correction sur la silhouette : 90 % de la dimension limitante, centree, " + largeur + "x" + hauteur, () => {
+    let pose = cadrerCentre({ aabb: BOITE, ...HOPITAL, largeur, hauteur });
+    for (let i = 0; i < 10; i++) {
+      const silhouette = silhouetteDePoints({ points: NUAGE, ...pose, largeur, hauteur });
+      pose = corrigerSurSilhouette({ ...pose, largeur, hauteur, silhouette, remplissage: 0.9 });
+    }
+    const s = silhouetteDePoints({ points: NUAGE, ...pose, largeur, hauteur });
+    const demi = Math.max((s.xmax - s.xmin) / 2, (s.ymax - s.ymin) / 2);
+    assert.ok(Math.abs(demi - 0.9) < 0.01, "demi-taille " + demi);
+    assert.ok(Math.abs((s.xmin + s.xmax) / 2) < 0.01 && Math.abs((s.ymin + s.ymax) / 2) < 0.01, JSON.stringify(s));
+    assert.ok(Math.min(s.xmin, s.ymin) >= -1 && Math.max(s.xmax, s.ymax) <= 1);
+  });
+}

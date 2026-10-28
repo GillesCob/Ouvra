@@ -127,3 +127,29 @@ export function cadrerCentre({ aabb, eye, look, up, fov = 60, fovAxis = "min", l
   const { cible, distance } = poser(x);
   return { eye: moins(cible, fois(d, distance)), look: cible, up: up.slice() };
 }
+
+// Silhouette reellement dessinee (28/10, « la maquette est toujours dezoomee ») : la boite englobante ne suit pas le contour du batiment (96 % de la largeur annonces
+// par la boite pour 70,8 % de pixels reellement occupes, mesure en WebKit a 390 px). A partir du rectangle des pixels non vides (coordonnees normalisees -1 a 1 sur chaque
+// axe de la zone, y vers le haut), renvoie la pose qui le centre et lui fait occuper `remplissage` (0 a 1) de la dimension limitante. Une passe ne suffit pas (la perspective
+// n'est pas lineaire) : l'appelant mesure, corrige, remesure.
+export function corrigerSurSilhouette({ eye, look, up, fov = 60, fovAxis = "min", largeur, hauteur, silhouette, remplissage = 0.9 }) {
+  const d = unite(moins(look, eye));
+  const r = unite(vect(d, up));
+  const u = vect(r, d);
+  const t = tangentes(fov, fovAxis, largeur, hauteur);
+  const distance = norme(moins(look, eye));
+  const cx = (silhouette.xmin + silhouette.xmax) / 2;
+  const cy = (silhouette.ymin + silhouette.ymax) / 2;
+  const demi = Math.max((silhouette.xmax - silhouette.xmin) / 2, (silhouette.ymax - silhouette.ymin) / 2);
+  const cible = plus(look, plus(fois(r, cx * t.tx * distance), fois(u, cy * t.ty * distance)));
+  return { eye: moins(cible, fois(d, distance * demi / remplissage)), look: cible, up: up.slice() };
+}
+
+// Rectangle (normalise) des points projetes avec la camera donnee : sert aux tests (silhouette simulee) ; meme projection que mesurerCadrage.
+export function silhouetteDePoints({ points, eye, look, up, fov = 60, fovAxis = "min", largeur, hauteur }) {
+  const d = unite(moins(look, eye));
+  const r = unite(vect(d, up));
+  const u = vect(r, d);
+  const { xmin, xmax, ymin, ymax } = rectangleProjete(points, eye, d, r, u, tangentes(fov, fovAxis, largeur, hauteur));
+  return { xmin, xmax, ymin, ymax };
+}

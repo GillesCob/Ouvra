@@ -36,11 +36,19 @@ test("pose ajustee en portrait : la dimension limitante de la zone est occupee a
 
 test("main.js : le cadrage de depart sans canvas mesurable est retenu puis refait au premier affichage du canvas", () => {
   const js = readFileSync(new URL("../src/main.js", import.meta.url), "utf8");
-  assert.match(js, /poseDepartSansCanvas = canvasMesurable\(\) \? null : centree/); // retenue seulement quand le canvas n'a pas de taille
-  assert.match(js, /new ResizeObserver\(recentrerDepartSiEnAttente\)\.observe\(viewer\.scene\.canvas\.canvas\)/); // reprise au premier affichage
-  assert.match(js, /memePose\(\{ eye: cam\.eye, look: cam\.look, up: cam\.up \}, attendue\)\) viewer\.cameraFlight\.jumpTo\(vueDepartCentree\(\)\)/);
-  assert.match(js, /else poseDepartSansCanvas = null; \/\/ la camera a ete deplacee/); // une camera deplacee entre-temps n'est jamais ecrasee
+  assert.match(js, /if \(!canvasPret\(\)\) \{ affinageEnAttente = \{ pose, recalculer \}; return pose; \}/); // retenue seulement quand le canvas n'est pas pret
+  assert.match(js, /new ResizeObserver\(traiterAffinageEnAttente\)\.observe\(viewer\.scene\.canvas\.canvas\)/); // reprise au premier affichage
+  assert.match(js, /viewer\.scene\.canvas\.on\("boundary", traiterAffinageEnAttente\)/); // et quand xeokit a pris la taille
+  assert.match(js, /memePose\(\{ eye: cam\.eye, look: cam\.look, up: cam\.up \}, pose\)\) viewer\.cameraFlight\.jumpTo\(recalculer\(\)\)/); // une camera deplacee entre-temps n'est jamais ecrasee
   // Collision <-> Viewer : le cadrage global du batiment est ajuste a la zone 3D courante (plus la pose brute de l'hopital).
-  assert.match(js, /const centree = boiteBatiment \? poseCentreeSurBoite\(base, boiteBatiment\) : base;\n\s*if \(centree !== base\) return centree;/);
+  assert.match(js, /const centree = boiteBatiment \? poseCentreeSurBoite\(base, boiteBatiment\) : base;/);
+  assert.match(js, /if \(centree !== base\) return viewer\.scene\.visibleObjectIds\.length === nbVisiblesBatiment \? affinerSurSilhouette\(centree, cadrageBatimentDansZone\) : centree;/);
   assert.match(js, /boiteBatiment = viewer\.scene\.visibleObjectIds\.length \? viewer\.scene\.getAABB/);
+});
+
+test("main.js : la position initiale et « Recentrer » sont affinees sur la silhouette reellement dessinee (90 % de la dimension limitante)", () => {
+  const js = readFileSync(new URL("../src/main.js", import.meta.url), "utf8");
+  assert.match(js, /const REMPLISSAGE_SILHOUETTE = 0\.9;/);
+  assert.match(js, /return affinerSurSilhouette\(poseCentreeSurBoite\(pose, boite\), vueDepartCentree\);/);
+  assert.match(js, /cam\.eye = avant\.eye; cam\.look = avant\.look; cam\.up = avant\.up;/); // la camera est toujours rendue apres les essais
 });
