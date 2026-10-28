@@ -17,7 +17,6 @@ import { creerFlux } from "./commandesFlux.js";
 import { etatDrawerDepuisVisibles, capturerEtatDrawer, boiteDesVisibles } from "./commandesDrawer.js";
 import { creerCommandesBandeau } from "./commandesBandeau.js";
 import { creerZones } from "./commandesZones.js";
-import { creerZonesUI } from "./commandesZonesUI.js";
 import { valeursPourCommande } from "./commandesValeurs.js";
 import { demanderCommande } from "./commandesIAClient.js";
 import { EXEMPLES_COMMANDES, reconnaitreExemple } from "./commandesExemples.js";
@@ -169,11 +168,6 @@ const COLLISION_PASTILLES = false;
 // liste des collisions (il masquait/affichait la bulle 3D de cette collision).
 // false = l'oeil revient.
 const MASQUE_OEIL_COLLISION = true;
-// MASQUE_ZONES (27/10, demande de Gilles) : retire le bouton « Zone » de la barre
-// du Viewer (laptop et mobile) et sa fenetre « Zones nommees » (jamais creee).
-// Les zones deja stockees restent lisibles par « Affiche la zone ... », mais plus
-// aucune ne peut etre definie. false = le bouton et la fenetre reviennent.
-const MASQUE_ZONES = true;
 // COLLISION_LISTE_SIMPLE (19/10) : chaque ligne de la liste des collisions ne
 // montre que le numero, les identifiants des 2 elements, le niveau et le statut
 // (le nom complet reste en infobulle et dans la fiche). false = lignes d'avant.
@@ -1112,8 +1106,6 @@ let commandesViewer = null; // moteur des commandes du Viewer (cree a la premier
 let commandesFlux = null; // flux « appliquer puis confirmer » des commandes (cree a la premiere commande), idem
 let commandesBandeau = null; // bandeau « Est-ce bien votre demande ? » (cree plus bas), idem
 let commandesIA = null; // saisie « IA » du Viewer (creee plus bas) ; fermee par activateView a la sortie du Viewer
-let zonesUI = null; // fenetre « Zones nommees » (creee plus bas), idem
-let zonePointCapture = null; // rappel arme par la fenetre « Zones nommees » : le prochain clic dans la 3D lui donne le point touche
 let origineDrawer = null; // cases du drawer avant la premiere commande en cours (photo de capturerEtatDrawer), rendue au « Non » et a la sortie du Viewer
 if (messagerie) {
   document.getElementById("msgRoot").hidden = false;
@@ -1157,7 +1149,6 @@ function activateView(viewName, options = {}) {
   if (viewName !== "viewer") {
     // Saisie ouverte, dictee en cours ou reponse IA en route : tout est coupe, sinon une reponse tardive s'appliquerait dans un Viewer masque.
     if (commandesIA) commandesIA.fermer();
-    if (zonesUI) zonesUI.fermer();
     reinitialiserCommandesViewer();
   }
   if (import.meta.env.DEV) {
@@ -6425,7 +6416,6 @@ reglesIA = creerReglesIA({
 // isole, met en surbrillance et cadre. Seuls des mots partent vers l'IA (relais api/commande.js) ; les phrases toutes faites sont reconnues ici, sans IA.
 const commandesIABtn = document.getElementById("commandesIABtn");
 const commandesResetBtn = document.getElementById("commandesResetBtn");
-const commandesZoneBtn = document.getElementById("commandesZoneBtn");
 
 // Zones nommees (option A de « afficher une piece » : les maquettes n'ont aucun IfcSpace), sauvegardees dans localStorage (jamais bloquant).
 function stockageLocal() {
@@ -6869,17 +6859,6 @@ commandesIA = creerCommandesIA({
   exemples: EXEMPLES_COMMANDES,
   proposerCommande: (commande) => proposerCommandeViewer(commande, true),
   traduire: traduirePhraseViewer,
-  fermerAutres: () => { cameraSpeedPanel.hidden = true; cameraSpeedToggle.classList.remove("active"); }
-});
-
-// Bouton « Zone » : definir un volume nomme (depuis l'element selectionne ou par un clic dans la maquette). Masque par MASQUE_ZONES : ni bouton, ni fenetre (zonesUI reste null, deja gere partout).
-commandesZoneBtn.hidden = MASQUE_ZONES;
-if (!MASQUE_ZONES) zonesUI = creerZonesUI({
-  bouton: commandesZoneBtn,
-  zones: zonesCommandes,
-  elementSelectionne: () => (selectedEntity && selectedEntity.aabb ? Array.from(selectedEntity.aabb) : null),
-  armerClic: (rappel) => { zonePointCapture = rappel; },
-  annulerClic: () => { zonePointCapture = null; },
   fermerAutres: () => { cameraSpeedPanel.hidden = true; cameraSpeedToggle.classList.remove("active"); }
 });
 
@@ -9133,14 +9112,6 @@ function createCoupeFromHit(hit) {
 }
 
 function handleViewerPick(canvasCoords) {
-  // Fenetre « Zones nommees » en attente d'un point : ce clic le lui donne et ne selectionne rien.
-  if (zonePointCapture) {
-    const rappel = zonePointCapture;
-    zonePointCapture = null;
-    const touche = viewer.scene.pick({ canvasPos: canvasCoords, pickSurface: true });
-    rappel(touche && touche.worldPos ? Array.from(touche.worldPos) : null);
-    return;
-  }
   if (coupePickingMode) {
     const hit = viewer.scene.pick({ canvasPos: canvasCoords, pickSurface: true, pickSurfaceNormal: true });
     setCoupePickingMode(false);
