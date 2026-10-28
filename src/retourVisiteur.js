@@ -11,6 +11,13 @@ const DELAI_ENVOI_MS = 12000;
 const LIBELLES_PAGES = { accueil: "Accueil", viewer: "Viewer", collision: "Collision", discussions: "Discussions", quantitatif: "Quantitatif", plan3d: "2D → 3D", projeteur: "Todo", admin: "Admin" };
 export const libellePage = (vue) => (vue ? LIBELLES_PAGES[vue] || String(vue) : "Application");
 
+// Texte d'aide du champ selon le choix : un bug se decrit (ce qui s'est passe, ce qu'on attendait), une idee se raconte (a quoi elle sert).
+const PLACEHOLDERS = {
+  bug: "Qu'est-ce qui s'est passé ? Ce que tu as fait, et ce que tu attendais.",
+  idee: "Ton idée, et ce qu'elle te permettrait de faire."
+};
+export const placeholderRetour = (type) => PLACEHOLDERS[type] || PLACEHOLDERS.idee;
+
 export function corpsRetour({ type, message, contact = "", page = "", site = "" }) {
   return { type, message: String(message || "").trim().slice(0, MESSAGE_MAX), contact: String(contact || "").trim(), page, site: String(site || "") };
 }
@@ -73,6 +80,10 @@ export function creerRetourVisiteur({ declencheurs, pageCourante }) {
     const groupe = creer("div", "retour-types");
     groupe.setAttribute("role", "radiogroup");
     groupe.setAttribute("aria-label", "Type de retour");
+    // Pastille qui glisse sous le choix actif : meme composant visuel que #navbarThumb de la barre de navigation (src/style.css), placee comme placerPastilleNavbar (src/main.js).
+    const pastille = creer("span", "retour-pastille");
+    pastille.setAttribute("aria-hidden", "true");
+    groupe.appendChild(pastille);
     const radios = {};
     [["bug", "Bug"], ["idee", "Idée"]].forEach(([valeur, libelle], i) => {
       const label = creer("label", "retour-type");
@@ -89,7 +100,7 @@ export function creerRetourVisiteur({ declencheurs, pageCourante }) {
     const message = creer("textarea", "retour-message");
     message.rows = 5;
     message.maxLength = MESSAGE_MAX;
-    message.placeholder = "Ce que tu as vu, ou ce que tu aimerais voir";
+    message.placeholder = placeholderRetour("bug");
     labelMessage.appendChild(message);
     const compteur = creer("p", "retour-compteur");
     compteur.setAttribute("aria-hidden", "true");
@@ -127,8 +138,14 @@ export function creerRetourVisiteur({ declencheurs, pageCourante }) {
     carte.append(titre, intro, formulaire, merci);
     fond.appendChild(carte);
     document.body.appendChild(fond);
-    champs = { carte, intro, formulaire, radios, message, compteur, contact, piege, etat, envoyer, merci, fermerMerci };
+    champs = { carte, intro, formulaire, radios, message, compteur, contact, piege, etat, envoyer, merci, fermerMerci, groupe, pastille };
 
+    // Le choix change : le texte d'aide suit, la pastille glisse sous le nouveau choix.
+    Object.values(radios).forEach((radio) => radio.addEventListener("change", () => {
+      champs.message.placeholder = placeholderRetour(radio.value);
+      placerPastille();
+    }));
+    window.addEventListener("resize", () => { if (ouverte) placerPastille(); });
     const majCompteur = () => { compteur.textContent = message.value.length + " / " + MESSAGE_MAX; };
     message.addEventListener("input", majCompteur);
     majCompteur();
@@ -141,6 +158,23 @@ export function creerRetourVisiteur({ declencheurs, pageCourante }) {
       if (e.key === "Tab") boucleFocus(e);
     }, true);
     formulaire.addEventListener("submit", (e) => { e.preventDefault(); soumettre(); });
+  }
+
+  // Comme placerPastilleNavbar : la premiere pose se fait sans transition (la pastille ne traverse pas la modale), les suivantes glissent.
+  let pastillePosee = false;
+  function placerPastille() {
+    const actif = champs.radios.bug.checked ? champs.radios.bug : champs.radios.idee;
+    const cible = actif.closest("label");
+    if (!cible || !cible.offsetWidth) return;
+    const { pastille } = champs;
+    if (!pastillePosee) pastille.style.transition = "none";
+    pastille.style.width = cible.offsetWidth + "px";
+    pastille.style.transform = "translateX(" + cible.offsetLeft + "px)";
+    if (!pastillePosee) {
+      void pastille.offsetWidth;
+      pastille.style.transition = "";
+      pastillePosee = true;
+    }
   }
 
   function boucleFocus(e) {
@@ -190,10 +224,13 @@ export function creerRetourVisiteur({ declencheurs, pageCourante }) {
     champs.contact.value = "";
     champs.piege.value = "";
     champs.radios.bug.checked = true;
+    champs.message.placeholder = placeholderRetour("bug");
     champs.compteur.textContent = "0 / " + MESSAGE_MAX;
     afficherEtat("");
     fond.hidden = false;
     ouverte = true;
+    pastillePosee = false; // la modale vient d'apparaitre : la pastille se repose sans glisser
+    placerPastille();
     champs.message.focus({ preventScroll: true });
   }
 

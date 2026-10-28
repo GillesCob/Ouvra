@@ -1,0 +1,531 @@
+// Page « Quantitatif » (24/10) : une question en francais sur les maquettes, le tableau de quantites en reponse.
+// Deroulement : la demande est tapee ou dictee (Vocal) ; une phrase identique a un exemple est reconnue ici sans IA, sinon seuls des MOTS partent
+// vers l'IA (POST /api/quantitatif) qui TRADUIT la phrase en requete ; le moteur local (src/quantitatif.js) calcule. Le tableau s'affiche tout de
+// suite avec le bandeau « Est-ce bien votre demande ? » : Oui le valide, Non l'annule et rouvre la saisie prerenseignee.
+// Module sans dependance a main.js : tout passe par les parametres de creerQuantitatifPage.
+//   racine : element qui recoit la page (#quantitatifRoot)
+//   obtenirDonnees() : promesse de { elements, notes, source: "scene" | "json" } ou null (aucune maquette lisible) ; ne rejette jamais
+//   demander({ phrase, valeurs }) : src/quantitatifIAClient.js ; ne rejette jamais
+//   voirDansViewer(criteres, retour) : facultatif, ouvre le Viewer sur { typesIfc, niveaux, maquettes, noms } avec le rappel de retour { libelle, surRetour } ; rend un message (texte) ou null
+//   obtenirVersions() : promesse de [{ id, label, url, empreinte }] (src/quantitatifVersions.js) ; ne rejette jamais
+//   historique : creerHistorique(...) (src/quantitatifHistorique.js), stockage remplacable ; chaque quantitatif demande y est garde et rouvrable sans IA
+// Un rapport (src/quantitatifRapport.js) porte l'empreinte de version des seules maquettes concernees : a chaque affichage il est compare aux
+// versions actuelles (comparerVersions), et s'il est OBSOLETE un badge rouge le dit, avec « Recalculer » (meme requete, sans IA).
+
+import "./quantitatif.css";
+import { calculer, exporterCsv } from "./quantitatif.js";
+import { construireRapport, tableauDe, nomFichier, dateRelative } from "./quantitatifRapport.js";
+import { comparerVersions, libelleStatut } from "./quantitatifVersions.js";
+import { valeursPourQuantitatif } from "./quantitatifDonnees.js";
+import { EXEMPLES_QUANTITATIF, reconnaitreExemple } from "./quantitatifExemples.js";
+import { nettoyerPhrase } from "./reglesVoix.js";
+import { creerIASaisie } from "./iaSaisie.js";
+
+// MASQUE_INFOS_QUANTITATIF (27/10, demande de Gilles) : retire de l'ecran les informations de contexte du calcul (elements exclus, objets spatiaux,
+// niveaux regroupes, date de calcul, maquettes). Les donnees restent dans le rapport et les exports ne changent pas. Mettre false pour les reafficher.
+const MASQUE_INFOS_QUANTITATIF = true;
+
+const MESSAGE_VIDE = "Écris ta demande, par exemple « Combien de portes au niveau 2 ? ».";
+const MESSAGE_SANS_DONNEES = "Aucune maquette lisible pour le moment. Ouvre d'abord le Viewer et attends la fin du chargement.";
+const nombre = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 2 });
+
+function creer(tag, classe, texte) {
+  const el = document.createElement(tag);
+  if (classe) el.className = classe;
+  if (texte != null) el.textContent = texte;
+  return el;
+}
+
+// Libelle lisible des criteres d'une ligne, pour le nom accessible du bouton « Voir dans le Viewer ».
+const nomDeLigne = (cles) => (cles.length ? cles.join(", ") : "ensemble des éléments");
+
+export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDansViewer = null, obtenirVersions = async () => [], historique = null }) {
+  let jeton = 0; // numero de la demande en cours : une reponse tardive d'une demande abandonnee est ignoree
+  let dernierResultat = null; // { rapport, phrase, nouveau } du rapport affiche
+
+  // ---------- Construction ----------
+  // Mise en page (refonte du 24/10) : en-tete, puis deux colonnes sur laptop (demande + resultat | historique), une seule colonne sur mobile.
+  // Composants et couleurs de l'application (cartes --surface / --border, pastilles teintees comme .status-badge, bandeaux) : voir src/quantitatif.css.
+  racine.textContent = "";
+  racine.classList.add("qt-page");
+  const entete = creer("header", "qt-entete");
+  const titre = creer("h2", "qt-titre", "Quantitatif");
+  titre.id = "quantitatifTitre";
+  const statut = creer("p", "qt-statut");
+  statut.id = "quantitatifStatut";
+  entete.append(titre, statut);
+
+  // Carte de depart (25/10, comme la page 2D -> 3D) : deux choix seulement, « Nouvelle demande » (ouvre la modale de saisie commune, src/iaSaisie.js, vocal
+  // d'abord, avec ses phrases toutes faites) ou « Historique ». UN seul bouton IA : le meme element est deplace entre la carte de depart et la barre des autres vues.
+  const boutonIA = creer("button", "qt-btn-ia", "Nouvelle demande");
+  boutonIA.type = "button";
+  boutonIA.id = "quantitatifIABtn";
+  boutonIA.setAttribute("aria-haspopup", "dialog");
+  boutonIA.setAttribute("aria-label", "Nouvelle demande à l'IA");
+  boutonIA.title = "Demander à l'IA";
+  const boutonHistorique = creer("button", "qt-btn", "Historique");
+  boutonHistorique.type = "button";
+  boutonHistorique.id = "quantitatifHistoriqueBtn";
+  const boutonRetour = creer("button", "qt-btn qt-btn-discret", "← Retour");
+  boutonRetour.type = "button";
+  const departCarte = creer("section", "qt-depart");
+  departCarte.setAttribute("aria-label", "Que veux-tu faire ?");
+  const barre = creer("div", "qt-barre");
+  barre.hidden = true;
+
+  const message = creer("p", "qt-message");
+  message.id = "quantitatifMessage";
+  message.setAttribute("role", "status");
+  message.hidden = true;
+
+  const bandeau = creer("div", "qt-bandeau");
+  bandeau.setAttribute("role", "group");
+  bandeau.setAttribute("aria-label", "Vérification de la demande");
+  bandeau.hidden = true;
+  const bandeauQuestion = creer("p", "qt-bandeau-question", "Est-ce bien votre demande ?");
+  const bandeauTexte = creer("p", "qt-bandeau-texte");
+  const bandeauBoutons = creer("div", "qt-bandeau-boutons");
+  const boutonOui = creer("button", "qt-btn qt-btn-principal", "Oui");
+  boutonOui.type = "button";
+  const boutonNon = creer("button", "qt-btn", "Non");
+  boutonNon.type = "button";
+  bandeauBoutons.append(boutonOui, boutonNon);
+  bandeau.append(bandeauQuestion, bandeauTexte, bandeauBoutons);
+
+  const resultatZone = creer("section", "qt-carte qt-resultat");
+  resultatZone.setAttribute("aria-live", "polite");
+  resultatZone.hidden = true;
+
+  const histoBloc = creer("section", "qt-carte qt-historique");
+  histoBloc.setAttribute("aria-label", "Historique des quantitatifs");
+
+  // Une vue a la fois : depart | resultat | historique. Les zones sont masquees par leur conteneur, jamais en touchant a l'etat interne du bandeau ou du resultat.
+  const zoneResultat = creer("div", "qt-zone");
+  zoneResultat.append(bandeau, resultatZone);
+  zoneResultat.hidden = true;
+  const zoneHistorique = creer("div", "qt-zone");
+  zoneHistorique.appendChild(histoBloc);
+  zoneHistorique.hidden = true;
+  const principal = creer("div", "qt-principal");
+  principal.append(departCarte, barre, message, zoneResultat, zoneHistorique);
+  racine.append(entete, principal);
+  departCarte.append(boutonIA, boutonHistorique);
+
+  // ---------- Vues ----------
+  let vue = "depart";
+  // La vue « resultat » sans rapport affiche (demande abandonnee, « Non », rapport supprime) retombe sur le depart.
+  function majVue() {
+    const v = vue === "resultat" && resultatZone.hidden && bandeau.hidden ? "depart" : vue;
+    departCarte.hidden = v !== "depart";
+    barre.hidden = v === "depart" || (v === "resultat" && !bandeau.hidden); // pendant la confirmation, la relecture s'affiche seule
+    zoneResultat.hidden = v !== "resultat";
+    zoneHistorique.hidden = v !== "historique";
+    if (v === "depart") departCarte.append(boutonIA, boutonHistorique);
+    else {
+      barre.append(boutonRetour, boutonIA);
+      if (v === "resultat") barre.append(boutonHistorique); else departCarte.append(boutonHistorique);
+    }
+  }
+  function allerA(nouvelle) { vue = nouvelle; majVue(); }
+  boutonRetour.addEventListener("click", () => allerA("depart"));
+  boutonHistorique.addEventListener("click", () => { allerA("historique"); rafraichirHistorique(); });
+
+  // ---------- Etat visuel ----------
+  function dire(texte) {
+    message.textContent = texte || "";
+    message.hidden = !texte;
+  }
+  function occuper(occupe) {
+    racine.classList.toggle("qt-occupe", occupe);
+    racine.setAttribute("aria-busy", occupe ? "true" : "false");
+    boutonIA.disabled = occupe;
+  }
+  function viderResultat() {
+    dernierResultat = null;
+    bandeau.hidden = true;
+    resultatZone.hidden = true;
+    resultatZone.textContent = "";
+    majVue();
+  }
+
+  // ---------- Saisie : modale commune (vocal d'abord) ----------
+  const saisie = creerIASaisie({
+    exemples: EXEMPLES_QUANTITATIF,
+    libelle: "Demande de quantitatif par l'IA",
+    placeholder: "Ex. : combien de portes au niveau 2 ?",
+    messageVide: MESSAGE_VIDE,
+    retourFocus: boutonIA,
+    surEnvoi: (phrase, { annule }) => traiter(phrase, annule)
+  });
+  boutonIA.addEventListener("click", () => saisie.ouvrir({}));
+
+  // ---------- Tableau ----------
+  function cellule(tag, texte, classe) {
+    return creer(tag, classe, texte);
+  }
+
+  function ligneTableau(resultat, ligne, estTotal) {
+    const tr = creer("tr", estTotal ? "qt-total" : null);
+    const nCles = Math.max(1, resultat.regroupements.length);
+    if (estTotal) {
+      const th = cellule("th", "Total", "qt-cle");
+      th.scope = "row";
+      if (nCles > 1) th.colSpan = nCles;
+      tr.appendChild(th);
+    } else {
+      const cles = ligne.cles.length ? ligne.cles : ["Ensemble"];
+      cles.forEach((cle, i) => {
+        const c = cellule(i === 0 ? "th" : "td", cle, "qt-cle");
+        if (i === 0) c.scope = "row";
+        tr.appendChild(c);
+      });
+    }
+    tr.appendChild(cellule("td", nombre.format(ligne.nombre + ligne.sansDonnee), "qt-num"));
+    const quantite = cellule("td", nombre.format(ligne.valeur), "qt-num qt-valeur");
+    if (resultat.mesure.unite) quantite.appendChild(creer("span", "qt-unite", " " + resultat.mesure.unite));
+    tr.appendChild(quantite);
+    const origine = cellule("td", null, "qt-origine-cellule");
+    origine.appendChild(creer("span", "qt-origine qt-origine-" + resultat.mesure.origine, resultat.mesure.origineLibelle));
+    tr.appendChild(origine);
+    if (voirDansViewer) {
+      const td = cellule("td", null, "qt-action");
+      if (ligne.nombre + ligne.sansDonnee > 0) {
+        const b = creer("button", "qt-voir", "Voir");
+        b.type = "button";
+        const nom = estTotal ? "ensemble des éléments" : nomDeLigne(ligne.cles);
+        b.setAttribute("aria-label", "Voir dans le Viewer : " + nom);
+        b.title = "Voir dans le Viewer";
+        b.addEventListener("click", () => {
+          const retour = voirDansViewer(ligne.criteres, contexteRetour());
+          if (typeof retour === "string" && retour) dire(retour);
+        });
+        td.appendChild(b);
+      }
+      tr.appendChild(td);
+    }
+    return tr;
+  }
+
+  // Rappel donne au bandeau « ← Retour au quantitatif » au moment de l'envoi vers le Viewer (src/retourContexte.js) : il re-affiche le MEME rapport,
+  // relu depuis l'historique (sinon la copie en memoire), sans nouveau calcul ni appel IA. Le bandeau ne sait rien de cette page.
+  function contexteRetour() {
+    const rapportCourant = dernierResultat ? dernierResultat.rapport : null;
+    return {
+      libelle: "Retour au quantitatif",
+      surRetour: async () => {
+        if (!rapportCourant) return;
+        const entree = historique ? await historique.obtenir(rapportCourant.id) : null;
+        await afficherRapport(entree ? entree.rapport : rapportCourant, { nouveau: false });
+        rafraichirHistorique();
+      }
+    };
+  }
+
+  // Badge d'etat du rapport : OBSOLETE (rouge, texte clair, maquettes nommees) ; version inconnue (ambre, dite honnetement) ; rien si a jour.
+  function badgeStatut(statut, surRecalculer) {
+    if (statut.etat === "a_jour") return null;
+    const boite = creer("div", "qt-statut-rapport qt-statut-" + statut.etat);
+    boite.setAttribute("role", statut.etat === "obsolete" ? "alert" : "status");
+    boite.appendChild(creer("span", "qt-statut-texte", libelleStatut(statut).replace(/^OBSOLÈTE : /, "")));
+    if (surRecalculer) {
+      const b = creer("button", "qt-btn", "Recalculer");
+      b.type = "button";
+      b.addEventListener("click", surRecalculer);
+      boite.appendChild(b);
+    }
+    return boite;
+  }
+
+  function telecharger(nomFichierSortie, contenu, type) {
+    const url = URL.createObjectURL(contenu instanceof Blob ? contenu : new Blob([contenu], { type }));
+    const a = creer("a");
+    a.href = url;
+    a.download = nomFichierSortie;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  // Exports : Excel et PDF chargent leur bibliotheque ICI, au clic (import dynamique), jamais au chargement de la page.
+  async function exporter(format, rapport, statut) {
+    dire("Préparation du fichier…");
+    try {
+      if (format === "csv") {
+        const remarques = [rapport.resultat.notes[0], ...(statut.etat === "a_jour" ? [] : [libelleStatut(statut)])];
+        telecharger(nomFichier(rapport, "csv"), exporterCsv(rapport.resultat, remarques), "text/csv;charset=utf-8");
+      } else if (format === "pdf") {
+        await (await import("./quantitatifExportPdf.js")).exporterPdf(rapport, statut, { telecharger: (n, c) => telecharger(n, c, "application/pdf") });
+      } else {
+        await (await import("./quantitatifExportXlsx.js")).exporterXlsx(rapport, statut, { telecharger: (n, c) => telecharger(n, c) });
+      }
+      dire("");
+    } catch {
+      dire("L'export a échoué. Réessaie, ou utilise le format CSV.");
+    }
+  }
+
+  // Pastille d'etat (meme famille que .status-badge de l'application : teinte + mot en toutes lettres).
+  function pastilleEtat(statut) {
+    if (statut.etat === "obsolete") return creer("strong", "qt-pastille qt-pastille-obsolete", "OBSOLÈTE");
+    if (statut.etat === "inconnue") return creer("span", "qt-pastille qt-pastille-inconnue", "Version inconnue");
+    return creer("span", "qt-pastille qt-pastille-ajour", "À jour");
+  }
+
+  function dessinerRapport(rapport, statut, confirmation = false) {
+    const resultat = rapport.resultat;
+    resultatZone.textContent = "";
+    const tete = creer("div", "qt-resultat-tete");
+    const titres = creer("div", "qt-resultat-titres");
+    titres.appendChild(creer("h3", "qt-resultat-titre", rapport.relecture));
+    const pastilles = creer("div", "qt-pastilles");
+    pastilles.appendChild(creer("span", "qt-pastille qt-pastille-" + resultat.mesure.origine, resultat.mesure.origineLibelle.charAt(0).toUpperCase() + resultat.mesure.origineLibelle.slice(1)));
+    pastilles.appendChild(pastilleEtat(statut));
+    titres.appendChild(pastilles);
+    tete.appendChild(titres);
+    resultatZone.appendChild(tete);
+    const badge = badgeStatut(statut, () => recalculer(rapport));
+    if (badge) resultatZone.appendChild(badge);
+
+    // Avertissement compte / estime en toutes lettres, au-dessus du tableau (jamais seulement dans une infobulle).
+    resultatZone.appendChild(creer("p", "qt-avertissement qt-avertissement-" + resultat.mesure.origine, tableauDe(rapport).metre.explication));
+
+    if (resultat.aucunResultat) {
+      resultatZone.appendChild(creer("p", "qt-vide", "Aucun élément ne correspond à cette demande dans les maquettes chargées."));
+    } else {
+      const enveloppe = creer("div", "qt-tableau-enveloppe");
+      const table = creer("table", "qt-tableau");
+      table.appendChild(creer("caption", "qt-legende", rapport.relecture));
+      const thead = creer("thead");
+      const tr = creer("tr");
+      const colonnes = resultat.regroupements.length ? resultat.regroupements.map((r) => r.libelle) : ["Sélection"];
+      colonnes.forEach((c) => { const th = cellule("th", c, "qt-cle"); th.scope = "col"; tr.appendChild(th); });
+      const unite = resultat.mesure.unite ? " (" + resultat.mesure.unite + ")" : "";
+      const libelleMesure = resultat.mesure.libelle.charAt(0).toUpperCase() + resultat.mesure.libelle.slice(1) + unite;
+      ["Éléments", libelleMesure, "Origine"].forEach((c, i) => { const th = cellule("th", c, i < 2 ? "qt-num" : null); th.scope = "col"; tr.appendChild(th); });
+      if (voirDansViewer) { const th = cellule("th", "Viewer", "qt-action"); th.scope = "col"; tr.appendChild(th); }
+      thead.appendChild(tr);
+      const tbody = creer("tbody");
+      resultat.lignes.forEach((l) => tbody.appendChild(ligneTableau(resultat, l, false)));
+      table.append(thead, tbody);
+      if (resultat.regroupements.length > 0) {
+        const tfoot = creer("tfoot");
+        tfoot.appendChild(ligneTableau(resultat, resultat.totaux, true));
+        table.appendChild(tfoot);
+      }
+      enveloppe.appendChild(table);
+      resultatZone.appendChild(enveloppe);
+    }
+
+    if (!MASQUE_INFOS_QUANTITATIF) {
+      const notes = resultat.notes.slice(1);
+      if (resultat.elementsExclus > 0) notes.push(nombre.format(resultat.elementsExclus) + " objets spatiaux (projet, site, bâtiment, niveaux) ne sont jamais comptés.");
+      if (resultat.requete.filtres.niveaux.length || resultat.regroupements.some((r) => r.nom === "niveau")) {
+        notes.push("Les niveaux « Level 2 Ceiling » et « Level 2 TOS » sont comptés avec « Level 2 », comme dans le Viewer.");
+      }
+      notes.push("Calculé le " + new Date(rapport.calculeLe).toLocaleString("fr-FR") + " sur : " + (rapport.maquettes.map((m) => m.label).join(", ") || "aucune maquette") + ".");
+      const liste = creer("ul", "qt-notes");
+      notes.forEach((n) => liste.appendChild(creer("li", null, n)));
+      resultatZone.appendChild(liste);
+    }
+    // Exports (27/10) : regroupes en bas du panneau, sous le tableau et le total.
+    const exports = creer("div", "qt-exports");
+    exports.setAttribute("role", "group");
+    exports.setAttribute("aria-label", "Exporter ce rapport");
+    exports.appendChild(creer("span", "qt-exports-lib", "Exporter"));
+    [["xlsx", "Excel"], ["pdf", "PDF"], ["csv", "CSV"]].forEach(([format, libelle]) => {
+      const b = creer("button", "qt-btn", libelle);
+      b.type = "button";
+      b.setAttribute("aria-label", "Exporter en " + libelle);
+      b.addEventListener("click", () => exporter(format, rapport, statut));
+      exports.appendChild(b);
+    });
+    resultatZone.appendChild(exports);
+    resultatZone.hidden = !!confirmation;
+  }
+
+  // Affiche un rapport (nouveau ou rouvert) avec son etat de version actuel, recalcule a chaque affichage.
+  async function afficherRapport(rapport, { nouveau }) {
+    const statut = comparerVersions(rapport.maquettes, await obtenirVersions());
+    dernierResultat = { rapport, phrase: rapport.phrase, nouveau };
+    dessinerRapport(rapport, statut, nouveau); // nouveau : le resultat reste cache tant que « Oui » n'est pas cliquee
+    bandeauTexte.textContent = "« " + rapport.relecture + " »";
+    bandeauQuestion.textContent = "Est-ce bien votre demande ?";
+    bandeauBoutons.hidden = false;
+    bandeau.hidden = !nouveau;
+    allerA("resultat");
+  }
+
+  // ---------- Historique ----------
+  async function rafraichirHistorique() {
+    if (!historique) { boutonHistorique.disabled = true; return; }
+    const entrees = await historique.lister();
+    boutonHistorique.textContent = entrees.length ? "Historique · " + entrees.length : "Historique";
+    boutonHistorique.disabled = entrees.length === 0 && vue !== "historique";
+    histoBloc.textContent = "";
+    const versions = await obtenirVersions();
+    const tete = creer("div", "qt-histo-tete");
+    tete.appendChild(creer("h3", "qt-carte-titre", "Historique"));
+    tete.appendChild(creer("span", "qt-pastille qt-pastille-neutre", String(entrees.length)));
+    histoBloc.appendChild(tete);
+    if (!entrees.length) {
+      histoBloc.appendChild(creer("p", "qt-histo-vide", "Tes quantitatifs apparaîtront ici, avec leur date. Tu pourras les rouvrir sans rappeler l'IA."));
+      return;
+    }
+    const liste = creer("ul", "qt-histo-liste");
+    entrees.forEach((entree) => {
+      const rapport = entree.rapport;
+      const statut = comparerVersions(rapport.maquettes, versions);
+      const li = creer("li", "qt-histo-item");
+      const ligne1 = creer("div", "qt-histo-ligne");
+      ligne1.appendChild(pastilleEtat(statut));
+      const quand = creer("time", "qt-histo-date", dateRelative(rapport.calculeLe));
+      quand.dateTime = rapport.calculeLe;
+      quand.title = new Date(rapport.calculeLe).toLocaleString("fr-FR");
+      ligne1.appendChild(quand);
+      li.appendChild(ligne1);
+      li.appendChild(creer("p", "qt-histo-phrase", rapport.phrase));
+      const n = rapport.resultat.lignes.length;
+      li.appendChild(creer("p", "qt-histo-detail", n + " ligne" + (n > 1 ? "s" : "") + " · " + (rapport.maquettes.map((m) => m.label).join(", ") || "aucune maquette")));
+      const actions = creer("div", "qt-histo-actions");
+      const rouvrir = creer("button", "qt-btn", "Rouvrir");
+      rouvrir.type = "button";
+      rouvrir.setAttribute("aria-label", "Rouvrir : " + rapport.phrase);
+      rouvrir.addEventListener("click", async () => {
+        jeton += 1;
+        occuper(false);
+        dire("");
+        await afficherRapport(rapport, { nouveau: false });
+        if (resultatZone.scrollIntoView) resultatZone.scrollIntoView({ block: "start" });
+      });
+      const supprimer = creer("button", "qt-btn qt-btn-discret", "Supprimer");
+      supprimer.type = "button";
+      supprimer.setAttribute("aria-label", "Supprimer de l'historique : " + rapport.phrase);
+      supprimer.addEventListener("click", async () => {
+        await historique.supprimer(rapport.id);
+        if (dernierResultat && dernierResultat.rapport.id === rapport.id) viderResultat();
+        rafraichirHistorique();
+      });
+      actions.append(rouvrir, supprimer);
+      li.appendChild(actions);
+      liste.appendChild(li);
+    });
+    histoBloc.appendChild(liste);
+  }
+
+  async function enregistrer(rapport) {
+    if (!historique) return;
+    const r = await historique.ajouter(rapport);
+    if (!r.ok) dire(r.raison === "trop_volumineux" ? "Ce rapport est trop volumineux pour l'historique. Il reste affiché, exporte-le pour le garder." : "L'historique n'est pas disponible sur cet appareil. Le rapport reste affiché, exporte-le pour le garder.");
+    rafraichirHistorique();
+  }
+
+  // « Recalculer » : meme requete structuree, sans IA, sur les maquettes actuelles ; le rapport garde son identifiant (l'historique est mis a jour).
+  async function recalculer(ancien) {
+    const moi = ++jeton;
+    occuper(true);
+    dire("Recalcul en cours…");
+    const donnees = await obtenirDonnees();
+    if (moi !== jeton) return;
+    occuper(false);
+    if (!donnees || !donnees.elements.length) { dire(MESSAGE_SANS_DONNEES); return; }
+    const resultat = calculer(donnees.elements, ancien.requete);
+    if (!resultat.ok) { dire(resultat.message); return; }
+    dire("");
+    const rapport = construireRapport({ resultat, phrase: ancien.phrase, versions: await obtenirVersions(), id: ancien.id });
+    await enregistrer(rapport);
+    await afficherRapport(rapport, { nouveau: false });
+  }
+
+  // ---------- Demande ----------
+  // Rend { ok: true } ou { ok: false, message } (message vide : demande abandonnee). Utilisee par la modale de saisie (surEnvoi) et par les phrases toutes faites.
+  async function afficher(requete, donnees, phrase) {
+    const resultat = calculer(donnees.elements, requete);
+    if (!resultat.ok) return { ok: false, message: resultat.message };
+    const rapport = construireRapport({ resultat, phrase, versions: await obtenirVersions() });
+    await afficherRapport(rapport, { nouveau: true }); // enregistre dans l'historique seulement apres « Oui »
+    return { ok: true };
+  }
+
+  async function traiter(phrase, annule = () => false) {
+    viderResultat();
+    const moi = ++jeton;
+    const donnees = await obtenirDonnees();
+    if (moi !== jeton || annule()) return { ok: false, message: "" };
+    if (!donnees || !donnees.elements.length) return { ok: false, message: MESSAGE_SANS_DONNEES };
+    const local = reconnaitreExemple(phrase);
+    if (local) return afficher(local, donnees, phrase);
+    const reponse = await demander({ phrase, valeurs: valeursPourQuantitatif(donnees.elements, phrase) });
+    if (moi !== jeton || annule()) return { ok: false, message: "" };
+    if (!reponse.ok || reponse.resultat !== "requete") return { ok: false, message: reponse.message };
+    return afficher(reponse.requete, donnees, phrase);
+  }
+
+  // Phrase toute faite cliquee sur la page : meme traitement, sans modale (le resultat ou l'erreur s'affiche sur la page).
+  async function lancer(texte) {
+    const phrase = nettoyerPhrase(texte);
+    dire("");
+    if (!phrase) { dire(MESSAGE_VIDE); return; }
+    occuper(true);
+    dire("Prise en compte de ta demande…");
+    const r = await traiter(phrase);
+    occuper(false);
+    dire(r.ok ? "" : r.message || "");
+  }
+
+  // « Oui » (27/10) : le resultat apparait seulement maintenant, et le rapport entre alors dans l'historique.
+  boutonOui.addEventListener("click", async () => {
+    const courant = dernierResultat;
+    if (!courant || !courant.nouveau) return;
+    courant.nouveau = false;
+    bandeau.hidden = true;
+    resultatZone.hidden = false;
+    majVue();
+    await enregistrer(courant.rapport);
+  });
+  // « Non » : rien n'a ete enregistre ni affiche, la saisie est rouverte prerenseignee.
+  boutonNon.addEventListener("click", () => {
+    const courant = dernierResultat;
+    const phrase = courant ? courant.phrase : "";
+    jeton += 1;
+    viderResultat();
+    allerA("depart");
+    dire("");
+    saisie.reformuler(phrase); // la modale se rouvre en mode texte, phrase prerenseignee
+  });
+
+  // ---------- Etat de la source ----------
+  // Les maquettes peuvent encore charger (ouverture directe sur la page) : tant que la page est affichee, on relit un moment, jusqu'a la geometrie.
+  let essaisSource = 0;
+  let minuteurSource = null;
+  async function actualiserSource() {
+    clearTimeout(minuteurSource);
+    statut.textContent = "Lecture des maquettes…";
+    const donnees = await obtenirDonnees();
+    const complet = !!donnees && donnees.elements.length > 0 && donnees.source === "scene";
+    if (!complet && essaisSource < 30 && !racine.closest("[hidden]")) {
+      essaisSource += 1;
+      minuteurSource = setTimeout(actualiserSource, 2000);
+    } else if (complet) {
+      essaisSource = 0;
+    }
+    if (!donnees || !donnees.elements.length) { statut.textContent = MESSAGE_SANS_DONNEES; return; }
+    statut.textContent = ""; // plus de ligne « N objets dans N maquettes » (retiree le 25/10, demande de Gilles) ; seuls le chargement et l'absence de donnees s'affichent
+  }
+
+  // Reouverture de la page : l'etat de version du rapport affiche est recalcule (une maquette a pu changer entre-temps).
+  async function rafraichirRapportAffiche() {
+    if (dernierResultat && !resultatZone.hidden) dessinerRapport(dernierResultat.rapport, comparerVersions(dernierResultat.rapport.maquettes, await obtenirVersions()));
+  }
+
+  return {
+    // Appelee par main.js a chaque changement de page.
+    surVueActivee(nomVue) {
+      if (nomVue === "quantitatif") { allerA("depart"); essaisSource = 0; actualiserSource(); rafraichirHistorique(); rafraichirRapportAffiche(); }
+      else { saisie.fermer(false); clearTimeout(minuteurSource); jeton += 1; occuper(false); }
+    },
+    lancer,
+    // Pour les tests et pour main.js : etat courant.
+    dernierResultat: () => dernierResultat
+  };
+}
