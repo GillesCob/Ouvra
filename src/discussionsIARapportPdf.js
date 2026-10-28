@@ -156,10 +156,24 @@ export function construireRapportPdf({ jsPDF, autoTable }, def, { logoPng = null
   return doc;
 }
 
-// Declenche le telechargement. Les bibliotheques sont importees ici, au clic.
-export async function exporterRapportPdf(rapport, { telecharger, fetch: appel = (...a) => globalThis.fetch(...a), maintenant = new Date() }) {
+// Livre le PDF (28/10) : dans l'onglet deja ouvert au clic (le lecteur PDF du navigateur l'affiche, avec son propre bouton de telechargement : rien ne tombe
+// dans le dossier Telechargements devant le public), sinon, onglet bloque ou ferme, en telechargement comme avant. Rend "ouvert" ou "telecharge".
+// L'adresse du blob est revoquee apres un delai : le temps que le lecteur la charge et que l'utilisateur le telecharge depuis le lecteur.
+export function livrerRapportPdf(nomFichier, blob, { onglet = null, telecharger, creerUrl = (b) => URL.createObjectURL(b), revoquer = (u) => URL.revokeObjectURL(u), delaiRevocationMs = 600000 }) {
+  if (onglet && !onglet.closed) {
+    const url = creerUrl(blob);
+    onglet.location.href = url;
+    setTimeout(() => revoquer(url), delaiRevocationMs);
+    return "ouvert";
+  }
+  telecharger(nomFichier, blob);
+  return "telecharge";
+}
+
+// Les bibliotheques sont importees ici, au clic. onglet : fenetre ouverte par la page pendant le geste de l'utilisateur (sinon les bloqueurs de pop-up la refusent).
+export async function exporterRapportPdf(rapport, { telecharger, onglet = null, fetch: appel = (...a) => globalThis.fetch(...a), maintenant = new Date() }) {
   const [{ jsPDF }, autotable] = await Promise.all([import("jspdf"), import("jspdf-autotable")]);
   const def = definitionRapportPdf(rapport);
   const doc = construireRapportPdf({ jsPDF, autoTable: autotable.autoTable || autotable.default }, def, { logoPng: await chargerLogo(appel), maintenant });
-  telecharger(def.nomFichier, doc.output("blob"));
+  return livrerRapportPdf(def.nomFichier, doc.output("blob"), { onglet, telecharger });
 }

@@ -11,7 +11,7 @@
 // le focus revient la ou il etait.
 //
 // Module sans dependance a main.js : surSource(mk, rapport) ouvre le message (apres la fermeture du panneau) ; texteRapport(rapport) : version texte a copier ;
-// exporterPdf(rapport) : telecharge le PDF (promesse).
+// exporterPdf(rapport, onglet) : ouvre le PDF dans l'onglet donne, sinon le telecharge (promesse de "ouvert" | "telecharge").
 
 import "./reglesIA.css";
 import "./discussionsIA.css";
@@ -232,10 +232,19 @@ export function creerRapportVue({ surSource, texteRapport, exporterPdf }) {
     if (!rapportCourant || rapportCourant.vide || boutonPdf.disabled) return;
     boutonPdf.disabled = true;
     boutonPdf.textContent = "Préparation du PDF…";
+    // Le PDF s'ouvre dans un nouvel onglet (28/10) : l'onglet est ouvert ICI, dans le geste du clic, avant toute attente (sinon les bloqueurs de pop-up le refusent).
+    // Bloque : onglet null, l'export retombe sur le telechargement.
+    const onglet = window.open("", "_blank");
+    if (onglet) {
+      onglet.opener = null; // l'onglet du PDF n'a aucun lien avec la page d'Ouvra
+      onglet.document.title = "Rapport Ouvra";
+      onglet.document.body.textContent = "Préparation du PDF…";
+    }
     try {
-      await exporterPdf(rapportCourant);
-      boutonPdf.textContent = "PDF téléchargé";
+      const livre = await exporterPdf(rapportCourant, onglet);
+      boutonPdf.textContent = livre === "ouvert" ? "PDF ouvert" : "PDF téléchargé";
     } catch {
+      if (onglet && !onglet.closed) onglet.close();
       boutonPdf.textContent = "Export impossible"; // le rapport reste lisible et copiable
     } finally {
       boutonPdf.disabled = false;

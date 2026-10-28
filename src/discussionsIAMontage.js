@@ -56,7 +56,7 @@ export function creerDiscussionsIAMontage() {
     flux = creerFlux({ messagerie });
     rapportVue = creerRapportVue({
       texteRapport: rapportEnTexte,
-      exporterPdf: async (rapport) => (await import("./discussionsIARapportPdf.js")).exporterRapportPdf(rapport, { telecharger }),
+      exporterPdf: async (rapport, onglet) => (await import("./discussionsIARapportPdf.js")).exporterRapportPdf(rapport, { telecharger, onglet }),
       // Une source du rapport ouvre la discussion au message cite ; le bandeau « ← Retour au rapport » (meme principe que « ← Retour a la conversation » du Viewer)
       // rouvre le MEME rapport pour continuer la verification des autres blocs.
       surSource: (mk, rapport) => {
