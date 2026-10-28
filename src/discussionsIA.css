@@ -152,7 +152,6 @@ body.discussions-confirm-actif .disc-rapport-fond { padding-top: calc(52px + var
 .disc-rapport-pied { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; padding-top: 10px; border-top: 1px solid var(--border); }
 .disc-rapport-btn:disabled { opacity: 0.55; cursor: default; }
 .disc-rapport-btn { min-height: 44px; padding: 0 18px; background: none; color: var(--text); border: 1px solid var(--border); border-radius: 8px; font-size: 14px; font-weight: 700; }
-.disc-rapport-fermer { background: var(--accent); color: #fff; border-color: var(--accent); } /* texte blanc (28/10) : le texte sombre sur le fond vert faisait croire a un bouton desactive */
 @media (max-width: 768px) {
   /* Mobile (28/10, Gilles) : le rapport est une PAGE pleine ecran (jamais une modale), comme les infos de collision. Tout le rapport defile d'un bloc (entete comprise) et la
      barre de boutons reste collee en bas. Sous « Est-ce bien votre demande ? », la page commence sous le bandeau. */
@@ -196,17 +195,15 @@ body.discussions-confirm-actif .disc-rapport-fond { padding-top: calc(52px + var
 body.disc-rapport-retour-actif #view-discussions { padding-top: 44px; box-sizing: border-box; }
 @media (max-width: 768px) { #discussionsRapportBandeauRetour { padding: 0 12px; } #discussionsRapportBandeauRetour button { min-height: 44px; } }
 
-/* Survol des boutons de l'IA de Discussions (28/10, Gilles) : memes motifs que le reste de l'application (bouton neutre : bordure accent, bouton plein : teinte plus claire). */
+/* Survol des boutons de l'IA de Discussions (28/10, Gilles) : memes motifs que le reste de l'application (bouton neutre : bordure accent, bouton plein : fond assombri comme .btn-principal). */
 @media (hover: hover) and (pointer: fine) {
   .disc-rapport-btn:not(:disabled):hover { border-color: var(--accent); }
-  .msg-racine .msg-ia-nouvelle:hover { background: color-mix(in srgb, var(--msg-accent) 86%, #fff); }
+  .msg-racine .msg-ia-nouvelle:hover { background: color-mix(in srgb, var(--msg-accent) 88%, #000); }
   #discussionsBandeau button:hover { border-color: var(--accent); }
-  #discussionsBandeau button[data-act="oui"]:hover { background: color-mix(in srgb, #7fae84 86%, #fff); border-color: color-mix(in srgb, #7fae84 86%, #fff); }
   #discussionsRapportBandeauRetour button:hover { border-color: var(--accent); }
 }
 
-/* Survol des boutons oublies (28/10, Gilles) : « Fermer » du rapport est un bouton plein dont la bordure est deja a l'accent (« bordure accent » ne changeait rien) : meme teinte plus claire que « Valider ». */
+/* Survol du bouton « Retour » plein (28/10) : fond assombri, comme .btn-principal (src/boutonPrincipal.css). « Fermer » du rapport est un .btn-principal. */
 @media (hover: hover) and (pointer: fine) {
-  .disc-rapport-fermer:not(:disabled):hover { background: color-mix(in srgb, var(--accent) 86%, #fff); border-color: color-mix(in srgb, var(--accent) 86%, #fff); }
-  .msg-racine .msg-ia-retour:hover { background: color-mix(in srgb, var(--msg-accent) 86%, #fff); border-color: color-mix(in srgb, var(--msg-accent) 86%, #fff); }
+  .msg-racine .msg-ia-retour:hover { background: color-mix(in srgb, var(--msg-accent) 88%, #000); border-color: color-mix(in srgb, var(--msg-accent) 88%, #000); }
 }

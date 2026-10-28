@@ -230,7 +230,7 @@ html, body {
   white-space: nowrap;
 }
 /* Pas d'effet :active (scale) ici : il ecrasait le translateX(-50%) de centrage, le bouton sautait vers la droite au clic. */
-#navbarContact:hover { background: #f08a4b; }
+#navbarContact:hover { background: color-mix(in srgb, #e8935c 88%, #000); } /* assombri, comme .btn-principal (src/boutonPrincipal.css) */
 
 .view {
   display: flex;
@@ -1732,7 +1732,7 @@ body.acc-actif #loadingOverlay { display: none; }
   --brand-hover: #3d4f41;
   --on-brand: #ffffff;
   --accent: #e8935c;
-  --accent-hover: #f08a4b;
+  --accent-hover: color-mix(in srgb, #e8935c 88%, #000); /* survol : fond assombri comme .btn-principal (texte sombre #1f2b24 : contraste > 4,5:1) */
   --on-accent: #1f2b24;
   --contact-bg: #1f3a2c;
   --contact-text: #fbf7f0;
@@ -3431,10 +3431,10 @@ button.disc-pin:hover { transform: scale(1.18); box-shadow: 0 0 0 3px color-mix(
 /* Progression de la fermeture du bandeau de collision (mobile, 22/10) : variable animable par WAAPI. */
 @property --fp { syntax: "<number>"; inherits: true; initial-value: 0; }
 
-/* Survol des boutons oublies (28/10, Gilles) : memes motifs que les boutons de l'IA (bouton plein : teinte plus claire, bouton neutre : bordure accent, croix : texte plein). */
+/* Survol des boutons oublies (28/10, Gilles) : memes motifs que les boutons de l'IA (bouton plein : fond assombri comme .btn-principal, bouton neutre : bordure accent, croix : texte plein). */
 @media (hover: hover) and (pointer: fine) {
   #docModalDownload:not(:disabled):hover, #downloadModalOk:not(:disabled):hover, #newDiscussionForm > button[type="submit"]:not(:disabled):hover, .landing-part-btn:hover,
-  .disc-vide button:hover, #discussionReplyForm button:not(:disabled):hover, .fil-reponse button:not(:disabled):hover { background: color-mix(in srgb, var(--accent) 86%, #fff); }
+  .disc-vide button:hover, #discussionReplyForm button:not(:disabled):hover, .fil-reponse button:not(:disabled):hover { background: color-mix(in srgb, var(--accent) 88%, #000); }
   #docModalClose:hover, #newDiscussionClose:hover { color: var(--text); }
   #infoPanelCollapse:hover, .thread-toggle-btn:not(.active):hover { border-color: var(--accent); }
   .collision-niveau-btn:not([aria-pressed="true"]):hover { color: var(--accent); }

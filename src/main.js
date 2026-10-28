@@ -2228,8 +2228,34 @@ function vueDepartCentree() {
   const pose = initialCameraState || DEFAULT_CAMERA_STATE;
   const visibles = viewer.scene.visibleObjectIds;
   const boite = visibles.length ? viewer.scene.getAABB(visibles) : aabbDesMaquettes(MAQUETTES.filter((m) => m.model));
-  return poseCentreeSurBoite(pose, boite);
+  const centree = poseCentreeSurBoite(pose, boite);
+  // Canvas non mesurable (Viewer pas encore affiche : l'application s'ouvre sur l'accueil ou une autre page) : la pose n'a pas pu etre ajustee
+  // a la zone 3D, elle est retenue pour etre recentree des que le canvas prend sa taille (voir recentrerDepartSiEnAttente).
+  poseDepartSansCanvas = canvasMesurable() ? null : centree;
+  return centree;
 }
+
+function canvasMesurable() {
+  const canevas = viewer.scene.canvas.canvas;
+  return !!canevas && canevas.offsetWidth > 0 && canevas.offsetHeight > 0;
+}
+
+// Cadrage de depart differe (28/10, « la maquette est toujours dezoomee ») : quand la maquette se charge sous une autre page, le canvas est masque (0 x 0)
+// et la vue de depart brute (celle de l'hopital, reglee pour un ecran large) est posee sans ajustement ; elle restait telle quelle au premier affichage
+// du Viewer (coupee sur les cotes en portrait). Au premier affichage du canvas, si la camera n'a pas bouge depuis, elle est recentree sur la maquette.
+let poseDepartSansCanvas = null;
+function memePose(a, b) {
+  return ["eye", "look", "up"].every((cle) => a[cle].every((v, i) => Math.abs(v - b[cle][i]) < 1e-3));
+}
+function recentrerDepartSiEnAttente() {
+  if (!poseDepartSansCanvas || !canvasMesurable()) return;
+  if (viewer.cameraFlight.flying) { setTimeout(recentrerDepartSiEnAttente, 200); return; } // le vol de depart n'est pas fini : comparer apres
+  const attendue = poseDepartSansCanvas;
+  const cam = viewer.camera;
+  if (memePose({ eye: cam.eye, look: cam.look, up: cam.up }, attendue)) viewer.cameraFlight.jumpTo(vueDepartCentree()); // vueDepartCentree remet l'attente a zero
+  else poseDepartSansCanvas = null; // la camera a ete deplacee entre-temps (vol vers une collision, commande) : on n'y touche pas
+}
+new ResizeObserver(recentrerDepartSiEnAttente).observe(viewer.scene.canvas.canvas);
 
 // Pose centrant une boite dans la zone 3D en gardant la direction de regard actuelle (commandes IA du Viewer) ; null si le cadrage centre n'est pas possible.
 function poseCentreeSurBoiteActuelle(boite) {

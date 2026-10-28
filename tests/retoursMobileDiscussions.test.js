@@ -10,7 +10,8 @@ const rapportCss = lire("src/discussionsIA.css");
 const rapportVue = lire("src/discussionsIARapportVue.js");
 
 test("M3 : le bouton « Fermer » du rapport a un texte blanc", () => {
-  assert.match(rapportCss, /\.disc-rapport-fermer\s*\{[^}]*color:\s*#fff/);
+  assert.match(readFileSync(new URL("../src/boutonPrincipal.css", import.meta.url), "utf8"), /color: #fff/);
+  assert.match(readFileSync(new URL("../src/discussionsIARapportVue.js", import.meta.url), "utf8"), /disc-rapport-fermer btn-principal/);
 });
 
 test("M1/M2 : sur mobile le rapport est une page pleine ecran, barre de boutons collee en bas", () => {

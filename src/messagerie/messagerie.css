@@ -217,7 +217,7 @@
 .msg-mention-option span { font-size: 12px; color: var(--muted); }
 .msg-mention-option.actif { background: var(--msg-releve); }
 @media (hover: hover) and (pointer: fine) { .msg-mention-option:hover { background: var(--msg-releve); } }
-.msg-envoyer { background: var(--msg-accent); color: var(--msg-sur-accent); border: 0; border-radius: 12px; min-height: 40px; padding: 0 16px; font-weight: 700; }
+.msg-envoyer { padding: 0 16px; } /* aspect : .btn-principal */
 
 /* ---------- Prises de vue ---------- */
 .msg-vsvg, .msg-vimg { display: block; width: 100%; height: 100%; }
@@ -292,7 +292,6 @@
 .msg-urgent-bouton { -webkit-tap-highlight-color: transparent; }
 :is(.msg-carte, .msg-feuille) .msg-urgent-bouton { min-height: 44px; display: inline-flex; align-items: center; border: 1px solid var(--border); background: var(--bg); color: var(--muted); border-radius: 999px; padding: 4px 16px; font-size: 12.5px; font-weight: 600; }
 :is(.msg-carte, .msg-feuille) .msg-urgent-bouton[aria-pressed="true"] { color: #1b1007; background: var(--msg-mention); border-color: var(--msg-mention); }
-@media (max-width: 768px) { :is(.msg-carte, .msg-feuille) .msg-urgent-bouton { min-height: 44px; } }
 :is(.msg-carte-infos, .msg-feuille) .msg-fiche-actions .msg-urgent-bouton { align-self: flex-start; }
 .msg-tags { display: flex; flex-wrap: wrap; gap: 6px; }
 .msg-tags button { min-height: 44px; display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--muted); border-radius: 999px; padding: 4px 12px 4px 5px; font-size: 12.5px; font-weight: 600; }
@@ -301,7 +300,6 @@
 .msg-fantome, .msg-primaire { min-height: 40px; border-radius: 8px; padding: 8px 14px; }
 .msg-fantome { background: none; border: 1px solid var(--border); color: var(--muted); }
 .msg-fantome:hover { color: var(--text); border-color: var(--msg-accent); }
-.msg-primaire { background: var(--msg-accent); color: var(--msg-sur-accent); border: 0; font-weight: 700; }
 .msg-primaire:disabled { opacity: 0.5; cursor: not-allowed; }
 .msg-aide { margin: 0; font-size: 12px; color: var(--muted); }
 .msg-histo { max-height: 46vh; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
@@ -438,11 +436,10 @@ body.msg-retour-actif #viewerToolbar { top: 56px; }
   .msg-conv, .msg-pastille, .msg-badge, .msg-vue { transition: background 0.15s, border-color 0.15s; }
 }
 
-/* Survol des boutons oublies (28/10, Gilles) : memes motifs que les boutons de l'IA (bouton plein : teinte plus claire, bouton neutre : bordure accent, croix : texte plein). */
+/* Survol des boutons oublies (28/10, Gilles) : memes motifs que les boutons de l'IA (bouton plein : fond assombri comme .btn-principal, bouton neutre : bordure accent, croix : texte plein). */
 @media (hover: hover) and (pointer: fine) {
-  .msg-envoyer:not(:disabled):hover, .msg-primaire:not(:disabled):hover { background: color-mix(in srgb, var(--msg-accent) 86%, #fff); }
   #msgBandeauVue button:hover, #msgBandeauRetour button:hover { border-color: var(--accent); }
-  #msgBandeauVue button[data-act="valider"]:hover { background: color-mix(in srgb, #7fae84 86%, #fff); border-color: color-mix(in srgb, #7fae84 86%, #fff); }
+  #msgBandeauVue button[data-act="valider"]:hover { background: color-mix(in srgb, #7fae84 88%, #000); border-color: color-mix(in srgb, #7fae84 88%, #000); }
   button.msg-pastille:not(.actif):hover, .msg-urgent-bouton:not([aria-pressed="true"]):hover, .msg-bas:hover { border-color: var(--msg-accent); }
   .msg-retirer:hover { color: var(--text); }
 }

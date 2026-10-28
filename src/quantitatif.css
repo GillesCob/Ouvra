@@ -42,13 +42,11 @@
   font: inherit; font-size: 12.5px; font-weight: 600; line-height: 1; cursor: pointer; white-space: nowrap;
   -webkit-tap-highlight-color: transparent; transition: border-color 0.18s ease, color 0.18s ease, background-color 0.18s ease;
 }
-.qt-btn-principal { background: var(--accent); border-color: var(--accent); color: #fff; }
 .qt-btn-discret { border-color: transparent; background: none; color: var(--muted); }
 .qt-btn:focus-visible, .qt-voir:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
 .qt-btn:disabled { opacity: 0.5; cursor: default; }
 @media (hover: hover) and (pointer: fine) {
   .qt-btn:not(:disabled):hover, .qt-voir:hover { border-color: var(--accent); }
-  .qt-btn-principal:not(:disabled):hover { filter: brightness(1.12); }
   .qt-btn-discret:hover { color: var(--text); }
 }
 
