@@ -15,7 +15,7 @@ import {
 import { echapper, heureMinute, cleJour, libelleJour, heureCourte, initiales, prenom } from "./format.js";
 import { TYPES_CONVERSATION, conversationsDuType } from "./groupesConversations.js";
 import { imageVue, chargerBanque, attribuerBanque } from "./vuesMessagerie.js";
-import { creerMenuChoix } from "./menuChoix.js";
+import { creerMenuChoix } from "../menuChoix.js";
 import { requeteMention, filtrerPersonnes, occurrences } from "./mentions.js";
 import { cleFil, cleMessage, lireCleMessage } from "../discussionsIAIndex.js"; // Discussions par commande IA (24/10)
 import { plagesCorrespondantes, htmlSurligne } from "../discussionsIATexte.js";
@@ -999,7 +999,7 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
   }
 
   // Choix de la conversation du dialogue (29/10) : d'abord le TYPE (individuelle ou de groupe, deux boutons), puis la conversation dans un menu deroulant, rien de presélectionné
-  // (« Choisir une conversation »). Laptop : <select> natif (inchange). Mobile (28/10) : menu personnalise ancre a son champ, de la meme largeur (src/messagerie/menuChoix.js),
+  // (« Choisir une conversation »). Laptop : <select> natif (inchange). Mobile (28/10) : menu personnalise ancre a son champ, de la meme largeur (src/menuChoix.js),
   // a la place de la feuille systeme d'iOS. Les deux partagent les memes options : etatChoix[id] = { options: [{ valeur, libelle }], valeur, placeholder }.
   const PLACEHOLDER_CONVERSATION = "Choisir une conversation";
   const etatChoix = {};

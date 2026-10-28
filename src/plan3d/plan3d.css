@@ -235,3 +235,6 @@
   .p3d-nom-projet { min-height: 44px; }
   .p3d-btn-grand { min-height: 64px; }
 }
+
+/* Page du PDF dans l'en-tete (retour 32) : le declencheur du menu commun garde la largeur de son contenu, comme le <select> qu'il remplace. */
+@media (max-width: 768px) { .p3d-entete .collision-trigger.select-declencheur { width: auto; flex: none; } }

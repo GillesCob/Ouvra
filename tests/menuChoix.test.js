@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { positionner } from "../src/messagerie/menuChoix.js";
+import { positionner } from "../src/menuChoix.js";
 
 const champ = (top, bottom) => ({ left: 16, top, bottom, width: 300 });
 
@@ -21,4 +21,19 @@ test("menu de choix : liste trop haute des deux cotes, plafonnee a la place libr
   assert.ok(p.top >= 8 && p.top + p.maxHeight <= 700);
   const bas = positionner(champ(40, 84), 900, 200);
   assert.ok(bas.maxHeight >= 88 && bas.top >= 8);
+});
+
+import { optionsDuSelect, libelleChoisi } from "../src/menuChoix.js";
+
+test("optionsDuSelect : ecarte les options desactivees (placeholder), liste vide sans options", () => {
+  const select = { options: [{ value: "", textContent: "Choisir", disabled: true }, { value: "1", textContent: "Page 1 / 2", disabled: false }, { value: "2", textContent: "Page 2 / 2", disabled: false }] };
+  assert.deepEqual(optionsDuSelect(select), [{ valeur: "1", libelle: "Page 1 / 2" }, { valeur: "2", libelle: "Page 2 / 2" }]);
+  assert.deepEqual(optionsDuSelect({}), []);
+});
+
+test("libelleChoisi : libelle de la valeur, repli si inconnue", () => {
+  const options = [{ valeur: "a", libelle: "A" }];
+  assert.equal(libelleChoisi(options, "a"), "A");
+  assert.equal(libelleChoisi(options, "z", "Choisir"), "Choisir");
+  assert.equal(libelleChoisi([], "a"), "");
 });

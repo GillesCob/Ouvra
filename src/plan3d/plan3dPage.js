@@ -18,6 +18,7 @@ import { creerDepotImagesIdb } from "./projetsImages.js";
 import { creerDepotLocal } from "../quantitatifHistorique.js";
 import { dateRelative } from "../quantitatifRapport.js";
 import { creerIASaisie } from "../iaSaisie.js";
+import { creerMenuChoix, habillerSelect } from "../menuChoix.js";
 import { demanderPlan } from "./ia/planIAClient.js";
 import { creerFluxPlanIA } from "./ia/planIAFlux.js";
 import {
@@ -148,6 +149,9 @@ export function creerPlan3dPage({ racine, voirDansViewer = null, projets = creer
   btnVoir3d.title = "Ouvre la maquette dans le Viewer d'Ouvra";
   btnVoir3d.setAttribute("aria-label", "Voir la maquette 3D dans le Viewer");
   zonePlan.append(btnRetour, champNom, selectPage, fichierInput);
+  // Mobile seulement (retour 32) : le <select> natif d'iOS est remplace par le menu commun ancre au champ ; sur laptop le <select> reste affiche tel quel.
+  const menuChoix = creerMenuChoix({ conteneur: document.body });
+  habillerSelect(selectPage, menuChoix, { titre: "Page du PDF" });
   const zone3d = creer("div", "p3d-actions p3d-actions-3d");
   zone3d.append(btnVoir3d, btnSupprimer); // « Supprimer » en dernier, tout a droite
   entete.append(zonePlan, zone3d);
@@ -515,6 +519,7 @@ export function creerPlan3dPage({ racine, voirDansViewer = null, projets = creer
     sel.value = valeur;
     sel.addEventListener("change", () => surChangement(sel.value));
     label.appendChild(sel);
+    habillerSelect(sel, menuChoix, { titre: libelle });
     return { label };
   }
 

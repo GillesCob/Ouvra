@@ -273,7 +273,7 @@
    sautait au lieu de glisser. Cette regle plus specifique redonne a la bascule la meme transition que la navbar (0,3 s, ease). Laptop inchange. */
 @media (max-width: 768px) and (prefers-reduced-motion: no-preference) { .msg-bascule .msg-pastille { transition: transform 0.3s ease, width 0.3s ease; } }
 @media (max-width: 768px) { .msg-bascule button { padding: 8px 4px; white-space: nowrap; } } /* 360 px : « Conversation existante » tient sur une ligne, le dialogue sans defilement */
-/* Menu deroulant du dialogue sur mobile (src/messagerie/menuChoix.js) : meme hauteur que les champs voisins, texte tronque, liste plafonnee a la place libre. Jamais rendu sur laptop. */
+/* Menu deroulant du dialogue sur mobile (src/menuChoix.js) : meme hauteur que les champs voisins, texte tronque, liste plafonnee a la place libre. Jamais rendu sur laptop. */
 .collision-trigger.msg-choix-trigger { min-height: 44px; font-size: 16px; }
 .msg-choix-trigger[hidden] { display: none; }
 .msg-choix-trigger .collision-trigger-val { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: 16px; font-weight: 500; }

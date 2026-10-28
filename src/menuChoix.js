@@ -101,3 +101,50 @@ export function creerMenuChoix({ conteneur, fonds = () => [] }) {
 
   return { ouvrir, fermer, ouvert: () => !!menu, absorberClic };
 }
+
+// Options { valeur, libelle } d'un <select> (ou de tout objet qui expose .options avec value et textContent). Les options desactivees (placeholder) sont ecartees.
+export function optionsDuSelect(select) {
+  return Array.from(select.options || []).filter((o) => !o.disabled).map((o) => ({ valeur: o.value, libelle: o.textContent }));
+}
+
+// Libelle de l'option choisie, ou le repli si rien ne correspond.
+export function libelleChoisi(options, valeur, repli = "") {
+  const o = options.find((x) => x.valeur === valeur);
+  return o ? o.libelle : repli;
+}
+
+// Mobile (retour 32, 28/10) : double un <select> natif d'un bouton declencheur qui ouvre le menu commun, ancre au champ. Le <select> reste la source de verite (valeur, evenement
+// « change », code existant intact). Le bouton est masque par defaut et ne s'affiche que sous (max-width: 768px), ou le <select> est masque (style.css) : le laptop garde son <select> natif.
+// Le bouton suit le <select> (options, valeur, attribut hidden) par un MutationObserver.
+export function habillerSelect(select, menu, { titre = "" } = {}) {
+  const bouton = document.createElement("button");
+  bouton.type = "button";
+  bouton.className = "collision-trigger msg-choix-trigger select-declencheur";
+  bouton.setAttribute("aria-haspopup", "listbox");
+  bouton.setAttribute("aria-expanded", "false");
+  bouton.setAttribute("aria-label", select.getAttribute("aria-label") || titre);
+  const val = document.createElement("span");
+  val.className = "collision-trigger-val";
+  const chevron = document.createElement("span");
+  chevron.className = "collision-trigger-chevron";
+  chevron.setAttribute("aria-hidden", "true");
+  bouton.append(val, chevron);
+  select.classList.add("select-habille");
+  const synchroniser = () => {
+    val.textContent = libelleChoisi(optionsDuSelect(select), select.value, "");
+    bouton.hidden = select.hidden;
+  };
+  bouton.addEventListener("click", () => {
+    menu.ouvrir(bouton, {
+      titre,
+      options: optionsDuSelect(select),
+      valeur: select.value,
+      surChoix: (valeur) => { select.value = valeur; select.dispatchEvent(new Event("change", { bubbles: true })); synchroniser(); },
+    });
+  });
+  new MutationObserver(synchroniser).observe(select, { childList: true, attributes: true, attributeFilter: ["hidden"] });
+  select.addEventListener("change", synchroniser);
+  select.after(bouton);
+  synchroniser();
+  return bouton;
+}

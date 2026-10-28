@@ -20,6 +20,7 @@ import { valeursPourQuantitatif } from "./quantitatifDonnees.js";
 import { EXEMPLES_QUANTITATIF, reconnaitreExemple } from "./quantitatifExemples.js";
 import { nettoyerPhrase } from "./reglesVoix.js";
 import { creerIASaisie } from "./iaSaisie.js";
+import { creerMenuChoix } from "./menuChoix.js";
 import { creerCommandesBandeau } from "./commandesBandeau.js";
 import { preparerOngletPdf } from "./discussionsIARapportOnglet.js";
 
@@ -339,13 +340,20 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
   // d'un format, un defilement ou un redimensionnement.
   const FORMATS_EXPORT = [["xlsx", "Excel"], ["pdf", "PDF"], ["csv", "CSV"]];
   let menuExport = null; // { bouton, menu } du menu ouvert
+  // Mobile (retour 32) : le menu commun, ancre au bouton et de sa largeur, comme le choix d'une conversation. Laptop : le menu ci-dessous, inchange.
+  const menuChoix = creerMenuChoix({ conteneur: document.body });
   function fermerMenuExport() {
+    menuChoix.fermer();
     if (!menuExport) return;
     menuExport.menu.remove();
     menuExport.bouton.setAttribute("aria-expanded", "false");
     menuExport = null;
   }
   function ouvrirMenuExport(bouton, rapport, statut) {
+    if (ecranMobile()) {
+      menuChoix.ouvrir(bouton, { titre: "Exporter en", options: FORMATS_EXPORT.map(([valeur, libelle]) => ({ valeur, libelle })), surChoix: (format) => exporter(format, rapport, statut) });
+      return;
+    }
     const menu = creer("div", "collision-menu");
     menu.id = "quantitatifExportChoix";
     menu.setAttribute("role", "menu");
@@ -469,7 +477,7 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
     boutonExporter.setAttribute("aria-label", "Exporter ce quantitatif");
     boutonExporter.appendChild(creer("span", "qt-chevron"));
     boutonExporter.addEventListener("click", () => {
-      const etaitOuvert = !!menuExport;
+      const etaitOuvert = !!menuExport || menuChoix.ouvert();
       fermerMenuExport();
       if (!etaitOuvert) ouvrirMenuExport(boutonExporter, rapport, statut);
     });
