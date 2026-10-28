@@ -19,6 +19,8 @@ import { dateDuRapport, perimetreDe, libelleDecision, nomsEnPhrase, MESSAGE_AUCU
 import { preparerOngletPdf } from "./discussionsIARapportOnglet.js";
 
 export const LOGO_RAPPORT = "/images/ouvra-logo.svg";
+const MOBILE = "(max-width: 768px)";
+export const NOM_DEPLIANTS_PAGE = "ouvra-depliants"; // un seul name pour tous les <details> de la page (regle : ouvrir un menu deroulant ferme les autres)
 
 function creer(tag, classe, texte) {
   const el = document.createElement(tag);
@@ -126,7 +128,24 @@ export function creerRapportVue({ surSource, texteRapport, exporterPdf }) {
   }
 
   // Un bloc du format fixe : un titre de section (h3) et son contenu. data-bloc sert aux tests et a la mesure en navigateur.
+  // Sur mobile (28/10), les blocs secondaires (depliant = true : intervenants, sources) sont des menus deroulants, fermes au depart, pour que l'essentiel
+  // (contexte, desaccords, decision) soit visible sans defiler. Un seul `name` partage par tous les <details> de la page : en ouvrir un ferme les autres.
   function bloc(nom, libelle, ...contenu) {
+    return construireBloc(nom, libelle, false, contenu);
+  }
+
+  function construireBloc(nom, libelle, depliant, contenu) {
+    if (depliant && globalThis.matchMedia && globalThis.matchMedia(MOBILE).matches) {
+      const el = creer("details", "disc-rapport-bloc disc-rapport-depliant");
+      el.name = NOM_DEPLIANTS_PAGE;
+      el.dataset.bloc = nom;
+      const resume = creer("summary");
+      resume.appendChild(creer("h3", null, libelle));
+      const corpsDepliant = creer("div", "disc-rapport-depliant-corps");
+      contenu.forEach((c) => corpsDepliant.appendChild(c));
+      el.append(resume, corpsDepliant);
+      return el;
+    }
     const el = creer("section", "disc-rapport-bloc");
     el.dataset.bloc = nom;
     el.appendChild(creer("h3", null, libelle));
@@ -149,7 +168,7 @@ export function creerRapportVue({ surSource, texteRapport, exporterPdf }) {
   function rendreIntervenants(rapport) {
     const ul = creer("ul", "disc-rapport-intervenants");
     rapport.intervenants.forEach((nom) => ul.appendChild(creer("li", "disc-rapport-intervenant", nom)));
-    return bloc("intervenants", "Intervenants", rapport.intervenants.length ? ul : creer("p", "disc-rapport-phrase disc-rapport-muet", "Aucun intervenant identifié."));
+    return construireBloc("intervenants", "Intervenants", true, [rapport.intervenants.length ? ul : creer("p", "disc-rapport-phrase disc-rapport-muet", "Aucun intervenant identifié.")]);
   }
 
   function rendreDesaccords(rapport) {
@@ -178,16 +197,14 @@ export function creerRapportVue({ surSource, texteRapport, exporterPdf }) {
   }
 
   function rendreChronologie(rapport) {
-    const el = creer("section", "disc-rapport-bloc disc-rapport-chrono");
-    el.dataset.bloc = "sources";
-    el.appendChild(creer("h3", null, "Sources"));
     const ul = creer("ul", "disc-rapport-points");
     rapport.chronologie.forEach((s, i) => {
       const li = creer("li", "disc-rapport-point");
       li.append(boutonSource(s), creer("p", "disc-rapport-extrait", (i + 1) + ". " + s.extrait.texte));
       ul.appendChild(li);
     });
-    el.appendChild(ul);
+    const el = construireBloc("sources", "Sources", true, [ul]);
+    el.classList.add("disc-rapport-chrono");
     return el;
   }
 
