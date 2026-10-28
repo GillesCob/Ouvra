@@ -246,9 +246,8 @@
 .msg-dialogue { position: absolute; inset: 0; z-index: 10; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; padding: 16px; }
 .msg-carte { width: min(480px, 100%); max-height: 100%; overflow-y: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 12px; }
 .msg-carte { position: relative; }
-.msg-carte h3 { margin: 0; font-size: 16px; padding-right: 44px; }
 /* Titre du dialogue : marge (et non padding) a droite, pour que son rectangle ne recouvre jamais la croix (40 px a 6 px du bord sur ordinateur, 44 px a 4 px sur mobile). */
-.msg-carte .msg-titre-sujet { padding-right: 0; margin-right: 36px; }
+.msg-carte h3 { margin: 0 36px 0 0; font-size: 16px; }
 .msg-croix { position: absolute; top: 6px; right: 6px; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; padding: 0; background: transparent; border: 1px solid var(--border); border-radius: 6px; color: var(--muted); font-size: 16px; line-height: 1; cursor: pointer; }
 .msg-croix:hover { color: var(--text); }
 .msg-carte label, .msg-etiquette { font-size: 12px; font-weight: 700; color: var(--muted); display: block; margin-bottom: 4px; }
@@ -296,7 +295,7 @@
 @media (max-width: 768px) { :is(.msg-carte, .msg-feuille) .msg-urgent-bouton { min-height: 44px; } }
 :is(.msg-carte-infos, .msg-feuille) .msg-fiche-actions .msg-urgent-bouton { align-self: flex-start; }
 .msg-tags { display: flex; flex-wrap: wrap; gap: 6px; }
-.msg-tags button { min-height: 40px; display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--muted); border-radius: 999px; padding: 4px 12px 4px 5px; font-size: 12.5px; font-weight: 600; }
+.msg-tags button { min-height: 44px; display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--muted); border-radius: 999px; padding: 4px 12px 4px 5px; font-size: 12.5px; font-weight: 600; }
 .msg-tags button[aria-pressed="true"] { color: var(--text); border-color: var(--msg-accent); background: var(--msg-releve); }
 .msg-rangee { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
 .msg-fantome, .msg-primaire { min-height: 40px; border-radius: 8px; padding: 8px 14px; }
@@ -427,7 +426,6 @@ body.msg-retour-actif #viewerToolbar { top: 56px; }
   .msg-zone .msg-corps { overscroll-behavior: contain; }
   .msg-carte, .msg-carte.msg-carte-sujet { width: 100%; height: 100vh; height: 100dvh; max-height: none; border: 0; border-radius: 0; padding: calc(14px + env(safe-area-inset-top)) 16px calc(14px + env(safe-area-inset-bottom)); }
   .msg-carte .msg-croix { top: calc(4px + env(safe-area-inset-top)); right: 4px; width: 44px; height: 44px; }
-  .msg-composer .msg-rouvrir-conv { min-height: 48px; }
   .msg-pastille, .msg-ajout { min-height: 40px; }
   .msg-composer textarea, .msg-barre-recherche input, .msg-carte :is(input, textarea, select) { font-size: 16px; }
   .msg-mentions { left: 12px; right: 12px; }
