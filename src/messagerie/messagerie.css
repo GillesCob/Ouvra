@@ -410,6 +410,10 @@ body.msg-retour-actif #viewerToolbar { top: 56px; }
   .msg-feuille-btn { min-height: 44px; width: 100%; display: flex; align-items: center; justify-content: space-between; padding: 0 14px; background: none; border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 14px; font-weight: 600; text-align: left; }
   #msgHistorique, #msgAjoutSujet, #msgInfosSujet { display: none; }
   .msg-sujets { padding-top: 2px; padding-bottom: 2px; }
+  /* Pastilles de sujet (bande « Principal / # sujets ») : la regle de la pastille de la bascule du dialogue (.msg-pastille, position absolue, plus haut) s'appliquait aussi a elles, les
+     empilait au meme endroit et laissait la bande a 0 px de haut : aucun sujet n'etait atteignable. Remises ici en pastilles de liste (mobile ; le laptop n'est pas touche). */
+  .msg-bande .msg-pastille { position: static; width: auto; z-index: auto; pointer-events: auto; transform: none; background: var(--bg); border: 1px solid var(--border); }
+  .msg-bande .msg-pastille.actif { border-color: var(--msg-accent); }
   .msg-sujets, .msg-entete, .msg-defile, .msg-composer, .msg-barre-recherche, .msg-vue-pendante { padding-left: 12px; padding-right: 12px; }
   /* Dialogues (28/10, Gilles) : jamais de modale sur mobile, chaque dialogue est une page pleine ecran (meme gabarit que la carte « Infos du sujet »). Laptop inchange. */
   .msg-dialogue { position: fixed; inset: 0; z-index: 60; padding: 0; background: var(--surface); align-items: stretch; overscroll-behavior: contain; }
