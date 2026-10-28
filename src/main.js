@@ -29,6 +29,7 @@ import "./retourVisiteur.css";
 import { creerRetourVisiteur } from "./retourVisiteur.js";
 import { creerRetourContexte } from "./retourContexte.js";
 import { vitesseCameraInitiale } from "./vitesseCamera.js";
+import { cadrerCentre } from "./cadrageCentre.js";
 import { creerHistorique, creerDepotLocal } from "./quantitatifHistorique.js";
 
 // ============================================================================
@@ -2205,6 +2206,27 @@ function aabbDesMaquettes(liste) {
   return [0, 1, 2].map((i) => Math.min(...boites.map((b) => b[i]))).concat([3, 4, 5].map((i) => Math.max(...boites.map((b) => b[i]))));
 }
 
+// Vue de depart (ou pose donnee) recadree pour que la maquette soit parfaitement centree dans la zone 3D (28/10) : meme direction de regard et meme haut,
+// cible et distance calculees pour le canvas courant (src/cadrageCentre.js). Sans boite, sans canvas mesurable ou en projection orthogonale : pose inchangee.
+function poseCentreeSurBoite(pose, boite) {
+  const canevas = viewer.scene.canvas.canvas;
+  if (!pose || !boite || !boite.every(Number.isFinite) || boite[3] <= boite[0] || viewer.camera.projection !== "perspective" || !canevas || !canevas.offsetWidth || !canevas.offsetHeight) return pose;
+  return cadrerCentre({
+    aabb: boite, eye: pose.eye, look: pose.look, up: pose.up,
+    fov: viewer.camera.perspective.fov, fovAxis: viewer.camera.perspective.fovAxis,
+    largeur: canevas.offsetWidth, hauteur: canevas.offsetHeight
+  });
+}
+
+// Vue de depart de la maquette centree sur ce qui est visible (position initiale du Viewer et « Recentrer ») : la boite des objets visibles,
+// pas celle des fichiers (des objets masques par defaut, hors de la maquette vue, la decaleraient).
+function vueDepartCentree() {
+  const pose = initialCameraState || DEFAULT_CAMERA_STATE;
+  const visibles = viewer.scene.visibleObjectIds;
+  const boite = visibles.length ? viewer.scene.getAABB(visibles) : aabbDesMaquettes(MAQUETTES.filter((m) => m.model));
+  return poseCentreeSurBoite(pose, boite);
+}
+
 // « Recentrer » s'adapte aux maquettes cochees (25/10) : seule une partie est cochee, la camera se cadre sur celles-la (cocher uniquement la maquette
 // du plan 2D -> 3D = recentrer sur elle seule). Toutes cochees : la vue de depart de la maquette, comme avant. En vue a plat, la vue a plat est refaite.
 // Cadrage de « Recentrer » sur la page Viewer (hors vue a plat et hors cible propre a Collision / Discussions), partage avec la commande IA du Viewer.
@@ -2213,8 +2235,12 @@ function recentrerSurMaquettes() {
   const cochees = chargees.filter((m) => m.shown);
   // Avec la maquette du plan dans la liste, meme toutes cochees : la vue de depart est celle de l'hopital et ne montrerait pas le plan.
   const boite = cochees.length > 0 && (cochees.length < chargees.length || planDansViewer) ? aabbDesMaquettes(cochees) : null;
-  if (boite) viewer.cameraFlight.flyTo({ aabb: boite });
-  else viewer.cameraFlight.flyTo(initialCameraState || DEFAULT_CAMERA_STATE);
+  // Maquettes cochees seules : direction de regard actuelle (comme le cadrage xeokit sur une boite), recadree pour centrer le rectangle projete.
+  if (boite) {
+    const actuelle = { eye: viewer.camera.eye.slice(), look: viewer.camera.look.slice(), up: viewer.camera.up.slice() };
+    const pose = poseCentreeSurBoite(actuelle, boite);
+    viewer.cameraFlight.flyTo(pose === actuelle ? { aabb: boite } : pose);
+  } else viewer.cameraFlight.flyTo(vueDepartCentree());
 }
 
 recenterBtn.addEventListener("click", () => {
@@ -9317,7 +9343,7 @@ function loadProject(projectKey) {
     loadingOverlay.classList.add("hidden");
     initialCameraState = getDefaultCameraState(projectKey);
     if (initialCameraState) {
-      viewer.cameraFlight.flyTo(initialCameraState);
+      viewer.cameraFlight.flyTo(vueDepartCentree());
     } else {
       viewer.cameraFlight.flyTo({ aabb: viewer.scene.getAABB(), duration: 0 });
       initialCameraState = { eye: viewer.camera.eye.slice(), look: viewer.camera.look.slice(), up: viewer.camera.up.slice() };
@@ -9354,7 +9380,7 @@ function loadProject(projectKey) {
         initialCameraState = getDefaultCameraState(projectKey);
         if (initialCameraState) {
           // duration 0 : la maquette apparait deja cadree, sans vol visible.
-          viewer.cameraFlight.flyTo(Object.assign({}, initialCameraState, { duration: 0 }));
+          viewer.cameraFlight.flyTo(Object.assign({}, vueDepartCentree(), { duration: 0 }));
         } else {
           viewer.cameraFlight.flyTo({ aabb: viewer.scene.getAABB(), duration: 0 });
           // Snapshot du cadrage obtenu : reutilise par le bouton "Recentrer"
