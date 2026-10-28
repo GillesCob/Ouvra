@@ -447,6 +447,16 @@ export function creerReglesModale({ libellesPriorite, libellesStatut, numero, cr
     if (!bandeau) return;
     bandeau.hidden = !visible;
     document.body.classList.toggle("regles-retour-actif", visible); // decale la barre d'outils du Viewer sous le bandeau
+    mesurerBandeau(visible);
+  }
+
+  // Bas et hauteur REELS du bandeau en variables CSS (reglesModale.css) : la feuille des infos d'une collision commence sous lui, sans valeur fixe.
+  function mesurerBandeau(visible) {
+    const racine = document.documentElement.style;
+    if (!visible) { racine.removeProperty("--regles-bandeau-bas"); racine.removeProperty("--regles-bandeau-h"); return; }
+    const boite = bandeau.getBoundingClientRect();
+    racine.setProperty("--regles-bandeau-bas", Math.round(boite.bottom) + "px");
+    racine.setProperty("--regles-bandeau-h", Math.round(boite.height) + "px");
   }
 
   // L'utilisateur quitte la vue Collision autrement que par le bandeau : le bandeau disparait et la regle est oubliee.
