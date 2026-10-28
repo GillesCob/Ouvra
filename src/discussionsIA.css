@@ -56,6 +56,9 @@
 /* Mode resultat (classe posee par rendreListe sur .msg-lateral) : onglets masques, la liste des discussions remontees prend la place.
    Retirer ce bloc suffit pour revenir a l'ancien affichage. */
 .msg-lateral.msg-ia-resultat .msg-onglets { display: none; }
+/* Le panneau (« Nouvelle demande » et historique des syntheses) cede toute la place a la liste des resultats (28/10, recette iPhone : il la ramenait a une bande illisible) ;
+   « Retour » ramene au panneau. */
+.msg-lateral.msg-ia-resultat .msg-ia-panneau { display: none; }
 /* Ligne de resultat : le format d'une conversation (.msg-conv), l'extrait passe sur deux lignes avec ses mots trouves en evidence. */
 .msg-ia-res .msg-conv-nom { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .msg-ia-res .msg-conv-heure { font-size: 11.5px; white-space: nowrap; }

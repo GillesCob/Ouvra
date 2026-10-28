@@ -47,6 +47,7 @@ export function creerDiscussionsIAMontage() {
   let rapportVue = null;
   let ia = null;
   let retourRapport = null;
+  let rapportEnAttente = null; // rapport propose et pas encore confirme : « Oui » le rouvre s'il a ete ferme entre-temps
 
   function monter(messagerieMontee) {
     messagerie = messagerieMontee;
@@ -61,6 +62,7 @@ export function creerDiscussionsIAMontage() {
       // Une source du rapport ouvre la discussion au message cite ; le bandeau « ← Retour au rapport » (meme principe que « ← Retour a la conversation » du Viewer)
       // rouvre le MEME rapport pour continuer la verification des autres blocs.
       surSource: (mk, rapport) => {
+        rapportEnAttente = null; // la verification des sources a commence : « Oui » ne rouvre rien, « Retour au rapport » s'en charge
         messagerie.montrerMessageIA(mk);
         retourRapport.montrer({ libelle: "Retour au rapport", surRetour: () => rapportVue.ouvrir(rapport) });
       }
@@ -73,9 +75,14 @@ export function creerDiscussionsIAMontage() {
     });
     bandeau = creerDiscussionsBandeau({
       retourFocus: bouton,
-      surOui: () => { flux.accepter(); },
+      surOui: () => {
+        flux.accepter();
+        if (rapportEnAttente && !rapportVue.ouvert()) rapportVue.ouvrir(rapportEnAttente); // le rapport est ce que « Oui » doit montrer, meme s'il a ete ferme sous le bandeau
+        rapportEnAttente = null;
+      },
       // « Non » : la demande est annulee, le panneau du rapport se ferme et la saisie se rouvre avec la phrase.
       surNon: () => {
+        rapportEnAttente = null;
         rapportVue.fermer();
         const retour = flux.refuser();
         if (retour) ia.reformuler(retour.phrase);
@@ -111,7 +118,7 @@ export function creerDiscussionsIAMontage() {
         if (!application.ok) return application;
         bandeau.montrer({ relecture: application.relecture, resume: application.resume });
         // Le rapport de l'IA est garde dans l'historique des qu'il s'affiche (29/10) : le « Oui » du bandeau n'est pas toujours visible sur mobile. Jamais le « Voir un exemple ».
-        if (application.type === "rapport") { ajouterSynthese(retour.rapport); ia.majHistorique(); rapportVue.ouvrir(retour.rapport); }
+        if (application.type === "rapport") { rapportEnAttente = retour.rapport; ajouterSynthese(retour.rapport); ia.majHistorique(); rapportVue.ouvrir(retour.rapport); }
         return { ok: true };
       }
     });

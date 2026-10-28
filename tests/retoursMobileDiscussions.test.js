@@ -84,3 +84,9 @@ test("rapport mobile : arriere-plan fige (classe sur le corps, glissements annul
   assert.match(rapportVue, /verrou\.verrouiller\(\)/);
   assert.match(rapportVue, /verrou\.deverrouiller\(\)/);
 });
+
+test("M17 : en mode resultat le panneau IA cede la place a la liste, et « Oui » rouvre le rapport propose s'il a ete ferme", () => {
+  assert.match(lire("src/discussionsIA.css"), /\.msg-lateral\.msg-ia-resultat \.msg-ia-panneau\s*\{\s*display:\s*none/);
+  const montage = lire("src/discussionsIAMontage.js");
+  assert.match(montage, /rapportEnAttente && !rapportVue\.ouvert\(\)\) rapportVue\.ouvrir\(rapportEnAttente\)/);
+});
