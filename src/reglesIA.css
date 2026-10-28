@@ -78,7 +78,7 @@
 }
 
 /* Vue Vocal : un grand micro rond (gris au repos, couleur d'accent avec un halo qui pulse pendant l'ecoute) et sa legende dessous. */
-.regles-ia-vue-vocal { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 6px 0 2px; }
+.regles-ia-vue-vocal { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 14px 0 2px; } /* 14 px en haut (au lieu de 6) : avec les 18 px de la carte, le halo de 26 px reste dans la carte avec 4 px de reserve */
 .regles-ia-micro {
   display: flex; align-items: center; justify-content: center; width: 96px; height: 96px; padding: 0; border-radius: 50%;
   background: var(--bg); color: var(--muted); border: 1px solid var(--border); transition: color 0.18s ease, border-color 0.18s ease, background-color 0.18s ease;
@@ -88,14 +88,16 @@
   color: var(--accent); border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, var(--bg));
 }
 .regles-ia-micro.ecoute:not(.niveau) { animation: regles-ia-halo 1.6s ease-in-out infinite; } /* repli : rythme fixe, tant qu'aucun niveau reel n'est disponible */
-/* Halo reactif (28/10) : disque d'accent derriere le micro, mis a l'echelle par --ia-niveau (0 a 1, pose par src/iaSaisie.js). Echelle max 1,292 = 96 px + 14 px de chaque cote,
-   soit la meme enveloppe que le halo fixe (14 px) : aucune collision nouvelle. Seuls transform et opacity bougent. */
+/* Halo reactif (28/10) : disque d'accent derriere le micro, mis a l'echelle par --ia-niveau (0 a 1, pose par src/iaSaisie.js). Enveloppe maximale 26 px (echelle 1 + 26/48 = 1,542 du disque de 96 px),
+   portee de 14 a 26 px le 28/10 (halo « trop timide » en test reel). Degagements : 18 px de carte + 14 px de vue en haut (32 >= 26 + 4 de reserve) ; 20 px de marge sous le micro + 12 px de gap avant la legende (32 >= 26 + 4 de reserve).
+   Les cotes ont toute la largeur de la carte. Seuls transform et opacity bougent ; l'opacite monte nettement des les niveaux moyens. */
 .regles-ia-vue-vocal { isolation: isolate; } /* le halo (z-index -1) reste derriere le micro mais devant le fond de la carte */
 .regles-ia-micro { position: relative; }
+.regles-ia-micro { margin-bottom: 20px; } /* place du halo sous le micro (toujours, pour que la vue ne saute pas a l ouverture du flux) : il ne touche jamais la legende */
 .regles-ia-micro.niveau::before {
   content: ""; position: absolute; inset: -1px; z-index: -1; border-radius: 50%; pointer-events: none; will-change: transform, opacity;
-  background: radial-gradient(circle closest-side, color-mix(in srgb, var(--accent) 70%, #fff) 0%, var(--accent) 74%, transparent 100%);
-  transform: scale(calc(1 + var(--ia-niveau, 0) * 0.292)); opacity: calc(0.12 + var(--ia-niveau, 0) * 0.78);
+  background: radial-gradient(circle closest-side, color-mix(in srgb, var(--accent) 70%, #fff) 0%, var(--accent) 82%, transparent 100%);
+  transform: scale(calc(1 + var(--ia-niveau, 0) * 0.542)); opacity: calc(0.18 + var(--ia-niveau, 0) * 0.82);
 }
 @keyframes regles-ia-halo {
   0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 45%, transparent); }
