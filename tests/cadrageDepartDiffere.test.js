@@ -40,4 +40,7 @@ test("main.js : le cadrage de depart sans canvas mesurable est retenu puis refai
   assert.match(js, /new ResizeObserver\(recentrerDepartSiEnAttente\)\.observe\(viewer\.scene\.canvas\.canvas\)/); // reprise au premier affichage
   assert.match(js, /memePose\(\{ eye: cam\.eye, look: cam\.look, up: cam\.up \}, attendue\)\) viewer\.cameraFlight\.jumpTo\(vueDepartCentree\(\)\)/);
   assert.match(js, /else poseDepartSansCanvas = null; \/\/ la camera a ete deplacee/); // une camera deplacee entre-temps n'est jamais ecrasee
+  // Collision <-> Viewer : le cadrage global du batiment est ajuste a la zone 3D courante (plus la pose brute de l'hopital).
+  assert.match(js, /const centree = boiteBatiment \? poseCentreeSurBoite\(base, boiteBatiment\) : base;\n\s*if \(centree !== base\) return centree;/);
+  assert.match(js, /boiteBatiment = viewer\.scene\.visibleObjectIds\.length \? viewer\.scene\.getAABB/);
 });
