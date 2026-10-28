@@ -67,3 +67,9 @@ body.commandes-confirm-actif #view-viewer #viewerToolbar { top: calc(var(--comma
 .commandes-zones-nom { min-width: 0; overflow-wrap: anywhere; font-weight: 600; }
 .commandes-zones-vide { color: var(--muted); font-size: 13px; }
 .commandes-zones-carte :is(button, input):focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+
+/* Survol des boutons du bandeau « Est-ce bien votre demande ? » du Viewer (28/10, Gilles). */
+@media (hover: hover) and (pointer: fine) {
+  #commandesBandeau button:hover { border-color: var(--accent); }
+  #commandesBandeau button[data-act="oui"]:hover { background: color-mix(in srgb, #7fae84 86%, #fff); border-color: color-mix(in srgb, #7fae84 86%, #fff); }
+}

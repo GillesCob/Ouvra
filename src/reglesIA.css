@@ -131,3 +131,10 @@
   .regles-ia-micro.ecoute { animation: none; box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 25%, transparent); }
 }
 #reglesIA[style*="hidden"] { pointer-events: none; }
+
+/* Survol des boutons de l'IA (28/10, Gilles) : le bouton plein s'eclaircit comme « Me contacter » (#navbarContact:hover), le micro reagit comme les autres boutons neutres
+   (texte plein, bordure accent) sauf pendant l'ecoute. Appareils a souris seulement : pas de survol colle sur iPhone. */
+@media (hover: hover) and (pointer: fine) {
+  .regles-ia-valider:not(:disabled):hover { background: color-mix(in srgb, var(--accent) 86%, #fff); }
+  .regles-ia-micro:not(:disabled):not(.ecoute):hover { color: var(--text); border-color: var(--accent); }
+}
