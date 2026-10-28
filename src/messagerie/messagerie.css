@@ -400,3 +400,12 @@ body.msg-retour-actif #viewerToolbar { top: 56px; }
 @media (prefers-reduced-motion: no-preference) {
   .msg-conv, .msg-pastille, .msg-badge, .msg-vue { transition: background 0.15s, border-color 0.15s; }
 }
+
+/* Survol des boutons oublies (28/10, Gilles) : memes motifs que les boutons de l'IA (bouton plein : teinte plus claire, bouton neutre : bordure accent, croix : texte plein). */
+@media (hover: hover) and (pointer: fine) {
+  .msg-envoyer:not(:disabled):hover, .msg-primaire:not(:disabled):hover { background: color-mix(in srgb, var(--msg-accent) 86%, #fff); }
+  #msgBandeauVue button:hover, #msgBandeauRetour button:hover { border-color: var(--accent); }
+  #msgBandeauVue button[data-act="valider"]:hover { background: color-mix(in srgb, #7fae84 86%, #fff); border-color: color-mix(in srgb, #7fae84 86%, #fff); }
+  button.msg-pastille:not(.actif):hover, .msg-urgent-bouton:not([aria-pressed="true"]):hover, .msg-bas:hover { border-color: var(--msg-accent); }
+  .msg-retirer:hover { color: var(--text); }
+}

@@ -14,3 +14,8 @@
 #quantitatifBandeauRetour button:focus-visible, #plan3dBandeauRetour button:focus-visible { outline: 2px solid #7fae84; outline-offset: 1px; }
 body.quantitatif-retour-actif #viewerToolbar, body.plan3d-retour-actif #viewerToolbar { top: 56px; }
 @media (max-width: 768px) { #quantitatifBandeauRetour, #plan3dBandeauRetour { padding: 0 12px; } #quantitatifBandeauRetour button, #plan3dBandeauRetour button { min-height: 44px; } }
+
+/* Survol des boutons oublies (28/10, Gilles) : meme motif que les autres bandeaux de retour (bouton neutre : bordure accent). */
+@media (hover: hover) and (pointer: fine) {
+  #quantitatifBandeauRetour button:hover, #plan3dBandeauRetour button:hover { border-color: var(--accent); }
+}

@@ -186,3 +186,9 @@
   .p3d-champ input, .p3d-champ select, .p3d-info-valeur, .p3d-info-nouvelle-cle, .p3d-info-nouvelle-valeur { min-height: 44px; font-size: 16px; }
   .p3d-info-retirer { width: 44px; height: 44px; }
 }
+
+/* Survol des boutons oublies (28/10, Gilles) : le bouton plein s'eclaircit (sa bordure est deja a l'accent), le lien et la puce reagissent en texte plein. */
+@media (hover: hover) and (pointer: fine) {
+  .p3d-btn-fort:not(:disabled):hover { background: color-mix(in srgb, var(--accent) 86%, #fff); border-color: color-mix(in srgb, var(--accent) 86%, #fff); }
+  .p3d-lien:hover, .p3d-puce:not([aria-pressed="true"]):hover { color: var(--text); }
+}

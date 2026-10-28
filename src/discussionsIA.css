@@ -161,3 +161,9 @@ body.disc-rapport-retour-actif #view-discussions { padding-top: 44px; box-sizing
   #discussionsBandeau button[data-act="oui"]:hover { background: color-mix(in srgb, #7fae84 86%, #fff); border-color: color-mix(in srgb, #7fae84 86%, #fff); }
   #discussionsRapportBandeauRetour button:hover { border-color: var(--accent); }
 }
+
+/* Survol des boutons oublies (28/10, Gilles) : « Fermer » du rapport est un bouton plein dont la bordure est deja a l'accent (« bordure accent » ne changeait rien) : meme teinte plus claire que « Valider ». */
+@media (hover: hover) and (pointer: fine) {
+  .disc-rapport-fermer:not(:disabled):hover { background: color-mix(in srgb, var(--accent) 86%, #fff); border-color: color-mix(in srgb, var(--accent) 86%, #fff); }
+  .msg-racine .msg-ia-retour:hover { background: color-mix(in srgb, var(--msg-accent) 86%, #fff); border-color: color-mix(in srgb, var(--msg-accent) 86%, #fff); }
+}

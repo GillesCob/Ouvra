@@ -73,3 +73,8 @@ body.commandes-confirm-actif #view-viewer #viewerToolbar { top: calc(var(--comma
   #commandesBandeau button:hover { border-color: var(--accent); }
   #commandesBandeau button[data-act="oui"]:hover { background: color-mix(in srgb, #7fae84 86%, #fff); border-color: color-mix(in srgb, #7fae84 86%, #fff); }
 }
+
+/* Survol des boutons oublies de la modale des zones (28/10, Gilles) : bouton neutre, bordure accent. */
+@media (hover: hover) and (pointer: fine) {
+  .commandes-zones-actions button:hover, .commandes-zones-fermer:hover, .commandes-zones-supprimer:hover { border-color: var(--accent); }
+}
