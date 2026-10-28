@@ -120,7 +120,7 @@ export function creerRetourVisiteur({ declencheurs, pageCourante }) {
     etat.setAttribute("role", "status");
     etat.hidden = true;
     const actions = creer("div", "retour-actions");
-    const envoyer = creer("button", "regles-ia-valider", "Envoyer");
+    const envoyer = creer("button", "regles-ia-valider btn-principal", "Envoyer");
     envoyer.type = "submit";
     const fermerBtn = creer("button", "regles-ia-bascule", "Fermer");
     fermerBtn.type = "button";

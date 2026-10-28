@@ -17,7 +17,9 @@ import { indexer } from "./discussionsIAIndex.js";
 import { rapportEnTexte } from "./discussionsIAMoteur.js";
 import { EXEMPLES_DISCUSSIONS } from "./discussionsIAExemples.js";
 import { demanderComprehension, demanderAnalyse } from "./discussionsIAClient.js";
-import { construireRapportModele } from "./discussionsIARapportModele.js";
+import { construireRapportModele, construireRapportModeleCoupeFeu } from "./discussionsIARapportModele.js";
+import { listerSyntheses, ajouterSynthese, DEMOS_SYNTHESES } from "./discussionsIAHistorique.js";
+import { REQUETE_MOBILE } from "./seuilMobile.js";
 
 const DELAI_ANALYSE_MS = 42000; // un rapport est plus long a ecrire : un peu plus que le delai du relais (32 s)
 
@@ -46,6 +48,7 @@ export function creerDiscussionsIAMontage() {
   let rapportVue = null;
   let ia = null;
   let retourRapport = null;
+  let rapportEnAttente = null; // rapport propose et pas encore confirme : « Oui » le rouvre s'il a ete ferme entre-temps
 
   function monter(messagerieMontee) {
     messagerie = messagerieMontee;
@@ -60,6 +63,7 @@ export function creerDiscussionsIAMontage() {
       // Une source du rapport ouvre la discussion au message cite ; le bandeau « ← Retour au rapport » (meme principe que « ← Retour a la conversation » du Viewer)
       // rouvre le MEME rapport pour continuer la verification des autres blocs.
       surSource: (mk, rapport) => {
+        rapportEnAttente = null; // la verification des sources a commence : « Oui » ne rouvre rien, « Retour au rapport » s'en charge
         messagerie.montrerMessageIA(mk);
         retourRapport.montrer({ libelle: "Retour au rapport", surRetour: () => rapportVue.ouvrir(rapport) });
       }
@@ -72,9 +76,14 @@ export function creerDiscussionsIAMontage() {
     });
     bandeau = creerDiscussionsBandeau({
       retourFocus: bouton,
-      surOui: () => flux.accepter(),
+      surOui: () => {
+        flux.accepter();
+        if (rapportEnAttente && !rapportVue.ouvert() && window.matchMedia(REQUETE_MOBILE).matches) rapportVue.ouvrir(rapportEnAttente); // mobile : le rapport est ce que « Oui » doit montrer, meme s'il a ete ferme sous le bandeau
+        rapportEnAttente = null;
+      },
       // « Non » : la demande est annulee, le panneau du rapport se ferme et la saisie se rouvre avec la phrase.
       surNon: () => {
+        rapportEnAttente = null;
         rapportVue.fermer();
         const retour = flux.refuser();
         if (retour) ia.reformuler(retour.phrase);
@@ -102,15 +111,27 @@ export function creerDiscussionsIAMontage() {
           if (modele.ok) rapportVue.ouvrir(modele.rapport);
         }
       },
+      // Historique des syntheses (28/10) : une synthese enregistree rouvre son rapport tel quel ; une synthese de demonstration est construite a l'ouverture sur les vrais messages.
+      historique: { lister: () => listerSyntheses(), ouvrir: ouvrirSynthese },
       traiter: (phrase) => pipeline.traiter(phrase),
       proposer: (retour, phrase) => {
         const application = flux.proposer(retour, phrase);
         if (!application.ok) return application;
         bandeau.montrer({ relecture: application.relecture, resume: application.resume });
-        if (application.type === "rapport") rapportVue.ouvrir(retour.rapport);
+        // Le rapport de l'IA est garde dans l'historique des qu'il s'affiche (29/10) : le « Oui » du bandeau n'est pas toujours visible sur mobile. Jamais le « Voir un exemple ».
+        if (application.type === "rapport") { rapportEnAttente = retour.rapport; ajouterSynthese(retour.rapport); ia.majHistorique(); rapportVue.ouvrir(retour.rapport); }
         return { ok: true };
       }
     });
+  }
+
+  function ouvrirSynthese(entree) {
+    if (entree.rapport) { rapportVue.ouvrir(entree.rapport); return; }
+    const donnees = messagerie.donneesPourIA();
+    const index = indexer(donnees.conversations, donnees.personnes);
+    const construire = entree.demo === DEMOS_SYNTHESES.coupeFeu ? construireRapportModeleCoupeFeu : construireRapportModele;
+    const modele = construire(index, { maintenant: Date.now() });
+    if (modele.ok) rapportVue.ouvrir(modele.rapport);
   }
 
   // L'onglet IA vient d'etre choisi (clic) : la modale de demande s'ouvre en vocal.

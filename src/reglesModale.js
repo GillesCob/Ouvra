@@ -21,8 +21,9 @@
 
 import "./reglesModale.css";
 import { messageAucuneCollision } from "./reglesCollision.js";
+import { REQUETE_MOBILE } from "./seuilMobile.js";
 
-const MOBILE = "(max-width: 768px)";
+const MOBILE = REQUETE_MOBILE;
 const DUREE_FERMETURE_MS = 350;
 
 export function creerReglesModale({ libellesPriorite, libellesStatut, numero, creerCarte, lireElement, voirEn3D, imageDe, appliquer, reformuler, glisserPourFermer }) {
@@ -182,11 +183,11 @@ export function creerReglesModale({ libellesPriorite, libellesStatut, numero, cr
     const contenu = creer("span", "regles-contenu");
     contenu.append(carteClash, ligneChangement(ligne));
     label.append(caseEl, contenu, creerVue(ligne.clash));
-    const voir = creer("button", "regles-voir", "Voir en 3D");
+    const voir = creer("button", "regles-voir", "Voir en 3D et infos");
     voir.type = "button";
     voir.dataset.act = "voir";
     voir.dataset.i = String(index);
-    voir.setAttribute("aria-label", "Voir la collision n° " + numero(ligne.clash) + " en 3D");
+    voir.setAttribute("aria-label", "Voir la collision n° " + numero(ligne.clash) + " en 3D, avec ses infos");
     li.append(label, voir);
     return li;
   }
@@ -197,11 +198,11 @@ export function creerReglesModale({ libellesPriorite, libellesStatut, numero, cr
     const contenu = creer("span", "regles-contenu");
     contenu.appendChild(creerCarte(ligne.clash));
     bloc.append(contenu, creerVue(ligne.clash));
-    const voir = creer("button", "regles-voir", "Voir en 3D");
+    const voir = creer("button", "regles-voir", "Voir en 3D et infos");
     voir.type = "button";
     voir.dataset.act = "voir";
     voir.dataset.i = String(index);
-    voir.setAttribute("aria-label", "Voir la collision n° " + numero(ligne.clash) + " en 3D");
+    voir.setAttribute("aria-label", "Voir la collision n° " + numero(ligne.clash) + " en 3D, avec ses infos");
     li.append(bloc, voir);
     return li;
   }
@@ -264,7 +265,7 @@ export function creerReglesModale({ libellesPriorite, libellesStatut, numero, cr
     corps.setAttribute("aria-label", "Collisions touchées par la règle");
     session.lignes.forEach((l, i) => corps.appendChild(creerLigne(l, i)));
 
-    actions.append(...actionReformuler(), creerAction("msg-fantome", "annuler", "Annuler"), creerAction("msg-primaire", "valider", "Valider"));
+    actions.append(...actionReformuler(), creerAction("msg-fantome", "annuler", "Annuler"), creerAction("msg-primaire btn-principal", "valider", "Valider"));
     carte.append(tete, corps, actions, croix);
     majCompteur();
   }
@@ -447,6 +448,16 @@ export function creerReglesModale({ libellesPriorite, libellesStatut, numero, cr
     if (!bandeau) return;
     bandeau.hidden = !visible;
     document.body.classList.toggle("regles-retour-actif", visible); // decale la barre d'outils du Viewer sous le bandeau
+    mesurerBandeau(visible);
+  }
+
+  // Bas et hauteur REELS du bandeau en variables CSS (reglesModale.css) : la feuille des infos d'une collision commence sous lui, sans valeur fixe.
+  function mesurerBandeau(visible) {
+    const racine = document.documentElement.style;
+    if (!visible) { racine.removeProperty("--regles-bandeau-bas"); racine.removeProperty("--regles-bandeau-h"); return; }
+    const boite = bandeau.getBoundingClientRect();
+    racine.setProperty("--regles-bandeau-bas", Math.round(boite.bottom) + "px");
+    racine.setProperty("--regles-bandeau-h", Math.round(boite.height) + "px");
   }
 
   // L'utilisateur quitte la vue Collision autrement que par le bandeau : le bandeau disparait et la regle est oubliee.

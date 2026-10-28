@@ -71,10 +71,9 @@
   box-sizing: border-box; display: block; padding: 12px; line-height: 1.4; resize: none; overflow-y: auto; overflow-wrap: anywhere;
   max-height: calc(5 * 1.4em + 26px); /* 5 lignes + padding + bordures */
 }
-.regles-ia-vue-texte :is(input, textarea)::placeholder { color: var(--muted); opacity: 1; }
+.regles-ia-vue-texte :is(input, textarea)::placeholder { color: var(--muted); opacity: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } /* texte d'exemple sur une seule ligne */
 .regles-ia-valider {
-  width: 100%; min-height: 46px; padding: 0 14px; background: var(--accent); color: var(--bg); border: 0; border-radius: 8px;
-  font-size: 14px; font-weight: 700;
+  width: 100%; padding: 0 14px; font-size: 14px; /* aspect (fond, couleur, hauteur, rayon, graisse) : .btn-principal */
 }
 
 /* Vue Vocal : un grand micro rond (gris au repos, couleur d'accent avec un halo qui pulse pendant l'ecoute) et sa legende dessous. */
@@ -144,9 +143,8 @@
 }
 #reglesIA[style*="hidden"] { pointer-events: none; }
 
-/* Survol des boutons de l'IA (28/10, Gilles) : le bouton plein s'eclaircit comme « Me contacter » (#navbarContact:hover), le micro reagit comme les autres boutons neutres
+/* Survol des boutons de l'IA (28/10, Gilles) : le survol du bouton plein vient de .btn-principal (src/boutonPrincipal.css), le micro reagit comme les autres boutons neutres
    (texte plein, bordure accent) sauf pendant l'ecoute. Appareils a souris seulement : pas de survol colle sur iPhone. */
 @media (hover: hover) and (pointer: fine) {
-  .regles-ia-valider:not(:disabled):hover { background: color-mix(in srgb, var(--accent) 86%, #fff); }
   .regles-ia-micro:not(:disabled):not(.ecoute):hover { color: var(--text); border-color: var(--accent); }
 }

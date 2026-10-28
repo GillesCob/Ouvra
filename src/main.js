@@ -29,8 +29,10 @@ import "./retourVisiteur.css";
 import { creerRetourVisiteur } from "./retourVisiteur.js";
 import { creerRetourContexte } from "./retourContexte.js";
 import { vitesseCameraInitiale } from "./vitesseCamera.js";
-import { cadrerCentre } from "./cadrageCentre.js";
+import { cadrerCentre, corrigerSurSilhouette } from "./cadrageCentre.js";
 import { creerHistorique, creerDepotLocal } from "./quantitatifHistorique.js";
+import { amorcerHistoriqueDemo } from "./quantitatifHistoriqueDemo.js";
+import { REQUETE_MOBILE } from "./seuilMobile.js";
 
 // ============================================================================
 // INTERRUPTEURS DE MASQUAGE : base propre du 19/10
@@ -276,7 +278,7 @@ const HOPITAL_SANS_WEBIFC = !reglageUrl("webifc", false);
 // iPhone : la maquette apparaissait puis disparaissait (contexte WebGL perdu).
 // false = aretes partout.
 const MOBILE_SANS_ARETES = !reglageUrl("aretes", false);
-const APPAREIL_MOBILE = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || window.matchMedia("(max-width: 768px)").matches;
+const APPAREIL_MOBILE = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || window.matchMedia(REQUETE_MOBILE).matches;
 // Architecture et mecanique de l'hopital reconverties en XKT v12 avec buffers compresses (20/10, IFC d'origine de
 // Chantier/public/models/hospital, xeokit-convert -b) : memes objets et memes identifiants IFC, 3,9 et 3,0 Mo au lieu
 // de 26 et 20 Mo. Contenu identique (memes tailles une fois decompresse, memes nombres d'elements). Mesure sur
@@ -1127,6 +1129,8 @@ function activateView(viewName, options = {}) {
   }
   // Accueil : navbar de l'app masquee par CSS (body.acc-actif).
   document.body.classList.toggle("acc-actif", viewName === "accueil");
+  // Barre d'etat / zones sures : meme couleur que la page affichee (claire sur l'accueil, verte dans l'application).
+  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", viewName === "accueil" ? "#fbf7f0" : "#161c18");
   // La vue est choisie : le logo de demarrage (#splashLogo) peut s'effacer.
   document.documentElement.classList.remove("demarrage");
   navLinks.forEach((l) => l.classList.toggle("active", l.dataset.view === viewName));
@@ -1491,7 +1495,7 @@ let gesteNeutre = false;
 let gesteNeutreTimer = 0;
 const EVENEMENTS_ABSORBES = ["pointerdown", "pointermove", "pointerup", "touchstart", "touchmove", "touchend", "mousedown", "mousemove", "mouseup", "click", "dblclick", "contextmenu"];
 function absorberGesteNeutre() {
-  if (!window.matchMedia("(max-width: 768px)").matches) return;
+  if (!window.matchMedia(REQUETE_MOBILE).matches) return;
   gesteNeutre = true;
   clearTimeout(gesteNeutreTimer);
   gesteNeutreTimer = setTimeout(() => { gesteNeutre = false; }, 5000);
@@ -1542,7 +1546,7 @@ if (infoPanelCloseBtn) infoPanelCloseBtn.addEventListener("click", closeInfoPane
 // les gestes avant le reste ; le geste continue ensuite normalement (la selection ou la rotation se font).
 document.addEventListener("pointerdown", (e) => {
   if (e.target !== viewerCanvas || !infoPanel.classList.contains("open")) return;
-  if (window.matchMedia("(max-width: 768px)").matches) closeInfoPanelDrawer();
+  if (window.matchMedia(REQUETE_MOBILE).matches) closeInfoPanelDrawer();
 }, true);
 
 // Ordinateur uniquement (bouton masque sur mobile, cf style.css) : reduit le
@@ -2218,13 +2222,104 @@ function poseCentreeSurBoite(pose, boite) {
   });
 }
 
+// Remplissage vise de la dimension limitante de la zone 3D par la silhouette reellement dessinee (28/10, images de Gilles : ~90 % sans toucher les boutons du haut et du bas).
+const REMPLISSAGE_SILHOUETTE = 0.9;
+const ITERATIONS_SILHOUETTE = 8;
+const TOLERANCE_SILHOUETTE = 0.01;
+
+// Rectangle normalise (-1 a 1, y vers le haut) des pixels non vides de la 3D, lu juste apres un rendu force (le tampon n'est pas encore presente) ; null si rien n'est dessine.
+function silhouetteRendue() {
+  const gl = viewer.scene.canvas.gl;
+  const L = gl.drawingBufferWidth, H = gl.drawingBufferHeight;
+  if (!L || !H) return null;
+  viewer.scene.render(true);
+  const px = new Uint8Array(L * H * 4);
+  gl.readPixels(0, 0, L, H, gl.RGBA, gl.UNSIGNED_BYTE, px);
+  const fond = viewer.scene.canvas.backgroundColor.map((c) => Math.round(c * 255));
+  let x0 = L, x1 = -1, y0 = H, y1 = -1;
+  for (let y = 0; y < H; y += 2) {
+    for (let x = 0; x < L; x += 2) {
+      const i = (y * L + x) * 4;
+      if (Math.abs(px[i] - fond[0]) + Math.abs(px[i + 1] - fond[1]) + Math.abs(px[i + 2] - fond[2]) <= 12) continue;
+      if (x < x0) x0 = x;
+      if (x > x1) x1 = x;
+      if (y < y0) y0 = y;
+      if (y > y1) y1 = y;
+    }
+  }
+  if (x1 < 0) return null;
+  return { xmin: (x0 / L) * 2 - 1, xmax: ((x1 + 1) / L) * 2 - 1, ymin: (y0 / H) * 2 - 1, ymax: ((y1 + 1) / H) * 2 - 1 };
+}
+
+// Affinage differe (28/10, « la maquette est toujours dezoomee ») : le canvas n'est pas toujours pret quand une pose est calculee. Deux cas mesures en WebKit : la maquette
+// se charge sous une autre page (canvas masque, 0 x 0, la vue de depart brute de l'hopital, reglee pour un ecran large, restait telle quelle et coupait la maquette en portrait),
+// et le Viewer vient d'etre affiche (la taille du canvas est connue de la page mais pas encore de xeokit : tampon de 1 x 1 pixel, rien a mesurer). La pose rendue est alors retenue
+// avec sa fonction de calcul ; des que le canvas est pret, si la camera n'a pas bougé depuis, la pose est recalculee et appliquee sans animation.
+let affinageEnAttente = null; // { pose, recalculer }
+let boiteBatiment = null; // boite du batiment entier (objets visibles a la fin du chargement), base du cadrage global de Collision et du retour au Viewer
+
+function canvasMesurable() {
+  const canevas = viewer.scene.canvas.canvas;
+  return !!canevas && canevas.offsetWidth > 0 && canevas.offsetHeight > 0;
+}
+function canvasPret() {
+  return canvasMesurable() && viewer.scene.canvas.gl.drawingBufferWidth > 1 && viewer.scene.canvas.boundary[2] > 0;
+}
+function memePose(a, b) {
+  return ["eye", "look", "up"].every((cle) => a[cle].every((v, i) => Math.abs(v - b[cle][i]) < 1e-3));
+}
+function traiterAffinageEnAttente() {
+  if (!affinageEnAttente || !canvasPret()) return;
+  if (viewer.cameraFlight.flying) { setTimeout(traiterAffinageEnAttente, 200); return; } // le vol n'est pas fini : comparer apres
+  const { pose, recalculer } = affinageEnAttente;
+  affinageEnAttente = null;
+  const cam = viewer.camera;
+  if (memePose({ eye: cam.eye, look: cam.look, up: cam.up }, pose)) viewer.cameraFlight.jumpTo(recalculer()); // la camera n'a pas bouge : sinon (vol vers une collision, commande) on n'y touche pas
+}
+new ResizeObserver(traiterAffinageEnAttente).observe(viewer.scene.canvas.canvas);
+viewer.scene.canvas.on("boundary", traiterAffinageEnAttente);
+
+// Affine une pose (deja ajustee sur la boite) sur la silhouette reelle : la boite englobante surestime le contour (96 % de la largeur annonces pour 70,8 % de pixels reellement
+// occupes a 390 px). La camera est posee sur chaque pose d'essai, la scene rendue et mesuree dans la meme tache (aucune image n'est montree), puis la camera est rendue.
+// recalculer : fonction qui refait ce calcul (appelee par l'affinage differe). Pose inchangee en projection orthogonale ou si rien n'est mesurable.
+function affinerSurSilhouette(pose, recalculer) {
+  const cam = viewer.camera;
+  if (!pose || cam.projection !== "perspective") return pose;
+  if (!canvasPret()) { affinageEnAttente = { pose, recalculer }; return pose; }
+  affinageEnAttente = null;
+  const canevas = viewer.scene.canvas.canvas;
+  const avant = { eye: cam.eye.slice(), look: cam.look.slice(), up: cam.up.slice() };
+  let courante = pose;
+  for (let i = 0; i < ITERATIONS_SILHOUETTE; i++) {
+    cam.eye = courante.eye; cam.look = courante.look; cam.up = courante.up;
+    const silhouette = silhouetteRendue();
+    if (!silhouette) { courante = pose; break; }
+    const demi = Math.max((silhouette.xmax - silhouette.xmin) / 2, (silhouette.ymax - silhouette.ymin) / 2);
+    const decentre = Math.max(Math.abs(silhouette.xmin + silhouette.xmax), Math.abs(silhouette.ymin + silhouette.ymax)) / 2;
+    if (Math.abs(demi - REMPLISSAGE_SILHOUETTE) < TOLERANCE_SILHOUETTE && decentre < TOLERANCE_SILHOUETTE) break;
+    courante = corrigerSurSilhouette({
+      eye: courante.eye, look: courante.look, up: courante.up, fov: cam.perspective.fov, fovAxis: cam.perspective.fovAxis,
+      largeur: canevas.offsetWidth, hauteur: canevas.offsetHeight, silhouette, remplissage: REMPLISSAGE_SILHOUETTE
+    });
+  }
+  cam.eye = avant.eye; cam.look = avant.look; cam.up = avant.up;
+  return courante;
+}
+
 // Vue de depart de la maquette centree sur ce qui est visible (position initiale du Viewer et « Recentrer ») : la boite des objets visibles,
 // pas celle des fichiers (des objets masques par defaut, hors de la maquette vue, la decaleraient).
 function vueDepartCentree() {
   const pose = initialCameraState || DEFAULT_CAMERA_STATE;
   const visibles = viewer.scene.visibleObjectIds;
   const boite = visibles.length ? viewer.scene.getAABB(visibles) : aabbDesMaquettes(MAQUETTES.filter((m) => m.model));
-  return poseCentreeSurBoite(pose, boite);
+  return affinerSurSilhouette(poseCentreeSurBoite(pose, boite), vueDepartCentree);
+}
+
+// Pose centrant une boite dans la zone 3D en gardant la direction de regard actuelle (commandes IA du Viewer) ; null si le cadrage centre n'est pas possible.
+function poseCentreeSurBoiteActuelle(boite) {
+  const actuelle = { eye: viewer.camera.eye.slice(), look: viewer.camera.look.slice(), up: viewer.camera.up.slice() };
+  const pose = poseCentreeSurBoite(actuelle, boite);
+  return pose === actuelle ? null : pose;
 }
 
 // « Recentrer » s'adapte aux maquettes cochees (25/10) : seule une partie est cochee, la camera se cadre sur celles-la (cocher uniquement la maquette
@@ -2237,15 +2332,16 @@ function recentrerSurMaquettes() {
   const boite = cochees.length > 0 && (cochees.length < chargees.length || planDansViewer) ? aabbDesMaquettes(cochees) : null;
   // Maquettes cochees seules : direction de regard actuelle (comme le cadrage xeokit sur une boite), recadree pour centrer le rectangle projete.
   if (boite) {
-    const actuelle = { eye: viewer.camera.eye.slice(), look: viewer.camera.look.slice(), up: viewer.camera.up.slice() };
-    const pose = poseCentreeSurBoite(actuelle, boite);
-    viewer.cameraFlight.flyTo(pose === actuelle ? { aabb: boite } : pose);
+    viewer.cameraFlight.flyTo(poseCentreeSurBoiteActuelle(boite) ?? { aabb: boite });
   } else viewer.cameraFlight.flyTo(vueDepartCentree());
 }
 
 recenterBtn.addEventListener("click", () => {
   if (vueAvantDessus) { appliquerVueDessus(); return; }
   if (recenterTarget) { recenterTarget(); return; }
+  // Page Collision sans collision choisie (29/10) : meme cadrage global que l'arrivee sur la page, jamais le cadrage « maquettes cochees » du Viewer
+  // (la paire seule est cochee : boite des fichiers, direction de regard courante, sans affinage, la maquette se dezoomait a 47 % de la largeur).
+  if (!collisionDetail.hidden) { viewer.cameraFlight.flyTo(cadrageBatimentDansZone()); return; }
   recentrerSurMaquettes();
 });
 
@@ -3466,7 +3562,7 @@ function mesurerFilLayout() {
 }
 function filPleinPage(actif) {
   if (discussionsDetailPane.classList.contains("plein") === actif || filEnAnimation) return;
-  const animer = discussionsDetailPane.offsetParent !== null && !window.matchMedia("(max-width: 768px)").matches &&
+  const animer = discussionsDetailPane.offsetParent !== null && !window.matchMedia(REQUETE_MOBILE).matches &&
     !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const options = { duration: 300, easing: "ease" };
   const clip = (dx) => "inset(0 0 0 " + Math.max(0, dx) + "px)";
@@ -4162,7 +4258,7 @@ function openDetection(detection, options = {}) {
   // bouton "Infos" a chercher.
   // Mobile (<= 768 px) : tiroir ferme par defaut pour ne pas masquer la 3D
   // (decision du 19/10). Ordinateur : le panneau est un volet fixe, toujours ouvert.
-  const collisionMobile = window.matchMedia("(max-width: 768px)").matches;
+  const collisionMobile = window.matchMedia(REQUETE_MOBILE).matches;
   // options.garderTiroir (changement de paire de maquettes) : le tiroir reste ouvert, seule la liste des collisions se met a jour.
   collisionInfoPanel.classList.toggle("open", !collisionMobile || !detection || !!options.garderTiroir);
   collisionInfoPanelBackdrop.hidden = true;
@@ -4225,8 +4321,14 @@ function cadrageBatimentDansZone() {
   const base = initialCameraState || DEFAULT_CAMERA_STATE;
   const canevas = viewer.scene.canvas.canvas;
   if (!canevas || !canevas.clientWidth || !canevas.clientHeight) return Object.assign({}, base);
+  // Retour du 28/10 (« toujours dezoomee ») : la pose brute de l'hopital, reglee pour un ecran large, coupait la maquette en portrait et sur Collision. Quand la boite
+  // du batiment est connue, le cadrage est calcule pour la zone 3D courante (meme calcul que la position initiale et « Recentrer »).
+  const centree = boiteBatiment ? poseCentreeSurBoite(base, boiteBatiment) : base;
+  // Affinage sur la silhouette reellement dessinee, quelles que soient les maquettes visibles (29/10) : sur la page Collision seule la paire est montree (Architecture et
+  // Mecanique, ou Structure et Mecanique), la boite du batiment entier surestimait alors le contour et la maquette restait a 70 % de la largeur au lieu de 90 %.
+  if (centree !== base) return affinerSurSilhouette(centree, cadrageBatimentDansZone);
   // Mobile (<= 768 px) : pas de recul (la zone 3D portrait donnerait un facteur de 3 : maquette minuscule), meme vue que « Recentrer ».
-  const facteur = window.matchMedia("(max-width: 768px)").matches ? 1 : Math.max(1, 1.6 / (canevas.clientWidth / canevas.clientHeight));
+  const facteur = window.matchMedia(REQUETE_MOBILE).matches ? 1 : Math.max(1, 1.6 / (canevas.clientWidth / canevas.clientHeight));
   const dir = [base.eye[0] - base.look[0], base.eye[1] - base.look[1], base.eye[2] - base.look[2]];
   return {
     eye: [base.look[0] + dir[0] * facteur, base.look[1] + dir[1] * facteur, base.look[2] + dir[2] * facteur],
@@ -6263,11 +6365,12 @@ function creerControleMenu(id, libelle, labels, champ, surChangement) {
       document.body.appendChild(menu);
       const r = trigger.getBoundingClientRect();
       const mh = menu.offsetHeight;
-      const mw = Math.max(menu.offsetWidth, 168);
+      const mw = Math.max(menu.offsetWidth, 168, r.width); // jamais plus etroit que le bouton qui l'ouvre (28/10)
       const place = window.innerHeight - r.bottom;
       menu.style.top = (place >= mh + 8 ? r.bottom + 6 : Math.max(8, r.top - mh - 6)) + "px";
       menu.style.left = Math.max(8, Math.min(r.left, window.innerWidth - mw - 8)) + "px";
       menu.style.minWidth = mw + "px";
+      if (window.matchMedia(REQUETE_MOBILE).matches) cadrerMenuCollisionMobile(menu, r);
       menu.style.visibility = "";
       trigger.setAttribute("aria-expanded", "true");
       document.addEventListener("pointerdown", surClicExterieur, true);
@@ -6275,6 +6378,24 @@ function creerControleMenu(id, libelle, labels, champ, surChangement) {
     });
     field.append(lab, selectWrap);
     return { field, sel, selectWrap, maj };
+}
+
+// Mobile (retour 12) : le menu Priorite / Statut reste DANS l'ecran et sous le bandeau « ← Retour a la regle » s'il est affiche (il s'ouvre vers le bas, ou vers le haut
+// s'il y a plus de place, avec defilement interne si aucun des deux ne suffit) ; la largeur reelle (min-width + marges internes) ne deborde plus a droite.
+function cadrerMenuCollisionMobile(menu, declencheur) {
+  const bandeau = document.getElementById("reglesBandeauRetour");
+  const haut = Math.max(8, bandeau && !bandeau.hidden ? Math.ceil(bandeau.getBoundingClientRect().bottom) + 6 : 8);
+  const bas = window.innerHeight - 8;
+  const mh = menu.offsetHeight;
+  const sous = bas - (declencheur.bottom + 6);
+  const dessus = declencheur.top - 6 - haut;
+  const versBas = sous >= mh || sous >= dessus;
+  const dispo = Math.max(0, versBas ? sous : dessus);
+  menu.style.maxHeight = dispo < mh ? dispo + "px" : "";
+  menu.style.overflowY = dispo < mh ? "auto" : "";
+  const hauteur = Math.min(mh, dispo);
+  menu.style.top = (versBas ? declencheur.bottom + 6 : declencheur.top - 6 - hauteur) + "px";
+  menu.style.left = Math.max(8, Math.min(declencheur.left, window.innerWidth - menu.offsetWidth - 8)) + "px";
 }
 
 function finirControlesCollision(wrap, mk) {
@@ -6468,6 +6589,7 @@ function moteurCommandesViewer() {
       cameraFlight: viewer.cameraFlight,
       exclus: new Set(HOSPITAL_MISPLACED_RAILING_IDS),
       zones: zonesCommandes,
+      poseCentree: poseCentreeSurBoiteActuelle,
       apres: synchroniserDrawerApresCommande,
       registre: REGISTRE
     });
@@ -6582,7 +6704,7 @@ function recentrerApresCommande(resultat, cameraAvant, enAttente) {
   viewer.cameraFlight.cancel();
   // Commande confirmable : cadrage sur les seuls elements visibles ; « Tout reafficher » (sans confirmation) ou boite inexploitable : cadrage de « Recentrer ».
   const boite = resultat.confirmation ? boiteDesVisibles(viewer.scene.visibleObjectIds, (ids) => viewer.scene.getAABB(ids)) : null;
-  if (boite) viewer.cameraFlight.flyTo({ aabb: boite });
+  if (boite) viewer.cameraFlight.flyTo(poseCentreeSurBoiteActuelle(boite) ?? { aabb: boite });
   else recentrerSurMaquettes();
 }
 
@@ -6876,14 +6998,17 @@ retourPlan3d = creerRetourContexte({
   autresClasses: ["msg-retour-actif", "regles-retour-actif", "quantitatif-retour-actif"]
 });
 
+const quantitatifHistorique = creerHistorique({ depot: creerDepotLocal() });
 quantitatif = creerQuantitatifPage({
   racine: document.getElementById("quantitatifRoot"),
   obtenirDonnees: donneesQuantitatif,
   demander: demanderQuantitatif,
   voirDansViewer: voirQuantitatifDansViewer,
   obtenirVersions: versionsQuantitatif,
-  historique: creerHistorique({ depot: creerDepotLocal() })
+  historique: quantitatifHistorique
 });
+// Historique de demonstration (28/10) : deux quantitatifs deja passes, amorces une seule fois par navigateur.
+amorcerHistoriqueDemo({ historique: quantitatifHistorique }).then((ajoute) => { if (ajoute) quantitatif.rafraichirHistorique(); });
 // Rechargement direct sur la page (hash ou dernier onglet) : activateView s'est execute avant la creation de la page.
 // Differe d'un cran : appelee pendant l'initialisation du module, la page lirait des constantes declarees plus bas (HOSPITAL_MISPLACED_RAILING_IDS...) avant leur initialisation.
 if (!document.getElementById("view-quantitatif").hidden) setTimeout(() => quantitatif.surVueActivee("quantitatif"), 0);
@@ -7056,7 +7181,7 @@ let bandeauEnAnimation = false;
 function basculerBandeauAnime(reduire) {
   const el = collisionDiscussion;
   if (bandeauEnAnimation) return;
-  const mobileMq = window.matchMedia("(max-width: 768px)").matches;
+  const mobileMq = window.matchMedia(REQUETE_MOBILE).matches;
   // Mobile, appui sur le numero : meme mouvement que le glissement (sans redimensionner la 3D a chaque image).
   if (reduire && mobileMq && preparerFermetureBandeau()) { animerFermetureBandeau(0, 0); return; }
   const h0 = el.offsetHeight;
@@ -7629,7 +7754,7 @@ function classesEchangesGrand(actif, etaitReplie, recaler = true) {
 // fermeture) ; la hauteur figee est celle d'avant l'ouverture, donc identique a celle d'apres la fermeture.
 function figerZone3dMobile() {
   const slot = collisionViewerSlot;
-  if (!window.matchMedia("(max-width: 768px)").matches || slot.dataset.fige) return;
+  if (!window.matchMedia(REQUETE_MOBILE).matches || slot.dataset.fige) return;
   const h = slot.getBoundingClientRect().height;
   // Hauteur du bandeau sous la photo : le bouton « Collisions » s'en sert pour rejoindre la ligne du bouton « Message » (style.css, 22/10).
   collisionLeft.style.setProperty("--bas-fiche", (collisionLeft.getBoundingClientRect().bottom - slot.getBoundingClientRect().bottom) + "px");
@@ -7688,7 +7813,7 @@ function basculerGrandAnime(actif, etaitReplie) {
   const el = collisionDiscussion;
   const reduit = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const visible = el.offsetParent !== null;
-  const mobile = window.matchMedia("(max-width: 768px)").matches;
+  const mobile = window.matchMedia(REQUETE_MOBILE).matches;
   const btnCollisions = mobile ? collisionInfoPanelToggle : null;
   const btnMessage = mobile && messageOuvrirBtn && !messageOuvrirBtn.hidden ? messageOuvrirBtn : null;
   if (messageOuvrirBtn) { messageOuvrirBtn.style.width = ""; messageOuvrirBtn.style.transform = ""; } // le suivi du doigt laisse la main a l'animation
@@ -7878,7 +8003,7 @@ function fermerEchangesGrand(rendreFocus) {
   }, true);
   // Pleine page : un clic sur la photo de la 3D ramene a la vue normale.
   collisionViewerSlot.addEventListener("click", (e) => {
-    if (!echangesGrandOuvert || window.matchMedia("(max-width: 768px)").matches) return;
+    if (!echangesGrandOuvert || window.matchMedia(REQUETE_MOBILE).matches) return;
     e.stopPropagation();
     if (clicQuiAFermeLaCarte === e) return; // ce clic vient de fermer la carte d'infos : on reste en pleine page
     fermerEchangesGrand(true);
@@ -8048,7 +8173,7 @@ if (collisionInfoPanelCloseBtn) collisionInfoPanelCloseBtn.addEventListener("cli
 // et "Collisions" : le tiroir suit le doigt seulement si tout contenu defilable sous le doigt est en haut ; au
 // relachement, on ferme via la fermeture existante (celle de la croix) si le geste est assez long ou rapide.
 function enableDrawerSwipeToClose(drawer, closeFn, isOpen = () => drawer.classList.contains("open"), ignoreSel = 'input[type="range"]', swipeUpFn = null, hooks = null) {
-  const mobile = window.matchMedia("(max-width: 768px)");
+  const mobile = window.matchMedia(REQUETE_MOBILE);
   let startX = 0, startY = 0, startT = 0, dy = 0, tracking = false, dragging = false, scrollers = [], upOk = false, up = 0, replie = false, upFn = swipeUpFn;
   const scrollersFrom = (el) => {
     const list = [];
@@ -8826,7 +8951,7 @@ function showSelection(rows, docs) {
 }
 
 function isMobileViewport() {
-  return window.matchMedia("(max-width: 768px)").matches;
+  return window.matchMedia(REQUETE_MOBILE).matches;
 }
 
 function openFicheSheet() {
@@ -9374,6 +9499,7 @@ function loadProject(projectKey) {
         document.addEventListener("pointerdown", effacer, true);
         setTimeout(effacer, 6000);
       }
+      boiteBatiment = viewer.scene.visibleObjectIds.length ? viewer.scene.getAABB(viewer.scene.visibleObjectIds) : null; // le batiment entier, tel que montre a l'arrivee
       // 20/10 : 1 s de pause pour lire le temps de la derniere maquette (la 3D se dessine derriere),
       // puis le logo s'ouvre sur la maquette. Affichage immediat en mode progressif.
       if (CHARGEMENT_PROGRESSIF) loadingOverlay.classList.add("hidden");

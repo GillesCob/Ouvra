@@ -8,13 +8,15 @@
 //    (src/discussionsIABandeau.js) prend le relais. « Non » rouvre la modale en mode texte avec la phrase (reformuler).
 // Module sans dependance a main.js : tout passe par les parametres de creerDiscussionsIA.
 //   panneau : l'element #msgIAPanneau ; retourFocus : element qui reprend le focus quand la modale se ferme ; exemples : [{ demande }] ; exempleRapport : { libelle, surClic } du lien « Voir un exemple de rapport » de la modale (facultatif) ;
+//   historique : { lister() -> [{ id, nom, creeLe }], ouvrir(entree) } (28/10) : cartes cliquables des syntheses deja creees, sous « Nouvelle demande » ;
 //   traiter(phrase) : promesse de { ok, ... } (src/discussionsIAPipeline.js), ne rejette jamais ;
 //   proposer(retour, phrase) : applique le resultat, rend { ok: true } ou { ok: false, message }
 
 import "./discussionsIA.css";
 import { creerIASaisie, PHRASE_MAX } from "./iaSaisie.js";
+import { dateSynthese } from "./discussionsIAHistorique.js";
 
-const PLACEHOLDER_TEXTE = "Ex. : montre-moi tous les échanges avec Sophie Lambert";
+const PLACEHOLDER_TEXTE = "Ex. : échanges avec Sophie Lambert";
 const MESSAGE_PHRASE_VIDE = "Écrire ce qui est recherché, par exemple « montre-moi tous les échanges avec Sophie Lambert ».";
 
 function creer(tag, classe, texte) {
@@ -24,7 +26,7 @@ function creer(tag, classe, texte) {
   return el;
 }
 
-export function creerDiscussionsIA({ panneau, retourFocus = null, exemples, traiter, proposer, exempleRapport = null }) {
+export function creerDiscussionsIA({ panneau, retourFocus = null, exemples, traiter, proposer, exempleRapport = null, historique = null }) {
   const saisie = creerIASaisie({
     exemples,
     libelle: "Recherche dans les discussions par l'IA",
@@ -48,10 +50,37 @@ export function creerDiscussionsIA({ panneau, retourFocus = null, exemples, trai
   nouvelle.addEventListener("click", () => { if (!saisie.ouvert()) saisie.ouvrir(); });
   panneau.append(nouvelle);
 
+  // ---------- Historique des syntheses (28/10) : une carte cliquable par synthese (nom + date), un appui rouvre le rapport ----------
+  const histo = creer("section", "msg-ia-histo");
+  const histoTitre = creer("h3", "msg-ia-histo-titre", "Synthèses précédentes");
+  histoTitre.id = "msgIAHistoTitre";
+  const histoListe = creer("ul", "msg-ia-histo-liste");
+  histoListe.setAttribute("aria-labelledby", "msgIAHistoTitre");
+  histo.append(histoTitre, histoListe);
+  if (historique) panneau.append(histo);
+
+  function majHistorique() {
+    if (!historique) return;
+    const entrees = historique.lister();
+    histoListe.textContent = "";
+    histo.hidden = !entrees.length;
+    for (const entree of entrees) {
+      const li = creer("li", "msg-ia-histo-item");
+      const carte = creer("button", "msg-ia-histo-carte");
+      carte.type = "button";
+      carte.append(creer("span", "msg-ia-histo-nom", entree.nom), creer("span", "msg-ia-histo-date", dateSynthese(entree)));
+      carte.addEventListener("click", () => historique.ouvrir(entree));
+      li.appendChild(carte);
+      histoListe.appendChild(li);
+    }
+  }
+  majHistorique();
+
   return {
     ouvrir: () => { if (!saisie.ouvert()) saisie.ouvrir(); },
     fermer: () => saisie.fermer(),
     ouvert: saisie.ouvert,
-    reformuler: (phrase) => saisie.reformuler(phrase)
+    reformuler: (phrase) => saisie.reformuler(phrase),
+    majHistorique
   };
 }

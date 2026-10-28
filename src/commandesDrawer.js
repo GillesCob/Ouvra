@@ -36,7 +36,10 @@ export function capturerEtatDrawer({ maquettes = [], niveaux = [] }) {
 // Boite a cadrer apres une commande IA : celle des seuls elements visibles (getAABB = viewer.scene.getAABB). null si rien de visible ou boite invalide.
 export function boiteDesVisibles(idsVisibles, getAABB) {
   if (!idsVisibles || idsVisibles.length === 0) return null;
-  const boite = getAABB(idsVisibles);
-  if (!Array.isArray(boite) || boite.length !== 6 || !boite.every(Number.isFinite)) return null;
+  const brute = getAABB(idsVisibles);
+  // xeokit rend un Float64Array (jamais un Array) : le tester avec Array.isArray rejetait TOUJOURS la boite et renvoyait au cadrage large de « Recentrer » (retour 9).
+  if (!brute || typeof brute.length !== "number" || typeof brute === "string") return null;
+  const boite = Array.from(brute);
+  if (boite.length !== 6 || !boite.every(Number.isFinite)) return null;
   return boite[0] <= boite[3] && boite[1] <= boite[4] && boite[2] <= boite[5] ? boite : null;
 }

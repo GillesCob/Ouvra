@@ -1,7 +1,7 @@
 // Modale de saisie IA COMMUNE (24/10) : vocal d'abord, bascule texte, dictee de src/reglesVoix.js. Meme markup et memes classes que les modales des autres
 // IA d'Ouvra (regles-ia-* de src/reglesIA.css) : une seule apparence, un seul comportement.
 //  - ouvrir() ouvre DIRECTEMENT en mode vocal : gros micro, phrase d'aide, bouton « Écrire ma demande ». Un clic sur le micro demarre l'ecoute (jamais toute
-//    seule), un second la termine et envoie. Le menu deroulant des phrases toutes faites est en bas (a lire en vocal, cliquable en texte).
+//    seule), un second la termine et envoie. Le menu deroulant des phrases toutes faites est en bas (a lire en vocal, cliquable en texte : un clic lance la demande tout de suite).
 //  - « Ecrire ma demande » bascule la MEME modale en texte (champ + Valider) ; « Utiliser le micro » revient, sans perdre la phrase.
 //  - Dictee indisponible : ouverture directe en texte, avec la raison affichee.
 //  - Apres l'envoi le logo Ouvra tourne pendant surEnvoi ; { ok: true } ferme la modale, { ok: false, message } revient a la vue avec le message.
@@ -18,8 +18,11 @@ import "./reglesIA.css";
 import "./iaSaisie.css";
 import { creerDictee, detecterReconnaissance, motifDicteeIndisponible, nettoyerPhrase, MESSAGE_RIEN_RECONNU } from "./reglesVoix.js";
 import { demarrerNiveauVoix } from "./niveauVoix.js";
+import { verrouillerArrierePlan } from "./verrouDefilement.js";
 import { modeOuverture, modeApresBascule, annonceMode, aideVocal, suiteFinEcoute } from "./iaSaisieLogique.js";
+import { REQUETE_MOBILE } from "./seuilMobile.js";
 
+export const CLASSE_VERROU_SAISIE = "ia-saisie-ouverte"; // posee sur le corps tant que la modale est ouverte (iaSaisie.css : page figee)
 export const PHRASE_MAX = 200; // meme plafond que les relais (relais/entree.js)
 const DELAI_ARRET_MS = 2500; // attente des derniers resultats apres le second appui sur le micro, avant d'envoyer ce qui est reconnu
 const ICONE_MICRO = '<svg viewBox="0 0 24 24" width="40" height="40" focusable="false" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>';
@@ -65,7 +68,7 @@ export function creerIASaisie({ exemples = [], libelle = "Demande par l'IA", pla
   champ.enterKeyHint = "go";
   champ.placeholder = placeholder;
   champ.setAttribute("aria-label", "La demande, en une phrase");
-  const valider = creer("button", "regles-ia-valider", "Valider");
+  const valider = creer("button", "regles-ia-valider btn-principal", "Valider");
   valider.type = "submit";
   const retourMicro = creer("button", "regles-ia-bascule", "Utiliser le micro");
   retourMicro.type = "button";
@@ -93,7 +96,7 @@ export function creerIASaisie({ exemples = [], libelle = "Demande par l'IA", pla
   etat.setAttribute("role", "status");
   etat.hidden = true;
 
-  // Phrases toutes faites, en bas, dans un menu deroulant ferme : cliquables en texte comme en vocal (elles remplissent le champ ; en vocal elles basculent d'abord en texte).
+  // Phrases toutes faites, en bas, dans un menu deroulant ferme : cliquables en texte comme en vocal (un clic lance la demande tout de suite ; en vocal, l'ecoute est d'abord abandonnee).
   const propositions = creer("details", "regles-ia-propositions");
   const liste = creer("ul");
   exemples.forEach((exemple) => {
@@ -102,11 +105,9 @@ export function creerIASaisie({ exemples = [], libelle = "Demande par l'IA", pla
     choisie.type = "button";
     choisie.addEventListener("click", () => {
       if (vue === "vocal") { envoiApresArret = false; clearTimeout(minuteurArret); abandonnerDictee(); montrerVue("texte", { annoncer: true }); } // meme bascule que « Ecrire ma demande »
-      champ.value = exemple.demande.slice(0, PHRASE_MAX); // rempli, jamais envoye : « Valider » reste a l'utilisateur
+      champ.value = exemple.demande.slice(0, PHRASE_MAX); // garde dans le champ : si l'envoi echoue, la phrase est la, a reessayer ou a modifier
       propositions.open = false;
-      afficherEtat("", false);
-      ajusterChamp();
-      focusVue("texte");
+      envoyer(nettoyerPhrase(champ.value)); // lancee tout de suite (28/10) : plus de « Valider » a presser sur une phrase toute faite
     });
     li.appendChild(choisie);
     liste.appendChild(li);
@@ -126,6 +127,10 @@ export function creerIASaisie({ exemples = [], libelle = "Demande par l'IA", pla
   document.body.appendChild(fond);
 
   const ouvert = () => !fond.hidden;
+
+  // Arriere-plan fige tant que la modale est ouverte (28/10, retour de recette iPhone) : mecanisme commun de src/verrouDefilement.js. Seules la liste des propositions et
+  // le champ (au-dela de 5 lignes) peuvent defiler ; tout autre glissement est annule, la carte ne bouge donc pas sous le doigt.
+  const verrou = verrouillerArrierePlan(fond, () => [liste, champ], CLASSE_VERROU_SAISIE);
 
   // Hauteur du champ = hauteur du texte (plafond de 5 lignes pose en CSS, au-dela le champ defile en interne). Appelee a chaque saisie, remplissage et affichage.
   function ajusterChamp() {
@@ -254,6 +259,7 @@ export function creerIASaisie({ exemples = [], libelle = "Demande par l'IA", pla
     const ouverture = modeOuverture({ dicteeDisponible: dicteeDisponible && !motifVocal, motifIndisponible: motifVocal });
     const nom = modeInitial === "texte" ? "texte" : ouverture.mode;
     fond.hidden = false;
+    verrou.verrouiller();
     suivreZoneVisible();
     montrerVue(nom);
     if (nom === "texte" && ouverture.raison && modeInitial !== "texte") afficherEtat(ouverture.raison, false);
@@ -269,6 +275,7 @@ export function creerIASaisie({ exemples = [], libelle = "Demande par l'IA", pla
     vue = null;
     abandonnerDictee();
     fond.hidden = true;
+    verrou.deverrouiller();
     champ.value = "";
     if (dicteeDisponible) motifVocal = null; // un refus est oublie, comme un navigateur sans l'API reste sans vocal
     if (rendreFocus && retourFocus) retourFocus.focus({ preventScroll: true });
@@ -350,7 +357,7 @@ export function creerIASaisie({ exemples = [], libelle = "Demande par l'IA", pla
   // Mobile : le clavier virtuel d'iOS ne reduit pas la page, seulement la partie visible (visualViewport). Le fond suit cette zone visible (haut et hauteur),
   // la carte se plafonne dedans et defile en interne : champ, propositions et « Valider » restent atteignables clavier ouvert.
   const vv = window.visualViewport;
-  const ecranEtroit = window.matchMedia ? window.matchMedia("(max-width: 768px)") : { matches: false };
+  const ecranEtroit = window.matchMedia ? window.matchMedia(REQUETE_MOBILE) : { matches: false };
   const suivreZoneVisible = () => {
     const actif = ecranEtroit.matches && vv && !fond.hidden;
     fond.style.setProperty("--ia-vv-haut", actif ? `${Math.round(vv.offsetTop)}px` : "0px");

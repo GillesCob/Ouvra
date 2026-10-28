@@ -15,13 +15,15 @@
 import "./quantitatif.css";
 import { calculer, exporterCsv } from "./quantitatif.js";
 import { construireRapport, tableauDe, nomFichier, dateRelative } from "./quantitatifRapport.js";
-import { comparerVersions, libelleStatut } from "./quantitatifVersions.js";
+import { statutRapport, libelleStatut } from "./quantitatifVersions.js";
 import { valeursPourQuantitatif } from "./quantitatifDonnees.js";
 import { EXEMPLES_QUANTITATIF, reconnaitreExemple } from "./quantitatifExemples.js";
 import { nettoyerPhrase } from "./reglesVoix.js";
 import { creerIASaisie } from "./iaSaisie.js";
+import { creerMenuChoix } from "./menuChoix.js";
 import { creerCommandesBandeau } from "./commandesBandeau.js";
 import { preparerOngletPdf } from "./discussionsIARapportOnglet.js";
+import { REQUETE_MOBILE } from "./seuilMobile.js";
 
 const TITRE_ONGLET_QUANTITATIF = "Quantitatif Ouvra";
 
@@ -32,6 +34,10 @@ const MASQUE_INFOS_QUANTITATIF = true;
 const MESSAGE_VIDE = "Écrire la demande, par exemple « Combien de portes au niveau 2 ? ».";
 const MESSAGE_SANS_DONNEES = "Aucune maquette lisible pour le moment. Ouvrir d'abord le Viewer et attendre la fin du chargement.";
 const nombre = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 2 });
+
+// Mobile (28/10) : mise en page dediee, le tableau d'abord. Meme seuil que quantitatif.css.
+const MEDIA_MOBILE = REQUETE_MOBILE;
+const ecranMobile = () => !!window.matchMedia && window.matchMedia(MEDIA_MOBILE).matches;
 
 function creer(tag, classe, texte) {
   const el = document.createElement(tag);
@@ -60,7 +66,7 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
   entete.append(titre, statut);
 
   // Carte de depart (25/10, comme la page 2D -> 3D) : deux choix seulement, « Nouvelle demande » (ouvre la modale de saisie commune, src/iaSaisie.js, vocal
-  // d'abord, avec ses phrases toutes faites) ou « Historique ». UN seul bouton IA : le meme element est deplace entre la carte de depart et la barre des autres vues.
+  // d'abord, avec ses phrases toutes faites) ou « Historique ». Ils ne vivent que sur la carte de depart (28/10).
   const boutonIA = creer("button", "qt-btn-ia", "Nouvelle demande");
   boutonIA.type = "button";
   boutonIA.id = "quantitatifIABtn";
@@ -70,12 +76,17 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
   const boutonHistorique = creer("button", "qt-btn", "Historique");
   boutonHistorique.type = "button";
   boutonHistorique.id = "quantitatifHistoriqueBtn";
-  const boutonRetour = creer("button", "qt-btn qt-btn-discret", "← Retour");
+  // Sur mobile, le bouton n'a plus de ligne dediee : il se loge en icone « ← » au debut de la premiere ligne du contenu (placerRetour). Le nom accessible reste « Retour ».
+  const boutonRetour = creer("button", "qt-btn qt-btn-discret qt-btn-retour", "← ");
   boutonRetour.type = "button";
+  boutonRetour.setAttribute("aria-label", "Retour");
+  boutonRetour.appendChild(creer("span", "qt-retour-texte", "Retour"));
   const departCarte = creer("section", "qt-depart");
-  departCarte.setAttribute("aria-label", "Que veux-tu faire ?");
+  departCarte.setAttribute("aria-label", "Choisir une action");
+  // Barre des vues « resultat » et « historique » : « ← Retour » seulement (28/10). Nouvelle demande et Historique ne vivent que sur la carte de depart.
   const barre = creer("div", "qt-barre");
   barre.hidden = true;
+  barre.appendChild(boutonRetour);
 
   const message = creer("p", "qt-message");
   message.id = "quantitatifMessage";
@@ -94,7 +105,7 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
       courant.nouveau = false;
       resultatZone.hidden = false;
       majVue();
-      if (!barre.hidden) boutonIA.focus({ preventScroll: true });
+      if (!barre.hidden) boutonRetour.focus({ preventScroll: true });
       await enregistrer(courant.rapport);
     },
     // « Non » : rien n'a ete enregistre ni affiche, la saisie est rouverte prerenseignee.
@@ -137,14 +148,35 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
     barre.hidden = v === "depart" || (v === "resultat" && bandeau.visible()); // pendant la confirmation, la relecture s'affiche seule
     zoneResultat.hidden = v !== "resultat";
     zoneHistorique.hidden = v !== "historique";
-    if (v === "depart") departCarte.append(boutonIA, boutonHistorique);
-    else {
-      barre.append(boutonRetour, boutonIA);
-      if (v === "resultat") barre.append(boutonHistorique); else departCarte.append(boutonHistorique);
-    }
+    racine.dataset.vue = v;
+    racine.classList.toggle("qt-confirmation", bandeau.visible()); // sous le bandeau de confirmation, le titre de la page est retire (28/10)
+    placerRetour();
   }
+  // Mobile : « Retour » se loge dans la premiere ligne du quantitatif ou de l'historique affiche (gain d'une ligne entiere) ; sinon il reste dans la barre des vues.
+  function placerRetour() {
+    const mobile = ecranMobile();
+    const cible = !mobile ? null : racine.dataset.vue === "resultat" ? resultatZone.querySelector(".qt-resultat-tete") : racine.dataset.vue === "historique" ? histoBloc.querySelector(".qt-histo-tete") : null;
+    const destination = cible || barre;
+    if (boutonRetour.parentElement === destination && (!cible || destination.firstChild === boutonRetour)) return;
+    const avaitLeFocus = document.activeElement === boutonRetour;
+    if (cible) cible.prepend(boutonRetour); else barre.appendChild(boutonRetour);
+    if (avaitLeFocus) boutonRetour.focus({ preventScroll: true });
+  }
+  // Une zone qu'on vide ne doit pas emporter le bouton « Retour » : il retourne d'abord dans la barre.
+  function viderZone(zone) {
+    if (zone.contains(boutonRetour)) barre.appendChild(boutonRetour);
+    zone.textContent = "";
+  }
+  window.addEventListener("resize", placerRetour);
   function allerA(nouvelle) { vue = nouvelle; majVue(); }
-  boutonRetour.addEventListener("click", () => allerA("depart"));
+  // « ← Retour » depuis un quantitatif rouvert depuis l'historique ramene aux cartes de l'historique, sinon au depart (28/10).
+  let retourVers = "depart";
+  boutonRetour.addEventListener("click", () => {
+    const cible = vue === "resultat" ? retourVers : "depart";
+    retourVers = "depart";
+    allerA(cible);
+    if (cible === "historique") rafraichirHistorique();
+  });
   boutonHistorique.addEventListener("click", () => { allerA("historique"); rafraichirHistorique(); });
 
   // ---------- Etat visuel ----------
@@ -161,7 +193,7 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
     dernierResultat = null;
     bandeau.masquer(false);
     resultatZone.hidden = true;
-    resultatZone.textContent = "";
+    viderZone(resultatZone);
     majVue();
   }
 
@@ -169,7 +201,7 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
   const saisie = creerIASaisie({
     exemples: EXEMPLES_QUANTITATIF,
     libelle: "Demande de quantitatif par l'IA",
-    placeholder: "Ex. : combien de portes au niveau 2 ?",
+    placeholder: "Ex. : portes du niveau 2",
     messageVide: MESSAGE_VIDE,
     retourFocus: boutonIA,
     surEnvoi: (phrase, { annule }) => traiter(phrase, annule)
@@ -201,7 +233,7 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
     const quantite = cellule("td", nombre.format(ligne.valeur), "qt-num qt-valeur");
     if (resultat.mesure.unite) quantite.appendChild(creer("span", "qt-unite", " " + resultat.mesure.unite));
     tr.appendChild(quantite);
-    const origine = cellule("td", null, "qt-origine-cellule");
+    const origine = cellule("td", null, "qt-origine-cellule qt-col-origine");
     origine.appendChild(creer("span", "qt-origine qt-origine-" + resultat.mesure.origine, resultat.mesure.origineLibelle));
     tr.appendChild(origine);
     if (voirDansViewer) {
@@ -278,18 +310,20 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
       }
     }
     try {
+      // Test de recette (serveur de dev uniquement) : ?qtErreur=1 dans l'adresse fait echouer les exports Excel et PDF, pour voir le message d'erreur. Absent en production.
+      if (import.meta.env?.DEV && format !== "csv" && new URLSearchParams(window.location.search).get("qtErreur") === "1") throw new Error("Echec simule (qtErreur)");
       if (format === "csv") {
         const remarques = [rapport.resultat.notes[0], ...(statut.etat === "a_jour" ? [] : [libelleStatut(statut)])];
         telecharger(nomFichier(rapport, "csv"), exporterCsv(rapport.resultat, remarques), "text/csv;charset=utf-8");
       } else if (format === "pdf") {
-        await (await import("./quantitatifExportPdf.js")).exporterPdf(rapport, statut, { telecharger: (n, c) => telecharger(n, c, "application/pdf"), onglet });
+        await (await import("./quantitatifExportPdf.js")).exporterPdf(rapport, statut, { telecharger: (n, c) => telecharger(n, c, "application/pdf"), onglet, mobile: ecranMobile() });
       } else {
         await (await import("./quantitatifExportXlsx.js")).exporterXlsx(rapport, statut, { telecharger: (n, c) => telecharger(n, c) });
       }
       dire("");
     } catch {
       if (onglet && !onglet.closed) onglet.close();
-      dire("L'export a échoué. Réessaie, ou utilise le format CSV.");
+      dire("L'export a échoué. Réessayer, ou utiliser le format CSV.");
     }
   }
 
@@ -300,12 +334,31 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
     return creer("span", "qt-pastille qt-pastille-ajour", "À jour");
   }
 
+  // Liste des formats d'export (29/10) : le menu commun (src/menuChoix.js), le MEME que les selecteurs Priorite / Statut (classes .collision-menu*, src/style.css), pose en
+  // position fixe pres du bouton « Exporter » (le panneau coupe tout ce qui deborde). Un seul ouvert a la fois ; ferme par un clic en dehors, Echap, le choix d'un format,
+  // un defilement ou un redimensionnement (ecouteurs retires a la fermeture). Meme rendu que le menu de conversation de la messagerie : au moins de la largeur du bouton, sur laptop comme sur mobile.
+  const FORMATS_EXPORT = [["xlsx", "Excel"], ["pdf", "PDF"], ["csv", "CSV"]];
+  const menuChoix = creerMenuChoix({ conteneur: document.body });
+  const fermerMenuExport = () => menuChoix.fermer();
+  function ouvrirMenuExport(bouton, rapport, statut) {
+    menuChoix.ouvrir(bouton, {
+      titre: "Exporter en",
+      id: "quantitatifExportChoix",
+      fermerAuDefilement: true,
+      largeurAuto: true, // au moins la largeur du bouton, assez large pour le titre « Exporter en » sur une ligne
+      options: FORMATS_EXPORT.map(([valeur, libelle]) => ({ valeur, libelle })),
+      surChoix: (format) => exporter(format, rapport, statut),
+    });
+  }
+
   function dessinerRapport(rapport, statut, confirmation = false) {
     const resultat = rapport.resultat;
-    resultatZone.textContent = "";
+    fermerMenuExport();
+    viderZone(resultatZone);
     const tete = creer("div", "qt-resultat-tete");
     const titres = creer("div", "qt-resultat-titres");
-    titres.appendChild(creer("h3", "qt-resultat-titre", rapport.relecture));
+    const titre = creer("h3", "qt-resultat-titre", rapport.relecture);
+    titres.appendChild(titre);
     const pastilles = creer("div", "qt-pastilles");
     pastilles.appendChild(creer("span", "qt-pastille qt-pastille-" + resultat.mesure.origine, resultat.mesure.origineLibelle.charAt(0).toUpperCase() + resultat.mesure.origineLibelle.slice(1)));
     pastilles.appendChild(pastilleEtat(statut));
@@ -315,8 +368,9 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
     const badge = badgeStatut(statut, () => recalculer(rapport));
     if (badge) resultatZone.appendChild(badge);
 
-    // Avertissement compte / estime en toutes lettres, au-dessus du tableau (jamais seulement dans une infobulle).
-    resultatZone.appendChild(creer("p", "qt-avertissement qt-avertissement-" + resultat.mesure.origine, tableauDe(rapport).metre.explication));
+    // Avertissement « estimé » (ne pas chiffrer ferme) en toutes lettres, au-dessus du tableau, jamais seulement dans une infobulle, sur mobile comme sur laptop.
+    // L'explication « compté » n'a plus de bandeau sur la page (retour du 28/10) : elle reste dans le rapport exporté.
+    if (resultat.mesure.origine === "estime") resultatZone.appendChild(creer("p", "qt-avertissement qt-avertissement-estime", tableauDe(rapport).metre.explication));
 
     if (resultat.aucunResultat) {
       resultatZone.appendChild(creer("p", "qt-vide", "Aucun élément ne correspond à cette demande dans les maquettes chargées."));
@@ -330,7 +384,7 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
       colonnes.forEach((c) => { const th = cellule("th", c, "qt-cle"); th.scope = "col"; tr.appendChild(th); });
       const unite = resultat.mesure.unite ? " (" + resultat.mesure.unite + ")" : "";
       const libelleMesure = resultat.mesure.libelle.charAt(0).toUpperCase() + resultat.mesure.libelle.slice(1) + unite;
-      ["Éléments", libelleMesure, "Origine"].forEach((c, i) => { const th = cellule("th", c, i < 2 ? "qt-num" : null); th.scope = "col"; tr.appendChild(th); });
+      ["Éléments", libelleMesure, "Origine"].forEach((c, i) => { const th = cellule("th", c, i < 2 ? "qt-num" : "qt-col-origine"); th.scope = "col"; tr.appendChild(th); });
       if (voirDansViewer) { const th = cellule("th", "Viewer", "qt-action"); th.scope = "col"; tr.appendChild(th); }
       thead.appendChild(tr);
       const tbody = creer("tbody");
@@ -356,25 +410,34 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
       notes.forEach((n) => liste.appendChild(creer("li", null, n)));
       resultatZone.appendChild(liste);
     }
-    // Exports (27/10) : regroupes en bas du panneau, sous le tableau et le total.
+    // Exports (27/10), puis suppression (28/10) : un bouton « Exporter » ouvre la liste des formats, « Supprimer » est a cote. Groupe en bas du panneau.
     const exports = creer("div", "qt-exports");
     exports.setAttribute("role", "group");
-    exports.setAttribute("aria-label", "Exporter ce rapport");
-    exports.appendChild(creer("span", "qt-exports-lib", "Exporter"));
-    [["xlsx", "Excel"], ["pdf", "PDF"], ["csv", "CSV"]].forEach(([format, libelle]) => {
-      const b = creer("button", "qt-btn", libelle);
-      b.type = "button";
-      b.setAttribute("aria-label", "Exporter en " + libelle);
-      b.addEventListener("click", () => exporter(format, rapport, statut));
-      exports.appendChild(b);
+    exports.setAttribute("aria-label", "Exporter ou supprimer ce rapport");
+    const boutonExporter = creer("button", "qt-btn qt-btn-exporter", "Exporter");
+    boutonExporter.type = "button";
+    boutonExporter.setAttribute("aria-haspopup", "listbox");
+    boutonExporter.setAttribute("aria-expanded", "false");
+    boutonExporter.setAttribute("aria-controls", "quantitatifExportChoix");
+    boutonExporter.setAttribute("aria-label", "Exporter ce quantitatif");
+    boutonExporter.appendChild(creer("span", "qt-chevron"));
+    boutonExporter.addEventListener("click", () => {
+      const etaitOuvert = menuChoix.ouvert();
+      fermerMenuExport();
+      if (!etaitOuvert) ouvrirMenuExport(boutonExporter, rapport, statut);
     });
+    const supprimer = creer("button", "qt-btn qt-btn-supprimer", "Supprimer");
+    supprimer.type = "button";
+    supprimer.setAttribute("aria-label", "Supprimer ce quantitatif");
+    supprimer.addEventListener("click", () => supprimerRapport(rapport));
+    exports.append(boutonExporter, supprimer);
     resultatZone.appendChild(exports);
     resultatZone.hidden = !!confirmation;
   }
 
   // Affiche un rapport (nouveau ou rouvert) avec son etat de version actuel, recalcule a chaque affichage.
   async function afficherRapport(rapport, { nouveau }) {
-    const statut = comparerVersions(rapport.maquettes, await obtenirVersions());
+    const statut = statutRapport(rapport, await obtenirVersions());
     dernierResultat = { rapport, phrase: rapport.phrase, nouveau };
     dessinerRapport(rapport, statut, nouveau); // nouveau : le resultat reste cache tant que « Oui » n'est pas cliquee
     if (nouveau) bandeau.montrer({ relecture: rapport.relecture }); else bandeau.masquer(false);
@@ -382,57 +445,63 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
   }
 
   // ---------- Historique ----------
+  async function rouvrir(rapport) {
+    jeton += 1;
+    occuper(false);
+    dire("");
+    retourVers = "historique";
+    await afficherRapport(rapport, { nouveau: false });
+    if (resultatZone.scrollIntoView) resultatZone.scrollIntoView({ block: "start" });
+  }
+
+  // Suppression depuis le quantitatif ouvert : on retombe sur l'historique s'il reste des entrees, sinon sur la carte de depart.
+  async function supprimerRapport(rapport) {
+    if (historique) await historique.supprimer(rapport.id);
+    viderResultat();
+    const reste = historique ? await historique.lister() : [];
+    await rafraichirHistorique();
+    allerA(reste.length ? "historique" : "depart");
+  }
+
   async function rafraichirHistorique() {
     if (!historique) { boutonHistorique.disabled = true; return; }
     const entrees = await historique.lister();
     boutonHistorique.textContent = entrees.length ? "Historique · " + entrees.length : "Historique";
-    boutonHistorique.disabled = entrees.length === 0 && vue !== "historique";
-    histoBloc.textContent = "";
+    boutonHistorique.disabled = entrees.length === 0;
+    viderZone(histoBloc);
     const versions = await obtenirVersions();
     const tete = creer("div", "qt-histo-tete");
     tete.appendChild(creer("h3", "qt-carte-titre", "Historique"));
     tete.appendChild(creer("span", "qt-pastille qt-pastille-neutre", String(entrees.length)));
     histoBloc.appendChild(tete);
+    placerRetour();
     if (!entrees.length) {
-      histoBloc.appendChild(creer("p", "qt-histo-vide", "Tes quantitatifs apparaîtront ici, avec leur date. Tu pourras les rouvrir sans rappeler l'IA."));
+      histoBloc.appendChild(creer("p", "qt-histo-vide", "Les quantitatifs apparaîtront ici, avec leur date. Ils pourront être rouverts sans rappeler l'IA."));
       return;
     }
     const liste = creer("ul", "qt-histo-liste");
     entrees.forEach((entree) => {
       const rapport = entree.rapport;
-      const statut = comparerVersions(rapport.maquettes, versions);
+      const statut = statutRapport(rapport, versions);
       const li = creer("li", "qt-histo-item");
-      const ligne1 = creer("div", "qt-histo-ligne");
+      // Toute la carte est le bouton qui rouvre le quantitatif (28/10) : plus de boutons Rouvrir / Supprimer ; la suppression vit dans le quantitatif ouvert.
+      const carte = creer("button", "qt-histo-carte");
+      carte.type = "button";
+      carte.setAttribute("aria-label", "Rouvrir : " + rapport.phrase);
+      const ligne1 = creer("span", "qt-histo-ligne");
       ligne1.appendChild(pastilleEtat(statut));
       const quand = creer("time", "qt-histo-date", dateRelative(rapport.calculeLe));
       quand.dateTime = rapport.calculeLe;
       quand.title = new Date(rapport.calculeLe).toLocaleString("fr-FR");
       ligne1.appendChild(quand);
-      li.appendChild(ligne1);
-      li.appendChild(creer("p", "qt-histo-phrase", rapport.phrase));
       const n = rapport.resultat.lignes.length;
-      li.appendChild(creer("p", "qt-histo-detail", n + " ligne" + (n > 1 ? "s" : "") + " · " + (rapport.maquettes.map((m) => m.label).join(", ") || "aucune maquette")));
-      const actions = creer("div", "qt-histo-actions");
-      const rouvrir = creer("button", "qt-btn", "Rouvrir");
-      rouvrir.type = "button";
-      rouvrir.setAttribute("aria-label", "Rouvrir : " + rapport.phrase);
-      rouvrir.addEventListener("click", async () => {
-        jeton += 1;
-        occuper(false);
-        dire("");
-        await afficherRapport(rapport, { nouveau: false });
-        if (resultatZone.scrollIntoView) resultatZone.scrollIntoView({ block: "start" });
-      });
-      const supprimer = creer("button", "qt-btn qt-btn-discret", "Supprimer");
-      supprimer.type = "button";
-      supprimer.setAttribute("aria-label", "Supprimer de l'historique : " + rapport.phrase);
-      supprimer.addEventListener("click", async () => {
-        await historique.supprimer(rapport.id);
-        if (dernierResultat && dernierResultat.rapport.id === rapport.id) viderResultat();
-        rafraichirHistorique();
-      });
-      actions.append(rouvrir, supprimer);
-      li.appendChild(actions);
+      carte.append(
+        ligne1,
+        creer("span", "qt-histo-phrase", rapport.phrase),
+        creer("span", "qt-histo-detail", n + " ligne" + (n > 1 ? "s" : "") + " · " + (rapport.maquettes.map((m) => m.label).join(", ") || "aucune maquette"))
+      );
+      carte.addEventListener("click", () => rouvrir(rapport));
+      li.appendChild(carte);
       liste.appendChild(li);
     });
     histoBloc.appendChild(liste);
@@ -441,7 +510,7 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
   async function enregistrer(rapport) {
     if (!historique) return;
     const r = await historique.ajouter(rapport);
-    if (!r.ok) dire(r.raison === "trop_volumineux" ? "Ce rapport est trop volumineux pour l'historique. Il reste affiché, exporte-le pour le garder." : "L'historique n'est pas disponible sur cet appareil. Le rapport reste affiché, exporte-le pour le garder.");
+    if (!r.ok) dire(r.raison === "trop_volumineux" ? "Ce rapport est trop volumineux pour l'historique. Il reste affiché, l'exporter permet de le garder." : "L'historique n'est pas disponible sur cet appareil. Le rapport reste affiché, l'exporter permet de le garder.");
     rafraichirHistorique();
   }
 
@@ -468,6 +537,7 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
     const resultat = calculer(donnees.elements, requete);
     if (!resultat.ok) return { ok: false, message: resultat.message };
     const rapport = construireRapport({ resultat, phrase, versions: await obtenirVersions() });
+    retourVers = "depart";
     await afficherRapport(rapport, { nouveau: true }); // enregistre dans l'historique seulement apres « Oui »
     return { ok: true };
   }
@@ -520,8 +590,11 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
 
   // Reouverture de la page : l'etat de version du rapport affiche est recalcule (une maquette a pu changer entre-temps).
   async function rafraichirRapportAffiche() {
-    if (dernierResultat && !resultatZone.hidden) dessinerRapport(dernierResultat.rapport, comparerVersions(dernierResultat.rapport.maquettes, await obtenirVersions()));
+    if (dernierResultat && !resultatZone.hidden) dessinerRapport(dernierResultat.rapport, statutRapport(dernierResultat.rapport, await obtenirVersions()));
   }
+
+  // Passage du seuil mobile / laptop : les infos secondaires changent de forme, le rapport affiche est redessine.
+  if (window.matchMedia) window.matchMedia(MEDIA_MOBILE).addEventListener("change", rafraichirRapportAffiche);
 
   return {
     // Appelee par main.js a chaque changement de page.
@@ -530,6 +603,7 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
       else { bandeau.masquer(false); saisie.fermer(false); clearTimeout(minuteurSource); jeton += 1; occuper(false); }
     },
     lancer,
+    rafraichirHistorique,
     // Pour les tests et pour main.js : etat courant.
     dernierResultat: () => dernierResultat
   };

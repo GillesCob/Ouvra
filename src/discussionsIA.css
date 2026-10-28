@@ -16,6 +16,28 @@
 }
 .msg-racine .msg-ia-nouvelle:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
 
+/* Sur l'onglet IA, le panneau prend toute la hauteur sous les onglets : l'historique des syntheses defile dedans. */
+.msg-ia-panneau:not([hidden]) { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.msg-ia-panneau > * { flex-shrink: 0; }
+
+/* ---------- Historique des syntheses (28/10) ---------- */
+/* Memes cartes cliquables que l'historique des quantitatifs (src/quantitatif.css, .qt-histo-*) : bordure, fond, nom en gras, date en petit. */
+.msg-ia-histo { display: flex; flex-direction: column; gap: 8px; padding-top: 6px; }
+.msg-ia-histo[hidden] { display: none; }
+.msg-ia-histo-titre { margin: 0; font-size: 12px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+.msg-ia-histo-liste { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.msg-ia-histo-item { border: 1px solid var(--border); border-radius: 8px; background: var(--bg); transition: border-color 0.18s ease; }
+.msg-ia-histo-item:focus-within { border-color: var(--accent); }
+.msg-racine .msg-ia-histo-carte {
+  display: flex; flex-direction: column; gap: 4px; width: 100%; min-height: 44px; padding: 12px; background: none; border: 0; border-radius: 8px;
+  color: inherit; font: inherit; text-align: left; cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+.msg-racine .msg-ia-histo-carte:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+.msg-ia-histo-nom { font-size: 13.5px; font-weight: 600; line-height: 1.4; overflow-wrap: anywhere; }
+.msg-ia-histo-date { color: var(--muted); font-size: 11.5px; }
+@media (hover: hover) and (pointer: fine) { .msg-ia-histo-item:hover { border-color: var(--accent); } }
+@media (prefers-reduced-motion: reduce) { .msg-ia-histo-item { transition: none; } }
+
 /* ---------- Liste filtree par l'IA ---------- */
 /* Resume du resultat sur UNE SEULE ligne : « <- Retour », la demande et le compte (ellipsis si trop long). */
 .msg-ia-resume {
@@ -34,6 +56,9 @@
 /* Mode resultat (classe posee par rendreListe sur .msg-lateral) : onglets masques, la liste des discussions remontees prend la place.
    Retirer ce bloc suffit pour revenir a l'ancien affichage. */
 .msg-lateral.msg-ia-resultat .msg-onglets { display: none; }
+/* Le panneau (« Nouvelle demande » et historique des syntheses) cede toute la place a la liste des resultats (28/10, recette iPhone : il la ramenait a une bande illisible) ;
+   « Retour » ramene au panneau. Mobile seulement : le laptop garde son affichage. */
+@media (max-width: 768px) { .msg-lateral.msg-ia-resultat .msg-ia-panneau { display: none; } }
 /* Ligne de resultat : le format d'une conversation (.msg-conv), l'extrait passe sur deux lignes avec ses mots trouves en evidence. */
 .msg-ia-res .msg-conv-nom { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .msg-ia-res .msg-conv-heure { font-size: 11.5px; white-space: nowrap; }
@@ -127,14 +152,31 @@ body.discussions-confirm-actif .disc-rapport-fond { padding-top: calc(52px + var
 .disc-rapport-pied { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; padding-top: 10px; border-top: 1px solid var(--border); }
 .disc-rapport-btn:disabled { opacity: 0.55; cursor: default; }
 .disc-rapport-btn { min-height: 44px; padding: 0 18px; background: none; color: var(--text); border: 1px solid var(--border); border-radius: 8px; font-size: 14px; font-weight: 700; }
-.disc-rapport-fermer { background: var(--accent); color: var(--bg); border-color: var(--accent); }
 @media (max-width: 768px) {
-  .disc-rapport-fond { align-items: flex-end; padding: 0; }
-  .regles-ia-carte.disc-rapport-carte { width: 100%; max-height: 92%; border-radius: 14px 14px 0 0; }
-  .disc-rapport-btn { flex: 1 1 auto; padding: 0 12px; }
+  /* Mobile (28/10, Gilles) : le rapport est une PAGE pleine ecran (jamais une modale), comme les infos de collision. Tout le rapport defile d'un bloc (entete comprise) et la
+     barre de boutons reste collee en bas. Sous « Est-ce bien votre demande ? », la page commence sous le bandeau. */
+  .regles-ia-fond.disc-rapport-fond { align-items: stretch; padding: 0; background: var(--surface); overscroll-behavior: none; touch-action: pan-y; }
+  /* Arriere-plan fige tant que le rapport est ouvert (classe posee par src/discussionsIARapportDefilement.js) ; la carte ne transmet ni son defilement ni son rebond a la page. */
+  body.disc-rapport-ouvert { overflow: hidden; overscroll-behavior: none; }
+  .regles-ia-carte.disc-rapport-carte { width: 100%; height: 100%; max-height: none; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; border: 0; border-radius: 0; overflow-y: auto; gap: 12px; padding: calc(12px + env(safe-area-inset-top)) 14px 0; }
+  .regles-ia-carte.disc-rapport-carte > .disc-rapport-corps { flex: none; overflow: visible; padding-right: 0; gap: 12px; }
+  .disc-rapport-logo { height: 28px; }
+  .disc-rapport-titre { font-size: 17px; }
+  .disc-rapport-bloc { padding: 10px 12px; }
+  .disc-rapport-pied { position: sticky; bottom: 0; margin-top: auto; flex-wrap: nowrap; margin: 0 -14px; padding: 10px 14px calc(10px + env(safe-area-inset-bottom)); background: var(--surface); }
+  .disc-rapport-btn { flex: 1 1 0; min-width: 0; padding: 0 8px; font-size: 13px; }
   .disc-rapport-source { min-height: 44px; }
-  body.discussions-confirm-actif .disc-rapport-fond { padding-top: calc(52px + var(--discussions-bandeau-h, 44px)); }
+  body.discussions-confirm-actif .regles-ia-fond.disc-rapport-fond { padding-top: calc(52px + var(--discussions-bandeau-h, 44px)); }
 }
+/* Blocs secondaires en menus deroulants (mobile seulement, cf. src/discussionsIARapportVue.js) : meme titre que les autres blocs, chevron a droite. */
+.disc-rapport-depliant > summary { display: flex; align-items: center; justify-content: space-between; min-height: 44px; margin: -10px -12px; padding: 0 12px; list-style: none; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.disc-rapport-depliant > summary::-webkit-details-marker { display: none; }
+.disc-rapport-depliant > summary::after { content: ""; width: 8px; height: 8px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(45deg); transition: transform 0.2s ease; }
+.disc-rapport-depliant[open] > summary::after { transform: rotate(-135deg); }
+.disc-rapport-depliant[open] > summary { margin-bottom: 0; }
+.disc-rapport-depliant-corps { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.disc-rapport-depliant > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 10px; }
+@media (prefers-reduced-motion: reduce) { .disc-rapport-depliant > summary::after { transition: none; } }
 
 /* ---------- Bandeau « <- Retour au rapport » (28/10) ---------- */
 /* Meme composant (src/retourContexte.js) et meme placement que #msgBandeauRetour (messagerie.css) : sous la navbar (52 px), 44 px de haut, z-index 55. La page
@@ -153,17 +195,15 @@ body.discussions-confirm-actif .disc-rapport-fond { padding-top: calc(52px + var
 body.disc-rapport-retour-actif #view-discussions { padding-top: 44px; box-sizing: border-box; }
 @media (max-width: 768px) { #discussionsRapportBandeauRetour { padding: 0 12px; } #discussionsRapportBandeauRetour button { min-height: 44px; } }
 
-/* Survol des boutons de l'IA de Discussions (28/10, Gilles) : memes motifs que le reste de l'application (bouton neutre : bordure accent, bouton plein : teinte plus claire). */
+/* Survol des boutons de l'IA de Discussions (28/10, Gilles) : memes motifs que le reste de l'application (bouton neutre : bordure accent, bouton plein : fond assombri comme .btn-principal). */
 @media (hover: hover) and (pointer: fine) {
   .disc-rapport-btn:not(:disabled):hover { border-color: var(--accent); }
-  .msg-racine .msg-ia-nouvelle:hover { background: color-mix(in srgb, var(--msg-accent) 86%, #fff); }
+  .msg-racine .msg-ia-nouvelle:hover { background: color-mix(in srgb, var(--msg-accent) 88%, #000); }
   #discussionsBandeau button:hover { border-color: var(--accent); }
-  #discussionsBandeau button[data-act="oui"]:hover { background: color-mix(in srgb, #7fae84 86%, #fff); border-color: color-mix(in srgb, #7fae84 86%, #fff); }
   #discussionsRapportBandeauRetour button:hover { border-color: var(--accent); }
 }
 
-/* Survol des boutons oublies (28/10, Gilles) : « Fermer » du rapport est un bouton plein dont la bordure est deja a l'accent (« bordure accent » ne changeait rien) : meme teinte plus claire que « Valider ». */
+/* Survol du bouton « Retour » plein (28/10) : fond assombri, comme .btn-principal (src/boutonPrincipal.css). « Fermer » du rapport est un .btn-principal. */
 @media (hover: hover) and (pointer: fine) {
-  .disc-rapport-fermer:not(:disabled):hover { background: color-mix(in srgb, var(--accent) 86%, #fff); border-color: color-mix(in srgb, var(--accent) 86%, #fff); }
-  .msg-racine .msg-ia-retour:hover { background: color-mix(in srgb, var(--msg-accent) 86%, #fff); border-color: color-mix(in srgb, var(--msg-accent) 86%, #fff); }
+  .msg-racine .msg-ia-retour:hover { background: color-mix(in srgb, var(--msg-accent) 88%, #000); border-color: color-mix(in srgb, var(--msg-accent) 88%, #000); }
 }

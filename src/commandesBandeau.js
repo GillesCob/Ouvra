@@ -35,6 +35,7 @@ export function creerCommandesBandeau({ surOui, surNon, conteneur = null, retour
     const b = creer("button", null, libelle);
     b.type = "button";
     b.dataset.act = action;
+    if (action === "oui") b.classList.add("btn-principal"); // aspect commun des boutons pleins (src/boutonPrincipal.css)
     return b;
   }
 

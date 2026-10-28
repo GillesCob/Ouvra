@@ -25,7 +25,7 @@
 import { normaliser } from "./reglesCollision.js";
 import { canoniqueNiveau, libelleTypeIfc, pluriel } from "./commandesLibelles.js";
 import { SELECTEURS, FILTRES_CONTEXTE, trouverElements, decrireSelection, phraseSelection } from "./commandesSelecteurs.js";
-import { PRESENTATIONS, DUREE_VOL_S, presentationEffective, relireRestreint } from "./commandesPresentations.js";
+import { PRESENTATIONS, presentationEffective, relireRestreint, volerVers } from "./commandesPresentations.js";
 import { creerJournal } from "./commandesEtats.js";
 
 export { canoniqueNiveau, libelleTypeIfc };
@@ -163,8 +163,7 @@ const ACTION_AFFICHER = {
     if (parametres.surbrillance) journal.surbrillance(plan.ids, true);
     if (parametres.cadrer && presentation.cadrage !== false && cameraFlight) {
       const cible = presentation.cible ? presentation.cible(plan, contexte, parametres) : null;
-      cameraFlight.cancel();
-      cameraFlight.flyTo({ aabb: cible || scene.getAABB(plan.ids), duration: DUREE_VOL_S });
+      volerVers(contexte, cible || scene.getAABB(plan.ids));
     }
     return () => {
       journal.annuler();
@@ -209,11 +208,11 @@ REGISTRE.enregistrer(ACTION_TOUT_AFFICHER);
 // ---------- Controleur ----------
 // scene : scene xeokit (objects, visibleObjectIds, highlightedObjectIds, xrayedObjectIds, setObjects*, getAABB) ; metaScene : metadonnees IFC ;
 // maquettes : [{ id, label }] ; zones : { trouver(nom) -> boite } (src/commandesZones.js) ou null ; cameraFlight : viewer.cameraFlight ; exclus : ids a ne jamais toucher (garde-corps mal places de l'hopital) ;
-// apres(nomAction) : rappel appele apres chaque application (le Viewer y resynchronise son drawer).
-export function creerControleur({ scene, metaScene, maquettes = [], cameraFlight = null, exclus = null, zones = null, apres = null, registre = REGISTRE } = {}) {
+// poseCentree(aabb) : pose de camera centrant la boite (optionnel) ; apres(nomAction) : rappel appele apres chaque application (le Viewer y resynchronise son drawer).
+export function creerControleur({ scene, metaScene, maquettes = [], cameraFlight = null, exclus = null, zones = null, poseCentree = null, apres = null, registre = REGISTRE } = {}) {
   if (!scene || !scene.objects) throw new Error("Scène absente : le moteur de commandes ne peut pas démarrer.");
   if (!metaScene || !metaScene.metaObjects) throw new Error("Métadonnées de la scène absentes : le moteur de commandes ne peut pas démarrer.");
-  const contexte = { scene, metaScene, maquettes, cameraFlight, exclus, zones };
+  const contexte = { scene, metaScene, maquettes, cameraFlight, exclus, zones, poseCentree };
   let annulations = []; // annulations des applications en cours, la plus recente en dernier (defaites en ordre inverse)
 
   function resultatDePlan(def, commande, plan) {

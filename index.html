@@ -2,7 +2,8 @@
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#161c18" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
@@ -24,6 +25,8 @@
     <meta name="twitter:description" content="Une application pour aider le BIM Manager sur chantier et ouvrir la maquette à tous les acteurs du projet." />
     <meta name="twitter:image" content="https://ouvra.gillescobigo.com/images/ouvra-partage.png" />
     <link rel="stylesheet" href="/src/style.css" />
+    <link rel="stylesheet" href="/src/safeArea.css" />
+    <link rel="stylesheet" href="/src/boutonPrincipal.css" />
     <!-- pako en global (window.pako), lu par les analyseurs XKT de xeokit : sans cela, tout XKT compresse
          donne 0 element dans la version construite. Voir vite.config.js. -->
     <script src="/lib/pako.js"></script>
@@ -82,7 +85,16 @@
               <a href="#accueil" id="accueilLogoLink" aria-label="Ouvra, accueil">
                 <img class="acc-logo" src="/images/ouvra-logo-clair.svg" alt="Ouvra" width="341" height="252" />
               </a>
-              <a class="acc-top-link" href="https://gillescobigo.com/#contact" target="_blank" rel="noopener noreferrer">Me contacter</a>
+              <div class="acc-top-actions">
+                <a class="acc-top-link" href="https://gillescobigo.com/#contact" target="_blank" rel="noopener noreferrer" aria-label="Me contacter">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
+                  <span class="acc-top-link-txt">Me contacter</span>
+                </a>
+                <button type="button" class="acc-btn acc-btn-main acc-btn-top" id="accueilOpenBtn" data-go="viewer">
+                  Ouvrir la maquette
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                </button>
+              </div>
             </div>
           </header>
 
@@ -90,9 +102,9 @@
             <div class="acc-hero">
               <div class="acc-hero-text">
                 <h1>Explorez un bâtiment en 3D, dans votre navigateur.</h1>
-                <p class="acc-lead">Tournez autour, choisissez un niveau, faites une coupe. Cliquez sur un élément pour lire ses informations.</p>
+                <p class="acc-lead">Tournez autour, choisissez un niveau, faites une coupe. Vous parlez, l'IA traduit votre phrase en action.</p>
                 <div class="acc-cta">
-                  <button type="button" class="acc-btn acc-btn-main" id="accueilOpenBtn" data-go="viewer">
+                  <button type="button" class="acc-btn acc-btn-main" data-go="viewer">
                     Ouvrir la maquette
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
                   </button>
@@ -107,8 +119,8 @@
 
             <div class="acc-what acc-reveal">
               <div class="acc-wrap">
-                <h2>Une maquette numérique, c'est quoi ?</h2>
-                <p>Une maquette numérique de bâtiment (le BIM) est une maquette 3D qui sert de source de vérité unique. Elle contient les éléments en volume comme les données. On peut en sortir des plans et des quantités.</p>
+                <h2>Le BIM, c'est quoi ?</h2>
+                <p>Le BIM (Building Information Modeling) est une méthode de travail qui s'appuie sur une maquette numérique 3D du bâtiment. Cette maquette contient les éléments en volume comme les données, et sert de source de vérité unique pour partager des informations fiables entre les acteurs du projet. On peut en sortir des plans et des quantités.</p>
               </div>
             </div>
 
@@ -142,40 +154,65 @@
               </div>
             </section>
 
-            <section aria-labelledby="accTitrePages" class="acc-reveal">
+            <section aria-labelledby="accTitrePages" class="acc-fonctions acc-reveal">
               <div class="acc-wrap">
-                <h2 id="accTitrePages">Les trois pages du prototype</h2>
-                <p class="acc-section-lead">La maquette d'exemple est celle d'un hôpital (un jeu de test public).</p>
+                <h2 id="accTitrePages">Cinq fonctions, commandées par une phrase</h2>
+                <p class="acc-section-lead">La maquette d'exemple est celle d'un hôpital (un jeu de test public). Chaque fonction se commande aussi par une phrase, écrite ou dictée.</p>
                 <ul class="acc-cards">
                   <li>
-                    <button type="button" class="acc-card" data-go="viewer">
+                    <article class="acc-card">
                       <span class="acc-ico" aria-hidden="true">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5 20.5 7v10L12 21.5 3.5 17V7z"/><path d="M3.5 7 12 11.5 20.5 7M12 11.5v10"/></svg>
                       </span>
-                      <h3>Viewer</h3>
-                      <p>Explorer la maquette de l'hôpital en 3D, choisir les niveaux et faire une coupe.</p>
-                      <span class="acc-badge acc-badge-ok">Disponible</span>
-                    </button>
+                      <div class="acc-card-body">
+                        <h3>Viewer</h3>
+                        <p>Explorer la maquette de l'hôpital en 3D : choisir les niveaux, faire une coupe, lire les informations d'un élément. La demande est relue avant d'être appliquée.</p>
+                      </div>
+                    </article>
                   </li>
                   <li>
-                    <button type="button" class="acc-card" data-go="collision">
+                    <article class="acc-card">
                       <span class="acc-ico" aria-hidden="true">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="11" height="11" rx="2"/><rect x="10" y="10" width="11" height="11" rx="2"/></svg>
                       </span>
-                      <h3>Collision</h3>
-                      <p>Repérer les endroits où deux éléments se gênent. La page est là, sa liste est vide pour l'instant.</p>
-                      <span class="acc-badge">À venir</span>
-                    </button>
+                      <div class="acc-card-body">
+                        <h3>Collisions</h3>
+                        <p>Repérer les endroits où deux éléments se gênent, suivre leur priorité et leur statut. Toute règle écrite en français est listée et validée avant d'être appliquée.</p>
+                      </div>
+                    </article>
                   </li>
                   <li>
-                    <button type="button" class="acc-card" data-go="discussions">
+                    <article class="acc-card">
                       <span class="acc-ico" aria-hidden="true">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H9l-5 4V5a1 1 0 0 1 1-1z"/><path d="M8 9h8M8 13h5"/></svg>
                       </span>
-                      <h3>Discussions</h3>
-                      <p>Lancer une discussion à partir d'un point de vue de la maquette. Aucune discussion pour l'instant.</p>
-                      <span class="acc-badge">À venir</span>
-                    </button>
+                      <div class="acc-card-body">
+                        <h3>Discussions</h3>
+                        <p>Échanger autour d'un point de vue ou d'un élément de la maquette, retrouver des échanges, et obtenir un récapitulatif : contexte, intervenants, désaccords et décision finale, à copier ou à exporter en PDF.</p>
+                      </div>
+                    </article>
+                  </li>
+                  <li>
+                    <article class="acc-card">
+                      <span class="acc-ico" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>
+                      </span>
+                      <div class="acc-card-body">
+                        <h3>Quantitatif</h3>
+                        <p>Obtenir un tableau de quantités, à exporter en Excel, en PDF ou en CSV. Chaque quantitatif demandé est gardé dans un historique, et signalé obsolète quand la maquette a changé.</p>
+                      </div>
+                    </article>
+                  </li>
+                  <li>
+                    <article class="acc-card">
+                      <span class="acc-ico" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h18v18H3z"/><path d="M3 12h9v9M12 3v9h9"/></svg>
+                      </span>
+                      <div class="acc-card-body">
+                        <h3>2D vers 3D</h3>
+                        <p>Importer un plan (PDF, PNG ou JPEG), le corriger dans un éditeur de plan (murs, portes, fenêtres, pièces) ou par une phrase, puis l'ouvrir en 3D dans le Viewer et l'exporter en IFC.</p>
+                      </div>
+                    </article>
                   </li>
                 </ul>
               </div>
@@ -186,7 +223,7 @@
                 <div class="acc-contact-box">
                   <div>
                     <h2 id="accTitreContact">Vos besoins, vos idées</h2>
-                    <p>Vous travaillez sur un chantier, un projet ou pour une collectivité ? Dites-moi ce qui vous manque ou ce que vous changeriez. J'ai besoin de vos retours pour savoir où aller.</p>
+                    <p>Vous travaillez sur un chantier, un projet ou pour une collectivité ? Dites-moi ce qui vous manque ou ce que vous changeriez.</p>
                   </div>
                   <div class="acc-side">
                     <a class="acc-btn acc-btn-contact" href="https://gillescobigo.com/#contact" target="_blank" rel="noopener noreferrer">Me contacter</a>
@@ -198,8 +235,7 @@
 
           <footer class="acc-bottom">
             <div class="acc-wrap">
-              <p>Après 5 ans dans le BIM, dont BIM manager sur Mareterra à Monaco, j'ai développé l'outil que j'aurais aimé avoir à l'époque.</p>
-              <p class="acc-auteur">Réalisé par <a href="https://gillescobigo.com" target="_blank" rel="noopener noreferrer"><img class="acc-auteur-logo" src="/images/logo-gc-black.png" alt="" width="40" height="40"><span>Gilles Cobigo</span></a></p>
+              <p class="acc-auteur"><a href="https://gillescobigo.com" target="_blank" rel="noopener noreferrer"><img class="acc-auteur-logo" src="/images/logo-gc-black.png" alt="" width="40" height="40"><span>Gilles Cobigo</span></a></p>
             </div>
           </footer>
         </div>

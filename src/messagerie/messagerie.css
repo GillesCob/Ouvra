@@ -203,6 +203,8 @@
   flex: 1; min-width: 0; resize: none; max-height: 120px; min-height: 40px; background: var(--bg); color: var(--text); border: 1px solid var(--border);
   border-radius: 12px; padding: 9px 12px; font: inherit; font-size: 14px;
 }
+/* Sujet clos : le bouton « Rouvrir la conversation » prend toute la largeur du composeur. */
+.msg-composer .msg-rouvrir-conv { flex: 1 1 auto; min-height: 44px; }
 .msg-composer textarea:disabled, .msg-envoyer:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* Mentions (@) : liste au-dessus du composeur, sans prendre le focus du champ. */
@@ -215,7 +217,7 @@
 .msg-mention-option span { font-size: 12px; color: var(--muted); }
 .msg-mention-option.actif { background: var(--msg-releve); }
 @media (hover: hover) and (pointer: fine) { .msg-mention-option:hover { background: var(--msg-releve); } }
-.msg-envoyer { background: var(--msg-accent); color: var(--msg-sur-accent); border: 0; border-radius: 12px; min-height: 40px; padding: 0 16px; font-weight: 700; }
+.msg-envoyer { padding: 0 16px; } /* aspect : .btn-principal */
 
 /* ---------- Prises de vue ---------- */
 .msg-vsvg, .msg-vimg { display: block; width: 100%; height: 100%; }
@@ -244,29 +246,41 @@
 .msg-dialogue { position: absolute; inset: 0; z-index: 10; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; padding: 16px; }
 .msg-carte { width: min(480px, 100%); max-height: 100%; overflow-y: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 12px; }
 .msg-carte { position: relative; }
-.msg-carte h3 { margin: 0; font-size: 16px; padding-right: 44px; }
-.msg-croix { position: absolute; top: 6px; right: 6px; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; padding: 0; background: transparent; border: 1px solid var(--border); border-radius: 6px; color: var(--muted); font-size: 16px; line-height: 1; cursor: pointer; }
+/* Titre du dialogue : marge (et non padding) a droite, pour que son rectangle ne recouvre jamais la croix (40 px a 6 px du bord sur ordinateur, 44 px a 4 px sur mobile). */
+.msg-carte h3 { margin: 0 36px 0 0; font-size: 16px; }
+.msg-croix { position: absolute; top: 6px; right: 6px; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; padding: 0; box-sizing: border-box; background: transparent; border: 0; border-radius: 6px; color: var(--muted); font-size: 16px; line-height: 1; cursor: pointer; }
 .msg-croix:hover { color: var(--text); }
 .msg-carte label, .msg-etiquette { font-size: 12px; font-weight: 700; color: var(--muted); display: block; margin-bottom: 4px; }
 .msg-carte :is(input, textarea, select) { width: 100%; min-height: 40px; padding: 8px 10px; }
+.msg-carte :is(input, select) { min-height: 44px; }
 .msg-carte textarea { resize: none; height: 72px; }
+/* Menus deroulants du dialogue (conversation, sujet) : <select> natif, pleine largeur du champ, meme hauteur que les boutons voisins. */
+.msg-carte select { height: 44px; min-height: 44px; }
+.msg-carte select[hidden] { display: none; }
 /* Bascule « Nouveau sujet / Conversation existante » (28/10) : meme composant et memes valeurs que les onglets de la barre de navigation (#navbarThumb et .nav-link de src/style.css) :
    une pastille accent translucide glisse sous le bouton actif (0,3 s, ease) ; le texte du bouton actif passe de --muted a --text. Deux boutons de meme largeur : la position suit data-mode, sans mesure JS. */
 .msg-bascule { position: relative; display: flex; gap: 4px; flex-shrink: 0; }
-.msg-pastille {
+.msg-bascule-pastille {
   position: absolute; top: 0; bottom: 0; left: 0; width: calc((100% - 4px) / 2); border-radius: 6px; z-index: 0; pointer-events: none; box-sizing: border-box;
   background: color-mix(in srgb, var(--accent) 24%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 60%, transparent);
   transition: transform 0.3s ease, width 0.3s ease;
 }
-.msg-bascule[data-mode="conversation"] .msg-pastille { transform: translateX(calc(100% + 4px)); }
-.msg-bascule button { position: relative; z-index: 1; flex: 1 1 0; min-width: 0; min-height: 40px; border: 0; background: none; color: var(--muted); border-radius: 6px; padding: 8px 10px; font-weight: 600; font-size: 13px; transition: color 0.3s ease; }
+.msg-bascule[data-mode="conversation"] .msg-bascule-pastille { transform: translateX(calc(100% + 4px)); }
+.msg-bascule button { position: relative; z-index: 1; flex: 1 1 0; min-width: 0; min-height: 44px; border: 0; background: none; color: var(--muted); border-radius: 6px; padding: 8px 10px; font-weight: 600; font-size: 13px; transition: color 0.3s ease; }
 .msg-bascule button[aria-pressed="true"] { color: var(--text); }
 @media (hover: hover) and (pointer: fine) { .msg-bascule button:hover { color: var(--text); } }
 .msg-bascule button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-@media (prefers-reduced-motion: reduce) { .msg-pastille, .msg-bascule button { transition: none; } }
-/* Dialogue Nouveau sujet / Conversation existante : meme place et meme taille dans les deux modes (hauteur fixe, bornee par la fenetre) ; si le contenu ne tient pas,
-   seule la zone .msg-zone defile, la carte ne grandit ni ne bouge, la rangee de boutons reste visible. 680 px = la hauteur naturelle de « Conversation existante » (636 a 671 px selon la largeur). */
-.msg-carte.msg-carte-sujet { height: min(680px, 100%); overflow: hidden; }
+@media (prefers-reduced-motion: reduce) { .msg-bascule-pastille, .msg-bascule button { transition: none; } }
+@media (max-width: 768px) { .msg-bascule button { padding: 8px 4px; white-space: nowrap; } } /* 360 px : « Conversation existante » tient sur une ligne, le dialogue sans defilement */
+/* Menu deroulant du dialogue (src/menuChoix.js, laptop et mobile) : meme hauteur que les champs voisins, texte tronque, liste plafonnee a la place libre. */
+.collision-trigger.msg-choix-trigger { min-height: 44px; font-size: 16px; }
+.msg-choix-trigger[hidden] { display: none; }
+.msg-choix-trigger .collision-trigger-val { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: 16px; font-weight: 500; }
+/* Dialogue Nouveau sujet : la carte s'adapte a son contenu (boutons juste sous le dernier champ). Avec la bascule « Nouveau sujet / Conversation existante » (depuis le Viewer seulement),
+   meme place et meme taille dans les deux modes (hauteur fixe, bornee par la fenetre) ; si le contenu ne tient pas,
+   seule la zone .msg-zone defile, la carte ne grandit ni ne bouge, la rangee de boutons reste visible. 680 px = la hauteur naturelle du mode le plus haut (« Nouveau sujet » avec le choix de la conversation : 662 px a 769, 1024 et 1440 px, un peu de marge pour la liste qui apparait apres le choix du type). */
+.msg-carte.msg-carte-sujet { overflow: hidden; }
+.msg-carte.msg-carte-sujet-bascule { height: min(680px, 100%); }
 .msg-carte-sujet > :is(h3, .msg-bascule) { flex-shrink: 0; }
 .msg-zone { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 12px; }
 .msg-zone .msg-corps { flex: 1 1 auto; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding: 2px; margin: -2px; }
@@ -276,18 +290,16 @@
 .msg-carte .msg-case input { width: 18px; min-height: 0; height: 18px; padding: 0; flex-shrink: 0; accent-color: var(--msg-mention); }
 .msg-carte .msg-case label { margin: 0; display: inline; font-size: 13px; color: var(--text); cursor: pointer; }
 .msg-urgent-bouton { -webkit-tap-highlight-color: transparent; }
-:is(.msg-carte, .msg-feuille) .msg-urgent-bouton { min-height: 40px; display: inline-flex; align-items: center; border: 1px solid var(--border); background: var(--bg); color: var(--muted); border-radius: 999px; padding: 4px 16px; font-size: 12.5px; font-weight: 600; }
+:is(.msg-carte, .msg-feuille) .msg-urgent-bouton { min-height: 44px; display: inline-flex; align-items: center; border: 1px solid var(--border); background: var(--bg); color: var(--muted); border-radius: 999px; padding: 4px 16px; font-size: 12.5px; font-weight: 600; }
 :is(.msg-carte, .msg-feuille) .msg-urgent-bouton[aria-pressed="true"] { color: #1b1007; background: var(--msg-mention); border-color: var(--msg-mention); }
-@media (max-width: 768px) { :is(.msg-carte, .msg-feuille) .msg-urgent-bouton { min-height: 44px; } }
 :is(.msg-carte-infos, .msg-feuille) .msg-fiche-actions .msg-urgent-bouton { align-self: flex-start; }
 .msg-tags { display: flex; flex-wrap: wrap; gap: 6px; }
-.msg-tags button { min-height: 40px; display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--muted); border-radius: 999px; padding: 4px 12px 4px 5px; font-size: 12.5px; font-weight: 600; }
+.msg-tags button { min-height: 44px; display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--muted); border-radius: 999px; padding: 4px 12px 4px 5px; font-size: 12.5px; font-weight: 600; }
 .msg-tags button[aria-pressed="true"] { color: var(--text); border-color: var(--msg-accent); background: var(--msg-releve); }
 .msg-rangee { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
 .msg-fantome, .msg-primaire { min-height: 40px; border-radius: 8px; padding: 8px 14px; }
 .msg-fantome { background: none; border: 1px solid var(--border); color: var(--muted); }
 .msg-fantome:hover { color: var(--text); border-color: var(--msg-accent); }
-.msg-primaire { background: var(--msg-accent); color: var(--msg-sur-accent); border: 0; font-weight: 700; }
 .msg-primaire:disabled { opacity: 0.5; cursor: not-allowed; }
 .msg-aide { margin: 0; font-size: 12px; color: var(--muted); }
 .msg-histo { max-height: 46vh; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
@@ -329,6 +341,13 @@ body.msg-retour-actif #viewerToolbar { top: 56px; }
 .msg-carte-infos .msg-fiche-actions { display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--border); padding-top: 12px; }
 .msg-carte-infos .msg-feuille-btn { min-height: 40px; width: 100%; display: flex; align-items: center; justify-content: space-between; padding: 0 14px; background: none; border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 14px; font-weight: 600; text-align: left; }
 .msg-carte-infos .msg-feuille-btn:hover { border-color: var(--msg-accent); }
+/* Choix de la conversation et du sujet (28/10) : boutons pleine largeur a la place des listes natives (leur fenetre de choix est plus etroite que le champ). Meme format que les tags (.msg-tags). */
+.msg-choix { display: flex; flex-direction: column; gap: 6px; }
+.msg-choix-type { flex-direction: row; }
+.msg-choix button { width: 100%; min-height: 44px; display: flex; align-items: center; gap: 10px; text-align: left; border: 1px solid var(--border); background: var(--bg); color: var(--muted); border-radius: 8px; padding: 4px 12px; font-size: 13.5px; font-weight: 600; }
+.msg-choix-type button { flex: 1 1 0; min-width: 0; justify-content: center; text-align: center; height: 44px; padding-top: 0; padding-bottom: 0; } /* 44 px fixes : a 360-390 px le libelle passe sur 2 lignes (39,8 px) et la hauteur montait a 47,8 px */
+.msg-choix button[aria-pressed="true"] { color: var(--text); border-color: var(--msg-accent); background: var(--msg-releve); }
+@media (hover: hover) and (pointer: fine) { .msg-choix button:not([aria-pressed="true"]):hover { border-color: var(--msg-accent); } }
 /* Menu de statut (22/10) : bouton et menu de la page Collision (.collision-trigger / .collision-menu), pastilles de statut du module. */
 .collision-trigger.msg-statut-trigger { padding: 0 16px 0 14px; min-height: 40px; }
 .msg-statut-trigger .msg-point, .msg-statut-menu .msg-point { width: 10px; height: 10px; }
@@ -389,6 +408,31 @@ body.msg-retour-actif #viewerToolbar { top: 56px; }
   #msgHistorique, #msgAjoutSujet, #msgInfosSujet { display: none; }
   .msg-sujets { padding-top: 2px; padding-bottom: 2px; }
   .msg-sujets, .msg-entete, .msg-defile, .msg-composer, .msg-barre-recherche, .msg-vue-pendante { padding-left: 12px; padding-right: 12px; }
+  /* Dialogues (28/10, Gilles) : jamais de modale sur mobile, chaque dialogue est une page pleine ecran (meme gabarit que la carte « Infos du sujet »). Laptop inchange. */
+  .msg-dialogue { position: fixed; inset: 0; z-index: 60; padding: 0; background: var(--surface); align-items: stretch; overscroll-behavior: contain; }
+  /* Entree en fondu avec un leger glissement (0,3 s, ease-in-out : meme duree et meme courbe que la liste .msg-liste et le fil .msg-zone-fil) : la page pleine ecran recouvre la navbar
+     au lieu de la faire disparaitre d'un coup (ouverture depuis le Viewer : la page Discussions s'affiche puis le dialogue la recouvre). */
+  .msg-dialogue:not([hidden]) { animation: msg-dialogue-entree 0.3s ease-in-out; }
+  @keyframes msg-dialogue-entree { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .msg-dialogue:not([hidden]) { animation: none; } }
+  /* « Nouveau sujet » (29/10) : le message prend la place libre (mise en page flex plein ecran), la zone ne defile que si le contenu depasse vraiment (clavier ouvert). */
+  .msg-zone .msg-corps > .msg-champ-grand { flex: 1 0 auto; min-height: 120px; display: flex; flex-direction: column; }
+  .msg-champ-grand textarea { flex: 1 1 auto; height: auto; min-height: 72px; }
+  /* « Nouveau sujet » : le premier message part sur 2 lignes (rows) et grandit avec le texte jusqu'a 40 % de l'ecran (ajusterMessageNouveauSujet), le dialogue tient sans defilement. */
+  .msg-zone .msg-corps > .msg-champ-grand:has(#msgNsMessage) { flex: 0 0 auto; min-height: 0; }
+  #msgNsMessage { flex: none; min-height: 0; max-height: 40vh; }
+  .msg-zone .msg-corps { overscroll-behavior: contain; }
+  .msg-carte, .msg-carte.msg-carte-sujet { width: 100%; height: 100vh; height: 100dvh; max-height: none; border: 0; border-radius: 0; padding: calc(14px + env(safe-area-inset-top)) 16px calc(14px + env(safe-area-inset-bottom)); }
+  .msg-carte.msg-carte-sujet-bascule { height: 100vh; height: 100dvh; }
+  /* « Nouveau sujet » (28/10, Gilles) : seule exception aux pages pleine ecran, une carte compacte a la hauteur de son contenu, centree dans la zone visible (--msg-vv = visualViewport, clavier iOS compris, pose par messagerie.js).
+     Elle ne defile (dans la zone .msg-corps, jamais dans la page) que si le contenu depasse vraiment cette zone ; la page derriere est verrouillee. Avec la bascule (Viewer) : hauteur fixe min(680px, zone visible). */
+  .msg-dialogue.msg-dialogue-sujet { bottom: auto; height: var(--msg-vv, 100dvh); padding: 12px; background: rgba(0, 0, 0, 0.5); align-items: center; justify-content: center; }
+  .msg-carte.msg-carte-sujet { align-self: center; width: min(480px, 100%); height: auto; max-height: 100%; border: 1px solid var(--border); border-radius: 14px; padding: 18px 16px; }
+  .msg-carte.msg-carte-sujet-bascule { height: min(680px, 100%); }
+  .msg-carte.msg-carte-sujet .msg-croix { top: 6px; right: 6px; }
+  #msgNsMessage { height: auto; }
+  html.msg-dialogue-sujet-ouvert, html.msg-dialogue-sujet-ouvert body { overflow: hidden; overscroll-behavior: none; }
+  .msg-carte .msg-croix { top: calc(4px + env(safe-area-inset-top)); right: 4px; width: 44px; height: 44px; }
   .msg-pastille, .msg-ajout { min-height: 40px; }
   .msg-composer textarea, .msg-barre-recherche input, .msg-carte :is(input, textarea, select) { font-size: 16px; }
   .msg-mentions { left: 12px; right: 12px; }
@@ -401,11 +445,10 @@ body.msg-retour-actif #viewerToolbar { top: 56px; }
   .msg-conv, .msg-pastille, .msg-badge, .msg-vue { transition: background 0.15s, border-color 0.15s; }
 }
 
-/* Survol des boutons oublies (28/10, Gilles) : memes motifs que les boutons de l'IA (bouton plein : teinte plus claire, bouton neutre : bordure accent, croix : texte plein). */
+/* Survol des boutons oublies (28/10, Gilles) : memes motifs que les boutons de l'IA (bouton plein : fond assombri comme .btn-principal, bouton neutre : bordure accent, croix : texte plein). */
 @media (hover: hover) and (pointer: fine) {
-  .msg-envoyer:not(:disabled):hover, .msg-primaire:not(:disabled):hover { background: color-mix(in srgb, var(--msg-accent) 86%, #fff); }
   #msgBandeauVue button:hover, #msgBandeauRetour button:hover { border-color: var(--accent); }
-  #msgBandeauVue button[data-act="valider"]:hover { background: color-mix(in srgb, #7fae84 86%, #fff); border-color: color-mix(in srgb, #7fae84 86%, #fff); }
+  #msgBandeauVue button[data-act="valider"]:hover { background: color-mix(in srgb, #7fae84 88%, #000); border-color: color-mix(in srgb, #7fae84 88%, #000); }
   button.msg-pastille:not(.actif):hover, .msg-urgent-bouton:not([aria-pressed="true"]):hover, .msg-bas:hover { border-color: var(--msg-accent); }
   .msg-retirer:hover { color: var(--text); }
 }

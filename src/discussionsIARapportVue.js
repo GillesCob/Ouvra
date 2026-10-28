@@ -17,8 +17,13 @@ import "./reglesIA.css";
 import "./discussionsIA.css";
 import { dateDuRapport, perimetreDe, libelleDecision, nomsEnPhrase, MESSAGE_AUCUN_DESACCORD, MESSAGE_CONTEXTE_ABSENT, MENTION_NON_CONFIRME } from "./discussionsIARapportFormat.js";
 import { preparerOngletPdf } from "./discussionsIARapportOnglet.js";
+import { defilementVersTitre, CLASSE_VERROU } from "./discussionsIARapportDefilement.js";
+import { verrouillerArrierePlan } from "./verrouDefilement.js";
+import { REQUETE_MOBILE } from "./seuilMobile.js";
 
 export const LOGO_RAPPORT = "/images/ouvra-logo.svg";
+const MOBILE = REQUETE_MOBILE;
+export const NOM_DEPLIANTS_PAGE = "ouvra-depliants"; // un seul name pour tous les <details> de la page (regle : ouvrir un menu deroulant ferme les autres)
 
 function creer(tag, classe, texte) {
   const el = document.createElement(tag);
@@ -40,6 +45,8 @@ export function creerRapportVue({ surSource, texteRapport, exporterPdf }) {
   let boutonFermer = null;
   let rapportCourant = null;
   let focusAvant = null;
+  let verrou = null;
+  let planDefilement = 0; // requestAnimationFrame du defilement vers le titre du menu ouvert
 
   function assurerSquelette() {
     if (fond) return;
@@ -73,7 +80,7 @@ export function creerRapportVue({ surSource, texteRapport, exporterPdf }) {
     boutonCopier.type = "button";
     boutonPdf = creer("button", "disc-rapport-btn", "Exporter en PDF");
     boutonPdf.type = "button";
-    boutonFermer = creer("button", "disc-rapport-btn disc-rapport-fermer", "Fermer");
+    boutonFermer = creer("button", "disc-rapport-btn disc-rapport-fermer btn-principal", "Fermer");
     boutonFermer.type = "button";
     pied.append(boutonCopier, boutonPdf, boutonFermer);
     carte.append(entete, corps, pied);
@@ -91,12 +98,37 @@ export function creerRapportVue({ surSource, texteRapport, exporterPdf }) {
       fermer(false);
       surSource(mk, rapportCourant); // le rapport en cours : « Retour au rapport » le rouvre tel quel
     });
+    // Menus deroulants : a l'ouverture (les autres se referment par `name`), le titre du menu monte en haut de la zone visible, contenu deplie dessous
+    // (cf discussionsIARapportDefilement.js). Differe d'une image : le repli des autres menus est applique avant la mesure.
+    corps.addEventListener("toggle", (e) => {
+      if (!e.target.matches(".disc-rapport-depliant")) return;
+      cancelAnimationFrame(planDefilement);
+      planDefilement = requestAnimationFrame(() => defilerVersMenuOuvert());
+    }, true);
+    verrou = verrouillerArrierePlan(fond, zoneDefilante, CLASSE_VERROU);
     document.addEventListener("keydown", (e) => {
       if (fond.hidden) return;
       if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); fermer(true); return; }
       if (e.key === "Tab") boucleFocus(e);
     }, true);
   }
+
+  // Amene le titre du menu ouvert en haut de la zone visible ; sans menu ouvert, retire le rembourrage ajoute pour permettre ce defilement.
+  function defilerVersMenuOuvert() {
+    const zone = zoneDefilante();
+    corps.style.removeProperty("padding-bottom");
+    const menu = corps.querySelector(".disc-rapport-depliant[open]");
+    if (!menu) return;
+    const style = getComputedStyle(zone);
+    const zoneHaut = zone.getBoundingClientRect().top + (parseFloat(style.paddingTop) || 0); // mobile : sous la zone de l'encoche
+    const { top, rembourrage } = defilementVersTitre({ haut: menu.querySelector("summary").getBoundingClientRect().top, zoneHaut, scrollTop: zone.scrollTop, scrollMax: zone.scrollHeight - zone.clientHeight });
+    if (rembourrage) corps.style.paddingBottom = `${rembourrage}px`;
+    const reduit = globalThis.matchMedia && globalThis.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    zone.scrollTo({ top, behavior: reduit ? "auto" : "smooth" });
+  }
+
+  // L'element qui defile : toute la carte sur mobile (page pleine ecran), le corps seul sur grand ecran.
+  const zoneDefilante = () => (globalThis.matchMedia && globalThis.matchMedia(MOBILE).matches ? carte : corps);
 
   function boucleFocus(e) {
     const cibles = [...carte.querySelectorAll("button")].filter((el) => !el.disabled);
@@ -126,7 +158,24 @@ export function creerRapportVue({ surSource, texteRapport, exporterPdf }) {
   }
 
   // Un bloc du format fixe : un titre de section (h3) et son contenu. data-bloc sert aux tests et a la mesure en navigateur.
+  // Sur mobile (28/10), les blocs secondaires (depliant = true : intervenants, sources) sont des menus deroulants, fermes au depart, pour que l'essentiel
+  // (contexte, desaccords, decision) soit visible sans defiler. Un seul `name` partage par tous les <details> de la page : en ouvrir un ferme les autres.
   function bloc(nom, libelle, ...contenu) {
+    return construireBloc(nom, libelle, false, contenu);
+  }
+
+  function construireBloc(nom, libelle, depliant, contenu) {
+    if (depliant && globalThis.matchMedia && globalThis.matchMedia(MOBILE).matches) {
+      const el = creer("details", "disc-rapport-bloc disc-rapport-depliant");
+      el.name = NOM_DEPLIANTS_PAGE;
+      el.dataset.bloc = nom;
+      const resume = creer("summary");
+      resume.appendChild(creer("h3", null, libelle));
+      const corpsDepliant = creer("div", "disc-rapport-depliant-corps");
+      contenu.forEach((c) => corpsDepliant.appendChild(c));
+      el.append(resume, corpsDepliant);
+      return el;
+    }
     const el = creer("section", "disc-rapport-bloc");
     el.dataset.bloc = nom;
     el.appendChild(creer("h3", null, libelle));
@@ -149,7 +198,7 @@ export function creerRapportVue({ surSource, texteRapport, exporterPdf }) {
   function rendreIntervenants(rapport) {
     const ul = creer("ul", "disc-rapport-intervenants");
     rapport.intervenants.forEach((nom) => ul.appendChild(creer("li", "disc-rapport-intervenant", nom)));
-    return bloc("intervenants", "Intervenants", rapport.intervenants.length ? ul : creer("p", "disc-rapport-phrase disc-rapport-muet", "Aucun intervenant identifié."));
+    return construireBloc("intervenants", "Intervenants", true, [rapport.intervenants.length ? ul : creer("p", "disc-rapport-phrase disc-rapport-muet", "Aucun intervenant identifié.")]);
   }
 
   function rendreDesaccords(rapport) {
@@ -178,16 +227,14 @@ export function creerRapportVue({ surSource, texteRapport, exporterPdf }) {
   }
 
   function rendreChronologie(rapport) {
-    const el = creer("section", "disc-rapport-bloc disc-rapport-chrono");
-    el.dataset.bloc = "sources";
-    el.appendChild(creer("h3", null, "Sources"));
     const ul = creer("ul", "disc-rapport-points");
     rapport.chronologie.forEach((s, i) => {
       const li = creer("li", "disc-rapport-point");
       li.append(boutonSource(s), creer("p", "disc-rapport-extrait", (i + 1) + ". " + s.extrait.texte));
       ul.appendChild(li);
     });
-    el.appendChild(ul);
+    const el = construireBloc("sources", "Sources", true, [ul]);
+    el.classList.add("disc-rapport-chrono");
     return el;
   }
 
@@ -209,6 +256,8 @@ export function creerRapportVue({ surSource, texteRapport, exporterPdf }) {
     boutonPdf.disabled = !!rapport.vide;
     focusAvant = document.activeElement;
     fond.hidden = false;
+    verrou.verrouiller();
+    carte.scrollTop = 0;
     corps.scrollTop = 0;
     boutonFermer.focus({ preventScroll: true });
   }
@@ -216,6 +265,7 @@ export function creerRapportVue({ surSource, texteRapport, exporterPdf }) {
   function fermer(rendreFocus) {
     if (!fond || fond.hidden) return;
     fond.hidden = true;
+    verrou.deverrouiller();
     if (rendreFocus && focusAvant && document.contains(focusAvant)) focusAvant.focus({ preventScroll: true });
   }
 

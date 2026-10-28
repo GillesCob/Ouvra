@@ -66,7 +66,7 @@
   color: var(--msg-accent); font-size: 12px; font-weight: 600; text-decoration: underline; text-underline-offset: 2px;
 }
 .regles-actions { margin-top: 2px; }
-.regles-carte :is(.msg-fantome, .msg-primaire) { min-height: 40px; }
+.regles-carte .msg-fantome { min-height: 44px; }
 /* Survol : seulement a la souris (le :hover collant d'iOS et la teinte de tap sont evites). */
 @media (hover: hover) and (pointer: fine) {
   .regles-ligne:hover { background: var(--msg-releve); }
@@ -95,6 +95,12 @@ body.regles-retour-actif #viewerToolbar { top: 56px; }
 body.regles-retour-actif #collisionMaquetteToggles { top: 60px; }
 @media (min-width: 769px) { body.regles-retour-actif #collisionInfoPanelCollapse { margin-top: 52px; } }
 @media (max-width: 768px) { body.regles-retour-actif #collisionViewerSlot #viewerToolbar { top: 112px; } }
+/* Infos de la collision ouvertes depuis une demande IA (mobile) : le tiroir des collisions (fixe) et la pleine page des infos (absolue dans la vue, sous la navbar) commencent SOUS le bandeau de retour.
+   Valeurs mesurees par reglesModale.js (--regles-bandeau-bas : bas du bandeau dans la fenetre ; --regles-bandeau-h : sa hauteur). */
+@media (max-width: 768px) {
+  body.regles-retour-actif #collisionInfoPanel { top: var(--regles-bandeau-bas, 96px); }
+  body.regles-retour-actif #collisionDiscussion.cb.cb-grand { top: var(--regles-bandeau-h, 44px); }
+}
 
 @media (max-width: 768px) {
   .regles-fond { align-items: stretch; padding: 0; background: transparent; overflow: hidden; }
@@ -106,7 +112,6 @@ body.regles-retour-actif #collisionMaquetteToggles { top: 60px; }
   .regles-fond.ouvert .regles-carte { transform: translateY(0); }
   .regles-fond.sans-anim .regles-carte { transition: none; }
   .regles-carte .msg-croix { top: calc(4px + env(safe-area-inset-top)); right: 4px; width: 44px; height: 44px; }
-  .regles-carte :is(.msg-fantome, .msg-primaire) { min-height: 44px; }
   /* Carte de collision sur mobile (27/10) : pas d'image 3D (trop petite pour y lire quoi que ce soit), la place sert au texte. Le code et les images restent, seul l'affichage est masque.
      Disposition (grille portee par la ligne, les conteneurs intermediaires passent en display: contents) : case sur toute la hauteur ; filet de couleur ; pastille du numero ;
      le nom des elements prend toute la largeur a droite de la pastille et passe a la ligne s'il est long, jamais coupe ; sur la ligne suivante, les identifiants a gauche et « Voir en 3D » en face, a droite ;

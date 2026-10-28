@@ -4,7 +4,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { creerControleur, validerCommande } from "../src/commandesViewer.js";
 import { creerFlux } from "../src/commandesFlux.js";
-import { PRESENTATIONS, creerRegistrePresentations, OPACITE_CONTEXTE, OPACITE_TRANSPARENT, MATERIAU_FANTOME } from "../src/commandesPresentations.js";
+import { PRESENTATIONS, creerRegistrePresentations, volerVers, OPACITE_CONTEXTE, OPACITE_TRANSPARENT, MATERIAU_FANTOME } from "../src/commandesPresentations.js";
 import { SELECTEURS, creerRegistreSelecteurs, trouverElements } from "../src/commandesSelecteurs.js";
 import { etatDrawerDepuisVisibles } from "../src/commandesDrawer.js";
 import { creerZones } from "../src/commandesZones.js";
@@ -279,4 +279,21 @@ test("tout_afficher : ne touche pas la surbrillance des elements exclus", () => 
   moteur.appliquer(moteur.preparer({ action: "tout_afficher" }));
   assert.equal(f.scene.objects["wall-n1"].highlighted, true);
   assert.equal(f.scene.objects["wall-n2"].highlighted, false);
+});
+
+test("volerVers : pose centree quand elle existe, sinon cadrage par boite, rien sans camera ni boite", () => {
+  const appels = [];
+  const cameraFlight = { cancel: () => appels.push("cancel"), flyTo: (cible) => appels.push(cible) };
+  const boite = [0, 0, 0, 1, 1, 1];
+  volerVers({ cameraFlight, poseCentree: () => ({ eye: [1, 2, 3], look: [0, 0, 0], up: [0, 1, 0] }) }, boite);
+  assert.deepEqual(appels[0], "cancel");
+  assert.deepEqual(appels[1].eye, [1, 2, 3]);
+  assert.ok(appels[1].duration > 0 && !("aabb" in appels[1]));
+  appels.length = 0;
+  volerVers({ cameraFlight, poseCentree: () => null }, boite);
+  assert.deepEqual(appels[1].aabb, boite);
+  appels.length = 0;
+  volerVers({ cameraFlight: null }, boite);
+  volerVers({ cameraFlight }, null);
+  assert.equal(appels.length, 0);
 });

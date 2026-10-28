@@ -75,3 +75,8 @@ test("boiteDesVisibles : boite non finie, incomplete ou inversee -> null", () =>
   assert.equal(boiteDesVisibles(["a"], () => null), null);
   assert.equal(boiteDesVisibles(["a"], () => [5, 0, 0, 1, 1, 1]), null);
 });
+
+test("boiteDesVisibles : accepte le Float64Array rendu par xeokit (sinon le cadrage tombait sur « Recentrer », retour 9)", () => {
+  assert.deepEqual(boiteDesVisibles(["a"], () => new Float64Array([0, 1, 2, 3, 4, 5])), [0, 1, 2, 3, 4, 5]);
+  assert.equal(boiteDesVisibles(["a"], () => new Float64Array([0, 1, 2, NaN, 4, 5])), null);
+});

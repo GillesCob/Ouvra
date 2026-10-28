@@ -42,13 +42,11 @@
   font: inherit; font-size: 12.5px; font-weight: 600; line-height: 1; cursor: pointer; white-space: nowrap;
   -webkit-tap-highlight-color: transparent; transition: border-color 0.18s ease, color 0.18s ease, background-color 0.18s ease;
 }
-.qt-btn-principal { background: var(--accent); border-color: var(--accent); color: #fff; }
 .qt-btn-discret { border-color: transparent; background: none; color: var(--muted); }
 .qt-btn:focus-visible, .qt-voir:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
 .qt-btn:disabled { opacity: 0.5; cursor: default; }
 @media (hover: hover) and (pointer: fine) {
   .qt-btn:not(:disabled):hover, .qt-voir:hover { border-color: var(--accent); }
-  .qt-btn-principal:not(:disabled):hover { filter: brightness(1.12); }
   .qt-btn-discret:hover { color: var(--text); }
 }
 
@@ -88,8 +86,13 @@
 .qt-resultat-tete { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px 16px; padding: 16px 16px 12px; }
 .qt-resultat-titres { flex: 1 1 280px; min-width: 0; }
 .qt-resultat-titre { margin: 0 0 8px; font-size: 15px; line-height: 1.4; overflow-wrap: anywhere; }
-.qt-exports { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 12px 16px 16px; border-top: 1px solid var(--border); } /* en bas du panneau, sous le tableau (27/10) */
-.qt-exports-lib { color: var(--muted); font-size: 12px; font-weight: 600; margin-right: 2px; }
+.qt-exports { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 12px 16px 16px; border-top: 1px solid var(--border); } /* en bas du panneau, sous le tableau (27/10) : « Exporter » puis « Supprimer » (29/10) */
+/* Menu des formats : classes .collision-menu* de src/style.css (position fixe, ancre au bouton) ; chevron identique a celui de .collision-trigger */
+.qt-chevron { width: 10px; height: 6px; flex-shrink: 0; background: no-repeat center / 10px 6px url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%239aa59d' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); }
+.qt-btn-exporter[aria-expanded="true"] { border-color: var(--accent); }
+.qt-btn-exporter[aria-expanded="true"] .qt-chevron { transform: rotate(180deg); }
+.qt-btn-supprimer { color: #f85149; }
+@media (hover: hover) and (pointer: fine) { .qt-btn-supprimer:not(:disabled):hover { border-color: #f85149; } }
 
 /* Etat du rapport : OBSOLETE tres visible, version inconnue en orange */
 .qt-statut-rapport { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin: 0 16px 12px; padding: 12px 14px; border-radius: 8px; font-size: 13.5px; line-height: 1.5; }
@@ -132,12 +135,19 @@
 .qt-histo-tete { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
 .qt-histo-vide { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.55; }
 .qt-histo-liste { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; overflow-y: auto; overscroll-behavior: contain; }
-.qt-histo-item { padding: 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); }
+.qt-histo-item { border: 1px solid var(--border); border-radius: 8px; background: var(--bg); transition: border-color 0.18s ease; }
+.qt-histo-item:focus-within { border-color: var(--accent); }
+/* Toute la carte est un bouton (29/10) */
+.qt-histo-carte { display: block; width: 100%; padding: 12px; background: none; border: 0; border-radius: 8px; color: inherit; font: inherit; text-align: left; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.qt-histo-carte:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+@media (hover: hover) and (pointer: fine) { .qt-histo-item:hover { border-color: var(--accent); } }
 .qt-histo-ligne { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .qt-histo-date { color: var(--muted); font-size: 11.5px; }
-.qt-histo-phrase { margin: 8px 0 2px; font-size: 13.5px; font-weight: 600; line-height: 1.4; overflow-wrap: anywhere; }
-.qt-histo-detail { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.45; overflow-wrap: anywhere; }
-.qt-histo-actions { display: flex; gap: 6px; margin-top: 10px; }
+.qt-histo-phrase { display: block; margin: 8px 0 2px; font-size: 13.5px; font-weight: 600; line-height: 1.4; overflow-wrap: anywhere; }
+.qt-histo-detail { display: block; margin: 0; color: var(--muted); font-size: 12px; line-height: 1.45; overflow-wrap: anywhere; }
+
+/* Titre de page retire sous le bandeau de confirmation (29/10) */
+.qt-page.qt-confirmation .qt-entete { display: none; }
 
 /* Mobile : une colonne, historique sous le resultat, cibles tactiles de 40 a 44 px, aucun debordement horizontal de la page */
 @media (max-width: 768px) {
@@ -147,8 +157,7 @@
   .qt-btn-ia { min-height: 44px; min-width: 72px; }
   .qt-btn { min-height: 40px; }
   .qt-exports { width: 100%; }
-  .qt-exports-lib { flex: 1 1 100%; }
-  .qt-exports .qt-btn, .qt-histo-actions .qt-btn { flex: 1 1 0; }
+  .qt-exports > .qt-btn { flex: 1 1 0; }
   .qt-voir { min-height: 40px; min-width: 40px; }
   .qt-exports .qt-btn { min-height: 44px; }
   /* Tableau sans defilement horizontal a 390 px (27/10) : colonnes serrees, en-tetes qui passent a la ligne, pastille d'origine reduite. */
@@ -160,5 +169,29 @@
   .qt-tableau .qt-voir { padding: 0 8px; }
   .qt-tableau .qt-action { padding-right: 6px; }
   .qt-statut-rapport .qt-btn { flex: 1 1 100%; }
+
+  /* Mise en page mobile (29/10) : pleine page, le quantitatif d'abord. Dans le resultat et l'historique, plus de titre de page ; le panneau occupe toute la
+     largeur sans cadre ; la colonne « Origine » (identique sur toutes les lignes, deja dite par la pastille) disparait pour laisser la place aux chiffres. */
+  .qt-page[data-vue="resultat"], .qt-page[data-vue="historique"] { padding: 8px 0 0; }
+  .qt-page[data-vue="resultat"] .qt-entete, .qt-page[data-vue="historique"] .qt-entete { display: none; }
+  .qt-page[data-vue="resultat"] .qt-principal, .qt-page[data-vue="historique"] .qt-principal { gap: 8px; }
+  .qt-page[data-vue="resultat"] .qt-barre, .qt-page[data-vue="historique"] .qt-barre { padding: 0 8px; }
+  .qt-page[data-vue="resultat"] .qt-carte, .qt-page[data-vue="historique"] .qt-carte { border-left: 0; border-right: 0; border-radius: 0; }
+  .qt-page[data-vue="historique"] .qt-carte { padding: 12px; }
+  .qt-resultat-tete { padding: 12px 12px 8px; }
+  /* « Retour » en icone « ← » au debut de la premiere ligne (29/10) : plus de ligne dediee. Marges negatives : le bouton de 40 px n'agrandit pas la ligne. */
+  .qt-barre:empty { display: none; }
+  .qt-btn-retour { flex: none; min-width: 40px; padding: 0; font-size: 18px; }
+  .qt-btn-retour .qt-retour-texte { display: none; }
+  .qt-resultat-tete { flex-wrap: nowrap; gap: 4px; }
+  .qt-resultat-titres { flex: 1 1 0; }
+  .qt-resultat-tete > .qt-btn-retour { margin: -10px 0 -10px -8px; }
+  .qt-histo-tete > .qt-btn-retour { margin: -10px 0 -10px -8px; }
+  .qt-histo-tete > .qt-carte-titre { margin-right: auto; }
+  /* Titre du resultat en entier, retour a la ligne autorise, aucun rognage (29/10). */
+  .qt-resultat-titre { margin-bottom: 6px; font-size: 14px; }
+  .qt-col-origine { display: none; }
+  .qt-avertissement, .qt-statut-rapport { margin-left: 12px; margin-right: 12px; }
+  .qt-exports { padding: 10px 12px 14px; }
 }
 @media (prefers-reduced-motion: reduce) { .qt-btn, .qt-voir, .qt-btn-ia { transition: none; } }

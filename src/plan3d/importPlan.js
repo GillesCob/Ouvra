@@ -1,5 +1,5 @@
 // 2D -> 3D (25/10) : import d'un plan depuis un fichier (PNG, JPEG ou PDF). Rend toujours une IMAGE affichable en fond du plan :
-//   { url, l, h, nom, pages } (l et h en pixels ; url = adresse locale du navigateur, le fichier ne quitte jamais l'ordinateur)
+//   { url, l, h, nom, pages, blob } (blob = l'image elle-meme, gardee dans le projet ; l et h en pixels ; url = adresse locale du navigateur, le fichier ne quitte jamais l'ordinateur)
 // Un PDF est rendu par pdf.js (charge a la demande : la bibliotheque n'est telechargee que si on importe un PDF), une seule page a la fois.
 
 export const TAILLE_MAX_OCTETS = 40 * 1024 * 1024;
@@ -47,7 +47,7 @@ async function depuisImage(fichier) {
   const url = URL.createObjectURL(fichier);
   try {
     const img = await chargerImage(url);
-    return { url, l: img.naturalWidth, h: img.naturalHeight, nom: fichier.name, pages: 1 };
+    return { url, l: img.naturalWidth, h: img.naturalHeight, nom: fichier.name, pages: 1, blob: fichier };
   } catch (erreur) {
     URL.revokeObjectURL(url);
     throw erreur;
@@ -74,7 +74,7 @@ async function depuisPdf(fichier, page) {
     await p.render({ canvasContext: ctx, viewport: vue }).promise;
     const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
     if (!blob) throw new Error("Rendu du PDF impossible.");
-    return { url: URL.createObjectURL(blob), l: canvas.width, h: canvas.height, nom: fichier.name, pages: doc.numPages, page: numero };
+    return { url: URL.createObjectURL(blob), l: canvas.width, h: canvas.height, nom: fichier.name, pages: doc.numPages, page: numero, blob };
   } finally {
     doc.destroy();
   }

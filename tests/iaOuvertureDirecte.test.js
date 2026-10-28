@@ -37,3 +37,10 @@ test("mode initial : vocal si la dictee existe, sinon texte avec la raison ; bas
   assert.equal(modeApresBascule("texte", { dicteeDisponible: true }), "vocal");
   assert.equal(modeApresBascule("texte", { dicteeDisponible: false }), "texte", "sans dictee, on reste en texte");
 });
+
+test("choisir une phrase toute faite lance la demande tout de suite (plus de remplissage a valider)", () => {
+  const js = sansCommentaires(lire("src/iaSaisie.js"));
+  const bloc = js.slice(js.indexOf("exemples.forEach"), js.indexOf("propositions.append"));
+  assert.match(bloc, /envoyer\(nettoyerPhrase\(champ\.value\)\)/);
+  assert.equal(/focusVue\("texte"\)/.test(bloc), false, "le champ n'est plus rempli puis laisse a valider");
+});

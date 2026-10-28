@@ -115,3 +115,13 @@ test("controlerPlan : des murs exterieurs qui ne forment pas une boucle fermee (
   const branche = { ...ferme, noeuds: [...ferme.noeuds, { id: "E", x: 6, y: 3 }], murs: [...ferme.murs, { id: "M5", a: "D", b: "E", epaisseur: 0.3, type: "exterieur" }] };
   assert.ok(regles(branche).includes("erreur:contour-ouvert"));
 });
+
+test("plan 2D : la reconstruction du panneau ferme le menu commun encore ouvert (avant replaceChildren)", async () => {
+  const { readFileSync } = await import("node:fs");
+  const src = readFileSync(new URL("../src/plan3d/plan3dPage.js", import.meta.url), "utf8");
+  const i = src.indexOf("menuChoix.fermer();");
+  const j = src.indexOf("panneau.replaceChildren();");
+  assert.ok(i > 0 && j > i && j - i < 250, "fermer le menu juste avant de vider le panneau");
+  // cas « saisie en cours » : la sortie anticipee precede la fermeture, le menu d'un champ en cours n'est pas touche
+  assert.ok(src.lastIndexOf("return; // ne pas ecraser une saisie en cours", i) > 0);
+});

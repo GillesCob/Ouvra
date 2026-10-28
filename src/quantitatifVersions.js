@@ -50,6 +50,20 @@ export function comparerVersions(enregistrees, actuelles) {
   return { etat, changees, inconnues };
 }
 
+// Empreintes factices des rapports de DEMONSTRATION (src/quantitatifHistoriqueDemo.js). Une demonstration porte l'une des deux ; son statut ne depend jamais du reseau
+// (ni des en-tetes HEAD, ni du moment du chargement) : « a jour » = EMPREINTE_DEMO_A_JOUR, « obsolete » = EMPREINTE_DEMO_ANCIENNE.
+export const EMPREINTE_DEMO_A_JOUR = "demo:version-courante";
+export const EMPREINTE_DEMO_ANCIENNE = "demo:version-anterieure";
+
+// Statut d'un rapport. Un rapport reel est compare aux versions actuelles (comparerVersions). Un rapport de demonstration (empreintes factices ci-dessus)
+// est compare a une version courante factice : jamais « inconnue ». Un rapport « demo- » recalcule par l'utilisateur porte de vraies empreintes : regle normale.
+export function statutRapport(rapport, actuelles) {
+  const maquettes = (rapport && rapport.maquettes) || [];
+  const factice = maquettes.length > 0 && maquettes.every((m) => m.empreinte === EMPREINTE_DEMO_A_JOUR || m.empreinte === EMPREINTE_DEMO_ANCIENNE);
+  if (!factice) return comparerVersions(maquettes, actuelles);
+  return comparerVersions(maquettes, maquettes.map((m) => ({ id: m.id, label: m.label, empreinte: EMPREINTE_DEMO_A_JOUR })));
+}
+
 // Texte du statut, en toutes lettres (tableau, PDF, Excel).
 export function libelleStatut(statut) {
   const liste = (noms) => noms.join(", ");
