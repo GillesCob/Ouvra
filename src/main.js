@@ -31,6 +31,7 @@ import { creerRetourContexte } from "./retourContexte.js";
 import { vitesseCameraInitiale } from "./vitesseCamera.js";
 import { cadrerCentre } from "./cadrageCentre.js";
 import { creerHistorique, creerDepotLocal } from "./quantitatifHistorique.js";
+import { amorcerHistoriqueDemo } from "./quantitatifHistoriqueDemo.js";
 
 // ============================================================================
 // INTERRUPTEURS DE MASQUAGE : base propre du 19/10
@@ -6884,14 +6885,17 @@ retourPlan3d = creerRetourContexte({
   autresClasses: ["msg-retour-actif", "regles-retour-actif", "quantitatif-retour-actif"]
 });
 
+const quantitatifHistorique = creerHistorique({ depot: creerDepotLocal() });
 quantitatif = creerQuantitatifPage({
   racine: document.getElementById("quantitatifRoot"),
   obtenirDonnees: donneesQuantitatif,
   demander: demanderQuantitatif,
   voirDansViewer: voirQuantitatifDansViewer,
   obtenirVersions: versionsQuantitatif,
-  historique: creerHistorique({ depot: creerDepotLocal() })
+  historique: quantitatifHistorique
 });
+// Historique de demonstration (29/10) : deux quantitatifs deja passes, amorces une seule fois par navigateur.
+amorcerHistoriqueDemo({ historique: quantitatifHistorique, versions: versionsQuantitatif }).then((ajoute) => { if (ajoute) quantitatif.rafraichirHistorique(); });
 // Rechargement direct sur la page (hash ou dernier onglet) : activateView s'est execute avant la creation de la page.
 // Differe d'un cran : appelee pendant l'initialisation du module, la page lirait des constantes declarees plus bas (HOSPITAL_MISPLACED_RAILING_IDS...) avant leur initialisation.
 if (!document.getElementById("view-quantitatif").hidden) setTimeout(() => quantitatif.surVueActivee("quantitatif"), 0);

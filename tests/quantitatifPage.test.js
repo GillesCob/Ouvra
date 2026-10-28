@@ -43,7 +43,7 @@ test("css : accessibilite et mobile (focus visible, mouvement reduit, cibles tac
 test("page : tableau accessible, exports groupes, historique en cartes, aucun encart « Pose une question » sous la demande, un seul bouton IA qui ouvre la modale commune, aucune injection HTML", () => {
   assert.match(js, /th\.scope = "col"/);
   assert.match(js, /creer\("caption"/);
-  assert.match(js, /aria-label", "Exporter ce rapport"/);
+  assert.match(js, /aria-label", "Exporter ou supprimer ce rapport"/);
   assert.doesNotMatch(js, /Pose une question sur ta maquette/); // encart retire le 25/10 (demande de Gilles)
   assert.doesNotMatch(js, /etatVide|qt-etat-vide/);
   assert.match(js, /qt-histo-item/);
@@ -71,4 +71,16 @@ test("dateRelative : instant, minutes, heures, hier, jours, date, entree invalid
   assert.equal(dateRelative(il(60 * 24 * 3), maintenant), "il y a 3 jours");
   assert.match(dateRelative(il(60 * 24 * 30), maintenant), /\d{2}\/\d{2}\/\d{4}/);
   assert.equal(dateRelative("pas une date", maintenant), "");
+});
+
+test("retours mobile du 29/10 : cartes cliquables, Exporter + Supprimer, pas d'Historique ni de Nouvelle demande dans un quantitatif, un seul name de details", () => {
+  assert.match(js, /creer\("button", "qt-histo-carte"\)/);
+  assert.doesNotMatch(js, /Supprimer de l'historique|creer\("button", "qt-btn", "Rouvrir"\)/);
+  assert.match(js, /creer\("button", "qt-btn", "Exporter"\)/);
+  assert.match(js, /"Supprimer ce quantitatif"/);
+  assert.match(js, /barre\.appendChild\(boutonRetour\)/);
+  assert.doesNotMatch(js, /barre\.append\([^)]*(boutonIA|boutonHistorique)/); // la barre des vues ne porte que « Retour »
+  assert.match(js, /const NOM_DETAILS = "qt-infos"/);
+  assert.equal((js.match(/setAttribute\("name"/g) || []).length, 1); // un seul name, partage par tous les <details> de la page
+  assert.match(css, /\.qt-page\.qt-confirmation \.qt-entete \{ display: none; \}/); // titre retire sous le bandeau de confirmation
 });

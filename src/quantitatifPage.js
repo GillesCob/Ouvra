@@ -33,6 +33,12 @@ const MESSAGE_VIDE = "Écrire la demande, par exemple « Combien de portes au ni
 const MESSAGE_SANS_DONNEES = "Aucune maquette lisible pour le moment. Ouvrir d'abord le Viewer et attendre la fin du chargement.";
 const nombre = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 2 });
 
+// Mobile (29/10) : mise en page dediee, le tableau d'abord ; les infos secondaires passent dans un menu deroulant. Meme seuil que quantitatif.css.
+// Regle de Gilles : UN seul `name` partage par tous les <details> de la page (ouvrir l'un referme les autres).
+const MEDIA_MOBILE = "(max-width: 768px)";
+const NOM_DETAILS = "qt-infos";
+const ecranMobile = () => !!window.matchMedia && window.matchMedia(MEDIA_MOBILE).matches;
+
 function creer(tag, classe, texte) {
   const el = document.createElement(tag);
   if (classe) el.className = classe;
@@ -60,7 +66,7 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
   entete.append(titre, statut);
 
   // Carte de depart (25/10, comme la page 2D -> 3D) : deux choix seulement, « Nouvelle demande » (ouvre la modale de saisie commune, src/iaSaisie.js, vocal
-  // d'abord, avec ses phrases toutes faites) ou « Historique ». UN seul bouton IA : le meme element est deplace entre la carte de depart et la barre des autres vues.
+  // d'abord, avec ses phrases toutes faites) ou « Historique ». Ils ne vivent que sur la carte de depart (29/10).
   const boutonIA = creer("button", "qt-btn-ia", "Nouvelle demande");
   boutonIA.type = "button";
   boutonIA.id = "quantitatifIABtn";
@@ -73,9 +79,11 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
   const boutonRetour = creer("button", "qt-btn qt-btn-discret", "← Retour");
   boutonRetour.type = "button";
   const departCarte = creer("section", "qt-depart");
-  departCarte.setAttribute("aria-label", "Que veux-tu faire ?");
+  departCarte.setAttribute("aria-label", "Choisir une action");
+  // Barre des vues « resultat » et « historique » : « ← Retour » seulement (29/10). Nouvelle demande et Historique ne vivent que sur la carte de depart.
   const barre = creer("div", "qt-barre");
   barre.hidden = true;
+  barre.appendChild(boutonRetour);
 
   const message = creer("p", "qt-message");
   message.id = "quantitatifMessage";
@@ -94,7 +102,7 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
       courant.nouveau = false;
       resultatZone.hidden = false;
       majVue();
-      if (!barre.hidden) boutonIA.focus({ preventScroll: true });
+      if (!barre.hidden) boutonRetour.focus({ preventScroll: true });
       await enregistrer(courant.rapport);
     },
     // « Non » : rien n'a ete enregistre ni affiche, la saisie est rouverte prerenseignee.
@@ -137,11 +145,8 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
     barre.hidden = v === "depart" || (v === "resultat" && bandeau.visible()); // pendant la confirmation, la relecture s'affiche seule
     zoneResultat.hidden = v !== "resultat";
     zoneHistorique.hidden = v !== "historique";
-    if (v === "depart") departCarte.append(boutonIA, boutonHistorique);
-    else {
-      barre.append(boutonRetour, boutonIA);
-      if (v === "resultat") barre.append(boutonHistorique); else departCarte.append(boutonHistorique);
-    }
+    racine.dataset.vue = v;
+    racine.classList.toggle("qt-confirmation", bandeau.visible()); // sous le bandeau de confirmation, le titre de la page est retire (29/10)
   }
   function allerA(nouvelle) { vue = nouvelle; majVue(); }
   boutonRetour.addEventListener("click", () => allerA("depart"));
@@ -201,7 +206,7 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
     const quantite = cellule("td", nombre.format(ligne.valeur), "qt-num qt-valeur");
     if (resultat.mesure.unite) quantite.appendChild(creer("span", "qt-unite", " " + resultat.mesure.unite));
     tr.appendChild(quantite);
-    const origine = cellule("td", null, "qt-origine-cellule");
+    const origine = cellule("td", null, "qt-origine-cellule qt-col-origine");
     origine.appendChild(creer("span", "qt-origine qt-origine-" + resultat.mesure.origine, resultat.mesure.origineLibelle));
     tr.appendChild(origine);
     if (voirDansViewer) {
@@ -300,8 +305,37 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
     return creer("span", "qt-pastille qt-pastille-ajour", "À jour");
   }
 
+  // Liste des formats d'export : un seul menu ouvert a la fois, ferme par un clic en dehors, par Echap ou par le choix d'un format.
+  let menuExport = null; // { bouton, choix } du menu ouvert
+  function fermerMenuExport() {
+    if (!menuExport) return;
+    menuExport.choix.hidden = true;
+    menuExport.bouton.setAttribute("aria-expanded", "false");
+    menuExport = null;
+  }
+  document.addEventListener("click", (e) => {
+    if (menuExport && !menuExport.choix.parentElement.contains(e.target)) fermerMenuExport();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape" || !menuExport) return;
+    const { bouton } = menuExport;
+    fermerMenuExport();
+    bouton.focus();
+  });
+
+  // Mobile : une info secondaire passe dans un menu deroulant ferme ; sur laptop elle reste affichee telle quelle.
+  function infoSecondaire(libelle, noeud) {
+    if (!ecranMobile()) return noeud;
+    const d = creer("details", "qt-infos");
+    d.setAttribute("name", NOM_DETAILS);
+    d.appendChild(creer("summary", "qt-infos-titre", libelle));
+    d.appendChild(noeud);
+    return d;
+  }
+
   function dessinerRapport(rapport, statut, confirmation = false) {
     const resultat = rapport.resultat;
+    fermerMenuExport();
     resultatZone.textContent = "";
     const tete = creer("div", "qt-resultat-tete");
     const titres = creer("div", "qt-resultat-titres");
@@ -316,7 +350,9 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
     if (badge) resultatZone.appendChild(badge);
 
     // Avertissement compte / estime en toutes lettres, au-dessus du tableau (jamais seulement dans une infobulle).
-    resultatZone.appendChild(creer("p", "qt-avertissement qt-avertissement-" + resultat.mesure.origine, tableauDe(rapport).metre.explication));
+    // Sur mobile, l'explication « compté » se replie ; l'avertissement « estimé » (ne pas chiffrer ferme) reste toujours visible.
+    const avertissement = creer("p", "qt-avertissement qt-avertissement-" + resultat.mesure.origine, tableauDe(rapport).metre.explication);
+    resultatZone.appendChild(resultat.mesure.origine === "estime" ? avertissement : infoSecondaire("Sur ces chiffres", avertissement));
 
     if (resultat.aucunResultat) {
       resultatZone.appendChild(creer("p", "qt-vide", "Aucun élément ne correspond à cette demande dans les maquettes chargées."));
@@ -330,7 +366,7 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
       colonnes.forEach((c) => { const th = cellule("th", c, "qt-cle"); th.scope = "col"; tr.appendChild(th); });
       const unite = resultat.mesure.unite ? " (" + resultat.mesure.unite + ")" : "";
       const libelleMesure = resultat.mesure.libelle.charAt(0).toUpperCase() + resultat.mesure.libelle.slice(1) + unite;
-      ["Éléments", libelleMesure, "Origine"].forEach((c, i) => { const th = cellule("th", c, i < 2 ? "qt-num" : null); th.scope = "col"; tr.appendChild(th); });
+      ["Éléments", libelleMesure, "Origine"].forEach((c, i) => { const th = cellule("th", c, i < 2 ? "qt-num" : "qt-col-origine"); th.scope = "col"; tr.appendChild(th); });
       if (voirDansViewer) { const th = cellule("th", "Viewer", "qt-action"); th.scope = "col"; tr.appendChild(th); }
       thead.appendChild(tr);
       const tbody = creer("tbody");
@@ -356,18 +392,38 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
       notes.forEach((n) => liste.appendChild(creer("li", null, n)));
       resultatZone.appendChild(liste);
     }
-    // Exports (27/10) : regroupes en bas du panneau, sous le tableau et le total.
+    // Exports (27/10), puis suppression (29/10) : un bouton « Exporter » ouvre la liste des formats, « Supprimer » est a cote. Groupe en bas du panneau.
     const exports = creer("div", "qt-exports");
     exports.setAttribute("role", "group");
-    exports.setAttribute("aria-label", "Exporter ce rapport");
-    exports.appendChild(creer("span", "qt-exports-lib", "Exporter"));
+    exports.setAttribute("aria-label", "Exporter ou supprimer ce rapport");
+    const choix = creer("div", "qt-exports-choix");
+    choix.id = "quantitatifExportChoix";
+    choix.hidden = true;
+    choix.setAttribute("role", "group");
+    choix.setAttribute("aria-label", "Format d'export");
+    const boutonExporter = creer("button", "qt-btn", "Exporter");
+    boutonExporter.type = "button";
+    boutonExporter.setAttribute("aria-expanded", "false");
+    boutonExporter.setAttribute("aria-controls", choix.id);
+    boutonExporter.setAttribute("aria-label", "Exporter ce quantitatif");
     [["xlsx", "Excel"], ["pdf", "PDF"], ["csv", "CSV"]].forEach(([format, libelle]) => {
       const b = creer("button", "qt-btn", libelle);
       b.type = "button";
       b.setAttribute("aria-label", "Exporter en " + libelle);
-      b.addEventListener("click", () => exporter(format, rapport, statut));
-      exports.appendChild(b);
+      b.addEventListener("click", () => { fermerMenuExport(); exporter(format, rapport, statut); });
+      choix.appendChild(b);
     });
+    boutonExporter.addEventListener("click", () => {
+      const ouvrir = choix.hidden;
+      choix.hidden = !ouvrir;
+      boutonExporter.setAttribute("aria-expanded", String(ouvrir));
+      menuExport = ouvrir ? { bouton: boutonExporter, choix } : null;
+    });
+    const supprimer = creer("button", "qt-btn qt-btn-supprimer", "Supprimer");
+    supprimer.type = "button";
+    supprimer.setAttribute("aria-label", "Supprimer ce quantitatif");
+    supprimer.addEventListener("click", () => supprimerRapport(rapport));
+    exports.append(choix, boutonExporter, supprimer);
     resultatZone.appendChild(exports);
     resultatZone.hidden = !!confirmation;
   }
@@ -382,11 +438,28 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
   }
 
   // ---------- Historique ----------
+  async function rouvrir(rapport) {
+    jeton += 1;
+    occuper(false);
+    dire("");
+    await afficherRapport(rapport, { nouveau: false });
+    if (resultatZone.scrollIntoView) resultatZone.scrollIntoView({ block: "start" });
+  }
+
+  // Suppression depuis le quantitatif ouvert : on retombe sur l'historique s'il reste des entrees, sinon sur la carte de depart.
+  async function supprimerRapport(rapport) {
+    if (historique) await historique.supprimer(rapport.id);
+    viderResultat();
+    const reste = historique ? await historique.lister() : [];
+    await rafraichirHistorique();
+    allerA(reste.length ? "historique" : "depart");
+  }
+
   async function rafraichirHistorique() {
     if (!historique) { boutonHistorique.disabled = true; return; }
     const entrees = await historique.lister();
     boutonHistorique.textContent = entrees.length ? "Historique · " + entrees.length : "Historique";
-    boutonHistorique.disabled = entrees.length === 0 && vue !== "historique";
+    boutonHistorique.disabled = entrees.length === 0;
     histoBloc.textContent = "";
     const versions = await obtenirVersions();
     const tete = creer("div", "qt-histo-tete");
@@ -394,7 +467,7 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
     tete.appendChild(creer("span", "qt-pastille qt-pastille-neutre", String(entrees.length)));
     histoBloc.appendChild(tete);
     if (!entrees.length) {
-      histoBloc.appendChild(creer("p", "qt-histo-vide", "Tes quantitatifs apparaîtront ici, avec leur date. Tu pourras les rouvrir sans rappeler l'IA."));
+      histoBloc.appendChild(creer("p", "qt-histo-vide", "Les quantitatifs apparaîtront ici, avec leur date. Ils pourront être rouverts sans rappeler l'IA."));
       return;
     }
     const liste = creer("ul", "qt-histo-liste");
@@ -402,37 +475,24 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
       const rapport = entree.rapport;
       const statut = comparerVersions(rapport.maquettes, versions);
       const li = creer("li", "qt-histo-item");
-      const ligne1 = creer("div", "qt-histo-ligne");
+      // Toute la carte est le bouton qui rouvre le quantitatif (29/10) : plus de boutons Rouvrir / Supprimer ; la suppression vit dans le quantitatif ouvert.
+      const carte = creer("button", "qt-histo-carte");
+      carte.type = "button";
+      carte.setAttribute("aria-label", "Rouvrir : " + rapport.phrase);
+      const ligne1 = creer("span", "qt-histo-ligne");
       ligne1.appendChild(pastilleEtat(statut));
       const quand = creer("time", "qt-histo-date", dateRelative(rapport.calculeLe));
       quand.dateTime = rapport.calculeLe;
       quand.title = new Date(rapport.calculeLe).toLocaleString("fr-FR");
       ligne1.appendChild(quand);
-      li.appendChild(ligne1);
-      li.appendChild(creer("p", "qt-histo-phrase", rapport.phrase));
       const n = rapport.resultat.lignes.length;
-      li.appendChild(creer("p", "qt-histo-detail", n + " ligne" + (n > 1 ? "s" : "") + " · " + (rapport.maquettes.map((m) => m.label).join(", ") || "aucune maquette")));
-      const actions = creer("div", "qt-histo-actions");
-      const rouvrir = creer("button", "qt-btn", "Rouvrir");
-      rouvrir.type = "button";
-      rouvrir.setAttribute("aria-label", "Rouvrir : " + rapport.phrase);
-      rouvrir.addEventListener("click", async () => {
-        jeton += 1;
-        occuper(false);
-        dire("");
-        await afficherRapport(rapport, { nouveau: false });
-        if (resultatZone.scrollIntoView) resultatZone.scrollIntoView({ block: "start" });
-      });
-      const supprimer = creer("button", "qt-btn qt-btn-discret", "Supprimer");
-      supprimer.type = "button";
-      supprimer.setAttribute("aria-label", "Supprimer de l'historique : " + rapport.phrase);
-      supprimer.addEventListener("click", async () => {
-        await historique.supprimer(rapport.id);
-        if (dernierResultat && dernierResultat.rapport.id === rapport.id) viderResultat();
-        rafraichirHistorique();
-      });
-      actions.append(rouvrir, supprimer);
-      li.appendChild(actions);
+      carte.append(
+        ligne1,
+        creer("span", "qt-histo-phrase", rapport.phrase),
+        creer("span", "qt-histo-detail", n + " ligne" + (n > 1 ? "s" : "") + " · " + (rapport.maquettes.map((m) => m.label).join(", ") || "aucune maquette"))
+      );
+      carte.addEventListener("click", () => rouvrir(rapport));
+      li.appendChild(carte);
       liste.appendChild(li);
     });
     histoBloc.appendChild(liste);
@@ -523,6 +583,9 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
     if (dernierResultat && !resultatZone.hidden) dessinerRapport(dernierResultat.rapport, comparerVersions(dernierResultat.rapport.maquettes, await obtenirVersions()));
   }
 
+  // Passage du seuil mobile / laptop : les infos secondaires changent de forme, le rapport affiche est redessine.
+  if (window.matchMedia) window.matchMedia(MEDIA_MOBILE).addEventListener("change", rafraichirRapportAffiche);
+
   return {
     // Appelee par main.js a chaque changement de page.
     surVueActivee(nomVue) {
@@ -530,6 +593,7 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
       else { bandeau.masquer(false); saisie.fermer(false); clearTimeout(minuteurSource); jeton += 1; occuper(false); }
     },
     lancer,
+    rafraichirHistorique,
     // Pour les tests et pour main.js : etat courant.
     dernierResultat: () => dernierResultat
   };
