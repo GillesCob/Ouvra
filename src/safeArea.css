@@ -1,0 +1,26 @@
+/* Zones sures de l'ecran (28/10, retour M24 de la recette iPhone) : application installee sur l'ecran d'accueil (PWA) et ecrans a encoche.
+   Avec viewport-fit=cover (index.html), la page occupe tout l'ecran, y compris sous la barre d'etat et le trait du geste d'accueil.
+   <body> devient une boite fixe qui exclut ces zones : tout le contenu, y compris les elements en position: fixed (barres, bandeaux,
+   tiroirs, boutons du bas), se place a l'interieur d'elle (contain: layout en fait leur bloc de reference). Aucune regle existante
+   n'est modifiee. Les insets valent 0 sur un navigateur sans encoche : le rendu y est identique.
+   En PWA seulement, une marge basse en plus : le geste de fermeture de l'application part du bas de l'ecran, un menu fait defiler
+   vers le haut trop pres du bord le declenchait. */
+:root { --marge-bas-pwa: 0px; }
+@media (display-mode: standalone) {
+  :root { --marge-bas-pwa: 14px; }
+}
+
+html, body { background: var(--bg); }
+body {
+  position: fixed;
+  top: env(safe-area-inset-top, 0px);
+  right: env(safe-area-inset-right, 0px);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + var(--marge-bas-pwa));
+  left: env(safe-area-inset-left, 0px);
+  width: auto;
+  height: auto;
+  contain: layout;
+}
+
+/* L'accueil est clair : les bandes sures prennent sa couleur de fond (celle de #view-accueil), pas le vert de l'application. */
+html:has(body.acc-actif), html:has(body.acc-actif) body { background: #fbf7f0; }
