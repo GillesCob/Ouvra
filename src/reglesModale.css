@@ -66,7 +66,7 @@
   color: var(--msg-accent); font-size: 12px; font-weight: 600; text-decoration: underline; text-underline-offset: 2px;
 }
 .regles-actions { margin-top: 2px; }
-.regles-carte :is(.msg-fantome, .msg-primaire) { min-height: 40px; }
+.regles-carte :is(.msg-fantome, .msg-primaire) { min-height: 44px; }
 /* Survol : seulement a la souris (le :hover collant d'iOS et la teinte de tap sont evites). */
 @media (hover: hover) and (pointer: fine) {
   .regles-ligne:hover { background: var(--msg-releve); }
