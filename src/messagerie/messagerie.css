@@ -248,7 +248,7 @@
 .msg-carte { position: relative; }
 /* Titre du dialogue : marge (et non padding) a droite, pour que son rectangle ne recouvre jamais la croix (40 px a 6 px du bord sur ordinateur, 44 px a 4 px sur mobile). */
 .msg-carte h3 { margin: 0 36px 0 0; font-size: 16px; }
-.msg-croix { position: absolute; top: 6px; right: 6px; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; padding: 0; background: transparent; border: 1px solid var(--border); border-radius: 6px; color: var(--muted); font-size: 16px; line-height: 1; cursor: pointer; }
+.msg-croix { position: absolute; top: 6px; right: 6px; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; padding: 0; box-sizing: border-box; background: transparent; border: 0; border-radius: 6px; color: var(--muted); font-size: 16px; line-height: 1; cursor: pointer; }
 .msg-croix:hover { color: var(--text); }
 .msg-carte label, .msg-etiquette { font-size: 12px; font-weight: 700; color: var(--muted); display: block; margin-bottom: 4px; }
 .msg-carte :is(input, textarea, select) { width: 100%; min-height: 40px; padding: 8px 10px; }

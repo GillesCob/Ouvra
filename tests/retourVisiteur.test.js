@@ -121,7 +121,8 @@ test("ecran de remerciement (28/10) : pas de titre de modale, icone, « Merci ! 
   const bloc = (texte, selecteur) => texte.slice(texte.indexOf(selecteur), texte.indexOf("}", texte.indexOf(selecteur)));
   const modele = bloc(messagerie, ".msg-croix {");
   const croix = bloc(css, ".retour-croix {");
-  for (const valeur of ["position: absolute", "top: 6px", "right: 6px", "width: 40px", "height: 40px", "border: 1px solid var(--border)", "border-radius: 6px", "color: var(--muted)"]) {
+  // (la croix de messagerie n'a plus de bordure depuis le 28/10 : border: 0, taille inchangee)
+  for (const valeur of ["position: absolute", "top: 6px", "right: 6px", "width: 40px", "height: 40px", "border-radius: 6px", "color: var(--muted)"]) {
     assert.ok(modele.includes(valeur), ".msg-croix : " + valeur);
     assert.ok(croix.includes(valeur), ".retour-croix : " + valeur);
   }
