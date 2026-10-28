@@ -272,7 +272,7 @@
 .msg-bascule button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) { .msg-bascule-pastille, .msg-bascule button { transition: none; } }
 @media (max-width: 768px) { .msg-bascule button { padding: 8px 4px; white-space: nowrap; } } /* 360 px : « Conversation existante » tient sur une ligne, le dialogue sans defilement */
-/* Menu deroulant du dialogue sur mobile (src/menuChoix.js) : meme hauteur que les champs voisins, texte tronque, liste plafonnee a la place libre. Jamais rendu sur laptop. */
+/* Menu deroulant du dialogue (src/menuChoix.js, laptop et mobile) : meme hauteur que les champs voisins, texte tronque, liste plafonnee a la place libre. */
 .collision-trigger.msg-choix-trigger { min-height: 44px; font-size: 16px; }
 .msg-choix-trigger[hidden] { display: none; }
 .msg-choix-trigger .collision-trigger-val { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: 16px; font-weight: 500; }
@@ -424,7 +424,8 @@ body.msg-retour-actif #viewerToolbar { top: 56px; }
   .msg-zone .msg-corps > .msg-champ-grand:has(#msgNsMessage) { flex: 0 0 auto; min-height: 0; }
   #msgNsMessage { flex: none; min-height: 0; max-height: 40vh; }
   .msg-zone .msg-corps { overscroll-behavior: contain; }
-  .msg-carte, .msg-carte.msg-carte-sujet, .msg-carte.msg-carte-sujet-bascule { width: 100%; height: 100vh; height: 100dvh; max-height: none; border: 0; border-radius: 0; padding: calc(14px + env(safe-area-inset-top)) 16px calc(14px + env(safe-area-inset-bottom)); }
+  .msg-carte, .msg-carte.msg-carte-sujet { width: 100%; height: 100vh; height: 100dvh; max-height: none; border: 0; border-radius: 0; padding: calc(14px + env(safe-area-inset-top)) 16px calc(14px + env(safe-area-inset-bottom)); }
+  .msg-carte.msg-carte-sujet-bascule { height: 100vh; height: 100dvh; }
   .msg-carte .msg-croix { top: calc(4px + env(safe-area-inset-top)); right: 4px; width: 44px; height: 44px; }
   .msg-pastille, .msg-ajout { min-height: 40px; }
   .msg-composer textarea, .msg-barre-recherche input, .msg-carte :is(input, textarea, select) { font-size: 16px; }

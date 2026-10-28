@@ -27,7 +27,7 @@ test("dialogue Nouveau sujet : bascule a pastille et zone defilante dans une car
   const css = fs.readFileSync(new URL("../src/messagerie/messagerie.css", import.meta.url), "utf8");
   assert.match(js, /msg-bascule-pastille/);
   assert.match(js, /msg-zone/);
-  assert.match(css, /\.msg-carte-sujet\s*\{[^}]*height:/);
+  assert.match(css, /\.msg-carte-sujet-bascule\s*\{[^}]*height:/);
   assert.match(css, /\.msg-corps\s*\{[^}]*overflow-y:\s*auto/);
   assert.match(css, /\.msg-bascule-pastille\s*\{[^}]*transition:\s*transform 0\.3s ease, width 0\.3s ease/);
   assert.match(css, /prefers-reduced-motion[^}]*msg-bascule-pastille/);

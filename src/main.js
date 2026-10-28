@@ -2244,6 +2244,7 @@ function canvasMesurable() {
 // et la vue de depart brute (celle de l'hopital, reglee pour un ecran large) est posee sans ajustement ; elle restait telle quelle au premier affichage
 // du Viewer (coupee sur les cotes en portrait). Au premier affichage du canvas, si la camera n'a pas bouge depuis, elle est recentree sur la maquette.
 let poseDepartSansCanvas = null;
+let boiteBatiment = null; // boite du batiment entier (objets visibles a la fin du chargement), base du cadrage global de Collision et du retour au Viewer
 function memePose(a, b) {
   return ["eye", "look", "up"].every((cle) => a[cle].every((v, i) => Math.abs(v - b[cle][i]) < 1e-3));
 }
@@ -4260,6 +4261,10 @@ function cadrageBatimentDansZone() {
   const base = initialCameraState || DEFAULT_CAMERA_STATE;
   const canevas = viewer.scene.canvas.canvas;
   if (!canevas || !canevas.clientWidth || !canevas.clientHeight) return Object.assign({}, base);
+  // Retour du 28/10 (« toujours dezoomee ») : la pose brute de l'hopital, reglee pour un ecran large, coupait la maquette en portrait et sur Collision. Quand la boite
+  // du batiment est connue, le cadrage est calcule pour la zone 3D courante (meme calcul que la position initiale et « Recentrer »).
+  const centree = boiteBatiment ? poseCentreeSurBoite(base, boiteBatiment) : base;
+  if (centree !== base) return centree;
   // Mobile (<= 768 px) : pas de recul (la zone 3D portrait donnerait un facteur de 3 : maquette minuscule), meme vue que « Recentrer ».
   const facteur = window.matchMedia(REQUETE_MOBILE).matches ? 1 : Math.max(1, 1.6 / (canevas.clientWidth / canevas.clientHeight));
   const dir = [base.eye[0] - base.look[0], base.eye[1] - base.look[1], base.eye[2] - base.look[2]];
@@ -9432,6 +9437,7 @@ function loadProject(projectKey) {
         document.addEventListener("pointerdown", effacer, true);
         setTimeout(effacer, 6000);
       }
+      boiteBatiment = viewer.scene.visibleObjectIds.length ? viewer.scene.getAABB(viewer.scene.visibleObjectIds) : null; // le batiment entier, tel que montre a l'arrivee
       // 20/10 : 1 s de pause pour lire le temps de la derniere maquette (la 3D se dessine derriere),
       // puis le logo s'ouvre sur la maquette. Affichage immediat en mode progressif.
       if (CHARGEMENT_PROGRESSIF) loadingOverlay.classList.add("hidden");

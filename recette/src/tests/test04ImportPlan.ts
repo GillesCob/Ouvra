@@ -98,7 +98,9 @@ async function laptop(ctx: IContexteTest): Promise<void> {
     const pages = await page.locator('select[aria-label="Page du PDF"]').evaluateAll((els) => els.map((e) => (e as HTMLSelectElement).options.length));
     verif.controle("R-87 PDF a 2 pages : la premiere s'affiche en fond", (await page.locator(".p3d-fond").count()) === 1);
     verif.controle("R-87 la liste « Page du PDF » apparait pour un PDF de plusieurs pages", pages.length === 1 && pages[0] === 2, pages);
-    await page.locator('select[aria-label="Page du PDF"]').selectOption({ index: 1 });
+    // Le <select> est masque (source de verite) : on passe par le menu commun, comme l'utilisateur (declencheur puis 2e page).
+    await page.locator('button.select-declencheur[aria-label="Page du PDF"]').click();
+    await page.locator('.collision-menu [role="option"]').nth(1).click();
     await dormir(1500);
     verif.controle("R-87 changer de page garde un fond affiche", (await page.locator(".p3d-fond").count()) === 1);
   }

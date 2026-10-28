@@ -3441,10 +3441,7 @@ button.disc-pin:hover { transform: scale(1.18); box-shadow: 0 0 0 3px color-mix(
   #collisionFiltre button:not([aria-pressed="true"]):hover { color: var(--text); }
 }
 
-/* Menu deroulant commun (src/menuChoix.js, retour 32 du 28/10) : le bouton declencheur qui double un <select> natif n'existe que sur mobile ; sur laptop le <select> reste affiche, inchange. */
-.collision-trigger.select-declencheur { display: none; }
-@media (max-width: 768px) {
-  .select-habille { display: none !important; }
-  .collision-trigger.select-declencheur { display: flex; }
-  .collision-trigger.select-declencheur[hidden] { display: none; }
-}
+/* Menu deroulant commun (src/menuChoix.js) : sur laptop comme sur mobile (29/10), le <select> natif qui sert de source de verite est masque et son bouton declencheur ouvre le menu commun. */
+.select-habille { display: none !important; }
+.collision-trigger.select-declencheur { display: flex; }
+.collision-trigger.select-declencheur[hidden] { display: none; }
