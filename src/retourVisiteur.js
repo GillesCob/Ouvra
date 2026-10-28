@@ -1,4 +1,4 @@
-// Retours des visiteurs (28/10) : le bouton « Donner mon avis » de la barre de navigation ouvre une modale (type Bug ou Idée, message, e-mail facultatif) qui
+// Retours des visiteurs (28/10) : le bouton « Bug ou idée ? » de la barre de navigation ouvre une modale (type Bug ou Idée, message, e-mail facultatif) qui
 // envoie un mail a Gilles par POST /api/retour (api/retour.js, relais/httpRetour.js). Reponse a l'appel final de la presentation (« retours, cas d'usage, essais »).
 // Pas de compte, pas de profil : la page d'origine est ajoutee toute seule. Le CSS (src/retourVisiteur.css) est importe par main.js, ce module reste importable sous Node.
 //  - logique pure en haut (corpsRetour, libellePage, messageEchec, envoyerRetour : testees) ; modale DOM en bas (creerRetourVisiteur), meme apparence que les modales IA
@@ -56,7 +56,7 @@ function creer(tag, classe, texte) {
   return el;
 }
 
-// declencheurs : les boutons « Donner mon avis » (barre et menu ☰) ; pageCourante() : nom de la vue affichee (« viewer », « discussions »...).
+// declencheurs : les boutons « Bug ou idée ? » (barre et menu ☰) ; pageCourante() : nom de la vue affichee (« viewer », « discussions »...).
 export function creerRetourVisiteur({ declencheurs, pageCourante }) {
   let declencheur = null; // l'exemplaire du bouton qui a ouvert la modale : il reprend le focus a la fermeture
   let fond = null;
@@ -71,7 +71,7 @@ export function creerRetourVisiteur({ declencheurs, pageCourante }) {
     carte.setAttribute("role", "dialog");
     carte.setAttribute("aria-modal", "true");
     carte.setAttribute("aria-labelledby", "retourTitre");
-    const titre = creer("h2", "retour-titre", "Donner mon avis");
+    const titre = creer("h2", "retour-titre", "Un bug, une idée ?");
     titre.id = "retourTitre";
     const intro = creer("p", "retour-intro", "Un bug, une idée : dis-moi ce que tu as vu. Ça m'aide à améliorer Ouvra.");
 

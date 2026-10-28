@@ -1,4 +1,4 @@
-// Retours des visiteurs (28/10) : formulaire « Donner mon avis » -> POST /api/retour -> un mail via Resend. Validation, mail, gestionnaire HTTP (sans reseau :
+// Retours des visiteurs (28/10) : formulaire « Bug ou idée ? » -> POST /api/retour -> un mail via Resend. Validation, mail, gestionnaire HTTP (sans reseau :
 // le fetch est injecte). Aucune cle, aucun contenu de retour dans les journaux ni dans les reponses.
 import test from "node:test";
 import assert from "node:assert/strict";

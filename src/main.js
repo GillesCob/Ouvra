@@ -1092,7 +1092,7 @@ const messagerie = DISCUSSIONS_MESSAGERIE ? creerMessagerie({
 // Modale « Regle a valider » des regles de collision (etapes 2 et 3), creee plus bas une fois les libelles de priorite et de statut definis.
 let reglesModale = null;
 let reglesIA = null; // cree plus bas ; « Reformuler » de la modale y rouvre le panneau
-// Retours des visiteurs (28/10) : bouton « Donner mon avis » de la barre de navigation, la page d'origine est lue sur la vue affichee.
+// Retours des visiteurs (28/10) : bouton « Bug ou idée ? » de la barre de navigation, la page d'origine est lue sur la vue affichee.
 creerRetourVisiteur({
   declencheurs: [...document.querySelectorAll(".nav-avis")], // deux exemplaires : la barre (ordinateur) et le menu ☰ (mobile), un seul est visible
   pageCourante: () => { const vue = document.querySelector(".view:not([hidden])"); return vue ? vue.id.replace("view-", "") : ""; }

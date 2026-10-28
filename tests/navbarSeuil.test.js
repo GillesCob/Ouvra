@@ -1,4 +1,4 @@
-// Barre de navigation (28/10) : « Me contacter » ne recouvre jamais un onglet ni « Donner mon avis ». Il reste centre tant qu'il y a la place, puis s'arrete 16 px apres
+// Barre de navigation (28/10) : « Me contacter » ne recouvre jamais un onglet ni « Bug ou idée ? ». Il reste centre tant qu'il y a la place, puis s'arrete 16 px apres
 // le dernier onglet (placerContactNavbar, meme principe que la pastille placerPastilleNavbar) ; la barre passe au menu hamburger a 960 px (barre seulement : le reste
 // de l'application garde son seuil mobile de 768 px). Les rectangles sont mesures dans un navigateur (WebKit) a chaque largeur ; ici, la coherence des seuils.
 import test from "node:test";

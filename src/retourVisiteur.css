@@ -1,4 +1,4 @@
-/* Retours des visiteurs (28/10) : bouton « Donner mon avis » de la barre de navigation et sa modale. La modale reprend les classes communes des modales IA
+/* Retours des visiteurs (28/10) : bouton « Bug ou idée ? » de la barre de navigation et sa modale. La modale reprend les classes communes des modales IA
    (regles-ia-fond, regles-ia-carte, regles-ia-valider, regles-ia-bascule de src/reglesIA.css et src/iaSaisie.css) ; seuls les elements propres au formulaire sont ici. */
 /* Deux exemplaires du bouton, un seul visible : dans la barre a droite sur ordinateur (« Me contacter » est centre en absolu, le bouton ne le recouvre jamais),
    dans le menu ☰ sur mobile. */
