@@ -14,6 +14,7 @@ import {
 } from "./discussionsIARapportFormat.js";
 
 export const TITRE_DOCUMENT = "Récapitulatif de discussion";
+export const FILIGRANE_MODELE = "Modèle de présentation";
 const EXTRAIT_PDF_MAX = 160;
 const SUJET_FICHIER_MAX = 40;
 
@@ -32,7 +33,8 @@ export function definitionRapportPdf(rapport) {
   const t = sansSpecial;
   const base = {
     titreDocument: TITRE_DOCUMENT, titre: t(rapport.titre), sujet: t(rapport.sujet), date: dateJJMMAAAA(rapport.date), dateLibelle: dateDuRapport(rapport),
-    vide: !!rapport.vide, nomFichier: nomFichierRapport(rapport.sujet, rapport.date), pied: "Généré par Ouvra"
+    vide: !!rapport.vide, nomFichier: nomFichierRapport(rapport.sujet, rapport.date), pied: "Généré par Ouvra",
+    filigrane: rapport.modele ? t(FILIGRANE_MODELE) : null // 28/10 : seulement le rapport modele prepare a l'avance, jamais un rapport genere par l'IA
   };
   if (rapport.vide) return { ...base, perimetre: t(perimetreDe(rapport)), message: t(rapport.message), sources: [] };
   const decision = rapport.decision;
@@ -143,6 +145,17 @@ export function construireRapportPdf({ jsPDF, autoTable }, def, { logoPng = null
   const pages = doc.getNumberOfPages();
   for (let p = 1; p <= pages; p += 1) {
     doc.setPage(p);
+    if (def.filigrane) {
+      // Filigrane : texte vert tres clair a 45 degres, centre sur la page. Position calculee ici (le centrage de jsPDF n'est pas fiable avec un angle) :
+      // le texte part de (centre - demi-largeur le long de la diagonale), la page etant orientee vers le bas.
+      doc.saveGraphicsState();
+      doc.setGState(new doc.GState({ opacity: 0.12 }));
+      doc.setFont("helvetica", "bold").setFontSize(44).setTextColor(...VERT);
+      const demi = doc.getTextWidth(def.filigrane) / 2;
+      const c = Math.SQRT1_2;
+      doc.text(def.filigrane, largeur / 2 - demi * c, hauteur / 2 + demi * c, { angle: 45 });
+      doc.restoreGraphicsState();
+    }
     const hautLogo = 6;
     if (logoPng) doc.addImage(logoPng, "PNG", marge, hautLogo, 11, 11);
     doc.setFont("helvetica", "bold").setFontSize(13).setTextColor(...VERT).text("OUVRA", marge + (logoPng ? 14 : 0), hautLogo + 7.5);
