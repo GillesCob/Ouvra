@@ -6271,7 +6271,7 @@ function creerControleMenu(id, libelle, labels, champ, surChangement) {
       document.body.appendChild(menu);
       const r = trigger.getBoundingClientRect();
       const mh = menu.offsetHeight;
-      const mw = Math.max(menu.offsetWidth, 168);
+      const mw = Math.max(menu.offsetWidth, 168, r.width); // jamais plus etroit que le bouton qui l'ouvre (28/10)
       const place = window.innerHeight - r.bottom;
       menu.style.top = (place >= mh + 8 ? r.bottom + 6 : Math.max(8, r.top - mh - 6)) + "px";
       menu.style.left = Math.max(8, Math.min(r.left, window.innerWidth - mw - 8)) + "px";
