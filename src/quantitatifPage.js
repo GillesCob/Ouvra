@@ -336,7 +336,7 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
 
   // Liste des formats d'export (29/10) : le menu commun (src/menuChoix.js), le MEME que les selecteurs Priorite / Statut (classes .collision-menu*, src/style.css), pose en
   // position fixe pres du bouton « Exporter » (le panneau coupe tout ce qui deborde). Un seul ouvert a la fois ; ferme par un clic en dehors, Echap, le choix d'un format,
-  // un defilement ou un redimensionnement (ecouteurs retires a la fermeture). Meme rendu que le menu de conversation de la messagerie : de la largeur du bouton, sur laptop comme sur mobile.
+  // un defilement ou un redimensionnement (ecouteurs retires a la fermeture). Meme rendu que le menu de conversation de la messagerie : au moins de la largeur du bouton, sur laptop comme sur mobile.
   const FORMATS_EXPORT = [["xlsx", "Excel"], ["pdf", "PDF"], ["csv", "CSV"]];
   const menuChoix = creerMenuChoix({ conteneur: document.body });
   const fermerMenuExport = () => menuChoix.fermer();
@@ -345,6 +345,7 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
       titre: "Exporter en",
       id: "quantitatifExportChoix",
       fermerAuDefilement: true,
+      largeurAuto: true, // au moins la largeur du bouton, assez large pour le titre « Exporter en » sur une ligne
       options: FORMATS_EXPORT.map(([valeur, libelle]) => ({ valeur, libelle })),
       surChoix: (format) => exporter(format, rapport, statut),
     });
