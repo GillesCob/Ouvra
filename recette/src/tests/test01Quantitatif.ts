@@ -66,8 +66,8 @@ function sommeColonne(t: ITableau): { somme: number; total: number } {
 /** Exporte via le menu deroulant « Exporter » (29/10) : le bouton ouvre la liste des formats, puis un choix. Le PDF s'ouvre dans un onglet (blob lu depuis cet onglet), Excel et CSV se telechargent. */
 async function telecharger(ctx: IContexteTest, page: IPageSuivie, format: "Excel" | "PDF" | "CSV"): Promise<string> {
   await page.click('button[aria-label="Exporter ce quantitatif"]');
-  await page.waitForSelector('[role="menu"][aria-label="Format d\'export"]', { timeout: 5_000 });
-  const choix = `[role="menuitem"][aria-label="Exporter en ${format}"]`;
+  await page.waitForSelector('[role="listbox"][aria-label="Exporter en"]', { timeout: 5_000 });
+  const choix = `[role="listbox"][aria-label="Exporter en"] [role="option"]:has-text("${format}")`;
   if (format === "PDF") {
     const [onglet] = await Promise.all([ctx.contexte.waitForEvent("page", { timeout: 40_000 }), page.click(choix)]);
     await onglet.waitForLoadState("domcontentloaded").catch(() => undefined);
