@@ -16,7 +16,8 @@ function regleAcceptable(regle, valeurs) {
   if (!regle || !regle.filtre || !PORTEES_IA.includes(regle.filtre.portee)) return false;
   const verdict = validerRegle(regle, { priorite: valeurs.priorite, statut: valeurs.statut });
   if (!verdict.ok) return false;
-  return regle.filtre.criteres.every((c) => (valeurs[LISTE_DU_CHAMP[c.champ]] || []).includes(c.contient));
+  if (!regle.filtre.criteres.every((c) => (valeurs[LISTE_DU_CHAMP[c.champ]] || []).includes(c.contient))) return false;
+  return (regle.filtre.numeros || []).every((n) => (valeurs.numeros || []).includes(n)); // un numero absent de la liste envoyee n'est jamais accepte
 }
 
 export async function demanderRegle({ phrase, valeurs, aujourdhui }, { fetch: appel = (...a) => globalThis.fetch(...a), delaiMs = DELAI_MS, url = "/api/regle" } = {}) {

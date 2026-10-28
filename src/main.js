@@ -6361,10 +6361,13 @@ let banqueVuesCollisions = [];
 function relireBanqueVuesCollisions() { return chargerBanque().then((b) => { banqueVuesCollisions = b; }); }
 relireBanqueVuesCollisions();
 
+// Numero affiche d'une collision (liste, pastilles, modale) : son rang dans CLASHES + 1. Le meme sert au critere « numeros » des regles IA.
+function numeroAffiche(clash) { return CLASHES.indexOf(clash) + 1; }
+
 reglesModale = creerReglesModale({
   libellesPriorite: PRIORITE_LABELS,
   libellesStatut: STATUT_LABELS,
-  numero: (clash) => CLASHES.indexOf(clash) + 1,
+  numero: numeroAffiche,
   creerCarte: (clash) => buildCollisionCard(clash, "span"),
   lireElement: (id) => descripteurElement(viewer.metaScene, id, MAQUETTES),
   voirEn3D: (clash) => activateClash(clash),
@@ -6374,20 +6377,25 @@ reglesModale = creerReglesModale({
   glisserPourFermer: enableDrawerSwipeToClose
 });
 
+// Collisions reelles de la detection courante (jamais les fictives), celles que les regles IA peuvent toucher.
+function clashesDeLaDetection() {
+  return detectionCourante ? CLASHES.filter((c) => c.detectionId === detectionCourante.id && !c.factice && isHospitalClash(c)) : [];
+}
+
 // Valide la regle, la confronte aux collisions reelles de la detection courante (jamais les fictives) et ouvre la modale « Regle a valider ».
 // Rend { ok } ou { ok: false, erreur }. Utilisee par le panneau « IA » de la page Collision et par le declencheur de diagnostic.
 function ouvrirRegleCollision(regle) {
   const verdict = validerRegle(regle, { priorite: PRIORITE_ORDRE, statut: Object.keys(STATUT_LABELS) });
   if (!verdict.ok) return verdict;
-  const clashes = detectionCourante ? CLASHES.filter((c) => c.detectionId === detectionCourante.id && !c.factice && isHospitalClash(c)) : [];
+  const clashes = clashesDeLaDetection();
   const touchees = appliquerRegle(
     regle,
     clashes,
     (id) => descripteurElement(viewer.metaScene, id, MAQUETTES),
     (clash) => ({ priorite: clashPriorite(clash), statut: clash.statut }),
-    { maintenant: Date.now(), evenements: evenementsDeCollision }
+    { maintenant: Date.now(), evenements: evenementsDeCollision, numero: numeroAffiche }
   );
-  reglesModale.ouvrir(regle, touchees);
+  reglesModale.ouvrir(regle, touchees, clashes.map(numeroAffiche));
   return { ok: true };
 }
 
@@ -6408,6 +6416,8 @@ function fermerMenusDeroulantsCollision() {
 // la phrase, lus sur les maquettes chargees ; jamais la geometrie. Ne rejette jamais (repli sur les phrases d'exemple en cas d'echec).
 function traduirePhraseParIA(phrase) {
   const valeurs = valeursPourIA(viewer.metaScene, MAQUETTES, phrase, { priorite: PRIORITE_ORDRE, statut: Object.keys(STATUT_LABELS) });
+  // Numeros reels des collisions de la detection courante (memes que ceux de ouvrirRegleCollision) : le modele ne peut en citer aucun autre.
+  valeurs.numeros = clashesDeLaDetection().map(numeroAffiche);
   return demanderRegle({ phrase, valeurs, aujourdhui: dateDuJourLocale() });
 }
 

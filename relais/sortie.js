@@ -60,7 +60,17 @@ export function convertirSortie(sortie, valeurs, phrase) {
   for (const critereDate of dates) {
     if (!validerCritereDate(critereDate).ok) return invalide("Critère de date invalide.");
   }
-  if (criteres.length === 0 && Object.keys(etat).length === 0 && dates.length === 0) return invalide("Aucun critère.");
+
+  // Numeros affiches : entiers deja connus de la page. Un numero absent de la liste envoyee n'est pas une erreur : c'est un « critere introuvable » clair.
+  const numerosBruts = sortie.numeros === undefined || sortie.numeros === null ? [] : sortie.numeros;
+  if (!Array.isArray(numerosBruts) || !numerosBruts.every((n) => Number.isInteger(n) && n >= 1)) return invalide("Numéros mal formés.");
+  const numeros = Array.from(new Set(numerosBruts)).sort((a, b) => a - b);
+  const connus = valeurs.numeros || [];
+  const absents = numeros.filter((n) => !connus.includes(n));
+  if (absents.length) {
+    return { ok: true, resultat: "critere_introuvable", message: "Il n'y a pas de collision " + absents.map((n) => "n° " + n).join(" ni ") + " dans cette détection." };
+  }
+  if (criteres.length === 0 && Object.keys(etat).length === 0 && dates.length === 0 && numeros.length === 0) return invalide("Aucun critère.");
 
   const action = sortie.action;
   let actionRegle;
@@ -76,5 +86,6 @@ export function convertirSortie(sortie, valeurs, phrase) {
   const filtre = { portee: sortie.portee, criteres };
   if (Object.keys(etat).length) filtre.etat = etat;
   if (dates.length) filtre.dates = dates;
+  if (numeros.length) filtre.numeros = numeros;
   return { ok: true, resultat: "regle", regle: { demande: phrase, relecture, filtre, action: actionRegle } };
 }

@@ -46,10 +46,15 @@ function construireSchemaZod(valeurs) {
     periode
   });
 
+  // Numeros affiches des collisions reelles de la detection : enumeration fermee, le modele n'en invente aucun. Sans collision, tout entier est
+  // accepte par le schema, mais convertirSortie refuse ensuite tout numero absent de valeurs.numeros.
+  const numeros = valeurs.numeros && valeurs.numeros.length ? z.literal(valeurs.numeros) : z.number().int();
+
   return z.object({
     resultat: z.enum(RESULTATS).describe("regle si une règle valide est possible ; critere_introuvable si un critère cité n'existe pas dans la maquette ; non_comprise sinon"),
     portee: z.enum(PORTEES_IA).nullable().describe("un_des_deux par défaut ; les_deux seulement si la phrase exige les deux éléments de la collision ; null si resultat n'est pas regle"),
     criteres: z.array(critere).describe("critères sur les éléments, tous vrais sur le même élément, au plus un par champ ; tableau vide si la phrase ne cite aucun élément ou si resultat n'est pas regle"),
+    numeros: z.array(numeros).describe("numéros affichés des collisions visées (« la collision 2 », « n°2 », « les collisions 2 et 5 ») ; tableau vide si la phrase ne cite aucun numéro"),
     etat: etat.nullable().describe("filtre sur la priorité et le statut actuels de la collision ; null si la phrase n'en parle pas"),
     dates: z.array(critereDate).describe("filtres de date sur les messages et modifications de la collision ; tableau vide si la phrase n'en parle pas"),
     action: action.nullable().describe("null si resultat n'est pas regle ; afficher quand la phrase demande seulement de voir, lister ou montrer des collisions"),

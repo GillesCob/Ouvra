@@ -11,8 +11,9 @@
 //                                | { type: "depuis_le", date: "AAAA-MM-JJ" }                           // du jour indique (inclus) a maintenant
 //                                | { type: "avant", date: "AAAA-MM-JJ" }                               // avant le jour indique (exclu)
 //                                | { type: "entre", du: "AAAA-MM-JJ", au: "AAAA-MM-JJ" } }] },         // du premier au dernier jour, inclus
+//               numeros: [3, 5],                                                                         // sur le NUMERO AFFICHE de la collision (28/10) : « la collision 3 », « les collisions 3 et 5 »
 //     action: { champ: "priorite" | "statut", valeur: "<valeur exacte>" } | { champ: "afficher" } }
-// Le filtre porte au moins un critere d'element, un etat ou une date. Tous les filtres presents sont vrais ensemble.
+// Le filtre porte au moins un critere d'element, un etat, une date ou un numero. Tous les filtres presents sont vrais ensemble.
 //
 // Un element correspond si TOUS les criteres sont vrais sur CE MEME element (texte contenu, sans casse ni accents). L'action de changement
 // porte sur la collision entiere ; « afficher » ne change rien : elle liste les collisions trouvees. Une date se lit dans les messages
@@ -27,6 +28,8 @@ export const EVENEMENTS = ["message", "modification", "activite"];
 export const PRESENCES = ["au_moins_un", "aucun"];
 export const UNITES = ["jour", "semaine", "mois"];
 const NOMBRE_MAX = 365;
+export const NUMEROS_MAX = 100; // numeros cites au plus dans une regle
+const estNumero = (n) => Number.isInteger(n) && n >= 1;
 const JOUR_MS = 24 * 3600 * 1000;
 
 // Minuscules, sans accents, pour une recherche tolerante.
@@ -100,8 +103,12 @@ export function validerRegle(regle, valeursPermises) {
     const verdictDate = validerCritereDate(critereDate);
     if (!verdictDate.ok) return verdictDate;
   }
-  if (criteres.length === 0 && champsEtat.length === 0 && dates.length === 0) {
-    return { ok: false, erreur: "Le filtre doit contenir au moins un critère d'élément, un état ou une date." };
+  const numeros = filtre.numeros === undefined ? [] : filtre.numeros;
+  if (!Array.isArray(numeros) || numeros.length > NUMEROS_MAX || !numeros.every(estNumero) || (filtre.numeros !== undefined && numeros.length === 0)) {
+    return { ok: false, erreur: "Les numéros de collision doivent être une liste d'entiers à partir de 1 (" + NUMEROS_MAX + " au plus)." };
+  }
+  if (criteres.length === 0 && champsEtat.length === 0 && dates.length === 0 && numeros.length === 0) {
+    return { ok: false, erreur: "Le filtre doit contenir au moins un critère d'élément, un état, une date ou un numéro de collision." };
   }
   if (!action || typeof action !== "object") return { ok: false, erreur: "L'action de la règle est absente." };
   if (action.champ === ACTION_AFFICHER) return { ok: true };
@@ -190,16 +197,18 @@ function elementCorrespond(descripteur, criteres) {
 // Collisions touchees par la regle, dans l'ordre de la liste : { clash, de, vers, inchange }.
 // Pour « afficher », de et vers valent null et inchange est faux : la collision est simplement trouvee.
 // lireElement(entityId) rend un descripteur ; etatActuel(clash) rend { priorite, statut }.
-// contexte (facultatif, requis pour un filtre de date) : { maintenant: ms, evenements(clash) -> [{ type: "message" | "modification", quand: ms }] }.
+// contexte (facultatif, requis pour un filtre de date ou de numero) : { maintenant: ms, evenements(clash) -> [{ type: "message" | "modification", quand: ms }],
+// numero(clash) -> numero AFFICHE de la collision (celui de la liste, des pastilles et de la modale) }. Un filtre de numero sans numero(clash) ne touche rien.
 // Les collisions fictives (factice) et celles sans elements (entityIds) ne sont jamais touchees.
 export function appliquerRegle(regle, clashes, lireElement, etatActuel, contexte = {}) {
-  const { portee, criteres = [], etat: etatFiltre = {}, dates = [] } = regle.filtre;
+  const { portee, criteres = [], etat: etatFiltre = {}, dates = [], numeros = [] } = regle.filtre;
   const { champ, valeur } = regle.action;
   const afficher = champ === ACTION_AFFICHER;
   const maintenant = Number.isFinite(contexte.maintenant) ? contexte.maintenant : Date.now();
   const touchees = [];
   (clashes || []).forEach((clash) => {
     if (clash.factice || !Array.isArray(clash.entityIds) || clash.entityIds.length < 2) return;
+    if (numeros.length && !(typeof contexte.numero === "function" && numeros.includes(contexte.numero(clash)))) return;
     if (criteres.length) {
       const a = elementCorrespond(lireElement(clash.entityIds[0]), criteres);
       const b = elementCorrespond(lireElement(clash.entityIds[1]), criteres);
@@ -217,6 +226,14 @@ export function appliquerRegle(regle, clashes, lireElement, etatActuel, contexte
     touchees.push({ clash, de, vers: valeur, inchange: de === valeur });
   });
   return touchees;
+}
+
+// Message de la modale quand aucune collision n'est touchee. numerosExistants : numeros affiches des collisions de la detection.
+// Un numero cite qui n'existe pas est nomme ; sinon le message habituel.
+export function messageAucuneCollision(regle, numerosExistants = []) {
+  const inconnus = ((regle.filtre && regle.filtre.numeros) || []).filter((n) => !numerosExistants.includes(n));
+  if (inconnus.length) return "Aucune collision " + inconnus.map((n) => "n° " + n).join(" ni ") + " dans cette détection.";
+  return regle.action && regle.action.champ === ACTION_AFFICHER ? "Aucune collision ne correspond à cette demande." : "Aucune collision ne correspond à cette règle.";
 }
 
 // Valeurs reellement presentes dans les maquettes chargees (pour contraindre plus tard l'IA).

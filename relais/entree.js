@@ -9,6 +9,8 @@ const ELEMENT_MAX = { typesIfc: 80, niveaux: 80, maquettes: 80, noms: 160, prior
 const LISTES_ACTION = ["priorite", "statut"]; // obligatoires et non vides
 const LISTES_CRITERE = ["typesIfc", "niveaux", "maquettes", "noms"]; // facultatives : une maquette peut ne pas en avoir
 
+const NUMEROS_MAX = 300; // numeros de collision envoyes au plus
+const NUMERO_PLAFOND = 100000;
 const refus = (message) => ({ ok: false, code: "entree_invalide", message });
 
 export function nettoyerListe(nom, brut) {
@@ -23,6 +25,14 @@ export function nettoyerListe(nom, brut) {
   }
   if (vus.size > LISTE_MAX[nom]) return { erreur: "La liste « " + nom + " » est trop longue." };
   return { liste: Array.from(vus) };
+}
+
+// Numeros affiches des collisions (facultatifs : absents = aucun) : entiers de 1 a NUMERO_PLAFOND, dedoublonnes et tries, ou null si mal formes.
+function nettoyerNumeros(brut) {
+  if (brut === undefined || brut === null) return [];
+  if (!Array.isArray(brut) || brut.length > NUMEROS_MAX) return null;
+  if (!brut.every((n) => Number.isInteger(n) && n >= 1 && n <= NUMERO_PLAFOND)) return null;
+  return Array.from(new Set(brut)).sort((a, b) => a - b);
 }
 
 // « AAAA-MM-JJ » reel du calendrier (30 fevrier refuse), sinon null.
@@ -48,6 +58,9 @@ export function validerEntree(corps, maintenant = new Date()) {
     if (LISTES_ACTION.includes(nom) && liste.length === 0) return refus("La liste « " + nom + " » est vide.");
     valeurs[nom] = liste;
   }
+  const numeros = nettoyerNumeros(corps.valeurs.numeros);
+  if (!numeros) return refus("La liste « numeros » est mal formée.");
+  valeurs.numeros = numeros;
   // Date du jour de l'utilisateur (sert a resoudre « depuis 3 jours », « le 15 octobre ») : absente ou invalide, on prend celle du serveur.
   const aujourdhui = jourValide(corps.aujourdhui) || maintenant.toISOString().slice(0, 10);
   return { ok: true, phrase, valeurs, aujourdhui };
