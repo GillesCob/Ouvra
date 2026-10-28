@@ -1,7 +1,7 @@
 // Modale de saisie IA COMMUNE (24/10) : vocal d'abord, bascule texte, dictee de src/reglesVoix.js. Meme markup et memes classes que les modales des autres
 // IA d'Ouvra (regles-ia-* de src/reglesIA.css) : une seule apparence, un seul comportement.
 //  - ouvrir() ouvre DIRECTEMENT en mode vocal : gros micro, phrase d'aide, bouton « Écrire ma demande ». Un clic sur le micro demarre l'ecoute (jamais toute
-//    seule), un second la termine et envoie. Le menu deroulant des phrases toutes faites est en bas (a lire en vocal, cliquable en texte).
+//    seule), un second la termine et envoie. Le menu deroulant des phrases toutes faites est en bas (a lire en vocal, cliquable en texte : un clic lance la demande tout de suite).
 //  - « Ecrire ma demande » bascule la MEME modale en texte (champ + Valider) ; « Utiliser le micro » revient, sans perdre la phrase.
 //  - Dictee indisponible : ouverture directe en texte, avec la raison affichee.
 //  - Apres l'envoi le logo Ouvra tourne pendant surEnvoi ; { ok: true } ferme la modale, { ok: false, message } revient a la vue avec le message.
@@ -93,7 +93,7 @@ export function creerIASaisie({ exemples = [], libelle = "Demande par l'IA", pla
   etat.setAttribute("role", "status");
   etat.hidden = true;
 
-  // Phrases toutes faites, en bas, dans un menu deroulant ferme : cliquables en texte comme en vocal (elles remplissent le champ ; en vocal elles basculent d'abord en texte).
+  // Phrases toutes faites, en bas, dans un menu deroulant ferme : cliquables en texte comme en vocal (un clic lance la demande tout de suite ; en vocal, l'ecoute est d'abord abandonnee).
   const propositions = creer("details", "regles-ia-propositions");
   const liste = creer("ul");
   exemples.forEach((exemple) => {
@@ -102,11 +102,9 @@ export function creerIASaisie({ exemples = [], libelle = "Demande par l'IA", pla
     choisie.type = "button";
     choisie.addEventListener("click", () => {
       if (vue === "vocal") { envoiApresArret = false; clearTimeout(minuteurArret); abandonnerDictee(); montrerVue("texte", { annoncer: true }); } // meme bascule que « Ecrire ma demande »
-      champ.value = exemple.demande.slice(0, PHRASE_MAX); // rempli, jamais envoye : « Valider » reste a l'utilisateur
+      champ.value = exemple.demande.slice(0, PHRASE_MAX); // garde dans le champ : si l'envoi echoue, la phrase est la, a reessayer ou a modifier
       propositions.open = false;
-      afficherEtat("", false);
-      ajusterChamp();
-      focusVue("texte");
+      envoyer(nettoyerPhrase(champ.value)); // lancee tout de suite (28/10) : plus de « Valider » a presser sur une phrase toute faite
     });
     li.appendChild(choisie);
     liste.appendChild(li);
