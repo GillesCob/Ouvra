@@ -17,7 +17,8 @@ import "./reglesIA.css";
 import "./discussionsIA.css";
 import { dateDuRapport, perimetreDe, libelleDecision, nomsEnPhrase, MESSAGE_AUCUN_DESACCORD, MESSAGE_CONTEXTE_ABSENT, MENTION_NON_CONFIRME } from "./discussionsIARapportFormat.js";
 import { preparerOngletPdf } from "./discussionsIARapportOnglet.js";
-import { ajustementOuverture, verrouillerArrierePlan } from "./discussionsIARapportDefilement.js";
+import { defilementVersTitre, CLASSE_VERROU } from "./discussionsIARapportDefilement.js";
+import { verrouillerArrierePlan } from "./verrouDefilement.js";
 
 export const LOGO_RAPPORT = "/images/ouvra-logo.svg";
 const MOBILE = "(max-width: 768px)";
@@ -44,7 +45,7 @@ export function creerRapportVue({ surSource, texteRapport, exporterPdf }) {
   let rapportCourant = null;
   let focusAvant = null;
   let verrou = null;
-  let hautAvantOuverture = null; // haut du titre du menu deroulant touche, mesure avant que les autres se replient
+  let planDefilement = 0; // requestAnimationFrame du defilement vers le titre du menu ouvert
 
   function assurerSquelette() {
     if (fond) return;
@@ -96,26 +97,33 @@ export function creerRapportVue({ surSource, texteRapport, exporterPdf }) {
       fermer(false);
       surSource(mk, rapportCourant); // le rapport en cours : « Retour au rapport » le rouvre tel quel
     });
-    // Menus deroulants (mobile) : le titre du menu touche reste ou il etait, le contenu deplie est amene en vue au minimum (cf discussionsIARapportDefilement.js).
-    corps.addEventListener("click", (e) => {
-      const resume = e.target.closest(".disc-rapport-depliant > summary");
-      hautAvantOuverture = resume ? resume.getBoundingClientRect().top : null;
-    });
+    // Menus deroulants : a l'ouverture (les autres se referment par `name`), le titre du menu monte en haut de la zone visible, contenu deplie dessous
+    // (cf discussionsIARapportDefilement.js). Differe d'une image : le repli des autres menus est applique avant la mesure.
     corps.addEventListener("toggle", (e) => {
-      const menu = e.target;
-      if (!menu.open || hautAvantOuverture === null || !menu.matches(".disc-rapport-depliant")) return;
-      const zone = zoneDefilante().getBoundingClientRect();
-      const haut = menu.querySelector("summary").getBoundingClientRect();
-      const pied = carte.querySelector(".disc-rapport-pied").getBoundingClientRect();
-      zoneDefilante().scrollTop += ajustementOuverture({ hautAvant: hautAvantOuverture, haut: haut.top, bas: menu.getBoundingClientRect().bottom, zoneHaut: zone.top, zoneBas: Math.min(zone.bottom, pied.top) });
-      hautAvantOuverture = null;
+      if (!e.target.matches(".disc-rapport-depliant")) return;
+      cancelAnimationFrame(planDefilement);
+      planDefilement = requestAnimationFrame(() => defilerVersMenuOuvert());
     }, true);
-    verrou = verrouillerArrierePlan(fond, zoneDefilante);
+    verrou = verrouillerArrierePlan(fond, zoneDefilante, CLASSE_VERROU);
     document.addEventListener("keydown", (e) => {
       if (fond.hidden) return;
       if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); fermer(true); return; }
       if (e.key === "Tab") boucleFocus(e);
     }, true);
+  }
+
+  // Amene le titre du menu ouvert en haut de la zone visible ; sans menu ouvert, retire le rembourrage ajoute pour permettre ce defilement.
+  function defilerVersMenuOuvert() {
+    const zone = zoneDefilante();
+    corps.style.removeProperty("padding-bottom");
+    const menu = corps.querySelector(".disc-rapport-depliant[open]");
+    if (!menu) return;
+    const style = getComputedStyle(zone);
+    const zoneHaut = zone.getBoundingClientRect().top + (parseFloat(style.paddingTop) || 0); // mobile : sous la zone de l'encoche
+    const { top, rembourrage } = defilementVersTitre({ haut: menu.querySelector("summary").getBoundingClientRect().top, zoneHaut, scrollTop: zone.scrollTop, scrollMax: zone.scrollHeight - zone.clientHeight });
+    if (rembourrage) corps.style.paddingBottom = `${rembourrage}px`;
+    const reduit = globalThis.matchMedia && globalThis.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    zone.scrollTo({ top, behavior: reduit ? "auto" : "smooth" });
   }
 
   // L'element qui defile : toute la carte sur mobile (page pleine ecran), le corps seul sur grand ecran.

@@ -18,8 +18,10 @@ import "./reglesIA.css";
 import "./iaSaisie.css";
 import { creerDictee, detecterReconnaissance, motifDicteeIndisponible, nettoyerPhrase, MESSAGE_RIEN_RECONNU } from "./reglesVoix.js";
 import { demarrerNiveauVoix } from "./niveauVoix.js";
+import { verrouillerArrierePlan } from "./verrouDefilement.js";
 import { modeOuverture, modeApresBascule, annonceMode, aideVocal, suiteFinEcoute } from "./iaSaisieLogique.js";
 
+export const CLASSE_VERROU_SAISIE = "ia-saisie-ouverte"; // posee sur le corps tant que la modale est ouverte (iaSaisie.css : page figee)
 export const PHRASE_MAX = 200; // meme plafond que les relais (relais/entree.js)
 const DELAI_ARRET_MS = 2500; // attente des derniers resultats apres le second appui sur le micro, avant d'envoyer ce qui est reconnu
 const ICONE_MICRO = '<svg viewBox="0 0 24 24" width="40" height="40" focusable="false" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>';
@@ -124,6 +126,10 @@ export function creerIASaisie({ exemples = [], libelle = "Demande par l'IA", pla
   document.body.appendChild(fond);
 
   const ouvert = () => !fond.hidden;
+
+  // Arriere-plan fige tant que la modale est ouverte (28/10, retour de recette iPhone) : mecanisme commun de src/verrouDefilement.js. Seules la liste des propositions et
+  // le champ (au-dela de 5 lignes) peuvent defiler ; tout autre glissement est annule, la carte ne bouge donc pas sous le doigt.
+  const verrou = verrouillerArrierePlan(fond, () => [liste, champ], CLASSE_VERROU_SAISIE);
 
   // Hauteur du champ = hauteur du texte (plafond de 5 lignes pose en CSS, au-dela le champ defile en interne). Appelee a chaque saisie, remplissage et affichage.
   function ajusterChamp() {
@@ -252,6 +258,7 @@ export function creerIASaisie({ exemples = [], libelle = "Demande par l'IA", pla
     const ouverture = modeOuverture({ dicteeDisponible: dicteeDisponible && !motifVocal, motifIndisponible: motifVocal });
     const nom = modeInitial === "texte" ? "texte" : ouverture.mode;
     fond.hidden = false;
+    verrou.verrouiller();
     suivreZoneVisible();
     montrerVue(nom);
     if (nom === "texte" && ouverture.raison && modeInitial !== "texte") afficherEtat(ouverture.raison, false);
@@ -267,6 +274,7 @@ export function creerIASaisie({ exemples = [], libelle = "Demande par l'IA", pla
     vue = null;
     abandonnerDictee();
     fond.hidden = true;
+    verrou.deverrouiller();
     champ.value = "";
     if (dicteeDisponible) motifVocal = null; // un refus est oublie, comme un navigateur sans l'API reste sans vocal
     if (rendreFocus && retourFocus) retourFocus.focus({ preventScroll: true });

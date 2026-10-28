@@ -67,17 +67,16 @@ test("M25/M26 : l'historique des syntheses est dans le panneau IA, une carte cli
   assert.match(lire("src/discussionsIAMontage.js"), /ajouterSynthese\(retour\.rapport\)/);
 });
 
-import { ajustementOuverture } from "../src/discussionsIARapportDefilement.js";
+import { defilementVersTitre } from "../src/discussionsIARapportDefilement.js";
 
-test("rapport mobile : le titre du menu ouvert reste en place, le contenu deplie est amene en vue sans cacher le titre", () => {
-  const zone = { zoneHaut: 0, zoneBas: 700 };
-  // Un menu au-dessus s'est replie : le titre est monte de 120 px, on le remet ou il etait.
-  assert.equal(ajustementOuverture({ hautAvant: 300, haut: 180, bas: 400, ...zone }), -120);
-  // Contenu qui depasse de 100 px sous la zone visible : defilement de 100 px, titre encore visible.
-  assert.equal(ajustementOuverture({ hautAvant: 400, haut: 400, bas: 800, ...zone }), 100);
-  // Contenu tres long : le titre ne passe jamais au-dessus de la zone (marge de 8 px).
-  assert.equal(ajustementOuverture({ hautAvant: 200, haut: 200, bas: 2000, ...zone }), 192);
-  assert.equal(ajustementOuverture({ hautAvant: NaN, haut: 1, bas: 2, ...zone }), 0);
+test("rapport : le titre du menu ouvert monte en haut de la zone visible, avec rembourrage si le rapport est trop court", () => {
+  // Titre a 400 px, zone a 0, defilement 100, max 500 : on defile de 392 (marge 8 px), pas de rembourrage.
+  assert.deepEqual(defilementVersTitre({ haut: 400, zoneHaut: 0, scrollTop: 100, scrollMax: 500 }), { top: 492, rembourrage: 0 });
+  // Fin de rapport : le defilement maximal ne suffit pas, le rembourrage comble l'ecart.
+  assert.deepEqual(defilementVersTitre({ haut: 400, zoneHaut: 0, scrollTop: 100, scrollMax: 300 }), { top: 492, rembourrage: 192 });
+  // Titre deja plus haut que la cible : defilement vers le haut, jamais negatif.
+  assert.deepEqual(defilementVersTitre({ haut: 10, zoneHaut: 60, scrollTop: 30, scrollMax: 500 }), { top: 0, rembourrage: 0 });
+  assert.deepEqual(defilementVersTitre({ haut: NaN, zoneHaut: 0, scrollTop: 0, scrollMax: 0 }), { top: 0, rembourrage: 0 });
 });
 
 test("rapport mobile : arriere-plan fige (classe sur le corps, glissements annules hors de la zone defilante)", () => {
