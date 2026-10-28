@@ -182,11 +182,11 @@ export function creerReglesModale({ libellesPriorite, libellesStatut, numero, cr
     const contenu = creer("span", "regles-contenu");
     contenu.append(carteClash, ligneChangement(ligne));
     label.append(caseEl, contenu, creerVue(ligne.clash));
-    const voir = creer("button", "regles-voir", "Voir en 3D");
+    const voir = creer("button", "regles-voir", "Voir en 3D et infos");
     voir.type = "button";
     voir.dataset.act = "voir";
     voir.dataset.i = String(index);
-    voir.setAttribute("aria-label", "Voir la collision n° " + numero(ligne.clash) + " en 3D");
+    voir.setAttribute("aria-label", "Voir la collision n° " + numero(ligne.clash) + " en 3D, avec ses infos");
     li.append(label, voir);
     return li;
   }
@@ -197,11 +197,11 @@ export function creerReglesModale({ libellesPriorite, libellesStatut, numero, cr
     const contenu = creer("span", "regles-contenu");
     contenu.appendChild(creerCarte(ligne.clash));
     bloc.append(contenu, creerVue(ligne.clash));
-    const voir = creer("button", "regles-voir", "Voir en 3D");
+    const voir = creer("button", "regles-voir", "Voir en 3D et infos");
     voir.type = "button";
     voir.dataset.act = "voir";
     voir.dataset.i = String(index);
-    voir.setAttribute("aria-label", "Voir la collision n° " + numero(ligne.clash) + " en 3D");
+    voir.setAttribute("aria-label", "Voir la collision n° " + numero(ligne.clash) + " en 3D, avec ses infos");
     li.append(bloc, voir);
     return li;
   }

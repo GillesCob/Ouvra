@@ -95,6 +95,8 @@ body.regles-retour-actif #viewerToolbar { top: 56px; }
 body.regles-retour-actif #collisionMaquetteToggles { top: 60px; }
 @media (min-width: 769px) { body.regles-retour-actif #collisionInfoPanelCollapse { margin-top: 52px; } }
 @media (max-width: 768px) { body.regles-retour-actif #collisionViewerSlot #viewerToolbar { top: 112px; } }
+/* Infos de la collision ouvertes depuis une demande IA : la feuille commence sous le bandeau de retour (52 px de navbar + 44 px de bandeau), elle ne prend plus toute la hauteur. */
+@media (max-width: 768px) { body.regles-retour-actif #collisionInfoPanel { top: 96px; } }
 
 @media (max-width: 768px) {
   .regles-fond { align-items: stretch; padding: 0; background: transparent; overflow: hidden; }
