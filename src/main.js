@@ -1128,6 +1128,8 @@ function activateView(viewName, options = {}) {
   }
   // Accueil : navbar de l'app masquee par CSS (body.acc-actif).
   document.body.classList.toggle("acc-actif", viewName === "accueil");
+  // Barre d'etat / zones sures : meme couleur que la page affichee (claire sur l'accueil, verte dans l'application).
+  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", viewName === "accueil" ? "#fbf7f0" : "#161c18");
   // La vue est choisie : le logo de demarrage (#splashLogo) peut s'effacer.
   document.documentElement.classList.remove("demarrage");
   navLinks.forEach((l) => l.classList.toggle("active", l.dataset.view === viewName));
@@ -6589,7 +6591,7 @@ function recentrerApresCommande(resultat, cameraAvant, enAttente) {
   viewer.cameraFlight.cancel();
   // Commande confirmable : cadrage sur les seuls elements visibles ; « Tout reafficher » (sans confirmation) ou boite inexploitable : cadrage de « Recentrer ».
   const boite = resultat.confirmation ? boiteDesVisibles(viewer.scene.visibleObjectIds, (ids) => viewer.scene.getAABB(ids)) : null;
-  if (boite) viewer.cameraFlight.flyTo({ aabb: boite });
+  if (boite) viewer.cameraFlight.flyTo(poseCentreeSurBoiteActuelle(boite) ?? { aabb: boite });
   else recentrerSurMaquettes();
 }
 

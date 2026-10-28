@@ -22,5 +22,10 @@ body {
   contain: layout;
 }
 
-/* L'accueil est clair : les bandes sures prennent sa couleur de fond (celle de #view-accueil), pas le vert de l'application. */
-html:has(body.acc-actif), html:has(body.acc-actif) body { background: #fbf7f0; }
+/* L'accueil est clair : les bandes sures prennent sa couleur de fond (celle de #view-accueil), pas le vert de l'application.
+   Le fond de <html> reste le vert de l'application en toute circonstance : le changer a la bascule de vue laissait Safari iOS
+   afficher l'ancienne couleur (bordure blanche autour de l'application sombre). C'est donc un calque fixe plein ecran, repeint
+   a chaque changement de classe, qui porte la couleur claire. */
+html::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none; background: transparent; }
+html:has(body.acc-actif)::before { background: #fbf7f0; }
+body.acc-actif { background: #fbf7f0; }

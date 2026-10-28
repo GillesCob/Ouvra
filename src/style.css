@@ -1766,19 +1766,22 @@ body.acc-actif #loadingOverlay { display: none; }
 
 #view-accueil .acc-wrap { width: 100%; max-width: 1120px; margin: 0 auto; padding-left: 16px; padding-right: 16px; }
 
-/* En-tête collant (28/10, M31) : logo + bouton « Ouvrir la maquette » toujours visibles au defilement. « Me contacter » n'y tient qu'a partir de 720 px
-   (en dessous, il reste dans le bloc de contact plus bas). */
+/* En-tête collant (28/10, M31) : logo + bouton « Ouvrir la maquette » toujours visibles au defilement. « Me contacter » : texte complet a partir de 720 px,
+   simple icone en dessous (il reste aussi dans le bloc de contact plus bas). */
 #view-accueil .acc-top { position: sticky; top: 0; z-index: 20; background: var(--bg); border-bottom: 1px solid var(--border); }
 #view-accueil .acc-top .acc-wrap { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 6px; padding-bottom: 6px; }
 #view-accueil .acc-top-actions { display: flex; align-items: center; gap: 12px; min-width: 0; }
 #view-accueil .acc-logo { width: 80px; height: auto; } /* petit : l'en-tete reste collant, il ne doit pas manger l'ecran */
 #view-accueil .acc-btn.acc-btn-top { min-height: 44px; padding: 8px 16px; font-size: 0.95rem; gap: 8px; width: auto; max-width: none; white-space: nowrap; box-shadow: none; }
 #view-accueil .acc-btn.acc-btn-top svg { width: 18px; height: 18px; }
-#view-accueil .acc-top-link { display: none; }
+/* « Me contacter » : pastille-icone de 44 px sous 720 px (le texte ne tient pas a cote du logo et de « Ouvrir la maquette » a 360 px), texte complet a partir de 720 px. */
 #view-accueil .acc-top-link {
-  align-items: center; min-height: 44px; padding: 8px 16px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; flex: none;
+  min-width: 44px; min-height: 44px; padding: 0; box-sizing: border-box;
   border-radius: 999px; border: 2px solid var(--border); font-weight: 600; text-decoration: none;
 }
+#view-accueil .acc-top-link svg { width: 20px; height: 20px; }
+#view-accueil .acc-top-link-txt { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 #view-accueil .acc-top-link:hover { border-color: var(--brand); }
 
 /* Hero : mobile en colonne, image courte sous le bouton */
@@ -1842,8 +1845,6 @@ body.acc-actif #loadingOverlay { display: none; }
 #view-accueil .acc-ico svg { width: 28px; height: 28px; }
 #view-accueil .acc-card h3 { margin: 2px 0 4px; font-size: 1.25rem; line-height: 1.25; }
 #view-accueil .acc-card p { margin: 0; color: var(--muted); }
-#view-accueil .acc-card .acc-ex { margin-top: 10px; padding: 8px 12px; border-left: 4px solid var(--accent); background: var(--bg); border-radius: 0 10px 10px 0; color: var(--ink); font-size: 0.95rem; }
-#view-accueil .acc-ex span { display: block; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
 
 /* Contact */
 #view-accueil .acc-contact { margin-top: 40px; padding: 0; }
@@ -1866,7 +1867,8 @@ body.acc-actif #loadingOverlay { display: none; }
 #view-accueil.acc-js .acc-reveal.in { opacity: 1; transform: none; }
 
 @media (min-width: 720px) {
-  #view-accueil .acc-top-link { display: inline-flex; }
+  #view-accueil .acc-top-link { padding: 8px 16px; }
+  #view-accueil .acc-top-link-txt { position: static; width: auto; height: auto; overflow: visible; clip-path: none; }
   #view-accueil .acc-wrap { padding-left: 32px; padding-right: 32px; }
   #view-accueil .acc-steps { grid-template-columns: repeat(3, 1fr); }
   #view-accueil .acc-steps li { grid-template-columns: 1fr; }
