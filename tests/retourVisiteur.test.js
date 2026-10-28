@@ -47,9 +47,13 @@ test("envoyerRetour : POST JSON vers /api/retour ; succes -> ok ; refus serveur 
 
 test("page : le bouton est dans la barre de navigation, hors des onglets (.nav-link) ; branche dans main.js ; route montee en local", () => {
   const html = lire("index.html");
-  assert.match(html, /<button type="button" class="nav-avis" id="navbarAvis">Donner mon avis<\/button>/);
-  assert.equal(/class="nav-link[^"]*" id="navbarAvis"/.test(html), false);
-  assert.ok(lire("src/main.js").includes("creerRetourVisiteur("));
+  // Deux exemplaires, un seul visible a la fois : dans la barre (ordinateur, a droite, loin de « Me contacter » centre) et dans le menu ☰ (mobile).
+  assert.match(html, /<button type="button" class="nav-avis" id="navbarAvisBarre">Donner mon avis<\/button>/);
+  assert.match(html, /<button type="button" class="nav-avis" id="navbarAvisTiroir">Donner mon avis<\/button>/);
+  assert.ok(html.indexOf('id="navbarAvisBarre"') > html.indexOf("</nav>") && html.indexOf('id="navbarAvisBarre"') < html.indexOf('id="projectSelect"'), "exemplaire de la barre apres le menu, hors du menu");
+  assert.ok(html.indexOf('id="navbarAvisTiroir"') < html.indexOf("</nav>"), "exemplaire du tiroir dans le menu");
+  assert.equal(/class="nav-link[^"]*" id="navbarAvis/.test(html), false);
+  assert.ok(lire("src/main.js").includes("creerRetourVisiteur(") && lire("src/main.js").includes('querySelectorAll(".nav-avis")'));
   assert.ok(lire("tools/viteRelaisIA.js").includes('"/api/retour"'));
 });
 

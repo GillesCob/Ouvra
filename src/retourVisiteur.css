@@ -1,14 +1,20 @@
 /* Retours des visiteurs (28/10) : bouton « Donner mon avis » de la barre de navigation et sa modale. La modale reprend les classes communes des modales IA
    (regles-ia-fond, regles-ia-carte, regles-ia-valider, regles-ia-bascule de src/reglesIA.css et src/iaSaisie.css) ; seuls les elements propres au formulaire sont ici. */
-#navbarAvis {
-  margin-left: 12px; padding: 6px 12px; background: none; color: var(--muted); border: 1px solid var(--border); border-radius: 6px;
+/* Deux exemplaires du bouton, un seul visible : dans la barre a droite sur ordinateur (« Me contacter » est centre en absolu, le bouton ne le recouvre jamais),
+   dans le menu ☰ sur mobile. */
+.nav-avis {
+  padding: 6px 12px; background: none; color: var(--muted); border: 1px solid var(--border); border-radius: 6px;
   font: inherit; font-size: 13px; font-weight: 600; white-space: nowrap; cursor: pointer; -webkit-tap-highlight-color: transparent;
   transition: color 0.18s ease, border-color 0.18s ease;
 }
-#navbarAvis:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
-@media (hover: hover) and (pointer: fine) { #navbarAvis:hover { color: var(--text); border-color: var(--accent); } }
+.nav-avis:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+@media (hover: hover) and (pointer: fine) { .nav-avis:hover { color: var(--text); border-color: var(--accent); } }
+#navbarAvisBarre { margin-left: auto; margin-right: 16px; }
+#navbarAvisTiroir { display: none; }
 @media (max-width: 768px) {
-  #navbarAvis { width: 100%; margin: 8px 0 0; padding: 10px 12px; min-height: 44px; text-align: left; box-sizing: border-box; }
+  #navbarAvisBarre { display: none; }
+  /* Encadre (valide par Gilles le 28/10) : le distingue des onglets de la demo dans le menu. */
+  #navbarAvisTiroir { display: block; width: 100%; margin: 14px 0 0; padding: 10px 12px; min-height: 44px; text-align: left; box-sizing: border-box; border: 1px solid var(--accent); color: var(--text); }
 }
 
 .retour-titre { margin: 0; font-size: 18px; }
