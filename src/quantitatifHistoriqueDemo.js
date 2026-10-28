@@ -1,4 +1,4 @@
-// Historique de demonstration du Quantitatif (29/10, retour de recette mobile) : deux demandes deja passees, bien fournies (date, intitule, tableau de lignes),
+// Historique de demonstration du Quantitatif (28/10, retour de recette mobile) : deux demandes deja passees, bien fournies (date, intitule, tableau de lignes),
 // pour que le menu « Historique » ne soit pas vide a la premiere ouverture. Ce sont des quantites FICTIVES de demonstration, calculees par le vrai moteur
 // (calculer) sur une liste d'elements synthetiques : le rapport a exactement la forme d'un rapport reel, il se rouvre et s'exporte comme lui.
 // Amorcage une seule fois par navigateur (drapeau dans le stockage) : une demonstration supprimee ne revient pas.

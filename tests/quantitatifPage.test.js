@@ -73,7 +73,7 @@ test("dateRelative : instant, minutes, heures, hier, jours, date, entree invalid
   assert.equal(dateRelative("pas une date", maintenant), "");
 });
 
-test("retours mobile du 29/10 : cartes cliquables, Exporter + Supprimer, pas d'Historique ni de Nouvelle demande dans un quantitatif, un seul name de details", () => {
+test("retours mobile du 28/10 : cartes cliquables, Exporter + Supprimer, pas d'Historique ni de Nouvelle demande dans un quantitatif, un seul name de details", () => {
   assert.match(js, /creer\("button", "qt-histo-carte"\)/);
   assert.doesNotMatch(js, /Supprimer de l'historique|creer\("button", "qt-btn", "Rouvrir"\)/);
   assert.match(js, /creer\("button", "qt-btn", "Exporter"\)/);

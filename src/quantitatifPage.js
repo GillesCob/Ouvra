@@ -33,7 +33,7 @@ const MESSAGE_VIDE = "Écrire la demande, par exemple « Combien de portes au ni
 const MESSAGE_SANS_DONNEES = "Aucune maquette lisible pour le moment. Ouvrir d'abord le Viewer et attendre la fin du chargement.";
 const nombre = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 2 });
 
-// Mobile (29/10) : mise en page dediee, le tableau d'abord ; les infos secondaires passent dans un menu deroulant. Meme seuil que quantitatif.css.
+// Mobile (28/10) : mise en page dediee, le tableau d'abord ; les infos secondaires passent dans un menu deroulant. Meme seuil que quantitatif.css.
 // Regle de Gilles : UN seul `name` partage par tous les <details> de la page (ouvrir l'un referme les autres).
 const MEDIA_MOBILE = "(max-width: 768px)";
 const NOM_DETAILS = "qt-infos";
@@ -66,7 +66,7 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
   entete.append(titre, statut);
 
   // Carte de depart (25/10, comme la page 2D -> 3D) : deux choix seulement, « Nouvelle demande » (ouvre la modale de saisie commune, src/iaSaisie.js, vocal
-  // d'abord, avec ses phrases toutes faites) ou « Historique ». Ils ne vivent que sur la carte de depart (29/10).
+  // d'abord, avec ses phrases toutes faites) ou « Historique ». Ils ne vivent que sur la carte de depart (28/10).
   const boutonIA = creer("button", "qt-btn-ia", "Nouvelle demande");
   boutonIA.type = "button";
   boutonIA.id = "quantitatifIABtn";
@@ -80,7 +80,7 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
   boutonRetour.type = "button";
   const departCarte = creer("section", "qt-depart");
   departCarte.setAttribute("aria-label", "Choisir une action");
-  // Barre des vues « resultat » et « historique » : « ← Retour » seulement (29/10). Nouvelle demande et Historique ne vivent que sur la carte de depart.
+  // Barre des vues « resultat » et « historique » : « ← Retour » seulement (28/10). Nouvelle demande et Historique ne vivent que sur la carte de depart.
   const barre = creer("div", "qt-barre");
   barre.hidden = true;
   barre.appendChild(boutonRetour);
@@ -146,7 +146,7 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
     zoneResultat.hidden = v !== "resultat";
     zoneHistorique.hidden = v !== "historique";
     racine.dataset.vue = v;
-    racine.classList.toggle("qt-confirmation", bandeau.visible()); // sous le bandeau de confirmation, le titre de la page est retire (29/10)
+    racine.classList.toggle("qt-confirmation", bandeau.visible()); // sous le bandeau de confirmation, le titre de la page est retire (28/10)
   }
   function allerA(nouvelle) { vue = nouvelle; majVue(); }
   boutonRetour.addEventListener("click", () => allerA("depart"));
@@ -392,7 +392,7 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
       notes.forEach((n) => liste.appendChild(creer("li", null, n)));
       resultatZone.appendChild(liste);
     }
-    // Exports (27/10), puis suppression (29/10) : un bouton « Exporter » ouvre la liste des formats, « Supprimer » est a cote. Groupe en bas du panneau.
+    // Exports (27/10), puis suppression (28/10) : un bouton « Exporter » ouvre la liste des formats, « Supprimer » est a cote. Groupe en bas du panneau.
     const exports = creer("div", "qt-exports");
     exports.setAttribute("role", "group");
     exports.setAttribute("aria-label", "Exporter ou supprimer ce rapport");
@@ -475,7 +475,7 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
       const rapport = entree.rapport;
       const statut = comparerVersions(rapport.maquettes, versions);
       const li = creer("li", "qt-histo-item");
-      // Toute la carte est le bouton qui rouvre le quantitatif (29/10) : plus de boutons Rouvrir / Supprimer ; la suppression vit dans le quantitatif ouvert.
+      // Toute la carte est le bouton qui rouvre le quantitatif (28/10) : plus de boutons Rouvrir / Supprimer ; la suppression vit dans le quantitatif ouvert.
       const carte = creer("button", "qt-histo-carte");
       carte.type = "button";
       carte.setAttribute("aria-label", "Rouvrir : " + rapport.phrase);

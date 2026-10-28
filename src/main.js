@@ -2228,9 +2228,6 @@ function vueDepartCentree() {
   return poseCentreeSurBoite(pose, boite);
 }
 
-// « Recentrer » s'adapte aux maquettes cochees (25/10) : seule une partie est cochee, la camera se cadre sur celles-la (cocher uniquement la maquette
-// du plan 2D -> 3D = recentrer sur elle seule). Toutes cochees : la vue de depart de la maquette, comme avant. En vue a plat, la vue a plat est refaite.
-// Cadrage de « Recentrer » sur la page Viewer (hors vue a plat et hors cible propre a Collision / Discussions), partage avec la commande IA du Viewer.
 // Pose centrant une boite dans la zone 3D en gardant la direction de regard actuelle (commandes IA du Viewer) ; null si le cadrage centre n'est pas possible.
 function poseCentreeSurBoiteActuelle(boite) {
   const actuelle = { eye: viewer.camera.eye.slice(), look: viewer.camera.look.slice(), up: viewer.camera.up.slice() };
@@ -2238,6 +2235,9 @@ function poseCentreeSurBoiteActuelle(boite) {
   return pose === actuelle ? null : pose;
 }
 
+// « Recentrer » s'adapte aux maquettes cochees (25/10) : seule une partie est cochee, la camera se cadre sur celles-la (cocher uniquement la maquette
+// du plan 2D -> 3D = recentrer sur elle seule). Toutes cochees : la vue de depart de la maquette, comme avant. En vue a plat, la vue a plat est refaite.
+// Cadrage de « Recentrer » sur la page Viewer (hors vue a plat et hors cible propre a Collision / Discussions), partage avec la commande IA du Viewer.
 function recentrerSurMaquettes() {
   const chargees = MAQUETTES.filter((m) => m.model);
   const cochees = chargees.filter((m) => m.shown);
@@ -2245,9 +2245,7 @@ function recentrerSurMaquettes() {
   const boite = cochees.length > 0 && (cochees.length < chargees.length || planDansViewer) ? aabbDesMaquettes(cochees) : null;
   // Maquettes cochees seules : direction de regard actuelle (comme le cadrage xeokit sur une boite), recadree pour centrer le rectangle projete.
   if (boite) {
-    const actuelle = { eye: viewer.camera.eye.slice(), look: viewer.camera.look.slice(), up: viewer.camera.up.slice() };
-    const pose = poseCentreeSurBoite(actuelle, boite);
-    viewer.cameraFlight.flyTo(pose === actuelle ? { aabb: boite } : pose);
+    viewer.cameraFlight.flyTo(poseCentreeSurBoiteActuelle(boite) ?? { aabb: boite });
   } else viewer.cameraFlight.flyTo(vueDepartCentree());
 }
 
@@ -6894,7 +6892,7 @@ quantitatif = creerQuantitatifPage({
   obtenirVersions: versionsQuantitatif,
   historique: quantitatifHistorique
 });
-// Historique de demonstration (29/10) : deux quantitatifs deja passes, amorces une seule fois par navigateur.
+// Historique de demonstration (28/10) : deux quantitatifs deja passes, amorces une seule fois par navigateur.
 amorcerHistoriqueDemo({ historique: quantitatifHistorique, versions: versionsQuantitatif }).then((ajoute) => { if (ajoute) quantitatif.rafraichirHistorique(); });
 // Rechargement direct sur la page (hash ou dernier onglet) : activateView s'est execute avant la creation de la page.
 // Differe d'un cran : appelee pendant l'initialisation du module, la page lirait des constantes declarees plus bas (HOSPITAL_MISPLACED_RAILING_IDS...) avant leur initialisation.
