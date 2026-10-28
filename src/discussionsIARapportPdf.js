@@ -8,6 +8,7 @@
 // Tout est genere dans le navigateur : rien n'est envoye a un serveur.
 
 import { VERT, sansSpecial, chargerLogo } from "./exportPdfCommun.js";
+import { afficherPdfDansOnglet } from "./discussionsIARapportOnglet.js";
 import {
   dateJJMMAAAA, dateDuRapport, perimetreDe, libelleDecision, nomsEnPhrase, refsDe,
   MESSAGE_AUCUN_DESACCORD, MESSAGE_CONTEXTE_ABSENT, MENTION_NON_CONFIRME
@@ -175,7 +176,7 @@ export function construireRapportPdf({ jsPDF, autoTable }, def, { logoPng = null
 export function livrerRapportPdf(nomFichier, blob, { onglet = null, telecharger, creerUrl = (b) => URL.createObjectURL(b), revoquer = (u) => URL.revokeObjectURL(u), delaiRevocationMs = 600000 }) {
   if (onglet && !onglet.closed) {
     const url = creerUrl(blob);
-    onglet.location.href = url;
+    afficherPdfDansOnglet(onglet, url);
     setTimeout(() => revoquer(url), delaiRevocationMs);
     return "ouvert";
   }
