@@ -106,25 +106,26 @@ export function creerPlan3dPage({ racine, voirDansViewer = null }) {
   const page = creer("div", "p3d-page");
   racine.appendChild(page);
 
-  // ---- En-tete : interrupteur de vue a gauche, actions a droite ----
+  // ---- En-tete (visible seulement une fois un plan charge) : a gauche le plan (changer de plan), a droite la 3D. Deux zones separees, jamais accolees. ----
   const entete = creer("header", "p3d-entete");
 
-  const actions = creer("div", "p3d-actions");
+  const zonePlan = creer("div", "p3d-actions p3d-actions-plan");
   const fichierInput = creer("input");
   fichierInput.type = "file";
   fichierInput.accept = ".pdf,.png,.jpg,.jpeg,.webp,application/pdf,image/png,image/jpeg,image/webp";
   fichierInput.hidden = true;
-  const btnImport = bouton("Importer un plan", { ico: "importer" });
-  btnImport.title = "PDF, PNG ou JPEG";
+  const btnImport = bouton("Changer de plan", { ico: "importer" });
+  btnImport.title = "Importer un autre plan (PDF, PNG ou JPEG)";
   const selectPage = creer("select", "p3d-select");
   selectPage.setAttribute("aria-label", "Page du PDF");
   selectPage.hidden = true;
-  btnImport.setAttribute("aria-label", "Importer un plan (PDF, PNG ou JPEG)"); // le libelle disparait sur ecran etroit
   const btnVoir3d = bouton("Voir en 3D", { ico: "cube" }); // style neutre comme les autres boutons : le vert (accent) se lirait comme « selectionne »
   btnVoir3d.title = "Ouvre la maquette dans le Viewer d'Ouvra";
   btnVoir3d.setAttribute("aria-label", "Voir la maquette 3D dans le Viewer");
-  actions.append(btnImport, selectPage, btnVoir3d, fichierInput);
-  entete.append(actions);
+  zonePlan.append(btnImport, selectPage, fichierInput);
+  const zone3d = creer("div", "p3d-actions p3d-actions-3d");
+  zone3d.append(btnVoir3d);
+  entete.append(zonePlan, zone3d);
   page.appendChild(entete);
 
   // ---- Scene : les deux vues se superposent, une seule est affichee ----
@@ -234,7 +235,7 @@ export function creerPlan3dPage({ racine, voirDansViewer = null }) {
   astuce.setAttribute("aria-live", "polite");
 
   const vide = creer("div", "p3d-vide");
-  vide.append(creer("p", "p3d-vide-titre", "Commence par un plan"), creer("p", "p3d-vide-texte", "Importe un PDF ou une image, cale l'échelle, puis redessine les murs par-dessus."));
+  vide.append(creer("p", "p3d-vide-titre", "Commence par un plan"), creer("p", "p3d-vide-texte", "PDF, PNG ou JPEG."));
   const videImport = bouton("Importer un plan", { ico: "importer", classe: "p3d-btn p3d-btn-fort" });
   const videExemple = bouton("Essayer avec un plan d'exemple", { classe: "p3d-lien" });
   videExemple.hidden = true;
