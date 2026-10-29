@@ -52,6 +52,7 @@ const nomDeLigne = (cles) => (cles.length ? cles.join(", ") : "ensemble des él�
 export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDansViewer = null, obtenirVersions = async () => [], historique = null }) {
   let jeton = 0; // numero de la demande en cours : une reponse tardive d'une demande abandonnee est ignoree
   let dernierResultat = null; // { rapport, phrase, nouveau } du rapport affiche
+  let retourEnAttente = null; // { rapport, defilement } : rapport a rouvrir des que la page Quantitatif est de nouveau affichee (retour depuis le Viewer)
 
   // ---------- Construction ----------
   // Mise en page (refonte du 24/10) : en-tete, puis deux colonnes sur laptop (demande + resultat | historique), une seule colonne sur mobile.
@@ -256,18 +257,23 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
   }
 
   // Rappel donne au bandeau « ← Retour au quantitatif » au moment de l'envoi vers le Viewer (src/retourContexte.js) : il re-affiche le MEME rapport,
-  // relu depuis l'historique (sinon la copie en memoire), sans nouveau calcul ni appel IA. Le bandeau ne sait rien de cette page.
+  // relu depuis l'historique (sinon la copie en memoire), sans nouveau calcul ni appel IA, au meme defilement. Le bandeau ne sait rien de cette page.
+  // Le changement de page de la navbar est differe (transition de sortie) : le rappel NE rouvre donc pas tout de suite, il note le rapport a rouvrir,
+  // et surVueActivee("quantitatif") le fait une fois la page revenue (sinon l'arrivee sur la page remettait le menu par-dessus le rapport).
   function contexteRetour() {
     const rapportCourant = dernierResultat ? dernierResultat.rapport : null;
+    const defilement = window.scrollY || 0;
     return {
       libelle: "Retour au quantitatif",
-      surRetour: async () => {
-        if (!rapportCourant) return;
-        const entree = historique ? await historique.obtenir(rapportCourant.id) : null;
-        await afficherRapport(entree ? entree.rapport : rapportCourant, { nouveau: false });
-        rafraichirHistorique();
-      }
+      surRetour: () => { if (rapportCourant) retourEnAttente = { rapport: rapportCourant, defilement }; }
     };
+  }
+
+  async function rouvrirAuRetour({ rapport, defilement }) {
+    const entree = historique ? await historique.obtenir(rapport.id) : null;
+    await afficherRapport(entree ? entree.rapport : rapport, { nouveau: false });
+    rafraichirHistorique();
+    window.scrollTo(0, defilement);
   }
 
   // Badge d'etat du rapport : OBSOLETE (rouge, texte clair, maquettes nommees) ; version inconnue (ambre, dite honnetement) ; rien si a jour.
@@ -599,8 +605,11 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
   return {
     // Appelee par main.js a chaque changement de page.
     surVueActivee(nomVue) {
-      if (nomVue === "quantitatif") { allerA("depart"); essaisSource = 0; actualiserSource(); rafraichirHistorique(); rafraichirRapportAffiche(); }
-      else { bandeau.masquer(false); saisie.fermer(false); clearTimeout(minuteurSource); jeton += 1; occuper(false); }
+      if (nomVue === "quantitatif") {
+        essaisSource = 0; actualiserSource();
+        if (retourEnAttente) { const retour = retourEnAttente; retourEnAttente = null; rouvrirAuRetour(retour); return; }
+        allerA("depart"); rafraichirHistorique(); rafraichirRapportAffiche();
+      } else { retourEnAttente = null; bandeau.masquer(false); saisie.fermer(false); clearTimeout(minuteurSource); jeton += 1; occuper(false); }
     },
     lancer,
     rafraichirHistorique,

@@ -6813,9 +6813,9 @@ function voirQuantitatifDansViewer(criteres, retour = null) {
     retourQuantitatif.montrer({
       libelle: retour.libelle,
       surRetour: () => {
+        retour.surRetour(); // d'abord : la page note le rapport a rouvrir, puis l'arrivee sur la page (differee par la transition) le rouvre
         const lien = navLinks.find((l) => l.dataset.view === "quantitatif");
         if (lien) lien.click(); else activateView("quantitatif");
-        retour.surRetour();
       }
     });
   }
@@ -6826,7 +6826,8 @@ retourQuantitatif = creerRetourContexte({
   id: "quantitatifBandeauRetour",
   classeCorps: "quantitatif-retour-actif",
   ariaLabel: "Retour au quantitatif",
-  autresClasses: ["msg-retour-actif", "regles-retour-actif"] // un seul bandeau de retour a la fois : le plus recent gagne
+  autresClasses: ["msg-retour-actif", "regles-retour-actif"], // un seul bandeau de retour a la fois : le plus recent gagne
+  retourSysteme: true // le retour du systeme (geste, bouton arriere) ramene au meme rapport, comme le bandeau
 });
 
 // Page 2D -> 3D (25/10) : chargee a la demande (Three.js et pdf.js ne pesent pas sur le demarrage). Si le chargement echoue, la page affiche l'erreur.
