@@ -6662,7 +6662,9 @@ function synchroniserDrawerApresCommande(nomAction) {
 
 // Bouton « Tout reafficher » : visible tant qu'une commande est appliquee. Aucun compte rendu n'est affiche : la relecture du bandeau suffit.
 function majBoutonToutReafficher() {
-  commandesResetBtn.hidden = !(commandesViewer && commandesViewer.active());
+  const active = !!(commandesViewer && commandesViewer.active());
+  if (!active) retirerCouleurQuantitatif();
+  commandesResetBtn.hidden = !active;
 }
 
 // Flux « appliquer tout de suite, puis confirmer » (src/commandesFlux.js) : la commande comprise est appliquee, le bandeau pose la question.
@@ -6673,6 +6675,7 @@ function fluxCommandes() {
 
 // Sortie du Viewer : la commande est defaite et le bandeau se ferme.
 function reinitialiserCommandesViewer() {
+  retirerCouleurQuantitatif();
   if (commandesBandeau) commandesBandeau.masquer(false);
   cameraAvantCommande = null;
   if (commandesFlux && commandesFlux.abandonner()) {
@@ -6747,6 +6750,7 @@ function restaurerCameraAvantCommande() {
 // Applique la commande tout de suite puis pose la question. Rend { ok: true } ou { ok: false, message } (rien n'est applique, pas de bandeau).
 // deLaSaisieIA : la commande vient de la saisie « IA » du Viewer (recadrage de la camera, retour au « Non »).
 function proposerCommandeViewer(commande, deLaSaisieIA = false) {
+  retirerCouleurQuantitatif();
   const photo = moteurCommandesViewer().active() ? null : capturerEtatDrawer({ maquettes: MAQUETTES, niveaux: niveauxState });
   const enAttente = fluxCommandes().enAttente();
   const cameraAvant = { eye: viewer.camera.eye.slice(), look: viewer.camera.look.slice(), up: viewer.camera.up.slice() };
@@ -6789,12 +6793,55 @@ function versionsQuantitatif() {
   return promesse;
 }
 
+// Couleur des elements d'une ligne vus depuis le Quantitatif (30/10, « mieux les mettre en evidence ») : l'orange de la collision a confirmer, deja la couleur de mise en
+// evidence de Collision (CLASH_MARKER_COLORS.nouveau). Le reste de la maquette est masque par l'isolement ; les elements gardaient sinon leur couleur de maquette.
+let idsColorieQuantitatif = [];
+function colorierLigneQuantitatif() {
+  retirerCouleurQuantitatif();
+  const ids = viewer.scene.visibleObjectIds.slice();
+  if (!ids.length) return;
+  viewer.scene.setObjectsColorized(ids, CLASH_MARKER_COLORS.nouveau);
+  idsColorieQuantitatif = ids;
+}
+
+// Cadrage des elements d'une ligne (30/10, « mieux zoomer pour montrer l'ensemble des elements ») : boite de TOUS les elements visibles puis affinage sur la silhouette dessinee,
+// comme la commande IA du Viewer (poseIACadree, 95 % de la largeur sur mobile). Le Viewer vient d'etre affiche depuis une autre page : tant que son canvas n'est pas pret
+// (tampon de 1 x 1 pixel), l'affinage differe du Viewer ne s'appliquait jamais (la camera n'est pas encore a la pose retenue) et il restait la simple pose centree sur la boite,
+// qui surestime le contour (50 % de la largeur seulement pour des vannes dispersees). On attend donc le canvas, quelques images au plus, puis on cadre une seule fois.
+function cadrerLigneQuantitatif(essais = 0) {
+  if (vueAvantDessus) return;
+  if (!canvasPret() && essais < 90) { requestAnimationFrame(() => cadrerLigneQuantitatif(essais + 1)); return; }
+  const boite = boiteDesVisibles(viewer.scene.visibleObjectIds, (ids) => viewer.scene.getAABB(ids));
+  if (!boite) return;
+  viewer.cameraFlight.cancel();
+  viewer.cameraFlight.flyTo(poseIACadree(boite));
+}
+
+// Rend aux elements la couleur de leur maquette (comme restaurerEtatEntites). Appelee a toute nouvelle commande, a « Tout reafficher » et a la sortie du Viewer.
+function retirerCouleurQuantitatif() {
+  if (!idsColorieQuantitatif.length) return;
+  const scene = viewer.scene;
+  const parMaquette = new Map();
+  idsColorieQuantitatif.forEach((id) => {
+    const objet = scene.objects[id];
+    if (!objet) return;
+    const cle = objet.model ? objet.model.id : "";
+    if (!parMaquette.has(cle)) parMaquette.set(cle, []);
+    parMaquette.get(cle).push(id);
+  });
+  parMaquette.forEach((ids, cle) => {
+    const maquette = MAQUETTES.find((m) => m.id === cle);
+    scene.setObjectsColorized(ids, maquette && maquette.colorize ? maquette.colorize : null);
+  });
+  idsColorieQuantitatif = [];
+}
+
 // « Voir » d'une ligne du tableau : le Viewer isole les elements de la ligne (meme mecanisme que la commande « afficher » du Viewer par commande).
 // Rend un message (rien a voir, maquettes non chargees) ou null si le Viewer est ouvert sur la selection.
 function voirQuantitatifDansViewer(criteres, retour = null) {
   const commande = {
     action: "afficher",
-    parametres: { typesIfc: criteres.typesIfc, niveaux: criteres.niveaux, maquettes: criteres.maquettes, noms: criteres.noms, isoler: true, surbrillance: false, cadrer: true },
+    parametres: { typesIfc: criteres.typesIfc, niveaux: criteres.niveaux, maquettes: criteres.maquettes, noms: criteres.noms, isoler: true, surbrillance: false, cadrer: false },
     demande: "",
     relecture: ""
   };
@@ -6807,6 +6854,8 @@ function voirQuantitatifDansViewer(criteres, retour = null) {
   // La demande vient du tableau, pas d'une phrase a verifier : pas de question « Est-ce bien votre demande ? ».
   commandesBandeau.masquer(false);
   fluxCommandes().accepter();
+  colorierLigneQuantitatif();
+  cadrerLigneQuantitatif();
   // Bandeau « ← Retour au quantitatif » : la page fournit le rappel, le bandeau ne sait rien d'elle. Un clic revient sur la page (comme un clic sur l'onglet,
   // pour la meme remise a zero) puis rappelle la page, qui re-affiche le meme rapport.
   if (retour) {
