@@ -5,6 +5,8 @@
 //                              question « Est-ce bien votre demande ? » peut s'afficher) ou { ok: false, message } (rien n'est applique)
 //   accepter()                 « Oui » : le filtre reste ; il devient le point de retour d'un futur « Non »
 //   refuser()                  « Non » : la demande en attente est annulee ; si une demande avait ete acceptee avant, elle est rappliquee. Rend { phrase }
+//   acceptee()                 le retour de la derniere demande confirmee (ou null)
+//   rouvrir(recherche)         reapplique une recherche gardee dans l'historique, deja confirmee, sans appel IA
 //   toutReafficher()           retire tout filtre (bouton « Tout réafficher » de la liste) ; l'attente et le point de retour sont oublies
 // messagerie : { appliquerFiltreIA(filtre), confirmerFiltreIA(), retirerFiltreIA() }
 
@@ -52,11 +54,20 @@ export function creerFlux({ messagerie }) {
     return { phrase };
   }
 
+  // Rouvre une recherche gardee dans l'historique (30/10) : le resultat stocke est reapplique, deja confirme, sans attente ni appel IA.
+  function rouvrir(recherche) {
+    const retour = { ok: true, type: "liste", ...recherche };
+    enAttente = null;
+    acceptee = retour;
+    appliquer(retour, true);
+    return retour;
+  }
+
   function toutReafficher() {
     enAttente = null;
     acceptee = null;
     messagerie.retirerFiltreIA();
   }
 
-  return { proposer, accepter, refuser, toutReafficher, enAttente: () => enAttente !== null };
+  return { proposer, accepter, refuser, rouvrir, toutReafficher, acceptee: () => acceptee, enAttente: () => enAttente !== null };
 }

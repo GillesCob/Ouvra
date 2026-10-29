@@ -21,7 +21,7 @@ function entreesDemo(maintenant) {
   ];
 }
 
-const valide = (e) => !!e && typeof e.id === "string" && typeof e.nom === "string" && Number.isFinite(e.creeLe) && (!!e.rapport || typeof e.demo === "string");
+const valide = (e) => !!e && typeof e.id === "string" && typeof e.nom === "string" && Number.isFinite(e.creeLe) && (!!e.rapport || !!e.recherche || typeof e.demo === "string");
 const parRecent = (a, b) => b.creeLe - a.creeLe;
 
 function ecrire(stockage, entrees) {
@@ -57,6 +57,20 @@ export function ajouterSynthese(rapport, { stockage = stockageParDefaut(), maint
   if (!rapport || rapport.vide || rapport.modele) return liste;
   const entree = { id: "synthese-" + maintenant + "-" + liste.length, nom: rapport.titre, creeLe: maintenant, rapport };
   const suivante = [entree, ...liste].sort(parRecent).slice(0, SYNTHESES_MAX);
+  ecrire(stockage, suivante);
+  return suivante;
+}
+
+// Ajoute une recherche d'echanges validee par « Oui » (30/10) : titre = la reformulation du bandeau, resultat stocke pour rouvrir la liste sans rappeler l'IA.
+// Meme demande deja gardee (titre identique, casse et espaces ignores) : pas de doublon, l'entree est remontee avec la date du jour et le nouveau resultat.
+export function ajouterRecherche(retour, { stockage = stockageParDefaut(), maintenant = Date.now() } = {}) {
+  const liste = listerSyntheses({ stockage, maintenant });
+  const titre = retour && typeof retour.relecture === "string" ? retour.relecture.trim() : "";
+  if (!titre || !retour.resultat || !Array.isArray(retour.resultat.fils)) return liste;
+  const cle = titre.toLowerCase();
+  const recherche = { relecture: titre, resultat: retour.resultat, ...(retour.repli ? { repli: retour.repli } : {}) };
+  const entree = { id: "synthese-" + maintenant + "-" + liste.length, nom: titre, creeLe: maintenant, recherche };
+  const suivante = [entree, ...liste.filter((e) => !(e.recherche && e.nom.trim().toLowerCase() === cle))].sort(parRecent).slice(0, SYNTHESES_MAX);
   ecrire(stockage, suivante);
   return suivante;
 }
