@@ -13,7 +13,7 @@
 // versions actuelles (comparerVersions), et s'il est OBSOLETE un badge rouge le dit, avec « Recalculer » (meme requete, sans IA).
 
 import "./quantitatif.css";
-import { calculer, exporterCsv } from "./quantitatif.js";
+import { calculer, exporterCsv, aColonneElements } from "./quantitatif.js";
 import { construireRapport, tableauDe, nomFichier, dateRelative } from "./quantitatifRapport.js";
 import { statutRapport, libelleStatut } from "./quantitatifVersions.js";
 import { valeursPourQuantitatif } from "./quantitatifDonnees.js";
@@ -230,7 +230,7 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
         tr.appendChild(c);
       });
     }
-    tr.appendChild(cellule("td", nombre.format(ligne.nombre + ligne.sansDonnee), "qt-num"));
+    if (aColonneElements(resultat.mesure)) tr.appendChild(cellule("td", nombre.format(ligne.nombre + ligne.sansDonnee), "qt-num"));
     const quantite = cellule("td", nombre.format(ligne.valeur), "qt-num qt-valeur");
     if (resultat.mesure.unite) quantite.appendChild(creer("span", "qt-unite", " " + resultat.mesure.unite));
     tr.appendChild(quantite);
@@ -390,7 +390,7 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
       colonnes.forEach((c) => { const th = cellule("th", c, "qt-cle"); th.scope = "col"; tr.appendChild(th); });
       const unite = resultat.mesure.unite ? " (" + resultat.mesure.unite + ")" : "";
       const libelleMesure = resultat.mesure.libelle.charAt(0).toUpperCase() + resultat.mesure.libelle.slice(1) + unite;
-      ["Éléments", libelleMesure, "Origine"].forEach((c, i) => { const th = cellule("th", c, i < 2 ? "qt-num" : "qt-col-origine"); th.scope = "col"; tr.appendChild(th); });
+      (aColonneElements(resultat.mesure) ? ["Éléments", libelleMesure, "Origine"] : [libelleMesure, "Origine"]).forEach((c, i, tous) => { const th = cellule("th", c, i < tous.length - 1 ? "qt-num" : "qt-col-origine"); th.scope = "col"; tr.appendChild(th); });
       if (voirDansViewer) { const th = cellule("th", "Viewer", "qt-action"); th.scope = "col"; tr.appendChild(th); }
       thead.appendChild(tr);
       const tbody = creer("tbody");

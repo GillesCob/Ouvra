@@ -38,8 +38,8 @@ test("rapport : resultat invalide refuse", () => {
 
 test("tableau : colonnes de metre (designation, unite, quantite, origine), un enregistrement par ligne, total separe", () => {
   const t = tableauDe(rapportPortes());
-  assert.deepEqual(t.colonnes.map((c) => c.libelle), ["Niveau", "Unité", "Quantité (nombre)", "Origine", "Éléments", "Sans donnée"]);
-  assert.deepEqual(t.lignes, [["Level 1", "u", 1, "compté", 1, 0], ["Level 2", "u", 1, "compté", 1, 0]]);
+  assert.deepEqual(t.colonnes.map((c) => c.libelle), ["Niveau", "Unité", "Quantité (nombre)", "Origine"]);
+  assert.deepEqual(t.lignes, [["Level 1", "u", 1, "compté"], ["Level 2", "u", 1, "compté"]]);
   assert.equal(t.total.quantite, 2);
   assert.match(t.metre.explication, /nombre exact/);
 });

@@ -29,7 +29,7 @@ export function definitionPdf(rapport, statut, { mobile = false } = {}) {
   const texteStatut = statut ? libelleStatut(statut) : "";
   const tete = t.colonnes.map((c) => c.libelle);
   const corps = t.lignes.map((l) => l.map((v, i) => (t.colonnes[i].type === "nombre" ? formaterNombre(v) : sansSpecial(v))));
-  const pied = r.regroupements.length > 0 || r.aucunResultat ? [["Total", ...Array(t.nCles - 1).fill(""), t.total.unite, formaterNombre(t.total.quantite), t.total.origine, formaterNombre(t.total.elements), formaterNombre(t.total.sansDonnee)]] : [];
+  const pied = r.regroupements.length > 0 || r.aucunResultat ? [["Total", ...Array(t.nCles - 1).fill(""), t.total.unite, formaterNombre(t.total.quantite), t.total.origine, ...(t.avecElements ? [formaterNombre(t.total.elements), formaterNombre(t.total.sansDonnee)] : [])]] : [];
   const unite = t.total.unite ? " " + sansSpecial(t.total.unite) : "";
   const mobileTableau = mobile ? {
     tete: [...tete.slice(0, t.nCles), "Quantité"],

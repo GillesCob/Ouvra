@@ -198,6 +198,12 @@ function criteresLigne(filtres, cles, groupes, registre) {
 //     lignes: [{ cles, valeur, nombre, sansDonnee, criteres }], totaux: { valeur, nombre, sansDonnee, criteres },
 //     elementsPrisEnCompte, elementsExclus, aucunResultat, notes: [texte] }
 //   ou { ok: false, code: "requete_invalide" | "mesure_indisponible", message }
+// Mesure « Compter » : chaque element vaut 1, donc « Elements » egale la mesure et « sans donnee » vaut toujours 0 : une seule colonne de quantite.
+// Les autres mesures gardent « Elements » (et « sans donnee ») a cote de la mesure. Source unique pour l'ecran, le CSV, le PDF et l'Excel.
+export function aColonneElements(mesure) {
+  return !mesure || mesure.nom !== "nombre";
+}
+
 export function calculer(elements, requete, registres = registresParDefaut()) {
   const verdict = validerRequete(requete, null, registres);
   if (!verdict.ok) return { ok: false, code: "requete_invalide", message: verdict.erreur };
@@ -306,8 +312,11 @@ export function exporterCsv(resultat, remarques = []) {
   const unite = resultat.mesure.unite ? " (" + resultat.mesure.unite + ")" : "";
   const libelleMesure = resultat.mesure.libelle.charAt(0).toUpperCase() + resultat.mesure.libelle.slice(1) + unite;
   const colonnesCles = resultat.regroupements.length ? resultat.regroupements.map((r) => r.libelle) : ["Sélection"];
-  const entete = [...colonnesCles, "Éléments pris en compte", libelleMesure, "Origine", "Éléments sans donnée"];
-  const rang = (cles, l) => [...cles, l.nombre + l.sansDonnee, nombreFr(l.valeur), resultat.mesure.origineLibelle, l.sansDonnee];
+  const deux = aColonneElements(resultat.mesure);
+  const entete = deux ? [...colonnesCles, "Éléments pris en compte", libelleMesure, "Origine", "Éléments sans donnée"] : [...colonnesCles, libelleMesure, "Origine"];
+  const rang = (cles, l) => (deux
+    ? [...cles, l.nombre + l.sansDonnee, nombreFr(l.valeur), resultat.mesure.origineLibelle, l.sansDonnee]
+    : [...cles, nombreFr(l.valeur), resultat.mesure.origineLibelle]);
   const rangs = resultat.lignes.map((l) => rang(l.cles.length ? l.cles : ["Ensemble"], l));
   // Sans regroupement, la ligne unique est deja le total ; sinon (ou sans aucun element) une ligne « Total » ferme le tableau.
   if (resultat.regroupements.length > 0 || rangs.length === 0) rangs.push(rang(["Total", ...Array(colonnesCles.length - 1).fill("")], resultat.totaux));

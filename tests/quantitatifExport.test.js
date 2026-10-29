@@ -35,10 +35,10 @@ test("pdf : definition = titre, informations, tableau de metre, total, avertisse
   const d = definitionPdf(portes(), aJour);
   assert.equal(d.titre, "Quantitatif");
   assert.equal(d.bandeau, null);
-  assert.deepEqual(d.tableau.tete, ["Niveau", "Unité", "Quantité (nombre)", "Origine", "Éléments", "Sans donnée"]);
-  assert.deepEqual(d.tableau.corps[0], ["Level 1", "u", "1", "compté", "1", "0"]);
-  assert.deepEqual(d.tableau.corps[1], ["Level 2", "u", "2", "compté", "2", "0"]);
-  assert.deepEqual(d.tableau.pied[0], ["Total", "u", "3", "compté", "3", "0"]);
+  assert.deepEqual(d.tableau.tete, ["Niveau", "Unité", "Quantité (nombre)", "Origine"]);
+  assert.deepEqual(d.tableau.corps[0], ["Level 1", "u", "1", "compté"]);
+  assert.deepEqual(d.tableau.corps[1], ["Level 2", "u", "2", "compté"]);
+  assert.deepEqual(d.tableau.pied[0], ["Total", "u", "3", "compté"]);
   assert.ok(d.avertissements[0].includes("nombre exact"));
   assert.ok(d.infos.some(([k, v]) => k === "Maquettes concernées" && v === "Architecture"));
   assert.ok(d.infos.some(([k, v]) => k === "État du rapport" && /^À jour/.test(v)));
@@ -85,7 +85,8 @@ test("pdf mobile : page etroite 105 x 186 mm, colonnes reduites a l'essentiel, c
   assert.ok(Math.min(...[...polices].filter((t) => t >= 9)) >= 10);
   const laptop = definitionPdf(portes(), aJour);
   assert.ok(!laptop.mobile);
-  assert.equal(laptop.tableau.tete.length, 6);
+  assert.equal(laptop.tableau.tete.length, 4);
+  assert.equal(laptop.tableau.pied[0].length, 4);
   const long = Array.from({ length: 200 }, (_, i) => el("y" + i, "IfcDoor", "Level " + (i % 7), "Architecture", "Porte type " + i));
   const rl = construireRapport({ resultat: calculer(long, { mesure: "nombre", filtres: filtres(), regroupements: ["famille"] }), phrase: "x", versions: VERSIONS });
   assert.ok(construirePdf({ jsPDF, autoTable }, definitionPdf(rl, aJour, { mobile: true }), {}).getNumberOfPages() > 1);
@@ -103,9 +104,9 @@ test("excel : deux feuilles, en-tete sur une ligne, un enregistrement par ligne,
   const lu = await relire(construireClasseur(ExcelJS, portes(), aJour));
   assert.deepEqual(lu.worksheets.map((f) => f.name), [NOM_FEUILLE, NOM_FEUILLE_INFOS]);
   const f = lu.getWorksheet(NOM_FEUILLE);
-  assert.deepEqual(f.getRow(8).values.slice(1), ["Niveau", "Unité", "Quantité (nombre)", "Origine", "Éléments", "Sans donnée"]);
-  assert.deepEqual(f.getRow(9).values.slice(1), ["Level 1", "u", 1, "compté", 1, 0]);
-  assert.deepEqual(f.getRow(10).values.slice(1), ["Level 2", "u", 2, "compté", 2, 0]);
+  assert.deepEqual(f.getRow(8).values.slice(1), ["Niveau", "Unité", "Quantité (nombre)", "Origine"]);
+  assert.deepEqual(f.getRow(9).values.slice(1), ["Level 1", "u", 1, "compté"]);
+  assert.deepEqual(f.getRow(10).values.slice(1), ["Level 2", "u", 2, "compté"]);
   assert.deepEqual(f.model.merges || [], []);
   assert.equal(f.views[0].ySplit, 8);
   assert.ok(f.autoFilter);
@@ -118,7 +119,7 @@ test("excel : totaux en vraies formules SOUS.TOTAL (SUBTOTAL), separes des donne
   assert.equal(total.getCell(1).value, "Total");
   assert.equal(total.getCell(3).value.formula, "SUBTOTAL(109,C9:C10)");
   assert.equal(total.getCell(3).value.result, 3);
-  assert.equal(total.getCell(5).value.formula, "SUBTOTAL(109,E9:E10)");
+  assert.equal(total.getCell(5).value, null);
 });
 
 test("excel : estime = texte « estimé », mise en forme conditionnelle orange, avertissement en tete, deux decimales", async () => {
@@ -159,4 +160,13 @@ test("excel : sans resultat, tableau vide valide ; logo optionnel incruste", asy
   const logo = readFileSync(new URL("../public/icons/icon-192.png", import.meta.url));
   const avecLogo = await relire(construireClasseur(ExcelJS, portes(), aJour, { logoPng: logo }));
   assert.equal(avecLogo.getWorksheet(NOM_FEUILLE).getImages().length, 1);
+});
+
+test("une mesure de longueur garde « Éléments » et « Sans donnée » (PDF, Excel)", async () => {
+  const d = definitionPdf(gaines(), aJour);
+  assert.deepEqual(d.tableau.tete, ["Niveau", "Unité", "Quantité (longueur estimée)", "Origine", "Éléments", "Sans donnée"]);
+  assert.equal(d.tableau.pied[0].length, 6);
+  const f = (await relire(construireClasseur(ExcelJS, gaines(), aJour))).getWorksheet(NOM_FEUILLE);
+  assert.deepEqual(f.getRow(8).values.slice(1), ["Niveau", "Unité", "Quantité (longueur estimée)", "Origine", "Éléments", "Sans donnée"]);
+  assert.equal(f.getRow(12).getCell(5).value.formula, "SUBTOTAL(109,E9:E10)");
 });
