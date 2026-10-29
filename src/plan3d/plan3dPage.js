@@ -21,6 +21,7 @@ import { creerIASaisie } from "../iaSaisie.js";
 import { creerMenuChoix, habillerSelect } from "../menuChoix.js";
 import { demanderPlan } from "./ia/planIAClient.js";
 import { creerFluxPlanIA } from "./ia/planIAFlux.js";
+import { poserFlou, leverFlou } from "../flouDemande.js";
 import {
   creerModeleVide, validerModele, murDe, ouvertureDe, longueurMur, definirLongueur, modifierMur, modifierOuverture, modifierPiece, calibrer,
   surfaceContour, infosDe, definirInfo, supprimerInfo, TYPES_MUR
@@ -265,13 +266,14 @@ export function creerPlan3dPage({ racine, voirDansViewer = null, projets = creer
   majTypeMur();
 
   // Bandeau de verification de la demande IA : le plan est DEJA modifie, « Oui » le garde, « Non » le defait et rouvre la saisie.
-  const bandeau = creer("div", "p3d-bandeau");
+  const bandeau = creer("div", "p3d-bandeau p3d-bandeau-demande");
   bandeau.setAttribute("role", "group");
   bandeau.setAttribute("aria-label", "Vérification de la demande");
   bandeau.hidden = true;
   const bandeauTexte = creer("p", "p3d-bandeau-texte");
   const bandeauBoutons = creer("div", "p3d-bandeau-boutons");
   const boutonOui = creer("button", "p3d-btn p3d-btn-fort", "Oui");
+  boutonOui.dataset.act = "oui";
   boutonOui.type = "button";
   const boutonNon = creer("button", "p3d-btn", "Non");
   boutonNon.type = "button";
@@ -668,7 +670,11 @@ export function creerPlan3dPage({ racine, voirDansViewer = null, projets = creer
     appliquer: (m) => appliquer(m),
     annuler: () => annuler(),
     demander: demanderPlan,
-    surBandeau: ({ visible, texte }) => { bandeau.hidden = !visible; bandeauTexte.textContent = texte; }
+    surBandeau: ({ visible, texte }) => {
+      bandeau.hidden = !visible;
+      bandeauTexte.textContent = texte;
+      if (visible) poserFlou("plan3d", bandeau); else leverFlou("plan3d"); // le reste de la page est flou et inaccessible tant que la demande attend Oui ou Non
+    }
   });
   const saisie = creerIASaisie({
     exemples: [],

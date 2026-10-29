@@ -101,3 +101,17 @@ body.quantitatif-confirm-actif #view-quantitatif { padding-top: var(--quantitati
   #quantitatifBandeau { padding: 8px 12px; }
   #quantitatifBandeau button { flex: 1 1 0; min-height: 44px; }
 }
+
+/* Flou de la demande IA (29/10, Gilles) : tant que « Est-ce bien votre demande ? » attend Oui ou Non, tout le reste de la page (navbar comprise) est flou et inaccessible ; seul le
+   bandeau reste net et actif. Calque pose par src/flouDemande.js : au-dessus de tout (navbar 60, modales 70 et 90), les bandeaux passent un cran au-dessus. Apparition courte
+   (fondu), sans mouvement si l'utilisateur le demande ; Safari a besoin du prefixe -webkit-. */
+#flouDemande {
+  position: fixed; inset: 0; z-index: 1000; background: color-mix(in srgb, var(--bg) 40%, transparent);
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); touch-action: none; overscroll-behavior: none; animation: flou-demande-apparition 0.18s ease-out;
+}
+#flouDemande[hidden] { display: none; }
+body.flou-demande-actif #commandesBandeau, body.flou-demande-actif #quantitatifBandeau, body.flou-demande-actif #discussionsBandeau, body.flou-demande-actif .p3d-bandeau-demande { z-index: 1001; }
+@keyframes flou-demande-apparition { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  #flouDemande { animation: none; }
+}
