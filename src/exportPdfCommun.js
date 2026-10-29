@@ -4,6 +4,11 @@
 
 export const VERT = [92, 122, 95]; // --accent d'Ouvra
 
+// Variante MOBILE (28/10) : page etroite 105 x 186 mm (9:16), affichee en pleine largeur sur un telephone (390 px pour 105 mm : corps de 10 pt ~13 px).
+export const PAGE_MOBILE = [105, 186];
+// Mobile : l'onglet navigue VERS le PDF (lecteur natif d'iOS : toutes les pages, zoom), car un PDF dans un iframe n'affiche que sa premiere page sur iOS Safari.
+export const afficherPdfPleinOnglet = (onglet, url) => onglet.location.replace(url);
+
 // Caracteres WinAnsi hors Latin-1 (0x80 a 0x9F de Windows-1252) : euro, guillemets, tirets, puce, œ, etc.
 const WINANSI_EXTRA = "\u20ac\u201a\u0192\u201e\u2026\u2020\u2021\u02c6\u2030\u0160\u2039\u0152\u017d\u2018\u2019\u201c\u201d\u2022\u2013\u2014\u02dc\u2122\u0161\u203a\u0153\u017e\u0178";
 const dansWinAnsi = (c) => {

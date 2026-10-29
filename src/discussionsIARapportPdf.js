@@ -7,7 +7,7 @@
 // Police : Helvetica standard du PDF (WinAnsi) : tout texte passe par sansSpecial (src/exportPdfCommun.js). Logo : public/icons/icon-192.png.
 // Tout est genere dans le navigateur : rien n'est envoye a un serveur.
 
-import { VERT, sansSpecial, chargerLogo } from "./exportPdfCommun.js";
+import { VERT, PAGE_MOBILE, afficherPdfPleinOnglet, sansSpecial, chargerLogo } from "./exportPdfCommun.js";
 import { afficherPdfDansOnglet } from "./discussionsIARapportOnglet.js";
 import {
   dateJJMMAAAA, dateDuRapport, perimetreDe, libelleDecision, nomsEnPhrase, refsDe,
@@ -53,37 +53,40 @@ export function definitionRapportPdf(rapport) {
 
 const marque = (nonConfirme) => (nonConfirme ? " (" + MENTION_NON_CONFIRME + ")" : "");
 
-export function construireRapportPdf({ jsPDF, autoTable }, def, { logoPng = null, maintenant = new Date() } = {}) {
-  const doc = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
+// mobile (29/10, meme principe que le Quantitatif) : page etroite 105 x 186 mm affichee en pleine largeur sur telephone, corps de 10 pt, tableaux resserres.
+// Tout le contenu est conserve ; le laptop reste l'A4 portrait.
+export function construireRapportPdf({ jsPDF, autoTable }, def, { logoPng = null, maintenant = new Date(), mobile = false } = {}) {
+  const mob = !!mobile;
+  const doc = new jsPDF({ unit: "mm", format: mob ? PAGE_MOBILE : "a4", orientation: "portrait" });
   const largeur = doc.internal.pageSize.getWidth();
   const hauteur = doc.internal.pageSize.getHeight();
-  const marge = 16;
+  const marge = mob ? 6 : 16;
   const utile = largeur - 2 * marge;
-  const haut = 30; // sous l'en-tete
+  const haut = mob ? 22 : 30; // sous l'en-tete
   const bas = hauteur - 18; // au-dessus du pied
   let y = haut;
 
   // Saute a la page suivante s'il ne reste pas h millimetres.
   const assurer = (h) => { if (y + h > bas) { doc.addPage(); y = haut; } };
   // Ecrit un paragraphe ligne par ligne (le saut de page peut tomber au milieu).
-  function paragraphe(texte, { taille = 10.5, gras = false, couleur = [30, 40, 33], interligne = 5, retrait = 0 } = {}) {
+  function paragraphe(texte, { taille = mob ? 10 : 10.5, gras = false, couleur = [30, 40, 33], interligne = mob ? 4.6 : 5, retrait = 0 } = {}) {
     doc.setFont("helvetica", gras ? "bold" : "normal").setFontSize(taille).setTextColor(...couleur);
     for (const ligne of doc.splitTextToSize(texte, utile - retrait)) { assurer(interligne); doc.text(ligne, marge + retrait, y + interligne - 1.2); y += interligne; }
   }
   function titreBloc(libelle) {
     assurer(16);
     y += 5;
-    doc.setFont("helvetica", "bold").setFontSize(9).setTextColor(...VERT);
+    doc.setFont("helvetica", "bold").setFontSize(mob ? 10 : 9).setTextColor(...VERT);
     doc.text(libelle, marge, y);
     doc.setDrawColor(...VERT).setLineWidth(0.3).line(marge, y + 1.8, largeur - marge, y + 1.8);
     y += 5;
   }
 
   // 1. Titre
-  paragraphe(def.titre, { taille: 20, gras: true, interligne: 8.5 });
+  paragraphe(def.titre, { taille: mob ? 16 : 20, gras: true, interligne: mob ? 6.8 : 8.5 });
   y += 1.5;
-  paragraphe(def.dateLibelle, { taille: 11, couleur: [60, 70, 63], interligne: 5.5 });
-  paragraphe(def.perimetre, { taille: 9, couleur: [110, 120, 113], interligne: 4.5 });
+  paragraphe(def.dateLibelle, { taille: mob ? 10 : 11, couleur: [60, 70, 63], interligne: mob ? 4.8 : 5.5 });
+  paragraphe(def.perimetre, { taille: mob ? 10 : 9, couleur: [110, 120, 113], interligne: mob ? 4.6 : 4.5 });
 
   if (def.vide) {
     y += 6;
@@ -95,7 +98,7 @@ export function construireRapportPdf({ jsPDF, autoTable }, def, { logoPng = null
 
     // 3. Intervenants
     titreBloc("INTERVENANTS");
-    for (const nom of def.intervenants) paragraphe("- " + nom, { interligne: 5 });
+    for (const nom of def.intervenants) paragraphe("- " + nom);
     if (!def.intervenants.length) paragraphe("Aucun intervenant identifié.", { couleur: [110, 120, 113] });
 
     // 4. Desaccords exprimes
@@ -106,8 +109,8 @@ export function construireRapportPdf({ jsPDF, autoTable }, def, { logoPng = null
       autoTable(doc, {
         startY: y, margin: { left: marge, right: marge, top: haut, bottom: 18 }, theme: "grid",
         body: def.desaccords.map((d) => [d.opposants || "Non précisé", d.objet + marque(d.nonConfirme) + d.refs]),
-        styles: { font: "helvetica", fontSize: 9.5, cellPadding: 2.2, lineColor: [210, 214, 208], lineWidth: 0.1, textColor: [30, 40, 33], overflow: "linebreak" },
-        columnStyles: { 0: { cellWidth: 48, fontStyle: "bold", fillColor: [247, 249, 246] }, 1: { cellWidth: "auto" } }
+        styles: { font: "helvetica", fontSize: mob ? 10 : 9.5, cellPadding: mob ? 1.6 : 2.2, lineColor: [210, 214, 208], lineWidth: 0.1, textColor: [30, 40, 33], overflow: "linebreak" },
+        columnStyles: { 0: { cellWidth: mob ? 26 : 48, fontStyle: "bold", fillColor: [247, 249, 246] }, 1: { cellWidth: "auto" } }
       });
       y = doc.lastAutoTable.finalY + 2;
     }
@@ -116,15 +119,17 @@ export function construireRapportPdf({ jsPDF, autoTable }, def, { logoPng = null
     titreBloc("DÉCISION FINALE");
     const d = def.decision;
     const texteDecision = d.statut === "aucune" ? "" : d.texte + (d.statut === "prise" ? marque(d.nonConfirme) : "") + d.refs;
-    doc.setFont("helvetica", "normal").setFontSize(10.5);
+    const corps = mob ? 10 : 10.5;
+    const inter = mob ? 4.6 : 5;
+    doc.setFont("helvetica", "normal").setFontSize(corps);
     const lignes = texteDecision ? doc.splitTextToSize(texteDecision, utile - 10) : [];
-    const hBoite = 11 + lignes.length * 5;
+    const hBoite = 11 + lignes.length * inter;
     assurer(hBoite + 2);
     doc.setFillColor(232, 238, 230).rect(marge, y, utile, hBoite, "F");
     doc.setFillColor(...VERT).rect(marge, y, 1.6, hBoite, "F");
     doc.setFont("helvetica", "bold").setFontSize(11).setTextColor(30, 40, 33).text(d.libelle, marge + 6, y + 6.5);
-    doc.setFont("helvetica", "normal").setFontSize(10.5);
-    lignes.forEach((ligne, i) => doc.text(ligne, marge + 6, y + 12.2 + i * 5));
+    doc.setFont("helvetica", "normal").setFontSize(corps);
+    lignes.forEach((ligne, i) => doc.text(ligne, marge + 6, y + 12.2 + i * inter));
     y += hBoite + 2;
   }
 
@@ -133,12 +138,12 @@ export function construireRapportPdf({ jsPDF, autoTable }, def, { logoPng = null
     titreBloc("SOURCES");
     autoTable(doc, {
       startY: y, margin: { left: marge, right: marge, top: haut, bottom: 18 }, theme: "grid",
-      head: [["N°", "Date", "Expéditeur", "Discussion", "Extrait"]],
-      body: def.sources.map((s) => [String(s.numero), s.date, s.expediteur, s.discussion, s.extrait]),
-      styles: { font: "helvetica", fontSize: 8, cellPadding: 1.8, lineColor: [210, 214, 208], lineWidth: 0.1, textColor: [30, 40, 33], overflow: "linebreak" },
+      head: mob ? [["N°", "Expéditeur", "Extrait"]] : [["N°", "Date", "Expéditeur", "Discussion", "Extrait"]],
+      body: def.sources.map((s) => (mob ? [String(s.numero), s.expediteur + "\n" + s.date + "\n" + s.discussion, s.extrait] : [String(s.numero), s.date, s.expediteur, s.discussion, s.extrait])),
+      styles: { font: "helvetica", fontSize: mob ? 10 : 8, cellPadding: mob ? 1.6 : 1.8, lineColor: [210, 214, 208], lineWidth: 0.1, textColor: [30, 40, 33], overflow: "linebreak" },
       headStyles: { fillColor: VERT, textColor: 255, fontStyle: "bold" },
       alternateRowStyles: { fillColor: [247, 249, 246] },
-      columnStyles: { 0: { cellWidth: 9, halign: "right" }, 1: { cellWidth: 27 }, 2: { cellWidth: 28 }, 3: { cellWidth: 32 }, 4: { cellWidth: "auto" } }
+      columnStyles: mob ? { 0: { cellWidth: 8, halign: "right" }, 1: { cellWidth: 36 }, 2: { cellWidth: "auto" } } : { 0: { cellWidth: 9, halign: "right" }, 1: { cellWidth: 27 }, 2: { cellWidth: 28 }, 3: { cellWidth: 32 }, 4: { cellWidth: "auto" } }
     });
   }
 
@@ -160,10 +165,10 @@ export function construireRapportPdf({ jsPDF, autoTable }, def, { logoPng = null
     const hautLogo = 6;
     if (logoPng) doc.addImage(logoPng, "PNG", marge, hautLogo, 11, 11);
     doc.setFont("helvetica", "bold").setFontSize(13).setTextColor(...VERT).text("OUVRA", marge + (logoPng ? 14 : 0), hautLogo + 7.5);
-    doc.setFont("helvetica", "normal").setFontSize(8).setTextColor(110, 120, 113).text(def.titreDocument, largeur - marge, hautLogo + 7.5, { align: "right" });
+    doc.setFont("helvetica", "normal").setFontSize(mob ? 10 : 8).setTextColor(110, 120, 113).text(def.titreDocument, largeur - marge, hautLogo + 7.5, { align: "right" });
     doc.setDrawColor(...VERT).setLineWidth(0.4).line(marge, hautLogo + 13, largeur - marge, hautLogo + 13);
     doc.setDrawColor(200, 205, 198).setLineWidth(0.2).line(marge, hauteur - 12, largeur - marge, hauteur - 12);
-    doc.setFontSize(8).setTextColor(110, 120, 113);
+    doc.setFontSize(mob ? 10 : 8).setTextColor(110, 120, 113);
     doc.text(def.pied + " · le " + dateJJMMAAAA(maintenant.getTime()), marge, hauteur - 7);
     doc.text("Page " + p + " / " + pages, largeur - marge, hauteur - 7, { align: "right" });
   }
@@ -186,9 +191,9 @@ export function livrerRapportPdf(nomFichier, blob, { onglet = null, telecharger,
 }
 
 // Les bibliotheques sont importees ici, au clic. onglet : fenetre ouverte par la page pendant le geste de l'utilisateur (sinon les bloqueurs de pop-up la refusent).
-export async function exporterRapportPdf(rapport, { telecharger, onglet = null, fetch: appel = (...a) => globalThis.fetch(...a), maintenant = new Date() }) {
+export async function exporterRapportPdf(rapport, { telecharger, onglet = null, mobile = false, fetch: appel = (...a) => globalThis.fetch(...a), maintenant = new Date() }) {
   const [{ jsPDF }, autotable] = await Promise.all([import("jspdf"), import("jspdf-autotable")]);
   const def = definitionRapportPdf(rapport);
-  const doc = construireRapportPdf({ jsPDF, autoTable: autotable.autoTable || autotable.default }, def, { logoPng: await chargerLogo(appel), maintenant });
-  return livrerRapportPdf(def.nomFichier, doc.output("blob"), { onglet, telecharger });
+  const doc = construireRapportPdf({ jsPDF, autoTable: autotable.autoTable || autotable.default }, def, { logoPng: await chargerLogo(appel), maintenant, mobile });
+  return livrerRapportPdf(def.nomFichier, doc.output("blob"), { onglet, telecharger, ...(mobile ? { afficher: afficherPdfPleinOnglet } : {}) });
 }

@@ -50,7 +50,7 @@ test("vue : l'onglet est ouvert dans le geste du clic (avant l'attente), coupe d
 });
 
 test("montage : l'onglet est transmis a l'export", () => {
-  assert.ok(lire("src/discussionsIAMontage.js").includes("exporterRapportPdf(rapport, { telecharger, onglet })"));
+  assert.ok(lire("src/discussionsIAMontage.js").includes("exporterRapportPdf(rapport, { telecharger, onglet, mobile:"));
 });
 
 test("onglet du PDF : titre et logo Ouvra (memes icones que index.html, chemins absolus de meme origine), texte d'attente", () => {

@@ -8,7 +8,9 @@
 
 import { tableauDe, informationsDe, formaterNombre, nomFichier } from "./quantitatifRapport.js";
 import { libelleStatut } from "./quantitatifVersions.js";
-import { VERT, sansSpecial, chargerLogo } from "./exportPdfCommun.js";
+import { VERT, PAGE_MOBILE, afficherPdfPleinOnglet, sansSpecial, chargerLogo } from "./exportPdfCommun.js";
+
+export { PAGE_MOBILE, afficherPdfPleinOnglet };
 import { livrerRapportPdf } from "./discussionsIARapportPdf.js";
 
 const ROUGE = [178, 34, 34];
@@ -16,7 +18,6 @@ const ORANGE_PALE = [253, 236, 220];
 
 // Variante MOBILE (28/10) : page etroite 105 x 186 mm (9:16), affichee en pleine largeur sur un telephone (390 px pour 105 mm : le corps de 10 pt y mesure ~13 px,
 // alors qu'en A4 la meme largeur reduit 8,5 pt a ~5,6 px). Colonnes reduites a l'essentiel : cles + quantite (unite collee). Le PDF laptop reste l'A4 portrait.
-export const PAGE_MOBILE = [105, 186];
 const INFOS_MOBILE = new Set(["Demande", "Mesure", "Éléments pris en compte", "État du rapport"]);
 
 
@@ -136,7 +137,6 @@ export function construirePdf({ jsPDF, autoTable }, def, { logoPng = null, maint
 // Les bibliotheques sont importees ici, au clic. Le contenu du PDF est inchange.
 // mobile (largeur <= 768 px) : PDF en page etroite lisible sur telephone, et onglet navigue VERS le PDF (lecteur natif d'iOS : toutes les pages, zoom), car
 // un PDF dans un iframe n'affiche que sa premiere page sur iOS Safari. Laptop : A4 dans l'iframe, inchange.
-export const afficherPdfPleinOnglet = (onglet, url) => onglet.location.replace(url);
 export async function exporterPdf(rapport, statut, { telecharger, onglet = null, mobile = false, fetch: appel = (...a) => globalThis.fetch(...a) }) {
   const [{ jsPDF }, autotable] = await Promise.all([import("jspdf"), import("jspdf-autotable")]);
   const def = definitionPdf(rapport, statut, { mobile });
