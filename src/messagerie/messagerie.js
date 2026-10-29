@@ -1564,9 +1564,10 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
     const f = etat.filtreIA;
     if (!f) { $("msgListe").innerHTML = '<div class="msg-vide">Choisis Texte ou Vocal pour décrire ce que tu cherches dans les discussions.</div>'; return; }
     const compte = nombreFr(f.fils.length, "discussion", "discussions") + (f.surlignes.size ? ", " + nombreFr(f.surlignes.size, "message trouvé", "messages trouvés") : "");
-    // Une seule ligne : « Retour » en tete, la demande et le compte (ellipsis si trop long, texte complet en title). Aucun bouton du rapport ici : il s'ouvre seul a la fin de la demande.
+    // « Retour » en tete, la demande et le compte (sur deux lignes si besoin, jamais rognes ; texte complet en title). Aucun bouton du rapport ici : il s'ouvre seul a la fin de la demande.
     const resume = echapper((f.relecture || "") + (f.relecture ? " \u00b7 " : "") + compte);
-    const bandeau = '<div class="msg-ia-resume" role="status"><button type="button" class="msg-ia-retour" data-act="ia-tout" aria-label="Retour aux discussions">\u2190 Retour</button>' +
+    // Le bandeau « Retour » n'apparait qu'apres la reponse « Oui » ou « Non » (29/10) : pendant « Est-ce bien votre demande ? », un seul bandeau.
+    const bandeau = !f.confirme ? "" : '<div class="msg-ia-resume" role="status"><button type="button" class="msg-ia-retour" data-act="ia-tout" aria-label="Retour aux discussions">\u2190 Retour</button>' +
       '<div class="msg-ia-demande" title="' + resume + '"><b>' + echapper(f.relecture || "") + "</b><span>" + echapper(compte) + "</span></div>" +
       "</div>";
     const lignes = f.fils.length ? f.fils.map(ligneResultatIA).join("") : '<div class="msg-vide">Aucune discussion à afficher.</div>';
@@ -1580,6 +1581,13 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
     racine.classList.remove("volet-ouvert");
     rendreListe();
     if (etat.convId && $("msgScroller")) rendreFilCourant(true);
+  }
+
+  // « Oui » : la demande est confirmee, la liste montre son bandeau « Retour » (sans rien changer d'autre).
+  function confirmerFiltreIA() {
+    if (!etat.filtreIA || etat.filtreIA.confirme) return;
+    etat.filtreIA.confirme = true;
+    if (etat.onglet === "ia") rendreListe();
   }
 
   function retirerFiltreIA() {
@@ -1807,6 +1815,6 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
 
   return {
     preparer, surVueActivee, vueDeConversation, nouveauSujetDepuisViewer, rechargerVues, priseDeVueEnCours: () => priseDeVueEnCours,
-    donneesPourIA, appliquerFiltreIA, retirerFiltreIA, montrerMessageIA
+    donneesPourIA, appliquerFiltreIA, confirmerFiltreIA, retirerFiltreIA, montrerMessageIA
   };
 }

@@ -6,7 +6,7 @@
 //   accepter()                 « Oui » : le filtre reste ; il devient le point de retour d'un futur « Non »
 //   refuser()                  « Non » : la demande en attente est annulee ; si une demande avait ete acceptee avant, elle est rappliquee. Rend { phrase }
 //   toutReafficher()           retire tout filtre (bouton « Tout réafficher » de la liste) ; l'attente et le point de retour sont oublies
-// messagerie : { appliquerFiltreIA(filtre), retirerFiltreIA() }
+// messagerie : { appliquerFiltreIA(filtre), confirmerFiltreIA(), retirerFiltreIA() }
 
 export const MESSAGE_RAPPORT_VIDE = "Rien n'a été dit à ce sujet.";
 const pluriel = (n, un, plusieurs) => n + " " + (n > 1 ? plusieurs : un);
@@ -24,13 +24,14 @@ export function creerFlux({ messagerie }) {
   let enAttente = null; // { retour, phrase } : demande appliquee mais pas encore confirmee
   let acceptee = null; // retour de la derniere demande confirmee et toujours appliquee
 
-  function appliquer(retour) {
-    messagerie.appliquerFiltreIA({ ...retour.resultat, relecture: retour.relecture, type: retour.type, rapport: retour.rapport || null });
+  // confirme : faux tant que « Est-ce bien votre demande ? » attend une reponse (la liste n'affiche alors pas son bandeau « Retour »).
+  function appliquer(retour, confirme) {
+    messagerie.appliquerFiltreIA({ ...retour.resultat, relecture: retour.relecture, type: retour.type, rapport: retour.rapport || null, confirme });
   }
 
   function proposer(retour, phrase = "") {
     if (!retour || !retour.ok) return { ok: false, message: retour ? retour.message : "Demande impossible." };
-    appliquer(retour);
+    appliquer(retour, false);
     enAttente = { retour, phrase };
     return { ok: true, type: retour.type, relecture: retour.relecture, resume: resumerResultat(retour) };
   }
@@ -39,6 +40,7 @@ export function creerFlux({ messagerie }) {
     if (!enAttente) return false;
     acceptee = enAttente.retour;
     enAttente = null;
+    messagerie.confirmerFiltreIA();
     return true;
   }
 
@@ -46,7 +48,7 @@ export function creerFlux({ messagerie }) {
     if (!enAttente) return null;
     const { phrase } = enAttente;
     enAttente = null;
-    if (acceptee) appliquer(acceptee); else messagerie.retirerFiltreIA();
+    if (acceptee) appliquer(acceptee, true); else messagerie.retirerFiltreIA();
     return { phrase };
   }
 
