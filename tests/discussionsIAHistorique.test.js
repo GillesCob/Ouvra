@@ -1,7 +1,7 @@
 // Historique des syntheses de conversation (28/10) : demonstration a la premiere utilisation, ajout, tri, bornes, stockage absent ou corrompu.
 import test from "node:test";
 import assert from "node:assert/strict";
-import { listerSyntheses, ajouterSynthese, dateSynthese, CLE_SYNTHESES, SYNTHESES_MAX } from "../src/discussionsIAHistorique.js";
+import { listerSyntheses, ajouterSynthese, ajouterRecherche, dateSynthese, CLE_SYNTHESES, SYNTHESES_MAX } from "../src/discussionsIAHistorique.js";
 
 const stockageMemoire = (initial = {}) => {
   const m = new Map(Object.entries(initial));
@@ -55,4 +55,56 @@ test("stockage absent, plein ou JSON corrompu : aucune exception", () => {
   assert.equal(ajouterSynthese(rapport("A"), { stockage: plein, maintenant: MAINTENANT })[0].nom, "A");
   assert.deepEqual(listerSyntheses({ stockage: stockageMemoire({ [CLE_SYNTHESES]: "{pas du json" }), maintenant: MAINTENANT }), []);
   assert.deepEqual(listerSyntheses({ stockage: stockageMemoire({ [CLE_SYNTHESES]: JSON.stringify([{ id: 3 }, null, { id: "a", nom: "n", creeLe: 1 }]) }), maintenant: MAINTENANT }), []);
+});
+
+const recherche = (relecture, fils = [{ cle: "c1", convId: "c1", mis: ["m1"] }]) => ({ relecture, resultat: { fils, surlignes: ["m1"], termes: ["grue"], messages: 1 } });
+
+test("recherche validee : une entree en tete avec le titre de la demande, la date, et le resultat stocke (jamais de rappel IA)", () => {
+  const s = stockageMemoire({ [CLE_SYNTHESES]: "[]" });
+  const l = ajouterRecherche(recherche("Retrouver l'échange sur l'accès de la grue"), { stockage: s, maintenant: MAINTENANT });
+  assert.equal(l.length, 1);
+  assert.equal(l[0].nom, "Retrouver l'échange sur l'accès de la grue");
+  assert.equal(dateSynthese(l[0]), "28/10/2026");
+  assert.equal(l[0].recherche.resultat.fils[0].cle, "c1");
+  assert.equal(listerSyntheses({ stockage: s, maintenant: MAINTENANT })[0].recherche.relecture, "Retrouver l'échange sur l'accès de la grue");
+});
+
+test("recherche : une entree de rapport existante reste, la recherche passe devant", () => {
+  const s = stockageMemoire({ [CLE_SYNTHESES]: "[]" });
+  ajouterSynthese(rapport("Réservations"), { stockage: s, maintenant: MAINTENANT });
+  const l = ajouterRecherche(recherche("Grue"), { stockage: s, maintenant: MAINTENANT + 1000 });
+  assert.deepEqual(l.map((e) => e.nom), ["Grue", "Réservations"]);
+  assert.ok(l[1].rapport && !l[1].recherche);
+});
+
+test("recherche repetee : pas de doublon, la date est mise a jour et le resultat remplace", () => {
+  const s = stockageMemoire({ [CLE_SYNTHESES]: "[]" });
+  ajouterRecherche(recherche("Grue"), { stockage: s, maintenant: MAINTENANT });
+  const l = ajouterRecherche(recherche("  grue "), { stockage: s, maintenant: MAINTENANT + 5000 });
+  assert.equal(l.length, 1);
+  assert.equal(l[0].creeLe, MAINTENANT + 5000);
+});
+
+test("recherche sans titre ou sans resultat : rien n'est ajoute", () => {
+  const s = stockageMemoire({ [CLE_SYNTHESES]: "[]" });
+  assert.equal(ajouterRecherche({ relecture: "", resultat: { fils: [] } }, { stockage: s, maintenant: MAINTENANT }).length, 0);
+  assert.equal(ajouterRecherche(null, { stockage: s, maintenant: MAINTENANT }).length, 0);
+});
+
+test("recherche : le plafond existant s'applique", () => {
+  const s = stockageMemoire({ [CLE_SYNTHESES]: "[]" });
+  for (let i = 0; i < SYNTHESES_MAX + 3; i++) ajouterRecherche(recherche("Q" + i), { stockage: s, maintenant: MAINTENANT + i * 1000 });
+  assert.equal(listerSyntheses({ stockage: s, maintenant: MAINTENANT }).length, SYNTHESES_MAX);
+});
+
+test("montage : seule la validation « Oui » ajoute une recherche, l'ouverture d'une carte la rejoue sans appel IA", async () => {
+  const { readFileSync } = await import("node:fs");
+  const src = readFileSync(new URL("../src/discussionsIAMontage.js", import.meta.url), "utf8");
+  assert.equal((src.match(/ajouterRecherche\(/g) || []).length, 1);
+  const surOui = src.slice(src.indexOf("surOui:"), src.indexOf("surNon:"));
+  assert.match(surOui, /ajouterRecherche\(/);
+  const ouvrir = src.slice(src.indexOf("function ouvrirSynthese"), src.indexOf("function ouvrirSaisie"));
+  assert.match(ouvrir, /entree\.recherche/);
+  assert.match(ouvrir, /flux\.rouvrir/);
+  assert.doesNotMatch(ouvrir, /traiter|pipeline|demander/);
 });

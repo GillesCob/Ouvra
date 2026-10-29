@@ -96,3 +96,23 @@ test("bandeau « Retour » (29/10) : la demande n'est plus rognee (deux lignes s
   assert.ok(!/ellipsis|nowrap|overflow: hidden/.test(regle), regle);
   assert.match(regle, /color: var\(--text\)/);
 });
+
+test("acceptee() : le retour de la demande validee par « Oui », jamais celui d'une demande refusee", () => {
+  const { flux } = nouveau();
+  assert.equal(flux.acceptee(), null);
+  flux.proposer(retour("A"), "pA");
+  assert.equal(flux.acceptee(), null); // en attente : pas encore validee
+  flux.accepter();
+  assert.equal(flux.acceptee().relecture, "Relecture A");
+  flux.proposer(retour("B"), "pB");
+  flux.refuser(); // « Non »
+  assert.equal(flux.acceptee().relecture, "Relecture A");
+});
+
+test("rouvrir : reapplique une recherche gardee, deja confirmee, sans attente ni appel IA", () => {
+  const { flux, journal } = nouveau();
+  flux.rouvrir({ relecture: "Relecture H", resultat: { fils: [{ cle: "h" }], surlignes: ["a"], termes: [] } });
+  assert.deepEqual(journal, [["appliquer", "Relecture H", "liste", true]]);
+  assert.equal(flux.enAttente(), false);
+  assert.equal(flux.acceptee().relecture, "Relecture H");
+});

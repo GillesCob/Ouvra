@@ -18,7 +18,7 @@ import { rapportEnTexte } from "./discussionsIAMoteur.js";
 import { EXEMPLES_DISCUSSIONS } from "./discussionsIAExemples.js";
 import { demanderComprehension, demanderAnalyse } from "./discussionsIAClient.js";
 import { construireRapportModele, construireRapportModeleCoupeFeu } from "./discussionsIARapportModele.js";
-import { listerSyntheses, ajouterSynthese, DEMOS_SYNTHESES } from "./discussionsIAHistorique.js";
+import { listerSyntheses, ajouterSynthese, ajouterRecherche, DEMOS_SYNTHESES } from "./discussionsIAHistorique.js";
 import { REQUETE_MOBILE } from "./seuilMobile.js";
 
 const DELAI_ANALYSE_MS = 42000; // un rapport est plus long a ecrire : un peu plus que le delai du relais (32 s)
@@ -86,7 +86,9 @@ export function creerDiscussionsIAMontage() {
     bandeau = creerDiscussionsBandeau({
       retourFocus: bouton,
       surOui: () => {
-        flux.accepter();
+        // « Oui » : une recherche d'echanges entre dans « Synthèses précédentes » (30/10) ; le rapport y est deja depuis son affichage.
+        const retour = flux.accepter() ? flux.acceptee() : null;
+        if (retour && retour.type === "liste") { ajouterRecherche(retour); ia.majHistorique(); }
         if (rapportEnAttente && !rapportVue.ouvert() && window.matchMedia(REQUETE_MOBILE).matches) rapportVue.ouvrir(rapportEnAttente); // mobile : le rapport est ce que « Oui » doit montrer, meme s'il a ete ferme sous le bandeau
         rapportEnAttente = null;
       },
@@ -155,6 +157,8 @@ export function creerDiscussionsIAMontage() {
 
   function ouvrirSynthese(entree) {
     if (entree.rapport) { rapportVue.ouvrir(entree.rapport); return; }
+    // Recherche d'echanges (30/10) : la liste filtree gardee est reappliquee telle quelle, sans appel IA ni question « Est-ce bien votre demande ? ».
+    if (entree.recherche) { bandeau.masquer(false); rapportVue.fermer(); questionEnPause = null; rapportEnAttente = null; flux.rouvrir(entree.recherche); return; }
     const donnees = messagerie.donneesPourIA();
     const index = indexer(donnees.conversations, donnees.personnes);
     const construire = entree.demo === DEMOS_SYNTHESES.coupeFeu ? construireRapportModeleCoupeFeu : construireRapportModele;
