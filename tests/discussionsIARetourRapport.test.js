@@ -31,8 +31,8 @@ test("main : quitter la page Discussions efface le bandeau de retour au rapport"
 
 test("css : le bandeau a le meme placement que les autres bandeaux de retour et la page Discussions descend d'autant", () => {
   const css = lire("src/discussionsIA.css");
-  assert.match(css, /#discussionsRapportBandeauRetour \{[^}]*position: fixed; top: 52px;[^}]*height: 44px/);
-  assert.match(css, /body\.disc-rapport-retour-actif #view-discussions \{[^}]*padding-top: 44px/);
+  assert.match(css, /#discussionsRapportBandeauRetour,\n#msgBandeauRetourEchanges \{[^}]*position: fixed; top: 52px;[^}]*height: 44px/);
+  assert.match(css, /body\.disc-rapport-retour-actif #view-discussions,\nbody\.msg-echanges-retour-actif #view-discussions \{[^}]*padding-top: 44px/);
 });
 
 test("coeur : « Retour au rapport » appelle le rappel une seule fois et disparait", () => {
@@ -53,4 +53,60 @@ test("panneau de gauche (28/10) : aucun bouton « Voir le rapport » ni action �
   assert.ok(!montage.includes('nom === "rapport"'));
   assert.match(montage, /application\.type === "rapport"\) \{ rapportEnAttente = retour\.rapport; ajouterSynthese\(retour\.rapport\); ia\.majHistorique\(\); rapportVue\.ouvrir\(retour\.rapport\); \}/);
   assert.ok(montage.includes('libelle: "Retour au rapport"'));
+});
+
+// 29/10 : depuis une source, l'echange s'ouvre directement avec « Retour au rapport » ; jamais la liste des echanges du rapport.
+test("source : la question « Est-ce bien votre demande ? » en attente est mise en pause (elle effacait le bandeau « Retour au rapport ») et revient avec le rapport", () => {
+  const montage = lire("src/discussionsIAMontage.js");
+  const source = montage.slice(montage.indexOf("surSource: (mk, rapport)"), montage.indexOf("retourRapport = creerRetourContexte"));
+  assert.ok(source.indexOf("bandeau.masquer(false)") > 0 && source.indexOf("bandeau.masquer(false)") < source.indexOf("retourRapport.montrer"));
+  const retour = montage.slice(montage.indexOf("function retourAuRapport"), montage.indexOf("function surRetourSysteme"));
+  assert.ok(retour.includes("bandeau.montrer(questionEnPause)") && retour.includes("rapportVue.ouvrir(rapport)"));
+});
+
+test("retour : la discussion se referme (aucune liste d'echanges intermediaire) puis le meme rapport se rouvre", () => {
+  const montage = lire("src/discussionsIAMontage.js");
+  const retour = montage.slice(montage.indexOf("function retourAuRapport"), montage.indexOf("function surRetourSysteme"));
+  assert.ok(retour.indexOf("messagerie.fermerConversationIA()") < retour.indexOf("rapportVue.ouvrir(rapport)"));
+  assert.ok(lire("src/messagerie/messagerie.js").includes("fermerConversationIA: fermerConversationCourante"));
+});
+
+test("retour du systeme : une entree d'historique est posee a l'ouverture d'une source, popstate ramene au rapport, le bandeau consomme l'entree", () => {
+  const montage = lire("src/discussionsIAMontage.js");
+  assert.ok(montage.includes("history.pushState"));
+  assert.ok(montage.includes('addEventListener("popstate", surRetourSysteme)'));
+  assert.ok(montage.includes("retourRapport.declencher()"));
+  assert.ok(montage.includes("history.back()"));
+});
+
+test("mobile : la fleche vers la liste des echanges disparait tant que « Retour au rapport » est visible", () => {
+  assert.match(lire("src/discussionsIA.css"), /@media \(max-width: 768px\) \{ body\.disc-rapport-retour-actif \.msg-retour, body\.msg-echanges-retour-actif \.msg-retour \{ display: none; \} \}/);
+});
+
+// 29/10, laptop (>= 769 px) : la liste des echanges filtres vit au CENTRE ; un echange ouvert porte « ← Retour aux echanges de ma demande ».
+test("laptop : la liste filtree se rend au centre (jamais dans le drawer, ni « Retour » ni titre de la demande) ; mobile garde son bandeau", () => {
+  const m = lire("src/messagerie/messagerie.js");
+  const bloc = m.slice(m.indexOf("function rendreResultatsIA"), m.indexOf("function appliquerFiltreIA"));
+  assert.ok(bloc.includes("if (!mobile())") && bloc.includes("rendreCentreIA()"));
+  assert.ok(bloc.includes('data-act="ia-tout"'), "le bandeau Retour reste pour le mobile");
+  assert.ok(m.includes("function rendreCentreIA"));
+});
+
+test("laptop : un clic sur un echange l'ouvre et pose « ← Retour aux echanges de ma demande » ; le retour rend la liste au centre", () => {
+  const m = lire("src/messagerie/messagerie.js");
+  assert.ok(m.includes('libelle: "Retour aux échanges de ma demande"'));
+  const ouvrir = m.slice(m.indexOf("function ouvrirResultatIA"), m.indexOf("function donneesPourIA") > 0 ? m.indexOf("// Donnees lues par la commande IA") : undefined);
+  assert.ok(ouvrir.includes("retourEchanges.montrer") && !ouvrir.includes("if (mobile()) return"), "mobile aussi : meme bandeau");
+  assert.ok(m.includes('id: "msgBandeauRetourEchanges"'));
+  assert.match(lire("src/discussionsIA.css"), /#msgBandeauRetourEchanges/);
+});
+
+test("laptop : les onglets restent visibles en mode resultat (plus de « Retour » pour en sortir), mobile inchange", () => {
+  assert.match(lire("src/discussionsIA.css"), /@media \(max-width: 768px\) \{ \.msg-lateral\.msg-ia-resultat \.msg-onglets \{ display: none; \} \}/);
+});
+
+test("laptop : la question « Est-ce bien votre demande ? » se met en pause le temps de lire un echange et revient (actions echange-ouvert / echanges-retour)", () => {
+  const montage = lire("src/discussionsIAMontage.js");
+  assert.ok(montage.includes('"echange-ouvert"') && montage.includes('"echanges-retour"'));
+  assert.ok(lire("src/messagerie/messagerie.js").includes('surActionIA("echange-ouvert")'));
 });

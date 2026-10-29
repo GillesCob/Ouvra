@@ -39,12 +39,12 @@
 @media (prefers-reduced-motion: reduce) { .msg-ia-histo-item { transition: none; } }
 
 /* ---------- Liste filtree par l'IA ---------- */
-/* Resume du resultat sur UNE SEULE ligne : « <- Retour », la demande et le compte (ellipsis si trop long). */
+/* Resume du resultat : « <- Retour », la demande et le compte, sur deux lignes si besoin (29/10, jamais rognes). */
 .msg-ia-resume {
   position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 8px; padding: 4px 10px;
   background: var(--surface); border-bottom: 1px solid var(--border);
 }
-.msg-ia-demande { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; line-height: 1.3; }
+.msg-ia-demande { flex: 1 1 0; min-width: 0; overflow-wrap: anywhere; color: var(--text); font-size: 12px; line-height: 1.3; }
 .msg-ia-demande b { font-weight: 600; }
 .msg-ia-demande span { color: var(--muted); }
 .msg-ia-demande span::before { content: " \00b7 "; }
@@ -55,7 +55,7 @@
 .msg-racine .msg-ia-retour { flex: none; background: var(--msg-accent); color: var(--msg-sur-accent); border-color: var(--msg-accent); cursor: pointer; }
 /* Mode resultat (classe posee par rendreListe sur .msg-lateral) : onglets masques, la liste des discussions remontees prend la place.
    Retirer ce bloc suffit pour revenir a l'ancien affichage. */
-.msg-lateral.msg-ia-resultat .msg-onglets { display: none; }
+@media (max-width: 768px) { .msg-lateral.msg-ia-resultat .msg-onglets { display: none; } } /* laptop : onglets gardes, c'est la sortie du mode resultat */
 /* Le panneau (« Nouvelle demande » et historique des syntheses) cede toute la place a la liste des resultats (28/10, recette iPhone : il la ramenait a une bande illisible) ;
    « Retour » ramene au panneau. Mobile seulement : le laptop garde son affichage. */
 @media (max-width: 768px) { .msg-lateral.msg-ia-resultat .msg-ia-panneau { display: none; } }
@@ -90,8 +90,7 @@
 .discussions-bandeau-question, .discussions-bandeau-texte { margin: 0; line-height: 1.35; overflow-wrap: anywhere; }
 .discussions-bandeau-question { font-weight: 700; }
 .discussions-bandeau-relecture { font-weight: 600; }
-.discussions-bandeau-resume { color: var(--muted); font-size: 12.5px; }
-.discussions-bandeau-relecture + .discussions-bandeau-resume::before { content: " "; }
+.discussions-bandeau-resume { display: block; color: var(--muted); font-size: 12.5px; } /* compte rendu sur sa propre ligne (29/10) */
 .discussions-bandeau-actions { flex: none; display: flex; gap: 8px; }
 #discussionsBandeau button {
   flex: none; white-space: nowrap; min-height: 40px; min-width: 72px; border-radius: 8px; padding: 6px 16px; font: inherit; font-weight: 700; cursor: pointer;
@@ -181,18 +180,23 @@ body.discussions-confirm-actif .disc-rapport-fond { padding-top: calc(52px + var
 /* ---------- Bandeau « <- Retour au rapport » (28/10) ---------- */
 /* Meme composant (src/retourContexte.js) et meme placement que #msgBandeauRetour (messagerie.css) : sous la navbar (52 px), 44 px de haut, z-index 55. La page
    Discussions descend d'autant, comme pour le bandeau « Est-ce bien votre demande ? » (discussions-confirm-actif, plus haut). */
-#discussionsRapportBandeauRetour {
+#discussionsRapportBandeauRetour,
+#msgBandeauRetourEchanges {
   position: fixed; top: 52px; left: 0; right: 0; z-index: 55; display: flex; align-items: center; justify-content: center; flex-wrap: nowrap;
   height: 44px; box-sizing: border-box; padding: 2px 12px; background: var(--surface); border-bottom: 1px solid var(--border);
   color: var(--text); font-size: 13px; font-weight: 600;
 }
-#discussionsRapportBandeauRetour[hidden] { display: none !important; }
-#discussionsRapportBandeauRetour button {
+#discussionsRapportBandeauRetour[hidden],
+#msgBandeauRetourEchanges[hidden] { display: none !important; }
+#discussionsRapportBandeauRetour button,
+#msgBandeauRetourEchanges button {
   flex: none; white-space: nowrap; min-height: 40px; border-radius: 8px; padding: 6px 16px; font: inherit; font-weight: 700; cursor: pointer;
   border: 1px solid var(--border); background: none; color: var(--text); -webkit-tap-highlight-color: transparent;
 }
-#discussionsRapportBandeauRetour button:focus-visible { outline: 2px solid var(--text); outline-offset: 1px; }
-body.disc-rapport-retour-actif #view-discussions { padding-top: 44px; box-sizing: border-box; }
+#discussionsRapportBandeauRetour button:focus-visible,
+#msgBandeauRetourEchanges button:focus-visible { outline: 2px solid var(--text); outline-offset: 1px; }
+body.disc-rapport-retour-actif #view-discussions,
+body.msg-echanges-retour-actif #view-discussions { padding-top: 44px; box-sizing: border-box; }
 @media (max-width: 768px) { #discussionsRapportBandeauRetour { padding: 0 12px; } #discussionsRapportBandeauRetour button { min-height: 44px; } }
 
 /* Survol des boutons de l'IA de Discussions (28/10, Gilles) : memes motifs que le reste de l'application (bouton neutre : bordure accent, bouton plein : fond assombri comme .btn-principal). */
@@ -200,10 +204,16 @@ body.disc-rapport-retour-actif #view-discussions { padding-top: 44px; box-sizing
   .disc-rapport-btn:not(:disabled):hover { border-color: var(--accent); }
   .msg-racine .msg-ia-nouvelle:hover { background: color-mix(in srgb, var(--msg-accent) 88%, #000); }
   #discussionsBandeau button:hover { border-color: var(--accent); }
-  #discussionsRapportBandeauRetour button:hover { border-color: var(--accent); }
+  #discussionsRapportBandeauRetour button:hover, #msgBandeauRetourEchanges button:hover { border-color: var(--accent); }
 }
 
 /* Survol du bouton « Retour » plein (28/10) : fond assombri, comme .btn-principal (src/boutonPrincipal.css). « Fermer » du rapport est un .btn-principal. */
 @media (hover: hover) and (pointer: fine) {
   .msg-racine .msg-ia-retour:hover { background: color-mix(in srgb, var(--msg-accent) 88%, #000); border-color: color-mix(in srgb, var(--msg-accent) 88%, #000); }
 }
+
+/* Discussion ouverte depuis une source du rapport (29/10) : le bandeau « Retour au rapport » est le seul chemin de retour, la fleche vers la liste des echanges disparait (mobile). */
+@media (max-width: 768px) { body.disc-rapport-retour-actif .msg-retour, body.msg-echanges-retour-actif .msg-retour { display: none; } }
+
+/* Laptop (29/10) : echanges filtres au centre, meme format de ligne que la liste de gauche (.msg-conv), qui defile. */
+.msg-ia-centre { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 8px; }
