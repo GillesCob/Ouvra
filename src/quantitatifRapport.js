@@ -6,7 +6,7 @@
 //   tableauDe(rapport) = { colonnes, lignes, total, metre } pense pour un metre / un tableur de chiffrage :
 //     colonnes : [{ cle, libelle, type: "texte" | "nombre", unite? }] ; lignes : tableaux de valeurs (un enregistrement par ligne, jamais de fusion).
 
-import { libelleRequete, ORIGINES, EXPLICATIONS_ORIGINES } from "./quantitatif.js";
+import { libelleRequete, aColonneElements, ORIGINES, EXPLICATIONS_ORIGINES } from "./quantitatif.js";
 
 export const VERSION_RAPPORT = 1;
 
@@ -34,20 +34,21 @@ const TEXTE_ENSEMBLE = "Ensemble des éléments retenus";
 export function tableauDe(rapport) {
   const r = rapport.resultat;
   const unite = r.mesure.unite;
+  const deux = aColonneElements(r.mesure);
   const colonnesCles = r.regroupements.length ? r.regroupements.map((g) => ({ cle: g.nom, libelle: g.libelle, type: "texte" })) : [{ cle: "selection", libelle: "Désignation", type: "texte" }];
   const colonnes = [
     ...colonnesCles,
     { cle: "unite", libelle: "Unité", type: "texte" },
     { cle: "quantite", libelle: "Quantité (" + r.mesure.libelle + ")", type: "nombre", unite },
     { cle: "origine", libelle: "Origine", type: "texte" },
-    { cle: "elements", libelle: "Éléments", type: "nombre" },
-    { cle: "sansDonnee", libelle: "Sans donnée", type: "nombre" }
+    ...(deux ? [{ cle: "elements", libelle: "Éléments", type: "nombre" }, { cle: "sansDonnee", libelle: "Sans donnée", type: "nombre" }] : [])
   ];
-  const lignes = r.lignes.map((l) => [...(l.cles.length ? l.cles : [TEXTE_ENSEMBLE]), unite, l.valeur, r.mesure.origineLibelle, l.nombre + l.sansDonnee, l.sansDonnee]);
+  const lignes = r.lignes.map((l) => [...(l.cles.length ? l.cles : [TEXTE_ENSEMBLE]), unite, l.valeur, r.mesure.origineLibelle, ...(deux ? [l.nombre + l.sansDonnee, l.sansDonnee] : [])]);
   return {
     colonnes,
     lignes,
     nCles: colonnesCles.length,
+    avecElements: deux,
     total: { quantite: r.totaux.valeur, elements: r.totaux.nombre + r.totaux.sansDonnee, sansDonnee: r.totaux.sansDonnee, unite, origine: r.mesure.origineLibelle },
     metre: { origine: r.mesure.origine, explication: EXPLICATIONS_ORIGINES[r.mesure.origine], origines: ORIGINES }
   };

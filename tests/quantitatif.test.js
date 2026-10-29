@@ -1,7 +1,7 @@
 // Tests du moteur de quantitatif (src/quantitatif.js) : registres, validation de requete, comptage, filtres, regroupements, mesures estimees, CSV.
 import test from "node:test";
 import assert from "node:assert/strict";
-import { MESURES, FILTRES, REGROUPEMENTS, creerRegistre, validerRequete, calculer, libelleRequete, exporterCsv, mesuresDisponibles, capacites } from "../src/quantitatif.js";
+import { MESURES, FILTRES, REGROUPEMENTS, creerRegistre, validerRequete, calculer, libelleRequete, exporterCsv, mesuresDisponibles, capacites, aColonneElements } from "../src/quantitatif.js";
 
 // Elements synthetiques : 3 portes (2 au niveau 1, 1 au niveau 2), 2 gaines, 1 mur, 1 niveau (objet spatial, jamais compte).
 const el = (id, typeIfc, niveau, maquette, nom, boite = null, quantites = null) => ({ id, nom, famille: nom.replace(/:\d+$/, ""), typeIfc, niveau, maquette, maquetteId: maquette, boite, quantites });
@@ -185,9 +185,16 @@ test("CSV : BOM, separateur point-virgule, decimale virgule, echappement, protec
 
 test("CSV : sans regroupement une seule ligne, resultat vide ou invalide", () => {
   const unique = exporterCsv(calculer(ELEMENTS, requete("nombre", { typesIfc: ["IfcDoor"] })));
-  assert.deepEqual(unique.slice(1).split("\r\n").slice(0, 2), ["Sélection;Éléments pris en compte;Nombre (u);Origine;Éléments sans donnée", "Ensemble;3;3;compté;0"]);
+  assert.deepEqual(unique.slice(1).split("\r\n").slice(0, 2), ["Sélection;Nombre (u);Origine", "Ensemble;3;compté"]);
   const vide = exporterCsv(calculer(ELEMENTS, requete("nombre", { typesIfc: ["IfcWindow"] })));
-  assert.equal(vide.slice(1).split("\r\n")[1], "Total;0;0;compté;0");
+  assert.equal(vide.slice(1).split("\r\n")[1], "Total;0;compté");
   assert.equal(exporterCsv({ ok: false }), "﻿");
   assert.equal(exporterCsv(null), "﻿");
+});
+
+test("aColonneElements : une seule colonne de quantite en mesure « Compter », deux pour les autres mesures", () => {
+  assert.equal(aColonneElements(calculer(ELEMENTS, requete("nombre")).mesure), false);
+  assert.equal(aColonneElements(calculer(ELEMENTS, requete("longueur_estimee")).mesure), true);
+  const ligne = calculer(ELEMENTS, requete("nombre", {}, ["niveau"])).lignes.concat([calculer(ELEMENTS, requete("nombre")).totaux]);
+  assert.ok(ligne.every((l) => l.sansDonnee === 0 && l.nombre === l.valeur));
 });

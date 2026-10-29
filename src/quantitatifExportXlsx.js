@@ -105,8 +105,10 @@ export function construireClasseur(ExcelJS, rapport, statut, { logoPng = null } 
   total.getCell(colQte).value = formule(colQte, t.total.quantite);
   total.getCell(colQte).numFmt = formatQuantite;
   total.getCell(colOrigine).value = t.total.origine;
-  total.getCell(colElements).value = formule(colElements, t.total.elements);
-  total.getCell(colSans).value = formule(colSans, t.total.sansDonnee);
+  if (t.avecElements) {
+    total.getCell(colElements).value = formule(colElements, t.total.elements);
+    total.getCell(colSans).value = formule(colSans, t.total.sansDonnee);
+  }
   for (let i = 1; i <= nCol; i += 1) {
     const cell = total.getCell(i);
     cell.font = { name: STYLE_OUVRA.police, bold: true, color: { argb: STYLE_OUVRA.texte } };
