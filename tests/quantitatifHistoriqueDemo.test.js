@@ -105,3 +105,33 @@ test("amorcerHistoriqueDemo : ne leve pas sans stockage", async () => {
   const sans = { getItem() { throw new Error("bloque"); }, setItem() { throw new Error("bloque"); } };
   assert.equal(await amorcerHistoriqueDemo({ historique, stockage: sans, maintenant }), false);
 });
+
+// « Voir » d'une ligne de la demonstration isole les elements du VRAI modele : une ligne dont (type, niveau) n'existe pas dans la maquette donnait
+// « Rien à voir dans le Viewer » (29/10, IfcValve / Level 2 : la maquette CVC n'a aucune vanne au niveau 2). Chaque ligne doit viser des elements reels.
+test("rapportsDemo : chaque ligne vise des elements qui existent dans la maquette (Voir ne tombe jamais sur « rien a voir »)", async () => {
+  const { readFileSync } = await import("node:fs");
+  const fichiers = { "hosp-mep": "mechanical.json", "hosp-arch": "architectural.json" };
+  const comptes = {};
+  for (const [id, f] of Object.entries(fichiers)) {
+    const objets = JSON.parse(readFileSync(new URL("../public/models/hospital/legere/" + f, import.meta.url), "utf8")).metaObjects;
+    const parId = new Map(objets.map((o) => [o.id, o]));
+    const c = {};
+    for (const o of objets) {
+      let courant = o;
+      while (courant && courant.type !== "IfcBuildingStorey") courant = parId.get(courant.parent);
+      if (!courant) continue;
+      const cle = o.type + "|" + courant.name;
+      c[cle] = (c[cle] || 0) + 1;
+    }
+    comptes[id] = c;
+  }
+  for (const rapport of rapportsDemo({ maintenant })) {
+    const maquetteId = rapport.maquettes[0].id;
+    for (const ligne of rapport.resultat.lignes) {
+      const { typesIfc, niveaux } = ligne.criteres;
+      const reel = comptes[maquetteId][typesIfc[0] + "|" + niveaux[0]] || 0;
+      assert.ok(reel > 0, "ligne sans element reel : " + typesIfc[0] + " " + niveaux[0] + " (" + maquetteId + ")");
+      assert.equal(ligne.nombre, reel, "nombre different du modele : " + typesIfc[0] + " " + niveaux[0]);
+    }
+  }
+});

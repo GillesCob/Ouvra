@@ -8,22 +8,25 @@ import { construireRapport } from "./quantitatifRapport.js";
 import { EMPREINTE_DEMO_A_JOUR, EMPREINTE_DEMO_ANCIENNE } from "./quantitatifVersions.js";
 
 export const CLE_DRAPEAU_DEMO = "ouvra-quantitatif-historique-demo";
-const VERSION_DEMO = "4";
+const VERSION_DEMO = "5"; // 29/10 : "5" reamorce les navigateurs qui avaient la version "4" (lignes fictives sans element reel)
 const JOUR = 24 * 3600 * 1000;
 
 const filtres = (f) => ({ typesIfc: [], niveaux: [], maquettes: [], noms: [], ...f });
 
-// [typeIfc, niveau, nombre d'elements] par maquette.
+// [typeIfc, niveau, nombre d'elements] par maquette. Les couples (type, niveau) et leurs nombres sont ceux des VRAIES maquettes de l'hopital (metadonnees
+// de public/models/hospital/legere) : le bouton « Voir » d'une ligne isole alors de vrais elements (29/10 : la maquette CVC n'a aucune vanne au niveau 2, la ligne
+// fictive « IfcValve, Level 2 » affichait « Rien à voir dans le Viewer »). Verrouille par tests/quantitatifHistoriqueDemo.test.js.
 const ARCHITECTURE = [
-  ["IfcDoor", "Level 1", 64], ["IfcDoor", "Level 2", 58], ["IfcDoor", "Level 3", 47], ["IfcDoor", "Level 4", 31],
-  ["IfcWindow", "Level 1", 42], ["IfcWindow", "Level 2", 40], ["IfcWindow", "Level 3", 36], ["IfcWindow", "Level 4", 22],
-  ["IfcWallStandardCase", "Level 1", 188], ["IfcWallStandardCase", "Level 2", 172], ["IfcWallStandardCase", "Level 3", 141], ["IfcWallStandardCase", "Level 4", 96]
+  ["IfcDoor", "Level 1", 114], ["IfcDoor", "Level 2", 56], ["IfcDoor", "Level 3", 96], ["IfcDoor", "Level 4", 88], ["IfcDoor", "Level 5", 73], ["IfcDoor", "Level 6", 5], ["IfcDoor", "Level 7", 1],
+  ["IfcWindow", "Level 1", 66], ["IfcWindow", "Level 2", 65],
+  ["IfcWallStandardCase", "Level 1", 271], ["IfcWallStandardCase", "Level 2", 205], ["IfcWallStandardCase", "Level 3", 273], ["IfcWallStandardCase", "Level 4", 284],
+  ["IfcWallStandardCase", "Level 5", 223], ["IfcWallStandardCase", "Level 6", 15], ["IfcWallStandardCase", "Level 7", 8]
 ];
 const MECANIQUE = [
-  ["IfcDuctSegment", "Level 1", 120], ["IfcDuctSegment", "Level 2", 134], ["IfcDuctSegment", "Level 3", 98], ["IfcDuctSegment", "Level 4", 61], ["IfcDuctSegment", "Level 5", 27],
-  ["IfcDuctFitting", "Level 1", 86], ["IfcDuctFitting", "Level 2", 97], ["IfcDuctFitting", "Level 3", 70], ["IfcDuctFitting", "Level 4", 44], ["IfcDuctFitting", "Level 5", 19],
-  ["IfcPipeSegment", "Level 1", 210], ["IfcPipeSegment", "Level 2", 188], ["IfcPipeSegment", "Level 3", 143], ["IfcPipeSegment", "Level 4", 90], ["IfcPipeSegment", "Level 5", 38],
-  ["IfcValve", "Level 1", 34], ["IfcValve", "Level 2", 41], ["IfcValve", "Level 3", 29], ["IfcValve", "Level 4", 18], ["IfcValve", "Level 5", 7]
+  ["IfcDuctSegment", "Level 1", 920], ["IfcDuctSegment", "Level 2", 20], ["IfcDuctSegment", "Level 3", 51], ["IfcDuctSegment", "Level 4", 1040], ["IfcDuctSegment", "Level 5", 43],
+  ["IfcDuctFitting", "Level 1", 665], ["IfcDuctFitting", "Level 2", 712], ["IfcDuctFitting", "Level 3", 1134], ["IfcDuctFitting", "Level 4", 1174], ["IfcDuctFitting", "Level 5", 963],
+  ["IfcPipeSegment", "Level 1", 275], ["IfcPipeSegment", "Level 2", 49], ["IfcPipeSegment", "Level 3", 129], ["IfcPipeSegment", "Level 4", 957], ["IfcPipeSegment", "Level 5", 87],
+  ["IfcValve", "Level 1", 5], ["IfcValve", "Level 3", 96], ["IfcValve", "Level 4", 96], ["IfcValve", "Level 5", 66]
 ];
 
 function elementsSynthetiques(table, maquette, maquetteId) {
