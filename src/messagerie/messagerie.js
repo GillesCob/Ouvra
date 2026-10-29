@@ -20,6 +20,7 @@ import { requeteMention, filtrerPersonnes, occurrences } from "./mentions.js";
 import { cleFil, cleMessage, lireCleMessage } from "../discussionsIAIndex.js"; // Discussions par commande IA (24/10)
 import { plagesCorrespondantes, htmlSurligne } from "../discussionsIATexte.js";
 import { REQUETE_MOBILE } from "../seuilMobile.js";
+import { creerRetourContexte } from "../retourContexte.js";
 
 const ICONE_APPAREIL = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l1.5-2h7L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>';
 const ICONE_LOUPE = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>';
@@ -280,6 +281,7 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
     vuePendante = null;
     $("msgVolet").innerHTML = '<p class="msg-volet-vide">Choisissez une conversation.</p>';
     racine.classList.remove("volet-ouvert");
+    rendreCentreIA(); // laptop, filtre IA actif : la zone centrale redevient la liste des echanges de la demande
   }
 
   // ouvrirPremiere : clic sur un onglet (et non creation d'une conversation) -> la premiere conversation de la liste s'ouvre au centre, sur ordinateur ;
@@ -291,6 +293,7 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
     $("msgListe").setAttribute("aria-labelledby", IDS_ONGLETS[onglet]);
     $("msgIAPanneau").hidden = onglet !== "ia";
     placerPastilleOnglets();
+    if (change) quitterEchange();
     if (change && onglet === "ia") fermerConversationCourante();
     const terminer = () => {
       rendreListe();
@@ -1571,11 +1574,36 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
       '<div class="msg-ia-demande" title="' + resume + '"><b>' + echapper(f.relecture || "") + "</b><span>" + echapper(compte) + "</span></div>" +
       "</div>";
     const lignes = f.fils.length ? f.fils.map(ligneResultatIA).join("") : '<div class="msg-vide">Aucune discussion à afficher.</div>';
+    // Laptop (29/10) : la liste des echanges filtres occupe la zone centrale ; le drawer de gauche garde « Nouvelle demande » et les syntheses, sans liste, sans « Retour » ni titre.
+    if (!mobile()) { $("msgListe").innerHTML = ""; rendreCentreIA(); return; }
     $("msgListe").innerHTML = bandeau + lignes;
+  }
+
+  // Laptop : la zone centrale montre les echanges filtres tant qu'aucun echange n'est ouvert (sinon elle garde l'echange ouvert).
+  function rendreCentreIA() {
+    const f = etat.filtreIA;
+    if (mobile() || etat.onglet !== "ia" || !f || etat.convId) return;
+    const lignes = f.fils.length ? f.fils.map(ligneResultatIA).join("") : '<div class="msg-vide">Aucune discussion à afficher.</div>';
+    $("msgVolet").innerHTML = '<div class="msg-ia-centre" role="list" aria-label="Échanges de ma demande">' + lignes + "</div>";
+  }
+
+  // Laptop : « ← Retour aux echanges de ma demande » ramene de l'echange ouvert a la liste filtree du centre.
+  const retourEchanges = creerRetourContexte({
+    id: "msgBandeauRetourEchanges",
+    classeCorps: "msg-echanges-retour-actif",
+    ariaLabel: "Retour aux échanges de ma demande",
+    autresClasses: ["msg-retour-actif", "regles-retour-actif", "quantitatif-retour-actif", "plan3d-retour-actif", "disc-rapport-retour-actif"]
+  });
+  // Le bandeau s'en va (retour, autre demande, autre onglet, filtre retire) : la question mise en pause revient.
+  function quitterEchange() {
+    if (!retourEchanges.actif()) return;
+    retourEchanges.effacer();
+    if (surActionIA) surActionIA("echanges-retour");
   }
 
   // filtre : { fils, surlignes: [mk], termes, relecture, type, rapport } (src/discussionsIAFlux.js). Sur mobile la liste prend l'ecran.
   function appliquerFiltreIA(filtre) {
+    quitterEchange();
     etat.filtreIA = { ...filtre, surlignes: new Set(filtre.surlignes) };
     if (etat.onglet !== "ia") choisirOnglet("ia");
     racine.classList.remove("volet-ouvert");
@@ -1592,6 +1620,7 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
 
   function retirerFiltreIA() {
     if (!etat.filtreIA) return;
+    quitterEchange();
     etat.filtreIA = null;
     rendreListe();
     if (etat.convId && $("msgScroller")) rendreFilCourant(true);
@@ -1629,7 +1658,11 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
 
   function ouvrirResultatIA(i) {
     const r = etat.filtreIA && etat.filtreIA.fils[i];
-    if (r) montrerMessageIA(r.premier);
+    if (!r) return;
+    montrerMessageIA(r.premier);
+    // Mobile et laptop (regle de Gilles du 29/10) : bandeau en haut pour revenir aux echanges issus de la demande, seul element de retour (la question « Est-ce bien votre demande ? » attend le temps de la lecture).
+    if (surActionIA) surActionIA("echange-ouvert");
+    retourEchanges.montrer({ libelle: "Retour aux échanges de ma demande", surRetour: () => { fermerConversationCourante(); if (surActionIA) surActionIA("echanges-retour"); } });
   }
 
   // Donnees lues par la commande IA (moteur src/discussionsIAIndex.js) : jamais modifiees par lui.
@@ -1815,6 +1848,6 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
 
   return {
     preparer, surVueActivee, vueDeConversation, nouveauSujetDepuisViewer, rechargerVues, priseDeVueEnCours: () => priseDeVueEnCours,
-    donneesPourIA, appliquerFiltreIA, confirmerFiltreIA, retirerFiltreIA, montrerMessageIA
+    donneesPourIA, appliquerFiltreIA, confirmerFiltreIA, retirerFiltreIA, montrerMessageIA, fermerConversationIA: fermerConversationCourante
   };
 }

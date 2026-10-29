@@ -48,6 +48,10 @@ export function creerDiscussionsIAMontage() {
   let rapportVue = null;
   let ia = null;
   let retourRapport = null;
+  let questionEnPause = null; // { relecture, resume } : question « Est-ce bien votre demande ? » masquee le temps de lire une source
+  let derniereQuestion = null;
+  let entreeHistorique = false; // une entree d'historique posee pour le retour du systeme est en cours
+  let ignorerRetourSysteme = false; // le retour du systeme provoque par le bandeau lui-meme (on consomme l'entree)
   let rapportEnAttente = null; // rapport propose et pas encore confirme : « Oui » le rouvre s'il a ete ferme entre-temps
 
   function monter(messagerieMontee) {
@@ -60,19 +64,24 @@ export function creerDiscussionsIAMontage() {
     rapportVue = creerRapportVue({
       texteRapport: rapportEnTexte,
       exporterPdf: async (rapport, onglet) => (await import("./discussionsIARapportPdf.js")).exporterRapportPdf(rapport, { telecharger, onglet }),
-      // Une source du rapport ouvre la discussion au message cite ; le bandeau « ← Retour au rapport » (meme principe que « ← Retour a la conversation » du Viewer)
-      // rouvre le MEME rapport pour continuer la verification des autres blocs.
+      // Une source du rapport ouvre DIRECTEMENT le message cite dans sa discussion (jamais la liste des echanges du rapport) ; le bandeau « ← Retour au rapport »
+      // (meme principe que « ← Retour a la conversation » du Viewer) rouvre le MEME rapport, tel quel, pour continuer la verification des autres blocs.
+      // La question « Est-ce bien votre demande ? » (si elle attend encore) se met en pause sous la discussion et revient avec le rapport : sinon elle prendrait la place du bandeau.
+      // Le retour du systeme (geste ou bouton arriere) fait la meme chose : une entree d'historique est posee a l'ouverture de la source.
       surSource: (mk, rapport) => {
         rapportEnAttente = null; // la verification des sources a commence : « Oui » ne rouvre rien, « Retour au rapport » s'en charge
+        questionEnPause = bandeau.visible() ? derniereQuestion : null;
+        bandeau.masquer(false);
         messagerie.montrerMessageIA(mk);
-        retourRapport.montrer({ libelle: "Retour au rapport", surRetour: () => rapportVue.ouvrir(rapport) });
+        retourRapport.montrer({ libelle: "Retour au rapport", surRetour: () => retourAuRapport(rapport) });
+        if (!entreeHistorique && typeof history !== "undefined" && history.pushState) { history.pushState({ ouvraRetourRapport: true }, ""); entreeHistorique = true; }
       }
     });
     retourRapport = creerRetourContexte({
       id: "discussionsRapportBandeauRetour",
       classeCorps: "disc-rapport-retour-actif",
       ariaLabel: "Retour au rapport",
-      autresClasses: ["msg-retour-actif", "regles-retour-actif", "quantitatif-retour-actif", "plan3d-retour-actif", "discussions-confirm-actif"] // un seul bandeau a la fois : le plus recent gagne
+      autresClasses: ["msg-retour-actif", "regles-retour-actif", "quantitatif-retour-actif", "plan3d-retour-actif", "discussions-confirm-actif", "msg-echanges-retour-actif"] // un seul bandeau a la fois : le plus recent gagne
     });
     bandeau = creerDiscussionsBandeau({
       retourFocus: bouton,
@@ -117,13 +126,32 @@ export function creerDiscussionsIAMontage() {
       proposer: (retour, phrase) => {
         const application = flux.proposer(retour, phrase);
         if (!application.ok) return application;
-        bandeau.montrer({ relecture: application.relecture, resume: application.resume });
+        derniereQuestion = { relecture: application.relecture, resume: application.resume };
+        bandeau.montrer(derniereQuestion);
         // Le rapport de l'IA est garde dans l'historique des qu'il s'affiche (29/10) : le « Oui » du bandeau n'est pas toujours visible sur mobile. Jamais le « Voir un exemple ».
         if (application.type === "rapport") { rapportEnAttente = retour.rapport; ajouterSynthese(retour.rapport); ia.majHistorique(); rapportVue.ouvrir(retour.rapport); }
         return { ok: true };
       }
     });
   }
+
+  // « ← Retour au rapport » (bandeau ou retour du systeme) : la discussion se referme (la liste de la page revient comme avant la source), le meme rapport se rouvre
+  // et la question en pause revient avec lui.
+  function retourAuRapport(rapport) {
+    if (entreeHistorique) { entreeHistorique = false; ignorerRetourSysteme = true; history.back(); } // le bandeau consomme l'entree d'historique qu'il avait posee
+    messagerie.fermerConversationIA();
+    if (questionEnPause) { bandeau.montrer(questionEnPause); rapportEnAttente = rapport; questionEnPause = null; }
+    rapportVue.ouvrir(rapport);
+  }
+
+  // Retour du systeme (geste, bouton arriere) depuis la discussion ouverte par une source : meme chose que le bandeau, jamais la liste des rapports.
+  function surRetourSysteme() {
+    if (ignorerRetourSysteme) { ignorerRetourSysteme = false; return; }
+    if (!entreeHistorique) return;
+    entreeHistorique = false;
+    if (retourRapport && retourRapport.actif()) retourRapport.declencher();
+  }
+  if (typeof window !== "undefined" && window.addEventListener) window.addEventListener("popstate", surRetourSysteme);
 
   function ouvrirSynthese(entree) {
     if (entree.rapport) { rapportVue.ouvrir(entree.rapport); return; }
@@ -140,6 +168,9 @@ export function creerDiscussionsIAMontage() {
   }
 
   function action(nom) {
+    // Laptop : un echange de la liste filtree s'ouvre (la question en attente passe en pause sous « Retour aux echanges de ma demande ») ou se referme (elle revient).
+    if (nom === "echange-ouvert") { questionEnPause = bandeau.visible() ? derniereQuestion : null; bandeau.masquer(false); return; }
+    if (nom === "echanges-retour") { if (questionEnPause && flux.enAttente()) bandeau.montrer(questionEnPause); questionEnPause = null; return; }
     if (nom === "tout") {
       bandeau.masquer(false);
       rapportVue.fermer();
