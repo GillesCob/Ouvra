@@ -8,8 +8,10 @@ tools/clash-test/venv
 !.env.example
 .usage
 
-# Plans de test personnels (2D -> 3D) : jamais commites ni deployes
-public/plan3d-local/
+# Plan d'exemple 2D -> 3D (plan-salome) : versionne depuis le 29/10 avec l'accord du proprietaire. Tout autre plan de tiers ajoute dans public/plan3d-local/ reste ignore.
+public/plan3d-local/*
+!public/plan3d-local/plan-salome.json
+!public/plan3d-local/plan-salome.jpg
 .certs/
 
 # Maquettes non utilisées par défaut (?legere=1 et ?v12=1), gardées en local
