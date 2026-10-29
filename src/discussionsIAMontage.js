@@ -63,7 +63,7 @@ export function creerDiscussionsIAMontage() {
     flux = creerFlux({ messagerie });
     rapportVue = creerRapportVue({
       texteRapport: rapportEnTexte,
-      exporterPdf: async (rapport, onglet) => (await import("./discussionsIARapportPdf.js")).exporterRapportPdf(rapport, { telecharger, onglet }),
+      exporterPdf: async (rapport, onglet) => (await import("./discussionsIARapportPdf.js")).exporterRapportPdf(rapport, { telecharger, onglet, mobile: !!window.matchMedia && window.matchMedia(REQUETE_MOBILE).matches }),
       // Une source du rapport ouvre DIRECTEMENT le message cite dans sa discussion (jamais la liste des echanges du rapport) ; le bandeau « ← Retour au rapport »
       // (meme principe que « ← Retour a la conversation » du Viewer) rouvre le MEME rapport, tel quel, pour continuer la verification des autres blocs.
       // La question « Est-ce bien votre demande ? » (si elle attend encore) se met en pause sous la discussion et revient avec le rapport : sinon elle prendrait la place du bandeau.

@@ -142,3 +142,21 @@ test("filigrane : present sur chaque page du PDF d'un rapport modele, absent d'u
   assert.ok(textePdf(doc).split("Modèle de présentation").length - 1 >= pages, "un filigrane par page");
   assert.match(textePdf(doc), /\/ca 0\.12/, "filigrane translucide (opacite de remplissage)");
 });
+
+test("pdf mobile (29/10) : page etroite 105 x 186 mm comme le Quantitatif, corps >= 10 pt, tout le contenu present, laptop inchange", () => {
+  const def = definitionRapportPdf(complet());
+  const doc = construireRapportPdf({ jsPDF, autoTable }, def, { logoPng: logo, maintenant: new Date(2026, 9, 29), mobile: true });
+  assert.ok(Math.abs(doc.internal.pageSize.getWidth() - 105) < 0.01 && Math.abs(doc.internal.pageSize.getHeight() - 186) < 0.01);
+  const brut = textePdf(doc);
+  const polices = new Set([...brut.matchAll(/([\d.]+) Tf/g)].map((m) => Number(m[1])));
+  assert.ok(Math.min(...[...polices].filter((t) => t >= 9)) >= 10);
+  for (const attendu of ["Cloison du local technique", "CONTEXTE", "Ana corrige la cloison.", "SOURCES"]) assert.ok(brut.includes(attendu), attendu);
+  const laptop = construireRapportPdf({ jsPDF, autoTable }, def, { logoPng: logo });
+  assert.ok(Math.abs(laptop.internal.pageSize.getWidth() - 210) < 0.01);
+});
+
+test("export mobile : l'onglet navigue vers le PDF (meme mecanisme que le Quantitatif), branche depuis Discussions", () => {
+  const src = readFileSync(new URL("../src/discussionsIARapportPdf.js", import.meta.url), "utf8");
+  assert.ok(src.includes("{ onglet, telecharger, ...(mobile ? { afficher: afficherPdfPleinOnglet } : {}) }"));
+  assert.ok(readFileSync(new URL("../src/discussionsIAMontage.js", import.meta.url), "utf8").includes("mobile: !!window.matchMedia && window.matchMedia(REQUETE_MOBILE).matches"));
+});
