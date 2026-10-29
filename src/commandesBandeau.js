@@ -14,6 +14,7 @@
 //   conteneur : #viewerWrap (la zone 3D) ; le bandeau y est cale en haut, jamais sur le drawer ni sur le reste de l'ecran
 //   retourFocus : element qui reprend le focus apres « Oui » (le bouton « IA »)
 
+import { poserFlou, leverFlou } from "./flouDemande.js";
 const QUESTION = "Est-ce bien votre demande ?";
 const VARIABLE_HAUTEUR = "--commandes-bandeau-h";
 const CLASSE_ACTIF = "commandes-confirm-actif";
@@ -80,6 +81,7 @@ export function creerCommandesBandeau({ surOui, surNon, conteneur = null, retour
     texte.textContent = relecture ? "«\u00a0" + relecture + "\u00a0»" : "";
     racine.hidden = false;
     document.body.classList.add(classeActif);
+    poserFlou(id, racine); // tout le reste de la page est flou et inaccessible tant que la demande attend Oui ou Non
     mesurer();
     if (typeof ResizeObserver === "function" && !observateur) {
       observateur = new ResizeObserver(mesurer);
@@ -93,6 +95,7 @@ export function creerCommandesBandeau({ surOui, surNon, conteneur = null, retour
     if (!racine || racine.hidden) return;
     racine.hidden = true;
     document.body.classList.remove(classeActif);
+    leverFlou(id); // Oui, Non, erreur, changement de vue : le flou est toujours leve
     document.body.style.removeProperty(variable);
     if (rendreFocus && retourFocus && document.contains(retourFocus)) retourFocus.focus({ preventScroll: true });
   }

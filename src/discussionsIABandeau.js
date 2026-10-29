@@ -9,6 +9,7 @@
 //
 // Module sans dependance a main.js : surOui() / surNon() sont appeles une fois le bandeau ferme ; retourFocus : element qui reprend le focus apres « Oui ».
 
+import { poserFlou, leverFlou } from "./flouDemande.js";
 const QUESTION = "Est-ce bien votre demande ?";
 const VARIABLE_HAUTEUR = "--discussions-bandeau-h";
 const CLASSE_ACTIF = "discussions-confirm-actif";
@@ -71,6 +72,7 @@ export function creerDiscussionsBandeau({ surOui, surNon, retourFocus = null }) 
     if (resume) texte.appendChild(creer("span", "discussions-bandeau-resume", resume));
     racine.hidden = false;
     document.body.classList.add(CLASSE_ACTIF);
+    poserFlou("discussionsBandeau", racine); // tout le reste de la page est flou et inaccessible tant que la demande attend Oui ou Non
     mesurer();
     if (typeof ResizeObserver === "function" && !observateur) {
       observateur = new ResizeObserver(mesurer);
@@ -84,6 +86,7 @@ export function creerDiscussionsBandeau({ surOui, surNon, retourFocus = null }) 
     if (!racine || racine.hidden) return;
     racine.hidden = true;
     document.body.classList.remove(CLASSE_ACTIF);
+    leverFlou("discussionsBandeau"); // Oui, Non, erreur, changement de vue : le flou est toujours leve
     document.body.style.removeProperty(VARIABLE_HAUTEUR);
     if (rendreFocus && retourFocus && document.contains(retourFocus)) retourFocus.focus({ preventScroll: true });
   }
