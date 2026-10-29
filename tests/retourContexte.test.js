@@ -144,3 +144,57 @@ test("main.js : le bandeau est efface hors du Viewer, remplace par un autre band
   assert.match(main, /retour\.surRetour\(\)/);
   assert.match(main, /classeCorps: "quantitatif-retour-actif"/);
 });
+
+// ---------- Retour du systeme (29/10) : une entree d'historique posee a l'ouverture, consommee a la fermeture ----------
+import { creerEntreeHistorique } from "../src/retourContexte.js";
+
+function faussesFenetre() {
+  const ecouteurs = [];
+  const piles = { poussees: 0, retours: 0 };
+  return {
+    piles,
+    history: { pushState: () => { piles.poussees += 1; }, back: () => { piles.retours += 1; } },
+    addEventListener: (type, f) => { if (type === "popstate") ecouteurs.push(f); },
+    popstate: () => ecouteurs.forEach((f) => f())
+  };
+}
+
+test("historique : poser pousse UNE entree, une seconde pose ne fait rien", () => {
+  const w = faussesFenetre();
+  const h = creerEntreeHistorique(w, () => {});
+  h.poser(); h.poser();
+  assert.equal(w.piles.poussees, 1);
+});
+
+test("historique : le retour du systeme appelle le rappel une fois et l'entree est consommee", () => {
+  const w = faussesFenetre();
+  let appels = 0;
+  const h = creerEntreeHistorique(w, () => { appels += 1; });
+  h.poser();
+  w.popstate();
+  w.popstate();
+  assert.equal(appels, 1);
+  assert.equal(w.piles.retours, 0);
+});
+
+test("historique : liberer (retour par le bandeau ou changement de page) revient d'une entree et le popstate induit est ignore", () => {
+  const w = faussesFenetre();
+  let appels = 0;
+  const h = creerEntreeHistorique(w, () => { appels += 1; });
+  h.poser();
+  h.liberer();
+  assert.equal(w.piles.retours, 1);
+  w.popstate();
+  assert.equal(appels, 0);
+  h.liberer();
+  assert.equal(w.piles.retours, 1); // rien a liberer
+});
+
+test("bandeau : l'option retourSysteme branche l'entree d'historique sur le coeur ; Quantitatif l'utilise et la page rouvre le rapport a l'activation de la vue", () => {
+  const rc = lire("src/retourContexte.js");
+  assert.match(rc, /retourSysteme/);
+  assert.match(lire("src/main.js"), /creerRetourContexte\(\{\s*id: "quantitatifBandeauRetour"[^}]*retourSysteme: true/);
+  const page = lire("src/quantitatifPage.js");
+  assert.match(page, /retourEnAttente/);
+  assert.match(page, /surVueActivee\(nomVue\) \{\s*if \(nomVue === "quantitatif"\) \{[^}]*if \(retourEnAttente\) \{ const retour = retourEnAttente;/);
+});

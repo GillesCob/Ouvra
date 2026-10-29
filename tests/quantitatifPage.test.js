@@ -58,7 +58,7 @@ test("page : tableau accessible, exports groupes, historique en cartes, aucun en
 test("page : Voir dans le Viewer donne un rappel de retour { libelle, surRetour } relisant le meme rapport dans l'historique", () => {
   assert.match(js, /voirDansViewer\(ligne\.criteres, contexteRetour\(\)\)/);
   assert.match(js, /libelle: "Retour au quantitatif"/);
-  assert.match(js, /historique\.obtenir\(rapportCourant\.id\)/);
+  assert.match(js, /historique\.obtenir\(rapport\.id\)/);
 });
 
 test("dateRelative : instant, minutes, heures, hier, jours, date, entree invalide", () => {
