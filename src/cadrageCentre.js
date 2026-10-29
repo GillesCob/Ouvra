@@ -132,14 +132,14 @@ export function cadrerCentre({ aabb, eye, look, up, fov = 60, fovAxis = "min", l
 // par la boite pour 70,8 % de pixels reellement occupes, mesure en WebKit a 390 px). A partir du rectangle des pixels non vides (coordonnees normalisees -1 a 1 sur chaque
 // axe de la zone, y vers le haut), renvoie la pose qui le centre et lui fait occuper `remplissage` (0 a 1) de la dimension limitante. Une passe ne suffit pas (la perspective
 // n'est pas lineaire) : l'appelant mesure, corrige, remesure.
-export function corrigerSurSilhouette({ eye, look, up, fov = 60, fovAxis = "min", largeur, hauteur, silhouette, remplissage = 0.9 }) {
+export function corrigerSurSilhouette({ eye, look, up, fov = 60, fovAxis = "min", largeur, hauteur, silhouette, remplissage = 0.9, centreY = 0 }) {
   const d = unite(moins(look, eye));
   const r = unite(vect(d, up));
   const u = vect(r, d);
   const t = tangentes(fov, fovAxis, largeur, hauteur);
   const distance = norme(moins(look, eye));
   const cx = (silhouette.xmin + silhouette.xmax) / 2;
-  const cy = (silhouette.ymin + silhouette.ymax) / 2;
+  const cy = (silhouette.ymin + silhouette.ymax) / 2 - centreY; // centreY : centre vise (normalise, y vers le haut), 0 = centre de la zone
   const demi = Math.max((silhouette.xmax - silhouette.xmin) / 2, (silhouette.ymax - silhouette.ymin) / 2);
   const cible = plus(look, plus(fois(r, cx * t.tx * distance), fois(u, cy * t.ty * distance)));
   return { eye: moins(cible, fois(d, distance * demi / remplissage)), look: cible, up: up.slice() };

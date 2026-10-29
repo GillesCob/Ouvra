@@ -32,7 +32,7 @@ import { vitesseCameraInitiale } from "./vitesseCamera.js";
 import { cadrerCentre, corrigerSurSilhouette } from "./cadrageCentre.js";
 import { creerHistorique, creerDepotLocal } from "./quantitatifHistorique.js";
 import { amorcerHistoriqueDemo } from "./quantitatifHistoriqueDemo.js";
-import { REQUETE_MOBILE } from "./seuilMobile.js";
+import { REQUETE_MOBILE, estMobile } from "./seuilMobile.js";
 
 // ============================================================================
 // INTERRUPTEURS DE MASQUAGE : base propre du 19/10
@@ -2282,7 +2282,7 @@ viewer.scene.canvas.on("boundary", traiterAffinageEnAttente);
 // Affine une pose (deja ajustee sur la boite) sur la silhouette reelle : la boite englobante surestime le contour (96 % de la largeur annonces pour 70,8 % de pixels reellement
 // occupes a 390 px). La camera est posee sur chaque pose d'essai, la scene rendue et mesuree dans la meme tache (aucune image n'est montree), puis la camera est rendue.
 // recalculer : fonction qui refait ce calcul (appelee par l'affinage differe). Pose inchangee en projection orthogonale ou si rien n'est mesurable.
-function affinerSurSilhouette(pose, recalculer) {
+function affinerSurSilhouette(pose, recalculer, remplissage = REMPLISSAGE_SILHOUETTE, centreY = 0) {
   const cam = viewer.camera;
   if (!pose || cam.projection !== "perspective") return pose;
   if (!canvasPret()) { affinageEnAttente = { pose, recalculer }; return pose; }
@@ -2290,20 +2290,31 @@ function affinerSurSilhouette(pose, recalculer) {
   const canevas = viewer.scene.canvas.canvas;
   const avant = { eye: cam.eye.slice(), look: cam.look.slice(), up: cam.up.slice() };
   let courante = pose;
-  for (let i = 0; i < ITERATIONS_SILHOUETTE; i++) {
+  let meilleure = pose, meilleurEcart = Infinity;
+  for (let i = 0; i <= ITERATIONS_SILHOUETTE; i++) {
     cam.eye = courante.eye; cam.look = courante.look; cam.up = courante.up;
     const silhouette = silhouetteRendue();
-    if (!silhouette) { courante = pose; break; }
+    if (!silhouette) { meilleure = pose; break; }
     const demi = Math.max((silhouette.xmax - silhouette.xmin) / 2, (silhouette.ymax - silhouette.ymin) / 2);
-    const decentre = Math.max(Math.abs(silhouette.xmin + silhouette.xmax), Math.abs(silhouette.ymin + silhouette.ymax)) / 2;
-    if (Math.abs(demi - REMPLISSAGE_SILHOUETTE) < TOLERANCE_SILHOUETTE && decentre < TOLERANCE_SILHOUETTE) break;
-    courante = corrigerSurSilhouette({
+    const decentre = Math.max(Math.abs(silhouette.xmin + silhouette.xmax), Math.abs(silhouette.ymin + silhouette.ymax - 2 * centreY)) / 2;
+    // Correction non lineaire (la profondeur varie dans la maquette) : les essais peuvent osciller autour de la cible sans converger (29/10 : 8 essais, le dernier a 97,7 % de la
+    // largeur, silhouette coupee par le bord). La pose retenue est le MEILLEUR essai mesure, une silhouette touchant le bord de la zone (coupee) etant ecartee.
+    const coupee = [silhouette.xmin, silhouette.ymin].some((v) => v <= -0.995) || [silhouette.xmax, silhouette.ymax].some((v) => v >= 0.995);
+    const ecart = Math.abs(demi - remplissage) + decentre + (coupee ? 1 : 0);
+    if (ecart < meilleurEcart) { meilleurEcart = ecart; meilleure = courante; }
+    if (Math.abs(demi - remplissage) < TOLERANCE_SILHOUETTE && decentre < TOLERANCE_SILHOUETTE) break;
+    if (i === ITERATIONS_SILHOUETTE) break;
+    const corrigee = corrigerSurSilhouette({
       eye: courante.eye, look: courante.look, up: courante.up, fov: cam.perspective.fov, fovAxis: cam.perspective.fovAxis,
-      largeur: canevas.offsetWidth, hauteur: canevas.offsetHeight, silhouette, remplissage: REMPLISSAGE_SILHOUETTE
+      largeur: canevas.offsetWidth, hauteur: canevas.offsetHeight, silhouette, remplissage, centreY
     });
+    // Pas amorti des le 3e essai : la correction entiere depasse la cible d'un cote puis de l'autre.
+    const k = i < 2 ? 1 : 0.5;
+    const meler = (a, b) => a.map((v, j) => v + k * (b[j] - v));
+    courante = { eye: meler(courante.eye, corrigee.eye), look: meler(courante.look, corrigee.look), up: corrigee.up };
   }
   cam.eye = avant.eye; cam.look = avant.look; cam.up = avant.up;
-  return courante;
+  return meilleure;
 }
 
 // Vue de depart de la maquette centree sur ce qui est visible (position initiale du Viewer et « Recentrer ») : la boite des objets visibles,
@@ -6704,8 +6715,24 @@ function recentrerApresCommande(resultat, cameraAvant, enAttente) {
   viewer.cameraFlight.cancel();
   // Commande confirmable : cadrage sur les seuls elements visibles ; « Tout reafficher » (sans confirmation) ou boite inexploitable : cadrage de « Recentrer ».
   const boite = resultat.confirmation ? boiteDesVisibles(viewer.scene.visibleObjectIds, (ids) => viewer.scene.getAABB(ids)) : null;
-  if (boite) viewer.cameraFlight.flyTo(poseCentreeSurBoiteActuelle(boite) ?? { aabb: boite });
+  if (boite) viewer.cameraFlight.flyTo(poseIACadree(boite));
   else recentrerSurMaquettes();
+}
+
+// Remplissage de la commande IA sur mobile (29/10, capture de Gilles : maquette a 95 % de la largeur, sans toucher les boutons) ; ordinateur : celui de « Recentrer » (90 %).
+const REMPLISSAGE_SILHOUETTE_IA_MOBILE = 0.95;
+// Centre vise sous celui de la zone sur mobile (normalise, y vers le haut) : deux rangees de boutons en haut (« Recentrer », « Tout reafficher »), une seule en bas.
+const CENTRE_Y_IA_MOBILE = -0.04;
+
+// Cadrage d'une commande IA du Viewer sur la boite des elements visibles (29/10, « toujours dezoomee » : la boite seule surestime le contour, la maquette tombait a 73 % de la
+// largeur a 390 px au lieu de 90-95 %) : pose centree sur la boite, puis affinee sur la silhouette reellement dessinee, comme « Recentrer » et Collision.
+function poseIACadree(boite) {
+  const remplissage = estMobile() ? REMPLISSAGE_SILHOUETTE_IA_MOBILE : REMPLISSAGE_SILHOUETTE;
+  const centreY = estMobile() ? CENTRE_Y_IA_MOBILE : 0;
+  const pose = poseCentreeSurBoiteActuelle(boite);
+  if (!pose) return { aabb: boite };
+  const recalculer = () => affinerSurSilhouette(poseCentreeSurBoiteActuelle(boite) ?? pose, recalculer, remplissage, centreY);
+  return affinerSurSilhouette(pose, recalculer, remplissage, centreY);
 }
 
 // « Non » : la camera revient la ou elle etait avant la commande (la derniere etape seulement, comme la scene).

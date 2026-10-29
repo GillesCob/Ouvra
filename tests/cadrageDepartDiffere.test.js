@@ -64,3 +64,13 @@ test("main.js : « Recentrer » de la page Collision sans collision choisie repr
   const iViewer = corps.indexOf("recentrerSurMaquettes();");
   assert.ok(iCible >= 0 && iCollision > iCible && iViewer > iCollision, "ordre : collision choisie, puis page Collision, puis Viewer");
 });
+
+test("main.js : la commande IA du Viewer affine son cadrage sur la silhouette dessinee (maquette a 73 % de la largeur a 390 px sans cela, 29/10)", () => {
+  const js = readFileSync(new URL("../src/main.js", import.meta.url), "utf8");
+  const corps = js.slice(js.indexOf("function recentrerApresCommande"), js.indexOf("function restaurerCameraAvantCommande"));
+  assert.match(corps, /poseIACadree\(boite\)/);
+  assert.doesNotMatch(corps, /poseCentreeSurBoiteActuelle\(boite\) \?\? \{ aabb: boite \}/); // plus de cadrage sur la seule boite englobante
+  const pose = js.slice(js.indexOf("function poseIACadree"), js.indexOf("// « Non » : la camera revient"));
+  assert.match(pose, /affinerSurSilhouette\(pose, recalculer, remplissage, centreY\)/);
+  assert.match(pose, /estMobile\(\) \? REMPLISSAGE_SILHOUETTE_IA_MOBILE : REMPLISSAGE_SILHOUETTE/);
+});
