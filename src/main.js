@@ -1104,6 +1104,7 @@ let planDansViewer = null; // maquette « Plan 2D -> 3D » montree dans le Viewe
 let vueAvantDessus = null; // camera avant la vue a plat : { eye, look, up, projection } (voir entrerVueDessus)
 let vitesseAvantDessus = null; // valeur du curseur « Vitesse » avant la vue a plat, rendue en sortant
 let maquettesVueDessus = ""; // maquettes presentes quand la vue a plat a ete cadree : un changement la recadre
+let idsColorieQuantitatif = []; // elements d'une ligne du Quantitatif colories en orange dans le Viewer ; relu par activateView (via retirerCouleurQuantitatif) avant sa definition
 let cameraAvantCommande = null; // camera d'avant la commande « IA » en attente de reponse, que « Non » rend : { eye, look, up } ; relue par activateView
 const DUREE_RETOUR_CAMERA_S = 0.6; // vol de retour de la camera apres « Non »
 let commandesViewer = null; // moteur des commandes du Viewer (cree a la premiere commande) ; relu par activateView avant sa definition
@@ -6795,7 +6796,6 @@ function versionsQuantitatif() {
 
 // Couleur des elements d'une ligne vus depuis le Quantitatif (30/10, « mieux les mettre en evidence ») : l'orange de la collision a confirmer, deja la couleur de mise en
 // evidence de Collision (CLASH_MARKER_COLORS.nouveau). Le reste de la maquette est masque par l'isolement ; les elements gardaient sinon leur couleur de maquette.
-let idsColorieQuantitatif = [];
 function colorierLigneQuantitatif() {
   retirerCouleurQuantitatif();
   const ids = viewer.scene.visibleObjectIds.slice();
