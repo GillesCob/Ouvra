@@ -76,3 +76,21 @@ export function ajouterRecherche(retour, { stockage = stockageParDefaut(), maint
 }
 
 export const dateSynthese = (entree) => dateJJMMAAAA(entree.creeLe);
+
+// Type d'une entree (30/10) : « rapport » (rapport stocke ou de demonstration) ou « echanges » (recherche d'echanges) ; null si l'entree n'est ni l'un ni l'autre.
+export const LIBELLES_TYPE_ENTREE = { rapport: "Rapport", echanges: "Échanges" };
+export function typeEntree(entree) {
+  if (!entree) return null;
+  if (entree.recherche) return "echanges";
+  if (entree.rapport || typeof entree.demo === "string") return "rapport";
+  return null;
+}
+export const libelleTypeEntree = (entree) => LIBELLES_TYPE_ENTREE[typeEntree(entree)] || "";
+
+// Ou s'ouvre une entree (30/10) : « recherche » (liste filtree au centre), « centre » (rapport dans la zone centrale, laptop), « modale » (rapport en plein ecran, mobile) ; null si rien a ouvrir.
+export function destinationOuverture(entree, { mobile = false } = {}) {
+  const type = typeEntree(entree);
+  if (type === "echanges") return "recherche";
+  if (type === "rapport") return mobile ? "modale" : "centre";
+  return null;
+}
