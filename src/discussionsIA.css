@@ -139,6 +139,9 @@ body.discussions-confirm-actif .disc-rapport-fond { padding-top: calc(52px + var
 }
 .disc-rapport-source-qui { font-weight: 600; }
 .disc-rapport-source-fil { color: var(--muted); font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+/* Retour au rapport : la source cliquee clignote comme le message source dans la conversation (.msg-ia-flash, memes couleur et animation). */
+.disc-rapport-source.disc-rapport-source-flash { --msg-accent: #7fae84; border-color: var(--msg-accent); animation: msg-ia-flash 1.6s ease-out; }
+@media (prefers-reduced-motion: reduce) { .disc-rapport-source.disc-rapport-source-flash { animation: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--msg-accent) 70%, transparent); } }
 @media (hover: hover) and (pointer: fine) { .disc-rapport-source:hover { border-color: var(--accent); } }
 /* Encart « Demande à l'IA » (30/10) : meme gabarit que les boutons de source (hauteur, bordure, rayon, couleurs), pleine largeur du bloc de decision. */
 .disc-rapport-demande-groupe { display: flex; }

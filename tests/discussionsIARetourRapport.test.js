@@ -168,9 +168,47 @@ test("position : la vue memorise avant la fermeture et restaure apres le redessi
   assert.ok(clic.indexOf("memoirePosition.memoriser(rapportCourant, zoneDefilante().scrollTop)") > 0 && clic.indexOf("memoriser") < clic.indexOf("fermer(false)"));
   assert.ok(vue.includes("function ouvrir(rapport, { restaurer = false } = {})"));
   assert.ok(vue.includes("function ouvrirAuCentre(rapport, conteneur, { restaurer = false } = {})"));
-  assert.ok(vue.includes("zoneDefilante().scrollTop = positionDeLecture(rapport, restaurer)"));
-  assert.ok(vue.includes("corps.scrollTop = positionDeLecture(rapport, restaurer)"));
+  assert.ok(vue.includes("surlignerSource(zoneDefilante(), positionDeLecture(rapport, restaurer))"));
+  assert.ok(vue.includes("surlignerSource(corps, positionDeLecture(rapport, restaurer))"));
   const montage = lire("src/discussionsIAMontage.js");
   const retour = montage.slice(montage.indexOf("function retourAuRapport"), montage.indexOf("function surRetourSysteme"));
   assert.ok(retour.includes("montrerRapportAuCentre(rapport, { restaurer: true })") && retour.includes("rapportVue.ouvrir(rapport, { restaurer: true })"));
+});
+
+test("source cliquee (30/10) : memorisee avec la position, rendue une seule fois et pour le meme rapport seulement", () => {
+  const a = { titre: "A" };
+  const m = creerMemoirePosition();
+  m.memoriser(a, 300);
+  m.memoriserSource(4);
+  assert.deepEqual(m.restituerDetail(a), { top: 300, source: 4 });
+  assert.deepEqual(m.restituerDetail(a), { top: 0, source: -1 });
+  m.memoriser(a, 300);
+  m.memoriserSource(2);
+  assert.deepEqual(m.restituerDetail({ titre: "B" }), { top: 0, source: -1 });
+  m.memoriser(a, 0);
+  m.memoriserSource(1);
+  m.memoriser(a, 100); // un nouveau depart efface la source precedente
+  assert.deepEqual(m.restituerDetail(a), { top: 100, source: -1 });
+  m.memoriserSource(-3);
+  m.memoriserSource(NaN);
+  assert.equal(m.restituerDetail(a).source, -1);
+});
+
+test("source cliquee : le clic memorise son rang, le retour la surligne (meme animation que le message source), jamais a l'ouverture normale", () => {
+  const vue = lire("src/discussionsIARapportVue.js");
+  const clic = vue.slice(vue.indexOf("const mk = source.dataset.mk"), vue.indexOf("surSource(mk, rapportCourant)"));
+  assert.ok(clic.includes("memoirePosition.memoriserSource(") && clic.indexOf("memoriserSource") < clic.indexOf("fermer(false)"));
+  assert.ok(vue.includes("function positionDeLecture(rapport, restaurer)"));
+  assert.ok(vue.includes("memoirePosition.restituerDetail(rapport)"));
+  assert.match(vue, /if \(!restaurer\) \{[^}]*memoriser\(null, 0\)/);
+  assert.ok(vue.includes("function surlignerSource("));
+  const css = lire("src/discussionsIA.css");
+  assert.match(css, /\.disc-rapport-source\.disc-rapport-source-flash \{[^}]*animation: msg-ia-flash 1\.6s ease-out/);
+  assert.match(css, /prefers-reduced-motion: reduce\) \{[^}]*\.disc-rapport-source-flash/);
+});
+
+test("source cliquee : le menu deroulant rouvert au retour ne deplace pas la lecture (toggle ignore une fois)", () => {
+  const vue = lire("src/discussionsIARapportVue.js");
+  assert.ok(vue.includes("if (menuRouvert) { menuRouvert = false; return; }"));
+  assert.ok(vue.includes("menuRouvert = true; menu.open = true;"));
 });
