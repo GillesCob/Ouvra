@@ -49,6 +49,7 @@ export function creerRapportVue({ surSource, texteRapport, exporterPdf }) {
   let planDefilement = 0; // requestAnimationFrame du defilement vers le titre du menu ouvert
   let derniereAuCentre = false; // memoire du mode de la derniere ouverture (non remise a zero par fermer) : « Retour au rapport » rouvre le rapport la ou il etait
   const memoirePosition = creerMemoirePosition(); // position de lecture au depart vers une source, rendue par ouvrir/ouvrirAuCentre({ restaurer: true })
+  let menuRouvert = false; // un menu deroulant vient d'etre rouvert par surlignerSource (son evenement toggle ne doit pas deplacer la lecture)
   let auCentre = false; // laptop (30/10) : le rapport est pose dans la zone centrale de Discussions, sans modale (voir ouvrirAuCentre)
 
   function assurerSquelette() {
@@ -99,6 +100,7 @@ export function creerRapportVue({ surSource, texteRapport, exporterPdf }) {
       if (!source) return;
       const mk = source.dataset.mk;
       memoirePosition.memoriser(rapportCourant, zoneDefilante().scrollTop); // avant fermer : masque, la zone ne defile plus
+      memoirePosition.memoriserSource([...corps.querySelectorAll("[data-mk]")].indexOf(source)); // rang du bouton clique : surligne au retour
       fermer(false);
       surSource(mk, rapportCourant); // le rapport en cours : « Retour au rapport » le rouvre tel quel
     });
@@ -106,6 +108,7 @@ export function creerRapportVue({ surSource, texteRapport, exporterPdf }) {
     // (cf discussionsIARapportDefilement.js). Differe d'une image : le repli des autres menus est applique avant la mesure.
     corps.addEventListener("toggle", (e) => {
       if (!e.target.matches(".disc-rapport-depliant")) return;
+      if (menuRouvert) { menuRouvert = false; return; } // reouvert par le retour depuis une source : la position memorisee fait foi, pas de defilement vers son titre
       cancelAnimationFrame(planDefilement);
       planDefilement = requestAnimationFrame(() => defilerVersMenuOuvert());
     }, true);
@@ -303,11 +306,24 @@ export function creerRapportVue({ surSource, texteRapport, exporterPdf }) {
     document.body.appendChild(fond);
   }
 
-  // Retour depuis une source (`restaurer`) : la position memorisee est rendue ; sinon (ou rapport different) le haut.
+  // Retour depuis une source (`restaurer`) : la position memorisee est rendue ; sinon (ou rapport different) le haut. La source cliquee est mise en
+  // surbrillance (meme animation que le message source dans la conversation), jamais a l'ouverture normale ni pour un autre rapport.
   function positionDeLecture(rapport, restaurer) {
-    const top = restaurer ? memoirePosition.restituer(rapport) : 0;
-    if (!restaurer) memoirePosition.memoriser(null, 0);
-    return top;
+    if (!restaurer) { memoirePosition.memoriser(null, 0); return { top: 0, source: -1 }; }
+    return memoirePosition.restituerDetail(rapport);
+  }
+
+  // Ouvre le menu deroulant qui contient la source, remet la position, puis fait clignoter le bouton ; il reste visible dans la zone qui defile. Pas de vol du focus.
+  function surlignerSource(zone, { top, source }) {
+    const bouton = source >= 0 ? corps.querySelectorAll("[data-mk]")[source] : null;
+    if (bouton) { const menu = bouton.closest(".disc-rapport-depliant"); if (menu && !menu.open) { menuRouvert = true; menu.open = true; } }
+    zone.scrollTop = top;
+    if (!bouton) return;
+    const z = zone.getBoundingClientRect();
+    const b = bouton.getBoundingClientRect();
+    if (b.top < z.top || b.bottom > z.bottom) bouton.scrollIntoView({ block: "center" });
+    bouton.classList.add("disc-rapport-source-flash");
+    setTimeout(() => bouton.classList.remove("disc-rapport-source-flash"), 1800);
   }
 
   function ouvrir(rapport, { restaurer = false } = {}) {
@@ -320,7 +336,7 @@ export function creerRapportVue({ surSource, texteRapport, exporterPdf }) {
     verrou.verrouiller();
     carte.scrollTop = 0;
     corps.scrollTop = 0;
-    zoneDefilante().scrollTop = positionDeLecture(rapport, restaurer);
+    surlignerSource(zoneDefilante(), positionDeLecture(rapport, restaurer));
     boutonFermer.focus({ preventScroll: true });
   }
 
@@ -340,7 +356,7 @@ export function creerRapportVue({ surSource, texteRapport, exporterPdf }) {
     conteneur.appendChild(fond);
     fond.hidden = false;
     corps.scrollTop = 0;
-    corps.scrollTop = positionDeLecture(rapport, restaurer);
+    surlignerSource(corps, positionDeLecture(rapport, restaurer));
     titre.tabIndex = -1;
     titre.focus({ preventScroll: true });
   }
