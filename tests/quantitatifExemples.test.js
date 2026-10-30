@@ -44,7 +44,7 @@ test("reconnaitreExemple : phrase identique sans accents, casse ni ponctuation ;
   assert.equal(r.mesure, "nombre");
   r.filtres.typesIfc.push("X");
   assert.deepEqual(reconnaitreExemple("combien de portes au niveau 2 ?").filtres.typesIfc, ["IfcDoor"]);
-  assert.equal(reconnaitreExemple("liste des vannes de la maquette mecanique").mesure, "nombre");
+  assert.equal(reconnaitreExemple("liste des vannes de la maquette CVC").mesure, "nombre");
   assert.equal(reconnaitreExemple("combien de portes au niveau 3"), null);
   assert.equal(reconnaitreExemple(""), null);
   assert.equal(reconnaitreExemple(null), null);

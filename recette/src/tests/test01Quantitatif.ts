@@ -172,7 +172,7 @@ async function laptop(ctx: IContexteTest): Promise<void> {
   // R-43 : « Non » retire l'entree, « Oui » la garde dans l'historique (cartes cliquables ; « Supprimer » vit dans le quantitatif ouvert, 28/10).
   {
     const lireHisto = (): Promise<string[]> => page.evaluate(() => [...document.querySelectorAll<HTMLElement>(".qt-histo-item")].map((li) => li.innerText.replace(/\s+/g, " ")));
-    await lancerPhraseExemple(page, BOUTON_IA, "Liste des vannes de la maquette mécanique");
+    await lancerPhraseExemple(page, BOUTON_IA, "Liste des vannes de la maquette CVC");
     await page.waitForSelector("#quantitatifBandeau", { timeout: 25_000 });
     await dormir(300);
     await page.click(NON);
@@ -309,7 +309,7 @@ async function laptop(ctx: IContexteTest): Promise<void> {
     await page.reload();
     await dormir(1500);
     await viewerPuisQuantitatif(page);
-    await lancerPhraseExemple(page, BOUTON_IA, "Liste des vannes de la maquette mécanique");
+    await lancerPhraseExemple(page, BOUTON_IA, "Liste des vannes de la maquette CVC");
     await attendreTableau(page);
     await page.click(OUI);
     await dormir(300);

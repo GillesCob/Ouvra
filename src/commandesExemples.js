@@ -34,7 +34,7 @@ export const EXEMPLES_COMMANDES = [
     commande: { action: "afficher", parametres: { niveaux: ["Level 3"] } }
   },
   {
-    demande: "Affiche uniquement la maquette Mécanique",
+    demande: "Affiche uniquement la maquette CVC",
     relecture: "Afficher la maquette Mechanical (CVC)",
     commande: { action: "afficher", parametres: { maquettes: ["Mechanical (CVC)"] } }
   },
