@@ -225,7 +225,7 @@ export function creerRapportVue({ surSource, texteRapport, exporterPdf }) {
     el.dataset.bloc = "demande-ia";
     const b = creer("button", "disc-rapport-demande");
     b.type = "button";
-    b.setAttribute("aria-label", "Copier la demande à l'IA à coller dans " + zone + " : " + demande.phrase);
+    b.setAttribute("aria-label", "Demande à l'IA, à coller dans " + zone + " : " + demande.phrase + ". Copier la demande"); // commence par le texte visible (WCAG 2.5.3)
     const etat = creer("span", "disc-rapport-demande-etat", "Copier");
     b.append(creer("span", "disc-rapport-demande-zone", "Demande à l'IA, à coller dans " + zone), creer("span", "disc-rapport-demande-phrase", "« " + demande.phrase + " »"), etat);
     const annonce = creer("span", "disc-rapport-sr");
