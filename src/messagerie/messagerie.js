@@ -1568,7 +1568,7 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
 
   function rendreResultatsIA() {
     const f = etat.filtreIA;
-    if (!f) { $("msgListe").innerHTML = '<div class="msg-vide">Choisis Texte ou Vocal pour décrire ce que tu cherches dans les discussions.</div>'; return; }
+    if (!f) { $("msgListe").innerHTML = ""; return; }
     const compte = nombreFr(f.fils.length, "discussion", "discussions") + (f.surlignes.size ? ", " + nombreFr(f.surlignes.size, "message trouvé", "messages trouvés") : "");
     // « Retour » en tete, la demande et le compte (sur deux lignes si besoin, jamais rognes ; texte complet en title). Aucun bouton du rapport ici : il s'ouvre seul a la fin de la demande.
     const resume = echapper((f.relecture || "") + (f.relecture ? " \u00b7 " : "") + compte);
