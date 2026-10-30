@@ -64,8 +64,8 @@ test("M28 : sujet clos, ni champ ni bouton d'envoi, un bouton « Rouvrir la conv
 test("M25/M26 : l'historique des syntheses est dans le panneau IA, une carte cliquable par synthese", () => {
   const ia = lire("src/discussionsIA.js");
   assert.match(ia, /msg-ia-histo-carte/);
-  assert.match(ia, /carte\.addEventListener\("click", \(\) => historique\.ouvrir\(entree\)\)/);
-  assert.match(lire("src/discussionsIAMontage.js"), /retour\.type === "rapport"\) \{ ajouterSynthese\(retour\.rapport\)/);
+  assert.match(ia, /carte\.addEventListener\("click", \(\) => \{ selectionner\(entree\.id\); historique\.ouvrir\(entree\); \}\)/);
+  assert.match(lire("src/discussionsIAMontage.js"), /retour\.type === "rapport"\) \{\s*const entree = ajouterSynthese\(retour\.rapport\)/);
 });
 
 import { defilementVersTitre } from "../src/discussionsIARapportDefilement.js";

@@ -117,7 +117,7 @@ test("historique : le rapport est ajouté au « Oui » seulement, jamais à l'af
   const proposer = montage.slice(montage.indexOf("proposer: (retour, phrase)"));
   assert.ok(!proposer.includes("ajouterSynthese"));
   const oui = montage.slice(montage.indexOf("surOui: () =>"), montage.indexOf("surNon: () =>"));
-  assert.match(oui, /retour\.type === "rapport"\) \{ ajouterSynthese\(retour\.rapport\); ia\.majHistorique\(\); \}/);
+  assert.match(oui, /retour\.type === "rapport"\) \{\s*const entree = ajouterSynthese\(retour\.rapport\)[^;]*;\s*ia\.majHistorique\(\);/);
   const non = montage.slice(montage.indexOf("surNon: () =>"), montage.indexOf("const pipeline"));
   assert.ok(!non.includes("ajouterSynthese"));
 });

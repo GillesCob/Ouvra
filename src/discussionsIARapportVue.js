@@ -283,7 +283,7 @@ export function creerRapportVue({ surSource, texteRapport, exporterPdf }) {
   }
 
   // Laptop (30/10) : le MEME rapport (meme rendu) s'affiche dans la zone centrale de Discussions, `conteneur`, a la place de la liste, SANS modale : pas de fond sombre,
-  // pas de verrou de defilement, pas de bouton « Fermer » (le bandeau « Retour » de la page ramene a la liste). Sources, « Copier » et « Exporter en PDF » restent actifs.
+  // pas de verrou de defilement, pas de bouton « Fermer » (plus de bandeau de retour : une autre carte de l'historique ou un onglet remplace le rapport). Sources, « Copier » et « Exporter en PDF » restent actifs.
   function ouvrirAuCentre(rapport, conteneur) {
     assurerSquelette();
     if (!fond.hidden && !auCentre) { fond.hidden = true; verrou.deverrouiller(); } // une modale ouverte se referme d'abord

@@ -159,8 +159,7 @@ test("montage : un rapport de l'historique s'affiche au centre sur laptop (sans 
   assert.match(ouvrir, /rapportVue\.ouvrir\(/);
   const centre = src.slice(src.indexOf("function montrerRapportAuCentre"), src.indexOf("function ouvrirSynthese"));
   assert.match(centre, /rapportVue\.ouvrirAuCentre\(/);
-  assert.match(centre, /retourRapport\.montrer\(/);
-  assert.match(centre, /messagerie\.fermerConversationIA\(\)/);
+  assert.doesNotMatch(centre, /retourRapport\.montrer\(/); // 31/10 : plus de bandeau « Retour aux discussions » sur laptop
   const vue = readFileSync(new URL("../src/discussionsIARapportVue.js", import.meta.url), "utf8");
   assert.match(vue, /ouvrirAuCentre/);
   assert.doesNotMatch(vue, /console\.log/);
@@ -170,9 +169,48 @@ test("rapport au centre : la zone est preparee avant la mise en pause de la ques
   const { readFileSync } = await import("node:fs");
   const montage = readFileSync(new URL("../src/discussionsIAMontage.js", import.meta.url), "utf8");
   const centre = montage.slice(montage.indexOf("function montrerRapportAuCentre"), montage.indexOf("function ouvrirSynthese"));
-  assert.ok(centre.indexOf("preparerCentreIA()") < centre.indexOf('action("echange-ouvert")'));
   assert.match(montage, /derniereOuvertureAuCentre\(\) && !window\.matchMedia\(REQUETE_MOBILE\)\.matches/);
   const mess = readFileSync(new URL("../src/messagerie/messagerie.js", import.meta.url), "utf8");
-  assert.match(mess, /etat\.convId \|\| rapportAuCentre\) return;/);
-  assert.match(mess, /rapportAuCentre = true;/);
+  assert.match(mess, /etat\.convId \|\| rapportAuCentre\(\)\) return;/);
+});
+
+// 30/10, bug « liste d'echanges vide apres un rapport » : la zone centrale ne doit jamais dependre d'un drapeau qui survit a la fermeture du rapport.
+test("liste d'echanges au centre : l'etat « un rapport occupe le centre » est lu dans le DOM (plus de drapeau perime apres la fermeture du rapport)", async () => {
+  const { readFileSync } = await import("node:fs");
+  const mess = readFileSync(new URL("../src/messagerie/messagerie.js", import.meta.url), "utf8");
+  assert.doesNotMatch(mess, /let rapportAuCentre\b/);
+  assert.doesNotMatch(mess, /rapportAuCentre = (true|false)/);
+  assert.match(mess, /const rapportAuCentre = \(\) => !!\$\("msgVolet"\)\.querySelector\("\.disc-rapport-fond-centre"\)/);
+  assert.match(mess, /etat\.convId \|\| rapportAuCentre\(\)\) return;/);
+});
+
+test("laptop : plus de bandeau « Retour aux discussions » sur un rapport au centre (la sortie : autre carte, onglet, liste) ; le bandeau « Retour au rapport » des sources reste", async () => {
+  const { readFileSync } = await import("node:fs");
+  const montage = readFileSync(new URL("../src/discussionsIAMontage.js", import.meta.url), "utf8");
+  const centre = montage.slice(montage.indexOf("function montrerRapportAuCentre"), montage.indexOf("function ouvrirSynthese"));
+  assert.doesNotMatch(centre, /Retour aux discussions/);
+  assert.doesNotMatch(centre, /retourRapport\.montrer\(/);
+  assert.match(centre, /retourRapport\.effacer\(\)/);
+  assert.match(montage, /libelle: "Retour au rapport"/);
+});
+
+test("« Oui » : la carte ajoutee est selectionnee et le resultat de la derniere demande s'affiche (rapport au centre sur laptop, liste d'echanges sinon)", async () => {
+  const { readFileSync } = await import("node:fs");
+  const montage = readFileSync(new URL("../src/discussionsIAMontage.js", import.meta.url), "utf8");
+  const oui = montage.slice(montage.indexOf("surOui:"), montage.indexOf("surNon:"));
+  assert.match(oui, /ia\.selectionner\(/);
+  assert.match(oui, /montrerRapportAuCentre\(retour\.rapport\)/);
+  assert.match(oui, /montrerListeAuCentre\(\)/);
+  const ia = readFileSync(new URL("../src/discussionsIA.js", import.meta.url), "utf8");
+  assert.match(ia, /selectionner/);
+  assert.match(ia, /aria-current/);
+  const css = readFileSync(new URL("../src/discussionsIA.css", import.meta.url), "utf8");
+  assert.match(css, /\.msg-ia-histo-item:focus-within,\n\.msg-ia-histo-item\[data-selectionnee\] \{ border-color: var\(--accent\); \}/);
+});
+
+test("« Non » sur laptop : la zone centrale se redessine apres la fermeture d'un rapport pose au centre (pas de zone vide)", async () => {
+  const { readFileSync } = await import("node:fs");
+  const montage = readFileSync(new URL("../src/discussionsIAMontage.js", import.meta.url), "utf8");
+  const non = montage.slice(montage.indexOf("surNon: () =>"), montage.indexOf("const pipeline"));
+  assert.ok(non.indexOf("flux.refuser()") < non.indexOf("messagerie.fermerConversationIA()"));
 });

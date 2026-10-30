@@ -59,6 +59,21 @@ export function creerDiscussionsIA({ panneau, retourFocus = null, exemples, trai
   histo.append(histoTitre, histoListe);
   if (historique) panneau.append(histo);
 
+  // Carte « selectionnee » (30/10) : celle dont le resultat est affiche (clic sur la carte, ou « Oui » sur une demande). Meme bordure que la carte qui a le focus (discussionsIA.css).
+  let selectionId = null;
+  function marquerSelection() {
+    for (const li of histoListe.children) {
+      const choisie = li.dataset.id === selectionId;
+      li.toggleAttribute("data-selectionnee", choisie);
+      const carte = li.firstElementChild;
+      if (choisie) carte.setAttribute("aria-current", "true"); else carte.removeAttribute("aria-current");
+    }
+  }
+  function selectionner(id) {
+    selectionId = id || null;
+    marquerSelection();
+  }
+
   function majHistorique() {
     if (!historique) return;
     const entrees = historique.lister();
@@ -66,15 +81,17 @@ export function creerDiscussionsIA({ panneau, retourFocus = null, exemples, trai
     histo.hidden = !entrees.length;
     for (const entree of entrees) {
       const li = creer("li", "msg-ia-histo-item");
+      li.dataset.id = entree.id;
       const carte = creer("button", "msg-ia-histo-carte");
       carte.type = "button";
       const meta = creer("span", "msg-ia-histo-meta"); // label de type (Rapport / Échanges, 30/10) + date, sur une ligne qui passe a la suivante si l'etroitesse l'impose
       meta.append(creer("span", "msg-ia-histo-type", libelleTypeEntree(entree)), creer("span", "msg-ia-histo-date", dateSynthese(entree)));
       carte.append(creer("span", "msg-ia-histo-nom", entree.nom), meta);
-      carte.addEventListener("click", () => historique.ouvrir(entree));
+      carte.addEventListener("click", () => { selectionner(entree.id); historique.ouvrir(entree); });
       li.appendChild(carte);
       histoListe.appendChild(li);
     }
+    marquerSelection();
   }
   majHistorique();
 
@@ -83,6 +100,7 @@ export function creerDiscussionsIA({ panneau, retourFocus = null, exemples, trai
     fermer: () => saisie.fermer(),
     ouvert: saisie.ouvert,
     reformuler: (phrase) => saisie.reformuler(phrase),
-    majHistorique
+    majHistorique,
+    selectionner
   };
 }
