@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { EXEMPLES_DISCUSSIONS, reconnaitreExemple } from "../src/discussionsIAExemples.js";
 import { indexer } from "../src/discussionsIAIndex.js";
 import { REGISTRE, validerCommande, selectionner } from "../src/discussionsIAMoteur.js";
-const PHRASE_RAPPORT_GENERAL = "Fais-moi un rapport sur les collisions avec les gaines au R+2";
+const PHRASE_RAPPORT_GENERAL = "Fais-moi un rapport sur les collisions avec les gaines";
 import { chargerDemo } from "./aide/demoMessagerie.js";
 
 const demo = await chargerDemo(new Date("2026-10-24T12:00:00"));
@@ -67,9 +67,13 @@ test("ordre de la demo (28/10) : le rapport general ouvre la liste, puis la rech
 test("rapport general (28/10) : sujet general, reconnu en local, retient les messages sur les gaines au R+2 de la demo", () => {
   const e = EXEMPLES_DISCUSSIONS[0];
   assert.equal(e.commande.action, "rapport");
-  assert.equal(e.commande.parametres.sujet, "collisions avec les gaines au R+2");
-  const r = reconnaitreExemple("fais-moi un rapport sur les collisions avec les gaines au R+2");
+  assert.equal(e.commande.parametres.sujet, "collisions avec les gaines");
+  const r = reconnaitreExemple("fais-moi un rapport sur les collisions avec les gaines");
   assert.deepEqual(r.parametres, e.commande.parametres);
+  assert.equal(r.relecture, "Faire un rapport sur les collisions avec les gaines.");
+  const ancienne = reconnaitreExemple("Fais-moi un rapport sur les collisions avec les gaines au R+2");
+  assert.deepEqual(ancienne.parametres, e.commande.parametres, "l'ancienne phrase avec « au R+2 » reste reconnue");
+  assert.deepEqual(ancienne.demandeIA, r.demandeIA);
   const v = validerCommande(e.commande, valeurs);
   assert.equal(v.ok, true);
   const s = selectionner(v.commande, index, { maintenant });
