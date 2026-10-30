@@ -41,7 +41,8 @@ test("pdf : definition = titre, informations, tableau de metre, total, avertisse
   assert.deepEqual(d.tableau.pied[0], ["Total", "u", "3", "compté"]);
   assert.ok(d.avertissements[0].includes("nombre exact"));
   assert.ok(d.infos.some(([k, v]) => k === "Maquettes concernées" && v === "Architecture"));
-  assert.ok(d.infos.some(([k, v]) => k === "État du rapport" && /^À jour/.test(v)));
+  assert.ok(!d.infos.some(([k]) => k === "État du rapport")); // à jour : pas de ligne d'état
+  assert.ok(d.infos.some(([k]) => k === "Calculé le"));
 });
 
 test("pdf : estime = « estimé » en toutes lettres + avertissement de chiffrage ; obsolete = bandeau", () => {
@@ -78,7 +79,10 @@ test("pdf mobile : page etroite 105 x 186 mm, colonnes reduites a l'essentiel, c
   assert.deepEqual(def.tableau.tete, ["Niveau", "Quantité"]);
   assert.deepEqual(def.tableau.corps[1], ["Level 2", "2 u"]);
   assert.deepEqual(def.tableau.pied[0], ["Total", "3 u"]);
-  assert.deepEqual(def.infos.map(([k]) => k), ["Demande", "Mesure", "Éléments pris en compte", "État du rapport"]);
+  assert.deepEqual(def.infos.map(([k]) => k), ["Demande", "Mesure", "Calculé le", "Éléments pris en compte"]);
+  const obs = definitionPdf(portes(), { etat: "obsolete", changees: ["Architecture"], inconnues: [] }, { mobile: true });
+  assert.deepEqual(obs.infos.map(([k]) => k), ["Demande", "Mesure", "Calculé le", "Éléments pris en compte", "État du rapport"]);
+  assert.match(obs.bandeau, /ne correspondent plus aux maquettes actuelles/);
   const doc = construirePdf({ jsPDF, autoTable }, def, { maintenant: new Date("2026-10-24") });
   assert.ok(Math.abs(doc.internal.pageSize.getWidth() - 105) < 0.01 && Math.abs(doc.internal.pageSize.getHeight() - 186) < 0.01);
   const polices = new Set([...Buffer.from(doc.output("arraybuffer")).toString("latin1").matchAll(/([\d.]+) Tf/g)].map((m) => Number(m[1])));
@@ -132,6 +136,14 @@ test("excel : estime = texte « estimé », mise en forme conditionnelle orange,
   const mef = f.conditionalFormattings;
   assert.ok(mef.length >= 1);
   assert.equal(mef[0].ref, "D9:D10");
+});
+
+test("excel : rapport à jour = date du calcul, aucune ligne « État du rapport » ; obsolete = la ligne d'état n'est pas dupliquée", async () => {
+  const txt = async (s) => JSON.stringify((await relire(construireClasseur(ExcelJS, portes(), s))).getWorksheet(NOM_FEUILLE_INFOS).model.rows.map((r) => r.cells.map((c) => c.value)));
+  const aj = await txt(aJour);
+  assert.match(aj, /Calculé le/);
+  assert.doesNotMatch(aj, /État du rapport|À jour/);
+  assert.doesNotMatch(await txt(obsolete), /État du rapport/);
 });
 
 test("excel : rapport obsolete = bandeau rouge en tete (texte clair) et ligne rouge dans Informations", async () => {

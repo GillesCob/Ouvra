@@ -317,7 +317,7 @@ async function laptop(ctx: IContexteTest): Promise<void> {
     await rouvrirDernier();
     const avantRecalcul = await page.evaluate(() => ({ badge: (document.querySelector(".qt-resultat .qt-pastille-obsolete") as HTMLElement | null)?.innerText ?? "" }));
     const appels = ctx.appelsApi.length;
-    await page.click('button:text-is("Recalculer")');
+    await page.click('button:text-is("Régénérer")');
     await page.waitForFunction(() => !document.querySelector(".qt-resultat .qt-pastille-obsolete"), null, { timeout: 15_000 }).catch(() => undefined);
     const apres = await page.evaluate(() => ({
       obsolete: !!document.querySelector(".qt-resultat .qt-pastille-obsolete"),
@@ -325,7 +325,7 @@ async function laptop(ctx: IContexteTest): Promise<void> {
       titre: document.querySelector<HTMLElement>(".qt-resultat-titre")?.innerText ?? ""
     }));
     verif.controle("R-49 maquette concernee remplacee : badge « OBSOLETE »", /obsol/i.test(avantRecalcul.badge), avantRecalcul);
-    verif.controle("R-49 « Recalculer » : plus obsolete, sans appel IA", !apres.obsolete && ctx.appelsApi.length === appels, { ...apres, appels: ctx.appelsApi.length - appels });
+    verif.controle("R-49 « Régénérer » : plus obsolete, sans appel IA", !apres.obsolete && ctx.appelsApi.length === appels, { ...apres, appels: ctx.appelsApi.length - appels });
 
     ctx.simulerEtag({ mecanique: "v2", architecture: "a2" });
     await rouvrirDernier();

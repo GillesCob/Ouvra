@@ -142,7 +142,7 @@ export function construireClasseur(ExcelJS, rapport, statut, { logoPng = null } 
     n += 1;
   };
   if (obsolete) paire("RAPPORT OBSOLÈTE", texteStatut, { couleur: "FFFFFFFF", gras: true, fond: STYLE_OUVRA.rouge });
-  for (const [k, v] of informationsDe(rapport, obsolete ? "" : texteStatut)) paire(k, v);
+  for (const [k, v] of informationsDe(rapport, statut && statut.etat === "inconnue" ? texteStatut : "")) paire(k, v);
   paire("Avertissement", t.metre.explication, { gras: t.metre.origine === "estime", couleur: t.metre.origine === "estime" ? STYLE_OUVRA.orangeTexte : STYLE_OUVRA.texte });
   r.notes.slice(1).forEach((note) => paire("Remarque", note));
   n += 1;
