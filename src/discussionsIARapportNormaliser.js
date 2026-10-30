@@ -12,6 +12,8 @@
 //  - un chiffre ou un mois qui ne figure dans aucun message cite rend le bloc « non confirmé » (confirme: false).
 // Les noms d'intervenants sont limites aux auteurs reels des messages fournis.
 
+import { phraseQuantitatifAcceptable } from "./demandeQuantitatifGarde.js";
+
 export const STATUTS_DECISION = ["prise", "rapportee", "incertaine", "aucune"];
 export const TITRE_MAX = 120;
 export const CONTEXTE_MAX = 800;
@@ -63,6 +65,8 @@ function normaliserDemandeIA(brute, decision, texteDe, autresSources) {
   if (decision.statut === "aucune" || !estObjet(brute) || !ZONES_DEMANDE_IA.includes(brute.zone)) return null;
   const phrase = nettoyer(brute.phrase);
   if (!phrase || phrase.length > DEMANDE_IA_MAX) return null;
+  // Zone quantitatif : la phrase est collee telle quelle dans le Quantitatif, qui refuse plusieurs requetes, les collisions et les « R+n » (voir le garde-fou).
+  if (brute.zone === "quantitatif" && !phraseQuantitatifAcceptable(phrase)) return null;
   if (!chiffresSourcesTrouves(phrase, [decision.texte, ...sansDoublon([...decision.sources, ...autresSources]).map(texteDe)])) return null;
   return { zone: brute.zone, phrase };
 }
