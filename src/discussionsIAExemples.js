@@ -10,15 +10,17 @@
 
 import { normaliser } from "./reglesCollision.js";
 
-// Demande de l'etape suivante de la demo (decision de Gilles, 30/10) : jointe au rapport des gaines au R+2 quand sa decision attend un metre (voir le pipeline).
+// Demande de l'etape suivante de la demo (decision de Gilles, 30/10) : jointe au rapport sur les collisions avec les gaines quand sa decision attend un metre (voir le pipeline).
 export const DEMANDE_IA_METRE_R2 = { zone: "quantitatif", phrase: "Compte les gaines, les raccords de gaine et les faux plafonds du niveau 2, par famille" };
 
 export const EXEMPLES_DISCUSSIONS = [
   {
-    demande: "Fais-moi un rapport sur les collisions avec les gaines au R+2",
-    relecture: "Faire un rapport sur les collisions avec les gaines au R+2.",
+    demande: "Fais-moi un rapport sur les collisions avec les gaines",
+    // Ancienne formulation (avant le 30/10), toujours reconnue si elle est tapee.
+    variantes: ["Fais-moi un rapport sur les collisions avec les gaines au R+2"],
+    relecture: "Faire un rapport sur les collisions avec les gaines.",
     demandeIA: DEMANDE_IA_METRE_R2,
-    commande: { action: "rapport", parametres: { sujet: "collisions avec les gaines au R+2", mots: ["gaine rectangulaire", "gaines", "cloison", "R+2"] } }
+    commande: { action: "rapport", parametres: { sujet: "collisions avec les gaines", mots: ["gaine rectangulaire", "gaines", "cloison"] } }
   },
   {
     demande: "Sors-moi toutes les conversations qui parlent de gaines en R+2",
@@ -74,6 +76,6 @@ const comparable = (texte) => normaliser(texte).replace(/[^a-z0-9]+/g, " ").trim
 export function reconnaitreExemple(phrase, exemples = EXEMPLES_DISCUSSIONS) {
   const cherchee = comparable(phrase);
   if (!cherchee) return null;
-  const trouve = exemples.find((e) => comparable(e.demande) === cherchee);
+  const trouve = exemples.find((e) => comparable(e.demande) === cherchee || (e.variantes || []).some((v) => comparable(v) === cherchee));
   return trouve ? { ...trouve.commande, demande: phrase, relecture: trouve.relecture, demandeIA: trouve.demandeIA || null } : null;
 }

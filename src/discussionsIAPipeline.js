@@ -83,7 +83,7 @@ export function creerPipeline({ lireIndex, comprendre, analyser, maintenant = Da
     return { ok: true, type: "liste", commande, relecture, resultat: resultatClasse(verdict.classes, index, selection.termes) };
   }
 
-  // Phrase d'exemple a demande attachee (demo des gaines au R+2) : quand la decision du rapport attend un metre et que le modele n'a pas (ou a mal) renseigne demande_ia,
+  // Phrase d'exemple a demande attachee (demo du rapport sur les collisions avec les gaines) : quand la decision du rapport attend un metre et que le modele n'a pas (ou a mal) renseigne demande_ia,
   // la demande de l'exemple est jointe, de facon deterministe. Jamais sur un rapport vide, une decision absente ou une decision qui ne parle pas d'un metre.
   function joindreDemande(rapport, demandeIA) {
     if (!demandeIA || rapport.vide || rapport.demandeIA || !rapport.decision || rapport.decision.statut === "aucune") return rapport;

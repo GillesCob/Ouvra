@@ -165,9 +165,10 @@ test("vue : l'encart est un vrai bouton, cree seulement si le rapport a une dema
   assert.match(encart, /aria-live/);
 });
 
-// Pipeline de la demo (30/10) : la phrase d'exemple « collisions avec les gaines au R+2 » rend l'encart a coup sur quand la decision attend un metre,
+// Pipeline de la demo (30/10) : la phrase d'exemple « collisions avec les gaines » rend l'encart a coup sur quand la decision attend un metre,
 // meme si le modele en direct n'a pas renseigne demande_ia (ou l'a mis a « aucune »). Rien n'est joint hors de ce cas.
-const PHRASE_EXEMPLE = "Fais-moi un rapport sur les collisions avec les gaines au R+2";
+const PHRASE_EXEMPLE = "Fais-moi un rapport sur les collisions avec les gaines";
+const PHRASE_ANCIENNE = PHRASE_EXEMPLE + " au R+2";
 async function rapportDemo(phrase, surSortie) {
   const maintenant = new Date("2026-10-30T09:00:00");
   const demo = await chargerDemo(maintenant);
@@ -190,8 +191,8 @@ async function rapportDemo(phrase, surSortie) {
 }
 
 test("pipeline demo : decision en attente d'un metre + modele sans demande_ia = encart Quantitatif joint", async () => {
-  for (const variante of [(s) => s, (s) => ({ ...s, demande_ia: { zone: "aucune", phrase: "" } }), (s) => ({ ...s, demande_ia: { zone: "quantitatif", phrase: "Compte les gaines du niveau 7" } })]) {
-    const r = await rapportDemo(PHRASE_EXEMPLE, variante);
+  for (const phrase of [PHRASE_EXEMPLE, PHRASE_ANCIENNE]) for (const variante of [(s) => s, (s) => ({ ...s, demande_ia: { zone: "aucune", phrase: "" } }), (s) => ({ ...s, demande_ia: { zone: "quantitatif", phrase: "Compte les gaines du niveau 7" } })]) {
+    const r = await rapportDemo(phrase, variante);
     assert.equal(r.type, "rapport");
     assert.deepEqual(r.rapport.demandeIA, { zone: "quantitatif", phrase: "Compte les gaines, les raccords de gaine et les faux plafonds du niveau 2, par famille" });
     assert.match(definitionRapportPdf(r.rapport).demandeIA, /^Demande à l'IA \(Quantitatif\) : /);
