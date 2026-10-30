@@ -12,6 +12,7 @@
 
 import { REGISTRE, validerCommande, selectionner, resultatLocal, construireResultat, preparerAnalyse, conclureClassement, conclureRapport, resultatClasse, MESSAGE_RIEN } from "./discussionsIAMoteur.js";
 import { reconnaitreExemple, EXEMPLES_DISCUSSIONS } from "./discussionsIAExemples.js";
+import { normaliser } from "./reglesCollision.js";
 import { messageRefus } from "./iaSaisieLogique.js";
 
 const MESSAGE_INDEX_VIDE = "Il n'y a encore aucune discussion à explorer.";
@@ -23,7 +24,7 @@ export function creerPipeline({ lireIndex, comprendre, analyser, maintenant = Da
     const valeurs = { personnes: index.personnes.map((p) => p.nom) };
     if (exemple) {
       const verdict = validerCommande({ action: exemple.action, parametres: exemple.parametres }, valeurs, registre);
-      if (verdict.ok) return { ok: true, commande: verdict.commande, relecture: exemple.relecture };
+      if (verdict.ok) return { ok: true, commande: verdict.commande, relecture: exemple.relecture, demandeIA: exemple.demandeIA };
     }
     const reponse = await comprendre({ phrase, valeurs });
     if (!reponse.ok) return { ok: false, message: reponse.message };
@@ -40,7 +41,7 @@ export function creerPipeline({ lireIndex, comprendre, analyser, maintenant = Da
       if (!index || !index.messages.length) return { ok: false, message: MESSAGE_INDEX_VIDE };
       const compris = await obtenirCommande(phrase, index);
       if (!compris.ok) return compris;
-      const { commande, relecture } = compris;
+      const { commande, relecture, demandeIA } = compris;
       const action = registre.obtenir(commande.action);
       const selection = selectionner(commande, index, { maintenant: maintenant() }, registre);
       if (selection.erreur) return { ok: false, message: selection.erreur };
@@ -62,7 +63,7 @@ export function creerPipeline({ lireIndex, comprendre, analyser, maintenant = Da
       const { extraits, table } = preparerAnalyse(selection, index);
       const analyse = await analyser({ action: action.nom, phrase, sujet: commande.parametres.sujet, extraits });
       if (action.sortie === "liste") return conclureListe(analyse, { table, selection, index, commande, relecture });
-      return conclureEnRapport(analyse, { table, selection, index, commande, relecture });
+      return conclureEnRapport(analyse, { table, selection, index, commande, relecture, demandeIA });
     } catch {
       // Filet : une erreur inattendue ne doit jamais bloquer la saisie. Le detail n'est pas affiche (il pourrait contenir du texte de message).
       return { ok: false, message: "La demande n'a pas pu être traitée. Réessayer ou choisir une phrase d'exemple." };
@@ -82,12 +83,20 @@ export function creerPipeline({ lireIndex, comprendre, analyser, maintenant = Da
     return { ok: true, type: "liste", commande, relecture, resultat: resultatClasse(verdict.classes, index, selection.termes) };
   }
 
-  function conclureEnRapport(analyse, { table, selection, index, commande, relecture }) {
+  // Phrase d'exemple a demande attachee (demo des gaines au R+2) : quand la decision du rapport attend un metre et que le modele n'a pas (ou a mal) renseigne demande_ia,
+  // la demande de l'exemple est jointe, de facon deterministe. Jamais sur un rapport vide, une decision absente ou une decision qui ne parle pas d'un metre.
+  function joindreDemande(rapport, demandeIA) {
+    if (!demandeIA || rapport.vide || rapport.demandeIA || !rapport.decision || rapport.decision.statut === "aucune") return rapport;
+    if (!/\bmetre\b/.test(normaliser(rapport.decision.texte || ""))) return rapport;
+    return { ...rapport, demandeIA: { ...demandeIA } };
+  }
+
+  function conclureEnRapport(analyse, { table, selection, index, commande, relecture, demandeIA }) {
     if (!analyse.ok) return { ok: false, message: analyse.message || MESSAGE_ANALYSE };
     const verdict = conclureRapport(analyse.sortie, table, index, { sujet: commande.parametres.sujet, termes: selection.termes, maintenant: maintenant() });
     if (!verdict.ok) return { ok: false, message: "L'IA n'a pas renvoyé de rapport exploitable." };
     const citees = verdict.rapport.chronologie.map((s) => ({ entree: table.get(s.id), mis: true, score: 0 }));
-    return { ok: true, type: "rapport", commande, relecture, resultat: construireResultat(citees, index, { termes: selection.termes }), rapport: verdict.rapport };
+    return { ok: true, type: "rapport", commande, relecture, resultat: construireResultat(citees, index, { termes: selection.termes }), rapport: joindreDemande(verdict.rapport, demandeIA) };
   }
 
   return { traiter };
