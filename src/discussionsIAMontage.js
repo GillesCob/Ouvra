@@ -159,18 +159,18 @@ export function creerDiscussionsIAMontage() {
     if (entreeHistorique) { entreeHistorique = false; ignorerRetourSysteme = true; history.back(); } // le bandeau consomme l'entree d'historique qu'il avait posee
     messagerie.fermerConversationIA();
     if (questionEnPause) { bandeau.montrer(questionEnPause); rapportEnAttente = rapport; questionEnPause = null; }
-    if (rapportVue.derniereOuvertureAuCentre() && !window.matchMedia(REQUETE_MOBILE).matches) montrerRapportAuCentre(rapport); // laptop : le rapport revient dans la zone centrale, comme il y etait
-    else rapportVue.ouvrir(rapport);
+    if (rapportVue.derniereOuvertureAuCentre() && !window.matchMedia(REQUETE_MOBILE).matches) montrerRapportAuCentre(rapport, { restaurer: true }); // laptop : le rapport revient dans la zone centrale, comme il y etait, a la meme position de lecture
+    else rapportVue.ouvrir(rapport, { restaurer: true });
   }
 
   // Laptop (30/10) : un rapport de l'historique s'affiche dans la zone centrale (celle de la liste des discussions), sans modale et sans bandeau de retour (31/10, Gilles) :
   // les onglets de la liste restent visibles, une autre carte de l'historique remplace le rapport. Le bandeau « Retour au rapport » d'une source (surSource) est un autre bandeau, il reste.
   // La question « Est-ce bien votre demande ? » en attente reste affichee : elle porte sur le filtre applique dessous, sans conflit avec un bandeau de retour.
-  function montrerRapportAuCentre(rapport) {
+  function montrerRapportAuCentre(rapport, options) {
     const centre = messagerie.preparerCentreIA(); // d'abord : il ferme un echange ouvert et son bandeau
     retourRapport.effacer();
     rapportEnAttente = null;
-    rapportVue.ouvrirAuCentre(rapport, centre);
+    rapportVue.ouvrirAuCentre(rapport, centre, options);
   }
 
   // Laptop, apres « Oui » sur une recherche d'echanges : la liste filtree reprend la zone centrale (rapport ferme, echange ouvert referme, bandeau de retour d'une source efface).

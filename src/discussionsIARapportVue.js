@@ -17,7 +17,7 @@ import "./reglesIA.css";
 import "./discussionsIA.css";
 import { dateDuRapport, perimetreDe, libelleDecision, nomsEnPhrase, MESSAGE_AUCUN_DESACCORD, MESSAGE_CONTEXTE_ABSENT, MENTION_NON_CONFIRME } from "./discussionsIARapportFormat.js";
 import { preparerOngletPdf } from "./discussionsIARapportOnglet.js";
-import { defilementVersTitre, CLASSE_VERROU } from "./discussionsIARapportDefilement.js";
+import { defilementVersTitre, creerMemoirePosition, CLASSE_VERROU } from "./discussionsIARapportDefilement.js";
 import { verrouillerArrierePlan } from "./verrouDefilement.js";
 import { REQUETE_MOBILE } from "./seuilMobile.js";
 
@@ -48,6 +48,7 @@ export function creerRapportVue({ surSource, texteRapport, exporterPdf }) {
   let verrou = null;
   let planDefilement = 0; // requestAnimationFrame du defilement vers le titre du menu ouvert
   let derniereAuCentre = false; // memoire du mode de la derniere ouverture (non remise a zero par fermer) : « Retour au rapport » rouvre le rapport la ou il etait
+  const memoirePosition = creerMemoirePosition(); // position de lecture au depart vers une source, rendue par ouvrir/ouvrirAuCentre({ restaurer: true })
   let auCentre = false; // laptop (30/10) : le rapport est pose dans la zone centrale de Discussions, sans modale (voir ouvrirAuCentre)
 
   function assurerSquelette() {
@@ -97,6 +98,7 @@ export function creerRapportVue({ surSource, texteRapport, exporterPdf }) {
       const source = e.target.closest("[data-mk]");
       if (!source) return;
       const mk = source.dataset.mk;
+      memoirePosition.memoriser(rapportCourant, zoneDefilante().scrollTop); // avant fermer : masque, la zone ne defile plus
       fermer(false);
       surSource(mk, rapportCourant); // le rapport en cours : « Retour au rapport » le rouvre tel quel
     });
@@ -269,7 +271,14 @@ export function creerRapportVue({ surSource, texteRapport, exporterPdf }) {
     document.body.appendChild(fond);
   }
 
-  function ouvrir(rapport) {
+  // Retour depuis une source (`restaurer`) : la position memorisee est rendue ; sinon (ou rapport different) le haut.
+  function positionDeLecture(rapport, restaurer) {
+    const top = restaurer ? memoirePosition.restituer(rapport) : 0;
+    if (!restaurer) memoirePosition.memoriser(null, 0);
+    return top;
+  }
+
+  function ouvrir(rapport, { restaurer = false } = {}) {
     assurerSquelette();
     quitterLeCentre();
     derniereAuCentre = false;
@@ -279,12 +288,13 @@ export function creerRapportVue({ surSource, texteRapport, exporterPdf }) {
     verrou.verrouiller();
     carte.scrollTop = 0;
     corps.scrollTop = 0;
+    zoneDefilante().scrollTop = positionDeLecture(rapport, restaurer);
     boutonFermer.focus({ preventScroll: true });
   }
 
   // Laptop (30/10) : le MEME rapport (meme rendu) s'affiche dans la zone centrale de Discussions, `conteneur`, a la place de la liste, SANS modale : pas de fond sombre,
   // pas de verrou de defilement, pas de bouton « Fermer » (plus de bandeau de retour : une autre carte de l'historique ou un onglet remplace le rapport). Sources, « Copier » et « Exporter en PDF » restent actifs.
-  function ouvrirAuCentre(rapport, conteneur) {
+  function ouvrirAuCentre(rapport, conteneur, { restaurer = false } = {}) {
     assurerSquelette();
     if (!fond.hidden && !auCentre) { fond.hidden = true; verrou.deverrouiller(); } // une modale ouverte se referme d'abord
     remplir(rapport);
@@ -298,6 +308,7 @@ export function creerRapportVue({ surSource, texteRapport, exporterPdf }) {
     conteneur.appendChild(fond);
     fond.hidden = false;
     corps.scrollTop = 0;
+    corps.scrollTop = positionDeLecture(rapport, restaurer);
     titre.tabIndex = -1;
     titre.focus({ preventScroll: true });
   }

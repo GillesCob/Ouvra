@@ -16,3 +16,23 @@ export function defilementVersTitre({ haut, zoneHaut, scrollTop, scrollMax }) {
   const voulu = Math.max(0, scrollTop + (haut - zoneHaut) - MARGE_TITRE_PX);
   return { top: voulu, rembourrage: Math.max(0, Math.ceil(voulu - Math.max(0, scrollMax))) };
 }
+
+// 3. Position de lecture (30/10) : cliquer une source ferme le rapport pour montrer la conversation ; « Retour au rapport » le rouvre reconstruit. La position de defilement
+//    est memorisee au depart et rendue au retour, pour le MEME rapport seulement (un autre rapport ou une position nulle : haut). Sans DOM, testable sous Node.
+export function creerMemoirePosition() {
+  let rapport = null;
+  let top = 0;
+  return {
+    memoriser(r, valeur) {
+      rapport = r || null;
+      top = Number.isFinite(valeur) && valeur > 0 ? valeur : 0;
+    },
+    // Rend la position memorisee pour ce rapport (0 sinon) et l'oublie : un retour ne rejoue pas une vieille position.
+    restituer(r) {
+      const rendu = r && r === rapport ? top : 0;
+      rapport = null;
+      top = 0;
+      return rendu;
+    }
+  };
+}
