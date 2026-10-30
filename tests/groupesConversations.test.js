@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { conversationsDuType, TYPES_CONVERSATION } from "../src/messagerie/groupesConversations.js";
+import { conversationsDuType, TYPES_CONVERSATION, libelleConversation } from "../src/messagerie/groupesConversations.js";
 
 const c = (id, type) => ({ id, type });
 const liste = [c("g1", "groupe"), c("i1", "individuel"), c("g2", "groupe"), c("i2", "individuel")];
@@ -32,4 +32,18 @@ test("dialogue Nouveau sujet : bascule a pastille et zone defilante dans une car
   assert.match(css, /\.msg-bascule-pastille\s*\{[^}]*transition:\s*transform 0\.3s ease, width 0\.3s ease/);
   assert.match(css, /prefers-reduced-motion[^}]*msg-bascule-pastille/);
   assert.doesNotMatch(css, /\.msg-bascule \.msg-pastille/); // la pastille de la bascule n'a plus la classe des pastilles de sujet
+});
+
+test("libelleConversation : individuelle avec metier, le metier suit le nom entre parentheses", () => {
+  assert.equal(libelleConversation({ type: "individuel", nom: "Sophie Lambert", sousTitre: "BET Fluides" }), "Sophie Lambert (BET Fluides)");
+});
+
+test("libelleConversation : individuelle sans metier (absent, vide, espaces) : le nom seul", () => {
+  assert.equal(libelleConversation({ type: "individuel", nom: "Marc Dubois" }), "Marc Dubois");
+  assert.equal(libelleConversation({ type: "individuel", nom: "Marc Dubois", sousTitre: "" }), "Marc Dubois");
+  assert.equal(libelleConversation({ type: "individuel", nom: "Marc Dubois", sousTitre: "  " }), "Marc Dubois");
+});
+
+test("libelleConversation : une conversation de groupe garde son nom (son sous-titre est un nombre de participants, pas un metier)", () => {
+  assert.equal(libelleConversation({ type: "groupe", nom: "Lot Structure", sousTitre: "4 participants" }), "Lot Structure");
 });
