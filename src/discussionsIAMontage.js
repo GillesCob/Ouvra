@@ -89,6 +89,7 @@ export function creerDiscussionsIAMontage() {
         // « Oui » : une recherche d'echanges ou un rapport entre dans « Recherches IA précédentes » (30/10) ; « Non » ou l'abandon n'ajoutent rien.
         // Le resultat de CETTE demande s'affiche et sa carte est selectionnee (meme bordure qu'un clic sur une carte de l'historique) : rapport dans la zone centrale sur laptop, liste d'echanges filtree sinon.
         const retour = flux.accepter() ? flux.acceptee() : null;
+        const dejaAuCentre = !!retour && rapportEnAttente === retour.rapport && rapportVue.ouvert() && rapportVue.derniereOuvertureAuCentre();
         const laptop = !window.matchMedia(REQUETE_MOBILE).matches;
         if (retour && retour.type === "liste") {
           const entree = ajouterRecherche(retour).find((e) => e.recherche && e.recherche.resultat === retour.resultat);
@@ -100,7 +101,7 @@ export function creerDiscussionsIAMontage() {
           const entree = ajouterSynthese(retour.rapport).find((e) => e.rapport === retour.rapport);
           ia.majHistorique();
           if (entree) ia.selectionner(entree.id);
-          if (laptop && entree) montrerRapportAuCentre(retour.rapport);
+          if (laptop && entree && !dejaAuCentre) montrerRapportAuCentre(retour.rapport);
         }
         if (rapportEnAttente && !rapportVue.ouvert() && window.matchMedia(REQUETE_MOBILE).matches) rapportVue.ouvrir(rapportEnAttente); // mobile : le rapport est ce que « Oui » doit montrer, meme s'il a ete ferme sous le bandeau
         rapportEnAttente = null;
@@ -147,7 +148,11 @@ export function creerDiscussionsIAMontage() {
         derniereQuestion = { relecture: application.relecture, resume: application.resume };
         bandeau.montrer(derniereQuestion);
         // Le rapport de l'IA n'entre dans l'historique qu'apres « Oui » (30/10), comme une recherche. Jamais le « Voir un exemple ».
-        if (application.type === "rapport") { rapportEnAttente = retour.rapport; rapportVue.ouvrir(retour.rapport); }
+        // Laptop : le rapport est deja dans sa forme finale (zone centrale, pleine largeur) sous le flou, « Oui » le garde tel quel ; mobile : modale.
+        if (application.type === "rapport") {
+          if (window.matchMedia(REQUETE_MOBILE).matches) rapportVue.ouvrir(retour.rapport); else montrerRapportAuCentre(retour.rapport);
+          rapportEnAttente = retour.rapport; // apres l'ouverture : montrerRapportAuCentre le remet a null
+        }
         return { ok: true };
       }
     });
