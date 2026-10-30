@@ -6,7 +6,7 @@
 // sont donc retrouvees par le DEBUT DE LEUR TEXTE (REPERES), jamais par un numero ou une date figes. Un repere introuvable = pas de rapport (rien d'invente).
 // Pur (ni DOM ni reseau). Le rapport rendu porte modele: true (bandeau « Modèle de rapport » dans src/discussionsIARapportVue.js).
 
-import { EXEMPLES_DISCUSSIONS } from "./discussionsIAExemples.js";
+import { EXEMPLES_DISCUSSIONS, DEMANDE_IA_METRE_R2 } from "./discussionsIAExemples.js";
 import { validerCommande, selectionner, preparerAnalyse, conclureRapport } from "./discussionsIAMoteur.js";
 
 export const PHRASE_MODELE = "Fais-moi un rapport sur la collision entre la gaine et la cloison";
@@ -42,7 +42,7 @@ const SORTIE_MODELE = {
     sources: ["metre", "accord"]
   },
   // Phrase de l'etape suivante de la demo (decision de Gilles, 30/10) : la decision du rapport depend du metre du niveau 2.
-  demande_ia: { zone: "quantitatif", phrase: "Compte les gaines, les raccords de gaine et les faux plafonds du niveau 2, par famille" }
+  demande_ia: DEMANDE_IA_METRE_R2
 };
 
 // Second modele (28/10) : le desaccord sur le degre coupe-feu de la cloison du local technique R+2 (conversation avec Claire Martin), pour l'historique de demonstration.
