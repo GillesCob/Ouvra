@@ -1,5 +1,6 @@
 // Historique de demonstration du Quantitatif : deux rapports complets, amorces une seule fois.
 import test from "node:test";
+import { canoniqueNiveau } from "../src/commandesLibelles.js";
 import assert from "node:assert/strict";
 import { rapportsDemo, amorcerHistoriqueDemo, CLE_DRAPEAU_DEMO } from "../src/quantitatifHistoriqueDemo.js";
 import { creerHistorique } from "../src/quantitatifHistorique.js";
@@ -120,7 +121,7 @@ test("rapportsDemo : chaque ligne vise des elements qui existent dans la maquett
       let courant = o;
       while (courant && courant.type !== "IfcBuildingStorey") courant = parId.get(courant.parent);
       if (!courant) continue;
-      const cle = o.type + "|" + courant.name;
+      const cle = o.type + "|" + canoniqueNiveau(courant.name); // apres regroupement des niveaux, comme « Voir »
       c[cle] = (c[cle] || 0) + 1;
     }
     comptes[id] = c;

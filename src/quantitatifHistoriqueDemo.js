@@ -15,18 +15,18 @@ const filtres = (f) => ({ typesIfc: [], niveaux: [], maquettes: [], noms: [], ..
 
 // [typeIfc, niveau, nombre d'elements] par maquette. Les couples (type, niveau) et leurs nombres sont ceux des VRAIES maquettes de l'hopital (metadonnees
 // de public/models/hospital/legere) : le bouton « Voir » d'une ligne isole alors de vrais elements (29/10 : la maquette CVC n'a aucune vanne au niveau 2, la ligne
-// fictive « IfcValve, Level 2 » affichait « Rien à voir dans le Viewer »). Verrouille par tests/quantitatifHistoriqueDemo.test.js.
+// fictive « IfcValve, Level 2 » affichait « Rien à voir dans le Viewer »). 30/10 : les nombres sont ceux APRES regroupement des niveaux (canoniqueNiveau : « Level 5 Ceiling » dans « Level 5 »), comme « Voir ». Verrouille par tests/quantitatifHistoriqueDemo.test.js.
 const ARCHITECTURE = [
   ["IfcDoor", "Level 1", 114], ["IfcDoor", "Level 2", 56], ["IfcDoor", "Level 3", 96], ["IfcDoor", "Level 4", 88], ["IfcDoor", "Level 5", 73], ["IfcDoor", "Level 6", 5], ["IfcDoor", "Level 7", 1],
   ["IfcWindow", "Level 1", 66], ["IfcWindow", "Level 2", 65],
   ["IfcWallStandardCase", "Level 1", 271], ["IfcWallStandardCase", "Level 2", 205], ["IfcWallStandardCase", "Level 3", 273], ["IfcWallStandardCase", "Level 4", 284],
-  ["IfcWallStandardCase", "Level 5", 223], ["IfcWallStandardCase", "Level 6", 15], ["IfcWallStandardCase", "Level 7", 8]
+  ["IfcWallStandardCase", "Level 5", 223], ["IfcWallStandardCase", "Level 6", 15], ["IfcWallStandardCase", "Level 7", 11]
 ];
 const MECANIQUE = [
-  ["IfcDuctSegment", "Level 1", 920], ["IfcDuctSegment", "Level 2", 20], ["IfcDuctSegment", "Level 3", 51], ["IfcDuctSegment", "Level 4", 1040], ["IfcDuctSegment", "Level 5", 43],
-  ["IfcDuctFitting", "Level 1", 665], ["IfcDuctFitting", "Level 2", 712], ["IfcDuctFitting", "Level 3", 1134], ["IfcDuctFitting", "Level 4", 1174], ["IfcDuctFitting", "Level 5", 963],
-  ["IfcPipeSegment", "Level 1", 275], ["IfcPipeSegment", "Level 2", 49], ["IfcPipeSegment", "Level 3", 129], ["IfcPipeSegment", "Level 4", 957], ["IfcPipeSegment", "Level 5", 87],
-  ["IfcValve", "Level 1", 5], ["IfcValve", "Level 3", 96], ["IfcValve", "Level 4", 96], ["IfcValve", "Level 5", 66]
+  ["IfcDuctSegment", "Level 1", 920], ["IfcDuctSegment", "Level 2", 954], ["IfcDuctSegment", "Level 3", 1004], ["IfcDuctSegment", "Level 4", 1040], ["IfcDuctSegment", "Level 5", 832],
+  ["IfcDuctFitting", "Level 1", 665], ["IfcDuctFitting", "Level 2", 714], ["IfcDuctFitting", "Level 3", 1134], ["IfcDuctFitting", "Level 4", 1174], ["IfcDuctFitting", "Level 5", 963],
+  ["IfcPipeSegment", "Level 1", 275], ["IfcPipeSegment", "Level 2", 236], ["IfcPipeSegment", "Level 3", 977], ["IfcPipeSegment", "Level 4", 957], ["IfcPipeSegment", "Level 5", 706],
+  ["IfcValve", "Level 1", 5], ["IfcValve", "Level 3", 96], ["IfcValve", "Level 4", 96], ["IfcValve", "Level 5", 90]
 ];
 
 function elementsSynthetiques(table, maquette, maquetteId) {
