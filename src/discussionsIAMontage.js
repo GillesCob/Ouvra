@@ -143,16 +143,17 @@ export function creerDiscussionsIAMontage() {
     if (entreeHistorique) { entreeHistorique = false; ignorerRetourSysteme = true; history.back(); } // le bandeau consomme l'entree d'historique qu'il avait posee
     messagerie.fermerConversationIA();
     if (questionEnPause) { bandeau.montrer(questionEnPause); rapportEnAttente = rapport; questionEnPause = null; }
-    if (rapportVue.derniereOuvertureAuCentre()) montrerRapportAuCentre(rapport); // laptop : le rapport revient dans la zone centrale, comme il y etait
+    if (rapportVue.derniereOuvertureAuCentre() && !window.matchMedia(REQUETE_MOBILE).matches) montrerRapportAuCentre(rapport); // laptop : le rapport revient dans la zone centrale, comme il y etait
     else rapportVue.ouvrir(rapport);
   }
 
   // Laptop (30/10) : un rapport de l'historique s'affiche dans la zone centrale (celle de la liste des discussions), sans modale. Le bandeau « Retour » existant
   // (meme composant que « Retour au rapport ») ramene a la liste ; la question « Est-ce bien votre demande ? » en attente passe en pause comme pour un echange ouvert.
   function montrerRapportAuCentre(rapport) {
+    const centre = messagerie.preparerCentreIA(); // d'abord : il ferme un echange ouvert, ce qui ferait revenir la question mise en pause juste apres
     action("echange-ouvert");
     rapportEnAttente = null;
-    rapportVue.ouvrirAuCentre(rapport, messagerie.preparerCentreIA());
+    rapportVue.ouvrirAuCentre(rapport, centre);
     retourRapport.montrer({
       libelle: "Retour aux discussions",
       surRetour: () => { rapportVue.fermer(); messagerie.fermerConversationIA(); action("echanges-retour"); }

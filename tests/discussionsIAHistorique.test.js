@@ -165,3 +165,14 @@ test("montage : un rapport de l'historique s'affiche au centre sur laptop (sans 
   assert.match(vue, /ouvrirAuCentre/);
   assert.doesNotMatch(vue, /console\.log/);
 });
+
+test("rapport au centre : la zone est preparee avant la mise en pause de la question, la liste ne la recouvre pas, le retour respecte le mobile", async () => {
+  const { readFileSync } = await import("node:fs");
+  const montage = readFileSync(new URL("../src/discussionsIAMontage.js", import.meta.url), "utf8");
+  const centre = montage.slice(montage.indexOf("function montrerRapportAuCentre"), montage.indexOf("function ouvrirSynthese"));
+  assert.ok(centre.indexOf("preparerCentreIA()") < centre.indexOf('action("echange-ouvert")'));
+  assert.match(montage, /derniereOuvertureAuCentre\(\) && !window\.matchMedia\(REQUETE_MOBILE\)\.matches/);
+  const mess = readFileSync(new URL("../src/messagerie/messagerie.js", import.meta.url), "utf8");
+  assert.match(mess, /etat\.convId \|\| rapportAuCentre\) return;/);
+  assert.match(mess, /rapportAuCentre = true;/);
+});

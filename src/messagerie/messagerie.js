@@ -279,6 +279,7 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
     etat.sujetId = null;
     etat.recherche = "";
     vuePendante = null;
+    rapportAuCentre = false;
     $("msgVolet").innerHTML = '<p class="msg-volet-vide">Choisissez une conversation.</p>';
     racine.classList.remove("volet-ouvert");
     rendreCentreIA(); // laptop, filtre IA actif : la zone centrale redevient la liste des echanges de la demande
@@ -1548,6 +1549,7 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
   // ---------- Discussions par commande IA (24/10) ----------
   // Le resultat d'une commande (src/discussionsIAPipeline.js) remplace la liste des conversations par les discussions concernees ; les messages
   // trouves sont mis en evidence dans le fil. « Tout reafficher » le retire. Rien n'est modifie dans les donnees : seul l'affichage change.
+  let rapportAuCentre = false; // laptop : un rapport de l'historique occupe la zone centrale, la liste des echanges n'y est pas redessinee par-dessus
   const nombreFr = (n, un, plusieurs) => n + " " + (n > 1 ? plusieurs : un);
 
   function ligneResultatIA(r, i) {
@@ -1582,7 +1584,7 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
   // Laptop : la zone centrale montre les echanges filtres tant qu'aucun echange n'est ouvert (sinon elle garde l'echange ouvert).
   function rendreCentreIA() {
     const f = etat.filtreIA;
-    if (mobile() || etat.onglet !== "ia" || !f || etat.convId) return;
+    if (mobile() || etat.onglet !== "ia" || !f || etat.convId || rapportAuCentre) return;
     const lignes = f.fils.length ? f.fils.map(ligneResultatIA).join("") : '<div class="msg-vide">Aucune discussion à afficher.</div>';
     $("msgVolet").innerHTML = '<div class="msg-ia-centre" role="list" aria-label="Échanges de ma demande">' + lignes + "</div>";
   }
@@ -1671,6 +1673,7 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
     fermerConversationCourante();
     const volet = $("msgVolet");
     volet.textContent = "";
+    rapportAuCentre = true;
     return volet;
   }
 
