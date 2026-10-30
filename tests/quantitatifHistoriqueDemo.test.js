@@ -136,3 +136,20 @@ test("rapportsDemo : chaque ligne vise des elements qui existent dans la maquett
     }
   }
 });
+
+// 30/10 : la maquette CVC a aussi des niveaux 6 et 7 ; le rapport de demonstration les porte (comptes apres regroupement), tries apres le niveau 5, totaux coherents.
+test("rapportsDemo CVC : lignes Level 6 et Level 7 presentes, triees apres Level 5, total = somme des lignes", () => {
+  const [cvc] = rapportsDemo({ maintenant });
+  const lignes = cvc.resultat.lignes;
+  const attendu = { "IfcDuctFitting|Level 6": 90, "IfcDuctSegment|Level 6": 65, "IfcPipeSegment|Level 6": 715, "IfcValve|Level 6": 163, "IfcDuctSegment|Level 7": 1, "IfcPipeSegment|Level 7": 50, "IfcValve|Level 7": 12 };
+  for (const [cle, n] of Object.entries(attendu)) {
+    const [type, niveau] = cle.split("|");
+    const l = lignes.find((x) => x.criteres.typesIfc[0] === type && x.criteres.niveaux[0] === niveau);
+    assert.ok(l, "ligne absente : " + cle);
+    assert.equal(l.nombre, n);
+  }
+  assert.equal(lignes.length, 4 * 7 - 1 /* aucun raccord Level 7 */ - 1 /* aucune vanne Level 2 */ );
+  const niveaux = tableauDe(cvc).lignes.map((l) => l[0]); // 1re colonne = niveau
+  assert.deepEqual([...new Set(niveaux)], ["Level 1", "Level 2", "Level 3", "Level 4", "Level 5", "Level 6", "Level 7"]);
+  assert.equal(tableauDe(cvc).total.quantite, lignes.reduce((s, l) => s + l.nombre, 0));
+});

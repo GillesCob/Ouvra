@@ -8,7 +8,7 @@ import { construireRapport } from "./quantitatifRapport.js";
 import { EMPREINTE_DEMO_A_JOUR, EMPREINTE_DEMO_ANCIENNE } from "./quantitatifVersions.js";
 
 export const CLE_DRAPEAU_DEMO = "ouvra-quantitatif-historique-demo";
-const VERSION_DEMO = "5"; // 29/10 : "5" reamorce les navigateurs qui avaient la version "4" (lignes fictives sans element reel)
+const VERSION_DEMO = "6"; // 30/10 : "6" reamorce les navigateurs qui avaient la version "5" (CVC sans Level 6 ni Level 7) ; 29/10 : "5" reamorcait la version "4" (lignes fictives sans element reel)
 const JOUR = 24 * 3600 * 1000;
 
 const filtres = (f) => ({ typesIfc: [], niveaux: [], maquettes: [], noms: [], ...f });
@@ -23,10 +23,10 @@ const ARCHITECTURE = [
   ["IfcWallStandardCase", "Level 5", 223], ["IfcWallStandardCase", "Level 6", 15], ["IfcWallStandardCase", "Level 7", 11]
 ];
 const MECANIQUE = [
-  ["IfcDuctSegment", "Level 1", 920], ["IfcDuctSegment", "Level 2", 954], ["IfcDuctSegment", "Level 3", 1004], ["IfcDuctSegment", "Level 4", 1040], ["IfcDuctSegment", "Level 5", 832],
-  ["IfcDuctFitting", "Level 1", 665], ["IfcDuctFitting", "Level 2", 714], ["IfcDuctFitting", "Level 3", 1134], ["IfcDuctFitting", "Level 4", 1174], ["IfcDuctFitting", "Level 5", 963],
-  ["IfcPipeSegment", "Level 1", 275], ["IfcPipeSegment", "Level 2", 236], ["IfcPipeSegment", "Level 3", 977], ["IfcPipeSegment", "Level 4", 957], ["IfcPipeSegment", "Level 5", 706],
-  ["IfcValve", "Level 1", 5], ["IfcValve", "Level 3", 96], ["IfcValve", "Level 4", 96], ["IfcValve", "Level 5", 90]
+  ["IfcDuctSegment", "Level 1", 920], ["IfcDuctSegment", "Level 2", 954], ["IfcDuctSegment", "Level 3", 1004], ["IfcDuctSegment", "Level 4", 1040], ["IfcDuctSegment", "Level 5", 832], ["IfcDuctSegment", "Level 6", 65], ["IfcDuctSegment", "Level 7", 1],
+  ["IfcDuctFitting", "Level 1", 665], ["IfcDuctFitting", "Level 2", 714], ["IfcDuctFitting", "Level 3", 1134], ["IfcDuctFitting", "Level 4", 1174], ["IfcDuctFitting", "Level 5", 963], ["IfcDuctFitting", "Level 6", 90],
+  ["IfcPipeSegment", "Level 1", 275], ["IfcPipeSegment", "Level 2", 236], ["IfcPipeSegment", "Level 3", 977], ["IfcPipeSegment", "Level 4", 957], ["IfcPipeSegment", "Level 5", 706], ["IfcPipeSegment", "Level 6", 715], ["IfcPipeSegment", "Level 7", 50],
+  ["IfcValve", "Level 1", 5], ["IfcValve", "Level 3", 96], ["IfcValve", "Level 4", 96], ["IfcValve", "Level 5", 90], ["IfcValve", "Level 6", 163], ["IfcValve", "Level 7", 12]
 ];
 
 function elementsSynthetiques(table, maquette, maquetteId) {
