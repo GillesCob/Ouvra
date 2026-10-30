@@ -1,7 +1,7 @@
 // Historique des syntheses de conversation (28/10) : demonstration a la premiere utilisation, ajout, tri, bornes, stockage absent ou corrompu.
 import test from "node:test";
 import assert from "node:assert/strict";
-import { listerSyntheses, ajouterSynthese, ajouterRecherche, dateSynthese, CLE_SYNTHESES, SYNTHESES_MAX } from "../src/discussionsIAHistorique.js";
+import { listerSyntheses, ajouterSynthese, ajouterRecherche, dateSynthese, titreCarte, CLE_SYNTHESES, SYNTHESES_MAX } from "../src/discussionsIAHistorique.js";
 
 const stockageMemoire = (initial = {}) => {
   const m = new Map(Object.entries(initial));
@@ -213,4 +213,18 @@ test("« Non » sur laptop : la zone centrale se redessine apres la fermeture d'
   const montage = readFileSync(new URL("../src/discussionsIAMontage.js", import.meta.url), "utf8");
   const non = montage.slice(montage.indexOf("surNon: () =>"), montage.indexOf("const pipeline"));
   assert.ok(non.indexOf("flux.refuser()") < non.indexOf("messagerie.fermerConversationIA()"));
+});
+
+test("titre de carte : le point final de la relecture est retire, le reste du texte est intact", () => {
+  assert.equal(titreCarte("Retrouver l'échange sur l'accès de la grue."), "Retrouver l'échange sur l'accès de la grue");
+  assert.equal(titreCarte("Afficher les échanges avec Sophie Lambert. "), "Afficher les échanges avec Sophie Lambert");
+  assert.equal(titreCarte("Accès grue"), "Accès grue");
+  assert.equal(titreCarte("Cloison coupe-feu du local technique R+2, 1h ou 2h"), "Cloison coupe-feu du local technique R+2, 1h ou 2h");
+});
+
+test("titre de carte : le point final de la relecture est retire, le reste du texte est intact", () => {
+  assert.equal(titreCarte("Retrouver l'échange sur l'accès de la grue."), "Retrouver l'échange sur l'accès de la grue");
+  assert.equal(titreCarte("Afficher les échanges avec Sophie Lambert. "), "Afficher les échanges avec Sophie Lambert");
+  assert.equal(titreCarte("Accès grue"), "Accès grue");
+  assert.equal(titreCarte("Cloison coupe-feu du local technique R+2, 1h ou 2h"), "Cloison coupe-feu du local technique R+2, 1h ou 2h");
 });

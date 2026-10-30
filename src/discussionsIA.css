@@ -5,7 +5,7 @@
 /* ---------- Onglet « IA » et panneau de gauche ---------- */
 /* « IA » est le troisieme onglet du groupe .msg-onglets (messagerie.css) : aucune mise en forme propre, c'est le meme composant et la meme pastille coulissante.
    Le panneau ci-dessous n'est visible que sur cet onglet ; la liste des conversations et le « + » n'y sont pas. */
-.msg-ia-panneau { display: flex; flex-direction: column; gap: 8px; padding: 0 12px 10px; border-bottom: 1px solid var(--border); }
+.msg-ia-panneau { display: flex; flex-direction: column; gap: 8px; padding: 0 12px 10px; }
 .msg-ia-panneau[hidden] { display: none; }
 /* Les selecteurs des boutons portent .msg-racine : sans lui, la regle « .msg-racine button { color: inherit } » (messagerie.css) gagne a specificite egale
    ou a l'ordre de chargement et efface la couleur du texte. */

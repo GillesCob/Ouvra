@@ -14,7 +14,7 @@
 
 import "./discussionsIA.css";
 import { creerIASaisie, PHRASE_MAX } from "./iaSaisie.js";
-import { dateSynthese, libelleTypeEntree } from "./discussionsIAHistorique.js";
+import { dateSynthese, libelleTypeEntree, titreCarte } from "./discussionsIAHistorique.js";
 
 const PLACEHOLDER_TEXTE = "Ex. : échanges avec Sophie Lambert";
 const MESSAGE_PHRASE_VIDE = "Écrire ce qui est recherché, par exemple « montre-moi tous les échanges avec Sophie Lambert ».";
@@ -86,7 +86,7 @@ export function creerDiscussionsIA({ panneau, retourFocus = null, exemples, trai
       carte.type = "button";
       const meta = creer("span", "msg-ia-histo-meta"); // label de type (Rapport / Échanges, 30/10) + date, sur une ligne qui passe a la suivante si l'etroitesse l'impose
       meta.append(creer("span", "msg-ia-histo-type", libelleTypeEntree(entree)), creer("span", "msg-ia-histo-date", dateSynthese(entree)));
-      carte.append(creer("span", "msg-ia-histo-nom", entree.nom), meta);
+      carte.append(creer("span", "msg-ia-histo-nom", titreCarte(entree.nom)), meta);
       carte.addEventListener("click", () => { selectionner(entree.id); historique.ouvrir(entree); });
       li.appendChild(carte);
       histoListe.appendChild(li);
