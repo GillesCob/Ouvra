@@ -207,3 +207,10 @@ test("« Oui » : la carte ajoutee est selectionnee et le resultat de la dernier
   const css = readFileSync(new URL("../src/discussionsIA.css", import.meta.url), "utf8");
   assert.match(css, /\.msg-ia-histo-item:focus-within,\n\.msg-ia-histo-item\[data-selectionnee\] \{ border-color: var\(--accent\); \}/);
 });
+
+test("« Non » sur laptop : la zone centrale se redessine apres la fermeture d'un rapport pose au centre (pas de zone vide)", async () => {
+  const { readFileSync } = await import("node:fs");
+  const montage = readFileSync(new URL("../src/discussionsIAMontage.js", import.meta.url), "utf8");
+  const non = montage.slice(montage.indexOf("surNon: () =>"), montage.indexOf("const pipeline"));
+  assert.ok(non.indexOf("flux.refuser()") < non.indexOf("messagerie.fermerConversationIA()"));
+});

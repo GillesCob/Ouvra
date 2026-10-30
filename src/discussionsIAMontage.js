@@ -111,6 +111,7 @@ export function creerDiscussionsIAMontage() {
         rapportVue.fermer();
         ia.selectionner(null);
         const retour = flux.refuser();
+        if (!window.matchMedia(REQUETE_MOBILE).matches) messagerie.fermerConversationIA(); // laptop : fermer un rapport pose au centre le vide, la zone se redessine d'apres le filtre restant
         if (retour) ia.reformuler(retour.phrase);
       }
     });
