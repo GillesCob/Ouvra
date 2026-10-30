@@ -203,7 +203,7 @@ test("source cliquee : le clic memorise son rang, le retour la surligne (meme an
   assert.match(vue, /if \(!restaurer\) \{[^}]*memoriser\(null, 0\)/);
   assert.ok(vue.includes("function surlignerSource("));
   const css = lire("src/discussionsIA.css");
-  assert.match(css, /\.disc-rapport-source-flash \{[^}]*animation: msg-ia-flash 1\.6s ease-out/);
+  assert.match(css, /\.disc-rapport-source\.disc-rapport-source-flash \{[^}]*animation: msg-ia-flash 1\.6s ease-out/);
   assert.match(css, /prefers-reduced-motion: reduce\) \{[^}]*\.disc-rapport-source-flash/);
 });
 

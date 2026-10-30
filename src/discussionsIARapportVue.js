@@ -321,7 +321,7 @@ export function creerRapportVue({ surSource, texteRapport, exporterPdf }) {
     if (!bouton) return;
     const z = zone.getBoundingClientRect();
     const b = bouton.getBoundingClientRect();
-    if (b.top < z.top || b.bottom > z.bottom) bouton.scrollIntoView({ block: "center" });
+    if (b.top < z.top || b.bottom > z.bottom) zone.scrollTop += (b.top - z.top) - (z.height - b.height) / 2; // centre dans la zone seule (scrollIntoView ferait defiler aussi les ancetres)
     bouton.classList.add("disc-rapport-source-flash");
     setTimeout(() => bouton.classList.remove("disc-rapport-source-flash"), 1800);
   }
