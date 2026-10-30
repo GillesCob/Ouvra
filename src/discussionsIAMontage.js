@@ -163,9 +163,11 @@ export function creerDiscussionsIAMontage() {
   function retourAuRapport(rapport) {
     if (entreeHistorique) { entreeHistorique = false; ignorerRetourSysteme = true; history.back(); } // le bandeau consomme l'entree d'historique qu'il avait posee
     messagerie.fermerConversationIA();
-    if (questionEnPause) { bandeau.montrer(questionEnPause); rapportEnAttente = rapport; questionEnPause = null; }
+    const questionRevient = !!questionEnPause;
+    if (questionRevient) { bandeau.montrer(questionEnPause); questionEnPause = null; }
     if (rapportVue.derniereOuvertureAuCentre() && !window.matchMedia(REQUETE_MOBILE).matches) montrerRapportAuCentre(rapport, { restaurer: true }); // laptop : le rapport revient dans la zone centrale, comme il y etait, a la meme position de lecture
     else rapportVue.ouvrir(rapport, { restaurer: true });
+    if (questionRevient) rapportEnAttente = rapport; // apres l'ouverture : montrerRapportAuCentre le remet a null, et « Oui » ne doit pas redessiner un rapport deja au centre
   }
 
   // Laptop (30/10) : un rapport de l'historique s'affiche dans la zone centrale (celle de la liste des discussions), sans modale et sans bandeau de retour (31/10, Gilles) :
