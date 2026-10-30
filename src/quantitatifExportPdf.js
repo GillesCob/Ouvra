@@ -18,7 +18,7 @@ const ORANGE_PALE = [253, 236, 220];
 
 // Variante MOBILE (28/10) : page etroite 105 x 186 mm (9:16), affichee en pleine largeur sur un telephone (390 px pour 105 mm : le corps de 10 pt y mesure ~13 px,
 // alors qu'en A4 la meme largeur reduit 8,5 pt a ~5,6 px). Colonnes reduites a l'essentiel : cles + quantite (unite collee). Le PDF laptop reste l'A4 portrait.
-const INFOS_MOBILE = new Set(["Demande", "Mesure", "Éléments pris en compte", "État du rapport"]);
+const INFOS_MOBILE = new Set(["Demande", "Mesure", "Calculé le", "Éléments pris en compte", "État du rapport"]);
 
 
 // statut : sortie de comparerVersions (ou null si non evalue).
@@ -40,7 +40,7 @@ export function definitionPdf(rapport, statut, { mobile = false } = {}) {
     titre: "Quantitatif",
     sousTitre: sansSpecial(rapport.phrase),
     bandeau: obsolete ? sansSpecial(texteStatut) : null,
-    infos: informationsDe(rapport, texteStatut).filter(([k]) => !mobile || INFOS_MOBILE.has(k)).map(([k, v]) => [k, sansSpecial(v)]),
+    infos: informationsDe(rapport, statut && statut.etat !== "a_jour" ? texteStatut : "").filter(([k]) => !mobile || INFOS_MOBILE.has(k)).map(([k, v]) => [k, sansSpecial(v)]),
     tableau: mobile
       ? { tete: mobileTableau.tete, corps: mobileTableau.corps.map((l) => l.map(sansSpecial)), pied: mobileTableau.pied.map((l) => l.map(sansSpecial)), colonneQuantite: t.nCles, colonneOrigine: -1, nCles: t.nCles }
       : { tete, corps: corps.map((l) => l.map(sansSpecial)), pied: pied.map((l) => l.map(sansSpecial)), colonneQuantite: t.nCles + 1, colonneOrigine: t.nCles + 2, nCles: t.nCles },

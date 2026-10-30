@@ -67,7 +67,7 @@ export function statutRapport(rapport, actuelles) {
 // Texte du statut, en toutes lettres (tableau, PDF, Excel).
 export function libelleStatut(statut) {
   const liste = (noms) => noms.join(", ");
-  if (statut.etat === "obsolete") return "OBSOLÈTE : " + (statut.changees.length > 1 ? "les maquettes " : "la maquette ") + liste(statut.changees) + (statut.changees.length > 1 ? " ont été mises à jour" : " a été mise à jour") + " depuis le calcul. Recalcule avant d'utiliser ces quantités.";
+  if (statut.etat === "obsolete") return "OBSOLÈTE : " + (statut.changees.length > 1 ? "les maquettes " : "la maquette ") + liste(statut.changees) + (statut.changees.length > 1 ? " ont été mises à jour" : " a été mise à jour") + " depuis le calcul : ces quantités ne correspondent plus aux maquettes actuelles. Régénère le rapport avant de les utiliser.";
   if (statut.etat === "inconnue") return "Version des maquettes inconnue" + (statut.inconnues.length ? " (" + liste(statut.inconnues) + ")" : "") + " : impossible de dire si ces quantités sont à jour.";
   return "À jour : les maquettes concernées n'ont pas changé depuis le calcul.";
 }

@@ -145,6 +145,13 @@ test("historique : ajout, liste recente d'abord, obtention sans IA, remplacement
   assert.equal((await h.obtenir("r1")).rapport.phrase, "recalcule");
 });
 
+test("historique : régénérer = nouvelle entrée, l'ancien rapport reste (nouvel id, nouvelle date)", async () => {
+  const h = creerHistorique({ depot: depotMemoire() });
+  await h.ajouter(rapportN(1));
+  await h.ajouter({ ...rapportN(1), id: "r1-regenere", calculeLe: "2026-10-31T10:00:00.000Z" });
+  assert.deepEqual((await h.lister()).map((e) => e.id), ["r1-regenere", "r1"]);
+});
+
 test("historique : nombre d'entrees borne, la plus ancienne purgee", async () => {
   const depot = depotMemoire();
   const h = creerHistorique({ depot, maximum: 3 });

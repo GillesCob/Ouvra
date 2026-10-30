@@ -10,7 +10,7 @@
 //   obtenirVersions() : promesse de [{ id, label, url, empreinte }] (src/quantitatifVersions.js) ; ne rejette jamais
 //   historique : creerHistorique(...) (src/quantitatifHistorique.js), stockage remplacable ; chaque quantitatif demande y est garde et rouvrable sans IA
 // Un rapport (src/quantitatifRapport.js) porte l'empreinte de version des seules maquettes concernees : a chaque affichage il est compare aux
-// versions actuelles (comparerVersions), et s'il est OBSOLETE un badge rouge le dit, avec « Recalculer » (meme requete, sans IA).
+// versions actuelles (comparerVersions), et s'il est OBSOLETE un badge rouge le dit, avec « Régénérer » (meme requete, sans IA, nouvelle entree d'historique).
 
 import "./quantitatif.css";
 import { calculer, exporterCsv, aColonneElements } from "./quantitatif.js";
@@ -277,15 +277,15 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
   }
 
   // Badge d'etat du rapport : OBSOLETE (rouge, texte clair, maquettes nommees) ; version inconnue (ambre, dite honnetement) ; rien si a jour.
-  function badgeStatut(statut, surRecalculer) {
+  function badgeStatut(statut, surRegenerer) {
     if (statut.etat === "a_jour") return null;
     const boite = creer("div", "qt-statut-rapport qt-statut-" + statut.etat);
     boite.setAttribute("role", statut.etat === "obsolete" ? "alert" : "status");
     boite.appendChild(creer("span", "qt-statut-texte", libelleStatut(statut).replace(/^OBSOLÈTE : /, "")));
-    if (surRecalculer) {
-      const b = creer("button", "qt-btn", "Recalculer");
+    if (surRegenerer) {
+      const b = creer("button", "qt-btn", "Régénérer");
       b.type = "button";
-      b.addEventListener("click", surRecalculer);
+      b.addEventListener("click", surRegenerer);
       boite.appendChild(b);
     }
     return boite;
@@ -371,7 +371,7 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
     titres.appendChild(pastilles);
     tete.appendChild(titres);
     resultatZone.appendChild(tete);
-    const badge = badgeStatut(statut, () => recalculer(rapport));
+    const badge = badgeStatut(statut, () => regenerer(rapport));
     if (badge) resultatZone.appendChild(badge);
 
     // Avertissement « estimé » (ne pas chiffrer ferme) en toutes lettres, au-dessus du tableau, jamais seulement dans une infobulle, sur mobile comme sur laptop.
@@ -520,11 +520,12 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
     rafraichirHistorique();
   }
 
-  // « Recalculer » : meme requete structuree, sans IA, sur les maquettes actuelles ; le rapport garde son identifiant (l'historique est mis a jour).
-  async function recalculer(ancien) {
+  // « Régénérer » : meme requete structuree, sans IA, sur les maquettes actuelles. L'ancien rapport reste dans l'historique (toujours OBSOLETE) ;
+  // le rapport regenere est une NOUVELLE entree (nouvel identifiant, nouvelle date).
+  async function regenerer(ancien) {
     const moi = ++jeton;
     occuper(true);
-    dire("Recalcul en cours…");
+    dire("Régénération en cours…");
     const donnees = await obtenirDonnees();
     if (moi !== jeton) return;
     occuper(false);
@@ -532,7 +533,7 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
     const resultat = calculer(donnees.elements, ancien.requete);
     if (!resultat.ok) { dire(resultat.message); return; }
     dire("");
-    const rapport = construireRapport({ resultat, phrase: ancien.phrase, versions: await obtenirVersions(), id: ancien.id });
+    const rapport = construireRapport({ resultat, phrase: ancien.phrase, versions: await obtenirVersions() });
     await enregistrer(rapport);
     await afficherRapport(rapport, { nouveau: false });
   }
