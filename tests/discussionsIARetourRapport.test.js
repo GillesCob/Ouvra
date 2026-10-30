@@ -4,6 +4,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { creerCoeurRetour } from "../src/retourContexte.js";
+import { creerMemoirePosition } from "../src/discussionsIARapportDefilement.js";
 
 const lire = (chemin) => readFileSync(new URL("../" + chemin, import.meta.url), "utf8");
 
@@ -16,7 +17,7 @@ test("montage : un clic sur une source ouvre le message puis montre le bandeau �
   assert.ok(montage.includes('id: "discussionsRapportBandeauRetour"'));
   assert.ok(montage.includes("messagerie.montrerMessageIA(mk)"));
   assert.ok(montage.includes('libelle: "Retour au rapport"'));
-  assert.ok(montage.includes("rapportVue.ouvrir(rapport)"));
+  assert.ok(montage.includes("rapportVue.ouvrir(rapport, { restaurer: true })"));
   assert.ok(montage.includes("effacerRetour"));
 });
 
@@ -61,13 +62,13 @@ test("source : la question « Est-ce bien votre demande ? » en attente est mise
   const source = montage.slice(montage.indexOf("surSource: (mk, rapport)"), montage.indexOf("retourRapport = creerRetourContexte"));
   assert.ok(source.indexOf("bandeau.masquer(false)") > 0 && source.indexOf("bandeau.masquer(false)") < source.indexOf("retourRapport.montrer"));
   const retour = montage.slice(montage.indexOf("function retourAuRapport"), montage.indexOf("function surRetourSysteme"));
-  assert.ok(retour.includes("bandeau.montrer(questionEnPause)") && retour.includes("rapportVue.ouvrir(rapport)"));
+  assert.ok(retour.includes("bandeau.montrer(questionEnPause)") && retour.includes("rapportVue.ouvrir(rapport, { restaurer: true })"));
 });
 
 test("retour : la discussion se referme (aucune liste d'echanges intermediaire) puis le meme rapport se rouvre", () => {
   const montage = lire("src/discussionsIAMontage.js");
   const retour = montage.slice(montage.indexOf("function retourAuRapport"), montage.indexOf("function surRetourSysteme"));
-  assert.ok(retour.indexOf("messagerie.fermerConversationIA()") < retour.indexOf("rapportVue.ouvrir(rapport)"));
+  assert.ok(retour.indexOf("messagerie.fermerConversationIA()") < retour.indexOf("rapportVue.ouvrir(rapport, { restaurer: true })"));
   assert.ok(lire("src/messagerie/messagerie.js").includes("fermerConversationIA: fermerConversationCourante"));
 });
 
@@ -136,4 +137,40 @@ test("flux : seule la demande confirmée expose son rapport (Non et abandon lais
   const oui = creerFlux({ messagerie });
   oui.proposer(retour, "p"); assert.equal(oui.accepter(), true);
   assert.equal(oui.acceptee().rapport, rapport);
+});
+
+// 30/10 : « Retour au rapport » retrouve la position de lecture (le rapport est reconstruit, le defilement repartait a zero).
+test("position : memorisee au depart vers une source, rendue au retour pour le meme rapport, une seule fois", () => {
+  const rapport = { titre: "A" };
+  const m = creerMemoirePosition();
+  m.memoriser(rapport, 840);
+  assert.equal(m.restituer(rapport), 840);
+  assert.equal(m.restituer(rapport), 0);
+});
+
+test("position : nulle, invalide ou d'un autre rapport = haut", () => {
+  const m = creerMemoirePosition();
+  m.memoriser({ titre: "A" }, 0);
+  assert.equal(m.restituer({ titre: "A" }), 0);
+  const a = { titre: "A" };
+  m.memoriser(a, 500);
+  assert.equal(m.restituer({ titre: "B" }), 0);
+  m.memoriser(a, NaN);
+  assert.equal(m.restituer(a), 0);
+  m.memoriser(a, -20);
+  assert.equal(m.restituer(a), 0);
+  assert.equal(m.restituer(null), 0);
+});
+
+test("position : la vue memorise avant la fermeture et restaure apres le redessin, mobile (ouvrir) et laptop (ouvrirAuCentre) ; ouverture normale = haut", () => {
+  const vue = lire("src/discussionsIARapportVue.js");
+  const clic = vue.slice(vue.indexOf("const mk = source.dataset.mk"), vue.indexOf("surSource(mk, rapportCourant)"));
+  assert.ok(clic.indexOf("memoirePosition.memoriser(rapportCourant, zoneDefilante().scrollTop)") > 0 && clic.indexOf("memoriser") < clic.indexOf("fermer(false)"));
+  assert.ok(vue.includes("function ouvrir(rapport, { restaurer = false } = {})"));
+  assert.ok(vue.includes("function ouvrirAuCentre(rapport, conteneur, { restaurer = false } = {})"));
+  assert.ok(vue.includes("zoneDefilante().scrollTop = positionDeLecture(rapport, restaurer)"));
+  assert.ok(vue.includes("corps.scrollTop = positionDeLecture(rapport, restaurer)"));
+  const montage = lire("src/discussionsIAMontage.js");
+  const retour = montage.slice(montage.indexOf("function retourAuRapport"), montage.indexOf("function surRetourSysteme"));
+  assert.ok(retour.includes("montrerRapportAuCentre(rapport, { restaurer: true })") && retour.includes("rapportVue.ouvrir(rapport, { restaurer: true })"));
 });
