@@ -64,6 +64,16 @@ test("normalisation : un chiffre de la phrase absent de la decision et de ses so
   assert.equal(demande({ demande_ia: { zone: "quantitatif", phrase: "Compte les gaines du niveau 2 en novembre" } }), null);
 });
 
+test("normalisation : un chiffre cite par le contexte ou un desaccord du rapport (cloison de 123 mm) est permis dans la phrase ; hors de tous les messages cites, toujours refuse", () => {
+  const phrase = "Compte les cloisons CF 1h du niveau 2";
+  assert.deepEqual(demande({ demande_ia: { zone: "quantitatif", phrase } }), { zone: "quantitatif", phrase });
+  const avecDesaccord = { desaccords: [{ opposants: ["Ana"], objet: "Le renfort de 15 cm.", sources: ["M3"] }] };
+  const autre = { ...options, texteDe: (id) => (id === "M3" ? "Le renfort fait 15 cm." : TEXTES[id] ?? null) };
+  const r = normaliserRapport(brut({ ...avecDesaccord, demande_ia: { zone: "quantitatif", phrase: "Compte les renforts de 15 cm au niveau 2" } }), autre);
+  assert.equal(r.demandeIA.zone, "quantitatif");
+  assert.equal(demande({ demande_ia: { zone: "quantitatif", phrase: "Compte les cloisons de 123 mm du niveau 2" } }), null);
+});
+
 test("relais : la demande traverse la normalisation du relais ; sans demande valide, le champ est absent de la sortie", () => {
   const extraits = [{ id: "M1", discussion: "Fil", auteur: "Ana", quand: "2026-10-20 10:00", texte: TEXTES.M1 }, { id: "M2", discussion: "Fil", auteur: "Ana", quand: "2026-10-20 11:00", texte: TEXTES.M2 }];
   const avec = convertirSortieAnalyse(brut(), "rapport", extraits).sortie;
@@ -89,6 +99,14 @@ test("consigne : demande a l'IA seulement quand la decision appelle une action d
   assert.match(CONSIGNE_RAPPORT, /zone "aucune"/);
   for (const zone of ZONES_DEMANDE_IA) assert.ok(CONSIGNE_RAPPORT.includes(zone), zone);
   assert.doesNotMatch(CONSIGNE_RAPPORT, /\u2014|\u2013/);
+});
+
+test("consigne : une decision en attente d'une information mesurable appelle une demande, meme si un collegue la prepare (rapport des gaines du R+2)", () => {
+  assert.match(CONSIGNE_RAPPORT, /ne pas trancher avant|en attente d'une information/);
+  assert.match(CONSIGNE_RAPPORT, /métré/);
+  assert.match(CONSIGNE_RAPPORT, /même si un collègue/);
+  assert.doesNotMatch(CONSIGNE_RAPPORT, /Dans le doute : zone "aucune"/);
+  assert.match(CONSIGNE_RAPPORT, /coupe-feu/);
 });
 
 const donnees = fixture();
