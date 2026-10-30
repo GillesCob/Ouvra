@@ -2345,8 +2345,9 @@ function recentrerSurMaquettes() {
   // Maquettes cochees seules : direction de regard actuelle (comme le cadrage xeokit sur une boite), recadree pour centrer le rectangle projete.
   // Cadrage des elements visibles (un niveau affiche par une commande IA) avec l'affinage de la commande IA : « Recentrer » garde le cadrage serre au lieu de reculer sur le batiment entier.
   if (boite) {
-    const visibles = boiteARecentrer(boite, viewer.scene.visibleObjectIds, (ids) => viewer.scene.getAABB(ids));
-    viewer.cameraFlight.flyTo(poseIACadree(visibles));
+    // Plan 2D -> 3D dans le Viewer : ses plaques ne sont pas forcement des objets visibles de la scene, cadrage des maquettes cochees comme avant.
+    if (planDansViewer) viewer.cameraFlight.flyTo(poseCentreeSurBoiteActuelle(boite) ?? { aabb: boite });
+    else viewer.cameraFlight.flyTo(poseIACadree(boiteARecentrer(boite, viewer.scene.visibleObjectIds, (ids) => viewer.scene.getAABB(ids))));
   } else viewer.cameraFlight.flyTo(vueDepartCentree());
 }
 
