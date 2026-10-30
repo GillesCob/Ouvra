@@ -18,7 +18,7 @@ import { rapportEnTexte } from "./discussionsIAMoteur.js";
 import { EXEMPLES_DISCUSSIONS } from "./discussionsIAExemples.js";
 import { demanderComprehension, demanderAnalyse } from "./discussionsIAClient.js";
 import { construireRapportModele, construireRapportModeleCoupeFeu } from "./discussionsIARapportModele.js";
-import { listerSyntheses, ajouterSynthese, ajouterRecherche, DEMOS_SYNTHESES } from "./discussionsIAHistorique.js";
+import { listerSyntheses, ajouterSynthese, ajouterRecherche, destinationOuverture, DEMOS_SYNTHESES } from "./discussionsIAHistorique.js";
 import { REQUETE_MOBILE } from "./seuilMobile.js";
 
 const DELAI_ANALYSE_MS = 42000; // un rapport est plus long a ecrire : un peu plus que le delai du relais (32 s)
@@ -86,7 +86,7 @@ export function creerDiscussionsIAMontage() {
     bandeau = creerDiscussionsBandeau({
       retourFocus: bouton,
       surOui: () => {
-        // « Oui » : une recherche d'echanges entre dans « Synthèses précédentes » (30/10) ; le rapport y est deja depuis son affichage.
+        // « Oui » : une recherche d'echanges entre dans « Recherches IA précédentes » (30/10) ; le rapport y est deja depuis son affichage.
         const retour = flux.accepter() ? flux.acceptee() : null;
         if (retour && retour.type === "liste") { ajouterRecherche(retour); ia.majHistorique(); }
         if (rapportEnAttente && !rapportVue.ouvert() && window.matchMedia(REQUETE_MOBILE).matches) rapportVue.ouvrir(rapportEnAttente); // mobile : le rapport est ce que « Oui » doit montrer, meme s'il a ete ferme sous le bandeau
@@ -143,7 +143,20 @@ export function creerDiscussionsIAMontage() {
     if (entreeHistorique) { entreeHistorique = false; ignorerRetourSysteme = true; history.back(); } // le bandeau consomme l'entree d'historique qu'il avait posee
     messagerie.fermerConversationIA();
     if (questionEnPause) { bandeau.montrer(questionEnPause); rapportEnAttente = rapport; questionEnPause = null; }
-    rapportVue.ouvrir(rapport);
+    if (rapportVue.derniereOuvertureAuCentre()) montrerRapportAuCentre(rapport); // laptop : le rapport revient dans la zone centrale, comme il y etait
+    else rapportVue.ouvrir(rapport);
+  }
+
+  // Laptop (30/10) : un rapport de l'historique s'affiche dans la zone centrale (celle de la liste des discussions), sans modale. Le bandeau « Retour » existant
+  // (meme composant que « Retour au rapport ») ramene a la liste ; la question « Est-ce bien votre demande ? » en attente passe en pause comme pour un echange ouvert.
+  function montrerRapportAuCentre(rapport) {
+    action("echange-ouvert");
+    rapportEnAttente = null;
+    rapportVue.ouvrirAuCentre(rapport, messagerie.preparerCentreIA());
+    retourRapport.montrer({
+      libelle: "Retour aux discussions",
+      surRetour: () => { rapportVue.fermer(); messagerie.fermerConversationIA(); action("echanges-retour"); }
+    });
   }
 
   // Retour du systeme (geste, bouton arriere) depuis la discussion ouverte par une source : meme chose que le bandeau, jamais la liste des rapports.
@@ -156,14 +169,16 @@ export function creerDiscussionsIAMontage() {
   if (typeof window !== "undefined" && window.addEventListener) window.addEventListener("popstate", surRetourSysteme);
 
   function ouvrirSynthese(entree) {
-    if (entree.rapport) { rapportVue.ouvrir(entree.rapport); return; }
+    const destination = destinationOuverture(entree, { mobile: window.matchMedia(REQUETE_MOBILE).matches });
+    if (entree.rapport) { if (destination === "centre") montrerRapportAuCentre(entree.rapport); else rapportVue.ouvrir(entree.rapport); return; }
     // Recherche d'echanges (30/10) : la liste filtree gardee est reappliquee telle quelle, sans appel IA ni question « Est-ce bien votre demande ? ».
-    if (entree.recherche) { bandeau.masquer(false); rapportVue.fermer(); questionEnPause = null; rapportEnAttente = null; flux.rouvrir(entree.recherche); return; }
+    if (entree.recherche) { bandeau.masquer(false); rapportVue.fermer(); retourRapport.effacer(); questionEnPause = null; rapportEnAttente = null; flux.rouvrir(entree.recherche); return; }
     const donnees = messagerie.donneesPourIA();
     const index = indexer(donnees.conversations, donnees.personnes);
     const construire = entree.demo === DEMOS_SYNTHESES.coupeFeu ? construireRapportModeleCoupeFeu : construireRapportModele;
     const modele = construire(index, { maintenant: Date.now() });
-    if (modele.ok) rapportVue.ouvrir(modele.rapport);
+    if (!modele.ok) return;
+    if (destination === "centre") montrerRapportAuCentre(modele.rapport); else rapportVue.ouvrir(modele.rapport);
   }
 
   // L'onglet IA vient d'etre choisi (clic) : la modale de demande s'ouvre en vocal.

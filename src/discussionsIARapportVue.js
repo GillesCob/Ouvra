@@ -47,6 +47,8 @@ export function creerRapportVue({ surSource, texteRapport, exporterPdf }) {
   let focusAvant = null;
   let verrou = null;
   let planDefilement = 0; // requestAnimationFrame du defilement vers le titre du menu ouvert
+  let derniereAuCentre = false; // memoire du mode de la derniere ouverture (non remise a zero par fermer) : « Retour au rapport » rouvre le rapport la ou il etait
+  let auCentre = false; // laptop (30/10) : le rapport est pose dans la zone centrale de Discussions, sans modale (voir ouvrirAuCentre)
 
   function assurerSquelette() {
     if (fond) return;
@@ -107,7 +109,7 @@ export function creerRapportVue({ surSource, texteRapport, exporterPdf }) {
     }, true);
     verrou = verrouillerArrierePlan(fond, zoneDefilante, CLASSE_VERROU);
     document.addEventListener("keydown", (e) => {
-      if (fond.hidden) return;
+      if (fond.hidden || auCentre) return; // au centre : pas de modale, donc ni Echap ni piege du focus (le bandeau « Retour » ramene a la liste)
       if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); fermer(true); return; }
       if (e.key === "Tab") boucleFocus(e);
     }, true);
@@ -238,8 +240,8 @@ export function creerRapportVue({ surSource, texteRapport, exporterPdf }) {
     return el;
   }
 
-  function ouvrir(rapport) {
-    assurerSquelette();
+  // Remplit le panneau avec le rapport (commun a la modale et a la zone centrale).
+  function remplir(rapport) {
     rapportCourant = rapport;
     titre.textContent = rapport.titre;
     dateEl.textContent = dateDuRapport(rapport);
@@ -254,6 +256,24 @@ export function creerRapportVue({ surSource, texteRapport, exporterPdf }) {
     boutonCopier.textContent = "Copier";
     boutonPdf.textContent = "Exporter en PDF";
     boutonPdf.disabled = !!rapport.vide;
+  }
+
+  // Quitte la zone centrale : le panneau retourne dans le body (cache), pret pour la modale.
+  function quitterLeCentre() {
+    if (!auCentre) return;
+    auCentre = false;
+    fond.classList.remove("disc-rapport-fond-centre");
+    carte.setAttribute("role", "dialog");
+    carte.setAttribute("aria-modal", "true");
+    boutonFermer.hidden = false;
+    document.body.appendChild(fond);
+  }
+
+  function ouvrir(rapport) {
+    assurerSquelette();
+    quitterLeCentre();
+    derniereAuCentre = false;
+    remplir(rapport);
     focusAvant = document.activeElement;
     fond.hidden = false;
     verrou.verrouiller();
@@ -262,8 +282,29 @@ export function creerRapportVue({ surSource, texteRapport, exporterPdf }) {
     boutonFermer.focus({ preventScroll: true });
   }
 
+  // Laptop (30/10) : le MEME rapport (meme rendu) s'affiche dans la zone centrale de Discussions, `conteneur`, a la place de la liste, SANS modale : pas de fond sombre,
+  // pas de verrou de defilement, pas de bouton « Fermer » (le bandeau « Retour » de la page ramene a la liste). Sources, « Copier » et « Exporter en PDF » restent actifs.
+  function ouvrirAuCentre(rapport, conteneur) {
+    assurerSquelette();
+    if (!fond.hidden && !auCentre) { fond.hidden = true; verrou.deverrouiller(); } // une modale ouverte se referme d'abord
+    remplir(rapport);
+    auCentre = true;
+    derniereAuCentre = true;
+    fond.classList.add("disc-rapport-fond-centre");
+    carte.setAttribute("role", "region");
+    carte.removeAttribute("aria-modal");
+    boutonFermer.hidden = true;
+    conteneur.textContent = "";
+    conteneur.appendChild(fond);
+    fond.hidden = false;
+    corps.scrollTop = 0;
+    titre.tabIndex = -1;
+    titre.focus({ preventScroll: true });
+  }
+
   function fermer(rendreFocus) {
     if (!fond || fond.hidden) return;
+    if (auCentre) { fond.hidden = true; quitterLeCentre(); return; }
     fond.hidden = true;
     verrou.deverrouiller();
     if (rendreFocus && focusAvant && document.contains(focusAvant)) focusAvant.focus({ preventScroll: true });
@@ -301,5 +342,5 @@ export function creerRapportVue({ surSource, texteRapport, exporterPdf }) {
     }
   }
 
-  return { ouvrir, fermer: () => fermer(false), ouvert: () => !!fond && !fond.hidden };
+  return { ouvrir, ouvrirAuCentre, derniereOuvertureAuCentre: () => derniereAuCentre, fermer: () => fermer(false), ouvert: () => !!fond && !fond.hidden && fond.isConnected };
 }

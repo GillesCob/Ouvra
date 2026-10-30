@@ -14,7 +14,7 @@
 
 import "./discussionsIA.css";
 import { creerIASaisie, PHRASE_MAX } from "./iaSaisie.js";
-import { dateSynthese } from "./discussionsIAHistorique.js";
+import { dateSynthese, libelleTypeEntree } from "./discussionsIAHistorique.js";
 
 const PLACEHOLDER_TEXTE = "Ex. : échanges avec Sophie Lambert";
 const MESSAGE_PHRASE_VIDE = "Écrire ce qui est recherché, par exemple « montre-moi tous les échanges avec Sophie Lambert ».";
@@ -50,9 +50,9 @@ export function creerDiscussionsIA({ panneau, retourFocus = null, exemples, trai
   nouvelle.addEventListener("click", () => { if (!saisie.ouvert()) saisie.ouvrir(); });
   panneau.append(nouvelle);
 
-  // ---------- Historique des syntheses (28/10) : une carte cliquable par synthese (nom + date), un appui rouvre le rapport ----------
+  // ---------- Historique des recherches IA (28/10, renomme le 30/10) : une carte cliquable par entree (nom, label Rapport ou Échanges, date), un appui rouvre le rapport ou la liste ----------
   const histo = creer("section", "msg-ia-histo");
-  const histoTitre = creer("h3", "msg-ia-histo-titre", "Synthèses précédentes");
+  const histoTitre = creer("h3", "msg-ia-histo-titre", "Recherches IA précédentes");
   histoTitre.id = "msgIAHistoTitre";
   const histoListe = creer("ul", "msg-ia-histo-liste");
   histoListe.setAttribute("aria-labelledby", "msgIAHistoTitre");
@@ -68,7 +68,9 @@ export function creerDiscussionsIA({ panneau, retourFocus = null, exemples, trai
       const li = creer("li", "msg-ia-histo-item");
       const carte = creer("button", "msg-ia-histo-carte");
       carte.type = "button";
-      carte.append(creer("span", "msg-ia-histo-nom", entree.nom), creer("span", "msg-ia-histo-date", dateSynthese(entree)));
+      const meta = creer("span", "msg-ia-histo-meta"); // label de type (Rapport / Échanges, 30/10) + date, sur une ligne qui passe a la suivante si l'etroitesse l'impose
+      meta.append(creer("span", "msg-ia-histo-type", libelleTypeEntree(entree)), creer("span", "msg-ia-histo-date", dateSynthese(entree)));
+      carte.append(creer("span", "msg-ia-histo-nom", entree.nom), meta);
       carte.addEventListener("click", () => historique.ouvrir(entree));
       li.appendChild(carte);
       histoListe.appendChild(li);

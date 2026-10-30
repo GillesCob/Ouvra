@@ -108,3 +108,60 @@ test("montage : seule la validation « Oui » ajoute une recherche, l'ouverture 
   assert.match(ouvrir, /flux\.rouvrir/);
   assert.doesNotMatch(ouvrir, /traiter|pipeline|demander/);
 });
+
+// 30/10 : label « Rapport » / « Échanges » sur chaque entree et destination d'ouverture (rapport au centre sur laptop, modale sur mobile).
+test("type d'entree : rapport stocke ou demo = rapport, recherche = echanges, entree vide ou inconnue = aucun", async () => {
+  const { typeEntree, libelleTypeEntree } = await import("../src/discussionsIAHistorique.js");
+  assert.equal(typeEntree({ id: "a", nom: "X", creeLe: 1, rapport: { titre: "X" } }), "rapport");
+  assert.equal(typeEntree({ id: "b", nom: "X", creeLe: 1, demo: "collision" }), "rapport");
+  assert.equal(typeEntree({ id: "c", nom: "X", creeLe: 1, recherche: { relecture: "X", resultat: { fils: [] } } }), "echanges");
+  assert.equal(typeEntree({}), null);
+  assert.equal(typeEntree(null), null);
+  assert.equal(libelleTypeEntree({ rapport: {} }), "Rapport");
+  assert.equal(libelleTypeEntree({ recherche: {} }), "Échanges");
+  assert.equal(libelleTypeEntree(undefined), "");
+});
+
+test("destination d'ouverture : recherche = liste filtree ; rapport = zone centrale sur laptop, modale sur mobile ; entree vide = rien", async () => {
+  const { destinationOuverture } = await import("../src/discussionsIAHistorique.js");
+  const rapport = { rapport: { titre: "R" } };
+  assert.equal(destinationOuverture({ recherche: {} }, { mobile: false }), "recherche");
+  assert.equal(destinationOuverture({ recherche: {} }, { mobile: true }), "recherche");
+  assert.equal(destinationOuverture(rapport, { mobile: false }), "centre");
+  assert.equal(destinationOuverture(rapport, { mobile: true }), "modale");
+  assert.equal(destinationOuverture({ demo: "collision" }, { mobile: false }), "centre");
+  assert.equal(destinationOuverture({}, { mobile: false }), null);
+  assert.equal(destinationOuverture(null, { mobile: true }), null);
+});
+
+test("renommage : « Recherches IA précédentes » partout, plus aucune « Synthèses précédentes » dans l'interface", async () => {
+  const { readFileSync } = await import("node:fs");
+  const lire = (c) => readFileSync(new URL("../" + c, import.meta.url), "utf8");
+  assert.ok(lire("src/discussionsIA.js").includes('"Recherches IA précédentes"'));
+  for (const f of ["src/discussionsIA.js", "src/discussionsIAMontage.js", "src/discussionsIA.css"]) assert.doesNotMatch(lire(f), /Synth[èe]ses pr[ée]c[ée]dentes/, f);
+});
+
+test("historique : chaque carte porte un label de type (Rapport / Échanges) place avec la date", async () => {
+  const { readFileSync } = await import("node:fs");
+  const lire = (c) => readFileSync(new URL("../" + c, import.meta.url), "utf8");
+  const ia = lire("src/discussionsIA.js");
+  assert.match(ia, /msg-ia-histo-type/);
+  assert.match(ia, /libelleTypeEntree\(entree\)/);
+  assert.match(lire("src/discussionsIA.css"), /\.msg-ia-histo-type \{[^}]*border: 1px solid var\(--border\)[^}]*font-size: 11\.5px/);
+});
+
+test("montage : un rapport de l'historique s'affiche au centre sur laptop (sans modale), la modale reste sur mobile ; le bandeau Retour existant ramene a la liste", async () => {
+  const { readFileSync } = await import("node:fs");
+  const src = readFileSync(new URL("../src/discussionsIAMontage.js", import.meta.url), "utf8");
+  const ouvrir = src.slice(src.indexOf("function ouvrirSynthese"), src.indexOf("function ouvrirSaisie"));
+  assert.match(ouvrir, /destinationOuverture\(entree/);
+  assert.match(ouvrir, /montrerRapportAuCentre/);
+  assert.match(ouvrir, /rapportVue\.ouvrir\(/);
+  const centre = src.slice(src.indexOf("function montrerRapportAuCentre"), src.indexOf("function ouvrirSynthese"));
+  assert.match(centre, /rapportVue\.ouvrirAuCentre\(/);
+  assert.match(centre, /retourRapport\.montrer\(/);
+  assert.match(centre, /messagerie\.fermerConversationIA\(\)/);
+  const vue = readFileSync(new URL("../src/discussionsIARapportVue.js", import.meta.url), "utf8");
+  assert.match(vue, /ouvrirAuCentre/);
+  assert.doesNotMatch(vue, /console\.log/);
+});

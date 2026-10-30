@@ -1665,6 +1665,15 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
     retourEchanges.montrer({ libelle: "Retour aux échanges de ma demande", surRetour: () => { fermerConversationCourante(); if (surActionIA) surActionIA("echanges-retour"); } });
   }
 
+  // Laptop (30/10) : vide la zone centrale (echange ouvert compris) et la rend, pour y poser un rapport de l'historique. Le retour se fait par fermerConversationIA (la liste revient).
+  function preparerCentreIA() {
+    quitterEchange();
+    fermerConversationCourante();
+    const volet = $("msgVolet");
+    volet.textContent = "";
+    return volet;
+  }
+
   // Donnees lues par la commande IA (moteur src/discussionsIAIndex.js) : jamais modifiees par lui.
   const donneesPourIA = () => ({ conversations, personnes });
 
@@ -1848,6 +1857,6 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
 
   return {
     preparer, surVueActivee, vueDeConversation, nouveauSujetDepuisViewer, rechargerVues, priseDeVueEnCours: () => priseDeVueEnCours,
-    donneesPourIA, appliquerFiltreIA, confirmerFiltreIA, retirerFiltreIA, montrerMessageIA, fermerConversationIA: fermerConversationCourante
+    donneesPourIA, appliquerFiltreIA, confirmerFiltreIA, retirerFiltreIA, montrerMessageIA, preparerCentreIA, fermerConversationIA: fermerConversationCourante
   };
 }
