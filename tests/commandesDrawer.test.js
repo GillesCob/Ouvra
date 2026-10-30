@@ -2,6 +2,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { etatDrawerDepuisVisibles, capturerEtatDrawer } from "../src/commandesDrawer.js";
+import { readFileSync } from "node:fs";
 
 const idsParMaquette = { mep: ["m1", "m2", "m3"], arch: ["a1", "a2", "a3"] };
 const niveaux = [
@@ -79,4 +80,39 @@ test("boiteDesVisibles : boite non finie, incomplete ou inversee -> null", () =>
 test("boiteDesVisibles : accepte le Float64Array rendu par xeokit (sinon le cadrage tombait sur « Recentrer », retour 9)", () => {
   assert.deepEqual(boiteDesVisibles(["a"], () => new Float64Array([0, 1, 2, 3, 4, 5])), [0, 1, 2, 3, 4, 5]);
   assert.equal(boiteDesVisibles(["a"], () => new Float64Array([0, 1, 2, NaN, 4, 5])), null);
+});
+
+// « Recentrer » apres une commande IA (30/10) : avec une partie seulement des maquettes cochees, il cadrait la boite des FICHIERS cochees (batiment entier) et non celle des
+// elements visibles : le niveau 2, cadre a ~90 % de la largeur par l'IA, reculait a ~40 % au clic.
+import { boiteARecentrer } from "../src/commandesDrawer.js";
+import { cadrerCentre, mesurerCadrage } from "../src/cadrageCentre.js";
+
+const HOPITAL_VUE = { eye: [-2.8, 213.7, -18.2], look: [16.4, 190.6, -48.7], up: [0.287, 0.842, -0.457] };
+const BOITE_MAQUETTES = [-12, 159, -163, 90, 204, 0]; // batiment entier (maquettes cochees)
+const BOITE_NIVEAU_2 = [-12, 170, -140, 87, 172, -45]; // elements visibles du niveau 2
+
+const part = (m, l, h) => Math.max(1 - (m.margeGauche + m.margeDroite) / l, 1 - (m.margeHaut + m.margeBas) / h);
+
+test("boiteARecentrer : un niveau affiche -> boite des elements visibles, pas celle des fichiers cochees", () => {
+  assert.deepEqual(boiteARecentrer(BOITE_MAQUETTES, ["n2a", "n2b"], () => BOITE_NIVEAU_2), BOITE_NIVEAU_2);
+});
+
+test("boiteARecentrer : rien de visible ou boite invalide -> boite des maquettes (comportement d'avant)", () => {
+  assert.deepEqual(boiteARecentrer(BOITE_MAQUETTES, [], () => BOITE_NIVEAU_2), BOITE_MAQUETTES);
+  assert.deepEqual(boiteARecentrer(BOITE_MAQUETTES, ["a"], () => [0, 0, 0, Infinity, 1, 1]), BOITE_MAQUETTES);
+});
+
+for (const [largeur, hauteur] of [[1440, 800], [390, 748]]) {
+  test("boiteARecentrer : le niveau reste serre au clic sur Recentrer (plus de 80 % contre ~40 % avant), " + largeur + "x" + hauteur, () => {
+    const boite = boiteARecentrer(BOITE_MAQUETTES, ["n2a"], () => BOITE_NIVEAU_2);
+    const m = mesurerCadrage({ aabb: BOITE_NIVEAU_2, ...cadrerCentre({ aabb: boite, ...HOPITAL_VUE, largeur, hauteur }), largeur, hauteur });
+    assert.ok(part(m, largeur, hauteur) > 0.8, "part " + part(m, largeur, hauteur));
+  });
+}
+
+test("main.js : « Recentrer » sur des maquettes cochees cadre les elements visibles avec l'affinage de la commande IA", () => {
+  const js = readFileSync(new URL("../src/main.js", import.meta.url), "utf8");
+  const corps = js.slice(js.indexOf("function recentrerSurMaquettes"), js.indexOf("recenterBtn.addEventListener"));
+  assert.match(corps, /boiteARecentrer\(/);
+  assert.match(corps, /poseIACadree\(/);
 });

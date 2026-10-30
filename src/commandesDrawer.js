@@ -43,3 +43,9 @@ export function boiteDesVisibles(idsVisibles, getAABB) {
   if (boite.length !== 6 || !boite.every(Number.isFinite)) return null;
   return boite[0] <= boite[3] && boite[1] <= boite[4] && boite[2] <= boite[5] ? boite : null;
 }
+
+// Boite a cadrer par « Recentrer » quand une partie seulement des maquettes est cochee : celle des elements VISIBLES (un niveau affiche par une commande IA), pas celle des
+// fichiers cochees (le batiment entier, qui faisait reculer la maquette a ~40 % de la largeur). Sans element visible exploitable : la boite des maquettes, comme avant.
+export function boiteARecentrer(boiteMaquettes, idsVisibles, getAABB) {
+  return boiteDesVisibles(idsVisibles, getAABB) ?? boiteMaquettes;
+}

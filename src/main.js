@@ -14,7 +14,7 @@ import { EXEMPLES_REGLES } from "./reglesExemples.js";
 import { creerControleur, REGISTRE } from "./commandesViewer.js";
 import { creerCommandesIA } from "./commandesIA.js";
 import { creerFlux } from "./commandesFlux.js";
-import { etatDrawerDepuisVisibles, capturerEtatDrawer, boiteDesVisibles } from "./commandesDrawer.js";
+import { etatDrawerDepuisVisibles, capturerEtatDrawer, boiteDesVisibles, boiteARecentrer } from "./commandesDrawer.js";
 import { creerCommandesBandeau } from "./commandesBandeau.js";
 import { creerZones } from "./commandesZones.js";
 import { valeursPourCommande } from "./commandesValeurs.js";
@@ -2343,8 +2343,11 @@ function recentrerSurMaquettes() {
   // Avec la maquette du plan dans la liste, meme toutes cochees : la vue de depart est celle de l'hopital et ne montrerait pas le plan.
   const boite = cochees.length > 0 && (cochees.length < chargees.length || planDansViewer) ? aabbDesMaquettes(cochees) : null;
   // Maquettes cochees seules : direction de regard actuelle (comme le cadrage xeokit sur une boite), recadree pour centrer le rectangle projete.
+  // Cadrage des elements visibles (un niveau affiche par une commande IA) avec l'affinage de la commande IA : « Recentrer » garde le cadrage serre au lieu de reculer sur le batiment entier.
   if (boite) {
-    viewer.cameraFlight.flyTo(poseCentreeSurBoiteActuelle(boite) ?? { aabb: boite });
+    // Plan 2D -> 3D dans le Viewer : ses plaques ne sont pas forcement des objets visibles de la scene, cadrage des maquettes cochees comme avant.
+    if (planDansViewer) viewer.cameraFlight.flyTo(poseCentreeSurBoiteActuelle(boite) ?? { aabb: boite });
+    else viewer.cameraFlight.flyTo(poseIACadree(boiteARecentrer(boite, viewer.scene.visibleObjectIds, (ids) => viewer.scene.getAABB(ids))));
   } else viewer.cameraFlight.flyTo(vueDepartCentree());
 }
 
