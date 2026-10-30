@@ -154,7 +154,7 @@ body.discussions-confirm-actif .disc-rapport-fond { padding-top: calc(52px + var
 .disc-rapport-demande-zone { color: var(--muted); font-size: 11.5px; overflow-wrap: anywhere; min-width: 0; }
 .disc-rapport-demande-phrase { font-weight: 600; line-height: 1.4; overflow-wrap: anywhere; }
 /* Pastille d'etat dans l'encart : les trois libelles sont empiles dans la meme cellule (le plus large fixe la taille), seul l'etat courant est visible : aucun saut de mise en page. */
-.disc-rapport-demande-etat { display: inline-grid; flex: none; padding: 1px 8px; border: 1px solid var(--accent); border-radius: 999px; font-size: 11.5px; font-weight: 700; line-height: 1.3; color: var(--accent); text-align: center; white-space: nowrap; transition: background-color .15s, color .15s, border-color .15s; }
+.disc-rapport-demande-etat { display: inline-grid; flex: none; padding: 1px 8px; border: 1px solid var(--accent); border-radius: 999px; font-size: 11.5px; font-weight: 700; line-height: 1.3; color: var(--text); text-align: center; white-space: nowrap; transition: background-color .15s, color .15s, border-color .15s; }
 .disc-rapport-demande-etat > span { grid-area: 1 / 1; visibility: hidden; }
 .disc-rapport-demande[data-etat="copier"] .disc-rapport-demande-etat > [data-libelle="copier"],
 .disc-rapport-demande[data-etat="copie"] .disc-rapport-demande-etat > [data-libelle="copie"],
