@@ -87,9 +87,21 @@ export function creerDiscussionsIAMontage() {
       retourFocus: bouton,
       surOui: () => {
         // « Oui » : une recherche d'echanges ou un rapport entre dans « Recherches IA précédentes » (30/10) ; « Non » ou l'abandon n'ajoutent rien.
+        // Le resultat de CETTE demande s'affiche et sa carte est selectionnee (meme bordure qu'un clic sur une carte de l'historique) : rapport dans la zone centrale sur laptop, liste d'echanges filtree sinon.
         const retour = flux.accepter() ? flux.acceptee() : null;
-        if (retour && retour.type === "liste") { ajouterRecherche(retour); ia.majHistorique(); }
-        if (retour && retour.type === "rapport") { ajouterSynthese(retour.rapport); ia.majHistorique(); }
+        const laptop = !window.matchMedia(REQUETE_MOBILE).matches;
+        if (retour && retour.type === "liste") {
+          const entree = ajouterRecherche(retour).find((e) => e.recherche && e.recherche.resultat === retour.resultat);
+          ia.majHistorique();
+          if (entree) ia.selectionner(entree.id);
+          if (laptop) montrerListeAuCentre();
+        }
+        if (retour && retour.type === "rapport") {
+          const entree = ajouterSynthese(retour.rapport).find((e) => e.rapport === retour.rapport);
+          ia.majHistorique();
+          if (entree) ia.selectionner(entree.id);
+          if (laptop && entree) montrerRapportAuCentre(retour.rapport);
+        }
         if (rapportEnAttente && !rapportVue.ouvert() && window.matchMedia(REQUETE_MOBILE).matches) rapportVue.ouvrir(rapportEnAttente); // mobile : le rapport est ce que « Oui » doit montrer, meme s'il a ete ferme sous le bandeau
         rapportEnAttente = null;
       },
@@ -97,6 +109,7 @@ export function creerDiscussionsIAMontage() {
       surNon: () => {
         rapportEnAttente = null;
         rapportVue.fermer();
+        ia.selectionner(null);
         const retour = flux.refuser();
         if (retour) ia.reformuler(retour.phrase);
       }
@@ -129,6 +142,7 @@ export function creerDiscussionsIAMontage() {
       proposer: (retour, phrase) => {
         const application = flux.proposer(retour, phrase);
         if (!application.ok) return application;
+        ia.selectionner(null); // une nouvelle demande en attente : plus aucune carte de l'historique n'est celle qu'on regarde
         derniereQuestion = { relecture: application.relecture, resume: application.resume };
         bandeau.montrer(derniereQuestion);
         // Le rapport de l'IA n'entre dans l'historique qu'apres « Oui » (30/10), comme une recherche. Jamais le « Voir un exemple ».
@@ -148,17 +162,22 @@ export function creerDiscussionsIAMontage() {
     else rapportVue.ouvrir(rapport);
   }
 
-  // Laptop (30/10) : un rapport de l'historique s'affiche dans la zone centrale (celle de la liste des discussions), sans modale. Le bandeau « Retour » existant
-  // (meme composant que « Retour au rapport ») ramene a la liste ; la question « Est-ce bien votre demande ? » en attente passe en pause comme pour un echange ouvert.
+  // Laptop (30/10) : un rapport de l'historique s'affiche dans la zone centrale (celle de la liste des discussions), sans modale et sans bandeau de retour (31/10, Gilles) :
+  // les onglets de la liste restent visibles, une autre carte de l'historique remplace le rapport. Le bandeau « Retour au rapport » d'une source (surSource) est un autre bandeau, il reste.
+  // La question « Est-ce bien votre demande ? » en attente reste affichee : elle porte sur le filtre applique dessous, sans conflit avec un bandeau de retour.
   function montrerRapportAuCentre(rapport) {
-    const centre = messagerie.preparerCentreIA(); // d'abord : il ferme un echange ouvert, ce qui ferait revenir la question mise en pause juste apres
-    action("echange-ouvert");
+    const centre = messagerie.preparerCentreIA(); // d'abord : il ferme un echange ouvert et son bandeau
+    retourRapport.effacer();
     rapportEnAttente = null;
     rapportVue.ouvrirAuCentre(rapport, centre);
-    retourRapport.montrer({
-      libelle: "Retour aux discussions",
-      surRetour: () => { rapportVue.fermer(); messagerie.fermerConversationIA(); action("echanges-retour"); }
-    });
+  }
+
+  // Laptop, apres « Oui » sur une recherche d'echanges : la liste filtree reprend la zone centrale (rapport ferme, echange ouvert referme, bandeau de retour d'une source efface).
+  function montrerListeAuCentre() {
+    rapportVue.fermer();
+    retourRapport.effacer();
+    questionEnPause = null;
+    messagerie.fermerConversationIA(); // la zone centrale se redessine d'apres le filtre en cours
   }
 
   // Retour du systeme (geste, bouton arriere) depuis la discussion ouverte par une source : meme chose que le bandeau, jamais la liste des rapports.
@@ -195,6 +214,7 @@ export function creerDiscussionsIAMontage() {
     if (nom === "tout") {
       bandeau.masquer(false);
       rapportVue.fermer();
+      ia.selectionner(null);
       flux.toutReafficher();
     }
   }
