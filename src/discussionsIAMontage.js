@@ -86,9 +86,10 @@ export function creerDiscussionsIAMontage() {
     bandeau = creerDiscussionsBandeau({
       retourFocus: bouton,
       surOui: () => {
-        // « Oui » : une recherche d'echanges entre dans « Recherches IA précédentes » (30/10) ; le rapport y est deja depuis son affichage.
+        // « Oui » : une recherche d'echanges ou un rapport entre dans « Recherches IA précédentes » (30/10) ; « Non » ou l'abandon n'ajoutent rien.
         const retour = flux.accepter() ? flux.acceptee() : null;
         if (retour && retour.type === "liste") { ajouterRecherche(retour); ia.majHistorique(); }
+        if (retour && retour.type === "rapport") { ajouterSynthese(retour.rapport); ia.majHistorique(); }
         if (rapportEnAttente && !rapportVue.ouvert() && window.matchMedia(REQUETE_MOBILE).matches) rapportVue.ouvrir(rapportEnAttente); // mobile : le rapport est ce que « Oui » doit montrer, meme s'il a ete ferme sous le bandeau
         rapportEnAttente = null;
       },
@@ -130,8 +131,8 @@ export function creerDiscussionsIAMontage() {
         if (!application.ok) return application;
         derniereQuestion = { relecture: application.relecture, resume: application.resume };
         bandeau.montrer(derniereQuestion);
-        // Le rapport de l'IA est garde dans l'historique des qu'il s'affiche (29/10) : le « Oui » du bandeau n'est pas toujours visible sur mobile. Jamais le « Voir un exemple ».
-        if (application.type === "rapport") { rapportEnAttente = retour.rapport; ajouterSynthese(retour.rapport); ia.majHistorique(); rapportVue.ouvrir(retour.rapport); }
+        // Le rapport de l'IA n'entre dans l'historique qu'apres « Oui » (30/10), comme une recherche. Jamais le « Voir un exemple ».
+        if (application.type === "rapport") { rapportEnAttente = retour.rapport; rapportVue.ouvrir(retour.rapport); }
         return { ok: true };
       }
     });

@@ -65,7 +65,7 @@ test("M25/M26 : l'historique des syntheses est dans le panneau IA, une carte cli
   const ia = lire("src/discussionsIA.js");
   assert.match(ia, /msg-ia-histo-carte/);
   assert.match(ia, /carte\.addEventListener\("click", \(\) => historique\.ouvrir\(entree\)\)/);
-  assert.match(lire("src/discussionsIAMontage.js"), /ajouterSynthese\(retour\.rapport\)/);
+  assert.match(lire("src/discussionsIAMontage.js"), /retour\.type === "rapport"\) \{ ajouterSynthese\(retour\.rapport\)/);
 });
 
 import { defilementVersTitre } from "../src/discussionsIARapportDefilement.js";

@@ -51,7 +51,7 @@ test("panneau de gauche (28/10) : aucun bouton « Voir le rapport » ni action �
   assert.ok(!messagerie.includes("Voir le rapport</button>") && !messagerie.includes('data-act="ia-rapport"') && !messagerie.includes('case "ia-rapport"'));
   const montage = lire("src/discussionsIAMontage.js");
   assert.ok(!montage.includes('nom === "rapport"'));
-  assert.match(montage, /application\.type === "rapport"\) \{ rapportEnAttente = retour\.rapport; ajouterSynthese\(retour\.rapport\); ia\.majHistorique\(\); rapportVue\.ouvrir\(retour\.rapport\); \}/);
+  assert.match(montage, /application\.type === "rapport"\) \{ rapportEnAttente = retour\.rapport; rapportVue\.ouvrir\(retour\.rapport\); \}/);
   assert.ok(montage.includes('libelle: "Retour au rapport"'));
 });
 
@@ -109,4 +109,31 @@ test("laptop : la question « Est-ce bien votre demande ? » se met en pause le 
   const montage = lire("src/discussionsIAMontage.js");
   assert.ok(montage.includes('"echange-ouvert"') && montage.includes('"echanges-retour"'));
   assert.ok(lire("src/messagerie/messagerie.js").includes('surActionIA("echange-ouvert")'));
+});
+
+// 30/10 : un rapport n'entre dans « Recherches IA précédentes » qu'après « Oui », comme une recherche d'échanges ; « Non » ou l'abandon n'ajoutent rien.
+test("historique : le rapport est ajouté au « Oui » seulement, jamais à l'affichage ni au « Non »", () => {
+  const montage = lire("src/discussionsIAMontage.js");
+  const proposer = montage.slice(montage.indexOf("proposer: (retour, phrase)"));
+  assert.ok(!proposer.includes("ajouterSynthese"));
+  const oui = montage.slice(montage.indexOf("surOui: () =>"), montage.indexOf("surNon: () =>"));
+  assert.match(oui, /retour\.type === "rapport"\) \{ ajouterSynthese\(retour\.rapport\); ia\.majHistorique\(\); \}/);
+  const non = montage.slice(montage.indexOf("surNon: () =>"), montage.indexOf("const pipeline"));
+  assert.ok(!non.includes("ajouterSynthese"));
+});
+
+test("flux : seule la demande confirmée expose son rapport (Non et abandon laissent acceptee() vide)", async () => {
+  const { creerFlux } = await import("../src/discussionsIAFlux.js");
+  const messagerie = { appliquerFiltreIA() {}, confirmerFiltreIA() {}, retirerFiltreIA() {} };
+  const rapport = { vide: false };
+  const retour = { ok: true, type: "rapport", rapport, resultat: { fils: [], surlignes: [] }, relecture: "r" };
+  const non = creerFlux({ messagerie });
+  non.proposer(retour, "p"); non.refuser();
+  assert.equal(non.acceptee(), null);
+  const abandon = creerFlux({ messagerie });
+  abandon.proposer(retour, "p");
+  assert.equal(abandon.acceptee(), null);
+  const oui = creerFlux({ messagerie });
+  oui.proposer(retour, "p"); assert.equal(oui.accepter(), true);
+  assert.equal(oui.acceptee().rapport, rapport);
 });
