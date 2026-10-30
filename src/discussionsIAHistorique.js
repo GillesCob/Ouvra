@@ -75,6 +75,9 @@ export function ajouterRecherche(retour, { stockage = stockageParDefaut(), maint
   return suivante;
 }
 
+// Titre affiche sur la carte (30/10) : la relecture sans son point final (le bandeau « Est-ce bien votre demande ? » garde la phrase complete).
+export const titreCarte = (nom) => String(nom).replace(/[\s.]+$/, "");
+
 export const dateSynthese = (entree) => dateJJMMAAAA(entree.creeLe);
 
 // Type d'une entree (30/10) : « rapport » (rapport stocke ou de demonstration) ou « echanges » (recherche d'echanges) ; null si l'entree n'est ni l'un ni l'autre.
