@@ -224,6 +224,7 @@ body.msg-echanges-retour-actif #view-discussions { padding-top: 44px; box-sizing
 /* ---------- Rapport de l'historique dans la zone centrale (laptop, 30/10) ---------- */
 /* Le panneau du rapport (meme rendu que la modale) est pose dans #msgVolet : pas de fond sombre, pas de position fixe, il remplit la zone et son corps defile.
    Pleine largeur de la zone centrale (30/10, Gilles) : la carte n'a plus le plafond de 760 px de la modale ; seules les lignes de texte restent plafonnees pour la lisibilite. */
-.regles-ia-fond.disc-rapport-fond.disc-rapport-fond-centre { position: static; inset: auto; z-index: auto; flex: 1 1 auto; min-height: 0; min-width: 0; align-items: stretch; justify-content: stretch; padding: 8px; background: none; }
+.regles-ia-fond.disc-rapport-fond.disc-rapport-fond-centre { position: static; inset: auto; z-index: auto; flex: 1 1 auto; min-height: 0; min-width: 0; align-items: stretch; justify-content: stretch; padding: 16px; background: none; }
 .disc-rapport-fond-centre .regles-ia-carte.disc-rapport-carte { width: 100%; max-height: 100%; }
 .disc-rapport-fond-centre :is(.disc-rapport-phrase, .disc-rapport-extrait, .disc-rapport-rien) { max-width: 100ch; }
+.disc-rapport-fond-centre .disc-rapport-rien { margin-inline: auto; }
