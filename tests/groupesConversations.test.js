@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { conversationsDuType, TYPES_CONVERSATION } from "../src/messagerie/groupesConversations.js";
+import { conversationsDuType, TYPES_CONVERSATION, libelleConversation } from "../src/messagerie/groupesConversations.js";
 
 const c = (id, type) => ({ id, type });
 const liste = [c("g1", "groupe"), c("i1", "individuel"), c("g2", "groupe"), c("i2", "individuel")];
@@ -33,8 +33,6 @@ test("dialogue Nouveau sujet : bascule a pastille et zone defilante dans une car
   assert.match(css, /prefers-reduced-motion[^}]*msg-bascule-pastille/);
   assert.doesNotMatch(css, /\.msg-bascule \.msg-pastille/); // la pastille de la bascule n'a plus la classe des pastilles de sujet
 });
-
-import { libelleConversation } from "../src/messagerie/groupesConversations.js";
 
 test("libelleConversation : individuelle avec metier, le metier suit le nom entre parentheses", () => {
   assert.equal(libelleConversation({ type: "individuel", nom: "Sophie Lambert", sousTitre: "BET Fluides" }), "Sophie Lambert (BET Fluides)");
