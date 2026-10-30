@@ -99,3 +99,10 @@ test("M20/M21 : menus du dialogue = <select> toujours rendu, habille par habille
   assert.match(js, /<textarea id="msgNsMessage" rows="2">/);
   assert.match(css, /#msgNsMessage\s*\{[^}]*max-height:\s*40vh/);
 });
+
+test("30/10 : le choix de conversation n'affiche ni metier en dur ni indicateur de non lus, et l'aide sur les sujets clos est retiree", () => {
+  assert.match(js, /libelle: libelleConversation\(k\)/);
+  assert.doesNotMatch(js, /non lus\)" : ""\)/);
+  assert.doesNotMatch(js, /optionsConversations\([^)]*,/);
+  assert.doesNotMatch(js, /Les sujets clos ne sont pas proposés/);
+});
