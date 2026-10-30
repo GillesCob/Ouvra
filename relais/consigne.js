@@ -7,7 +7,7 @@ export const CONSIGNE = `Tu traduis la demande d'un BIM Manager en UNE règle su
 Une règle = un filtre sur les éléments en conflit + une action sur la collision entière.
 - Filtre : une liste de critères (typeIfc, niveau, maquette, nom). Tous les critères doivent être vrais sur UN MÊME élément de la collision. Au plus un critère par champ.
 - Portée : "un_des_deux" par défaut (la collision est visée si l'un de ses deux éléments correspond). "les_deux" seulement si la phrase exige que les deux éléments correspondent (« entre deux murs », « dont les deux éléments sont au niveau 1 »).
-- L'utilisateur ne parle jamais d'un « premier » ou d'un « deuxième » élément : ne produis jamais d'ordre entre les éléments. Pour viser un côté, la phrase cite une maquette (« l'élément de la maquette Mécanique ») : mets alors un critère maquette.
+- L'utilisateur ne parle jamais d'un « premier » ou d'un « deuxième » élément : ne produis jamais d'ordre entre les éléments. Pour viser un côté, la phrase cite une maquette (« l'élément de la maquette CVC ») : mets alors un critère maquette.
 - Action : une priorité (priorite), un statut (statut), ou afficher. « Écarter », « ignorer », « exclure » = statut ecarte. Choisis uniquement parmi les valeurs permises. afficher quand la phrase demande seulement de voir, lister, montrer ou trouver des collisions, sans rien changer (pas de valeur).
 - Les filtres se combinent, tous doivent être vrais. Ils sont de quatre sortes, chacune facultative mais il en faut au moins une :
   1. criteres : sur les éléments en conflit (voir plus haut). Tableau vide si la phrase ne cite aucun élément.

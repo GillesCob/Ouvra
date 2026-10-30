@@ -143,7 +143,7 @@ export const ECHANGES_HOSPITAL = {
       msg(NADIA, "2026-10-14T10:30:00", "Les gaz médicaux sont un point sensible pour la réception. Merci de me tenir informée de la solution retenue."),
       msg(VOUS, "2026-10-15T08:40:00", "Je passe en urgente. Une prise mal placée se voit à la réception."),
       msg(CLAIRE, "2026-10-15T09:15:00", "De mon côté la cloison ne change pas. C'est la prise qui doit se déplacer."),
-      msg(SOPHIE, "2026-10-15T10:20:00", "Je décale la prise de 15 cm le long de la cloison et je republie la maquette Mécanique."),
+      msg(SOPHIE, "2026-10-15T10:20:00", "Je décale la prise de 15 cm le long de la cloison et je republie la maquette CVC."),
       msg(VOUS, "2026-10-16T08:55:00", "Parfait. Je garde ouvert jusqu'à la prochaine version Mécanique. Nadia, la solution est retenue.")
     ],
     historique: [

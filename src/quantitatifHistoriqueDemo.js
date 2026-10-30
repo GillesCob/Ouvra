@@ -41,7 +41,7 @@ function elementsSynthetiques(table, maquette, maquetteId) {
 const DEMANDES = [
   {
     id: "demo-quantitatif-cvc",
-    phrase: "Compte les gaines, les raccords de gaine, les tuyaux et les vannes de la maquette mécanique, par niveau et par type",
+    phrase: "Compte les gaines, les raccords de gaine, les tuyaux et les vannes de la maquette CVC, par niveau et par type",
     ilYa: 1,
     heure: 16,
     aJour: true, // la demonstration « a jour » (empreinte factice a jour) ; l'autre est « obsolete »
