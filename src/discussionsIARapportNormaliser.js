@@ -21,7 +21,7 @@ export const OPPOSANTS_MAX = 6;
 export const INTERVENANTS_MAX = 12;
 export const SOURCES_PAR_BLOC_MAX = 5;
 // Demande a faire a l'IA d'Ouvra (30/10) : champ OPTIONNEL `demande_ia: { zone, phrase }`, a coller telle quelle dans la zone IA visee. Zone hors liste, phrase vide, trop longue
-// ou avec un chiffre absent de la decision et de ses sources = champ ignore sans erreur (pas d'encart). « aucune » est la valeur du schema quand le rapport ne demande rien.
+// ou avec un chiffre absent de la decision et des messages cites par le rapport = champ ignore sans erreur (pas d'encart). « aucune » est la valeur du schema quand le rapport ne demande rien.
 export const ZONES_DEMANDE_IA = ["viewer", "collision", "quantitatif", "discussions"];
 export const DEMANDE_IA_MAX = 240;
 
@@ -57,11 +57,13 @@ const sourcesValides = (ids, texteDe) => sansDoublon(Array.isArray(ids) ? ids.fi
 
 const verifie = (texte, sources, texteDe) => sources.length > 0 && chiffresSourcesTrouves(texte, sources.map(texteDe));
 
-function normaliserDemandeIA(brute, decision, texteDe) {
+// Les chiffres de la phrase sont permis s'ils figurent dans la decision, ses sources ou les messages cites par le contexte et les desaccords du rapport (30/10 : une
+// phrase « cloison de 123 mm » est legitime, ce chiffre vient du contexte du meme rapport). Un chiffre absent de tous ces messages reste refuse.
+function normaliserDemandeIA(brute, decision, texteDe, autresSources) {
   if (decision.statut === "aucune" || !estObjet(brute) || !ZONES_DEMANDE_IA.includes(brute.zone)) return null;
   const phrase = nettoyer(brute.phrase);
   if (!phrase || phrase.length > DEMANDE_IA_MAX) return null;
-  if (!chiffresSourcesTrouves(phrase, [decision.texte, ...decision.sources.map(texteDe)])) return null;
+  if (!chiffresSourcesTrouves(phrase, [decision.texte, ...sansDoublon([...decision.sources, ...autresSources]).map(texteDe)])) return null;
   return { zone: brute.zone, phrase };
 }
 
@@ -106,8 +108,8 @@ export function normaliserRapport(sortie, { auteurs, texteDe, auteurDe = () => n
     }
   }
 
-  // Demande a l'IA : seulement si une decision existe, jamais inventee (aucun chiffre ou mois hors de la decision et de ses messages cites).
-  const demandeIA = normaliserDemandeIA(sortie.demande_ia, decision, texteDe);
+  // Demande a l'IA : seulement si une decision existe, jamais inventee (aucun chiffre ou mois hors de la decision et des messages cites par le rapport).
+  const demandeIA = normaliserDemandeIA(sortie.demande_ia, decision, texteDe, [...contexte.sources, ...desaccords.flatMap((d) => d.sources)]);
 
   // Intervenants : ceux du modele (auteurs reels), puis les opposants, puis, a defaut, les auteurs des messages cites.
   let intervenants = sansDoublon([...nomsReels(sortie.intervenants, INTERVENANTS_MAX), ...desaccords.flatMap((d) => d.opposants)]);
