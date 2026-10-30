@@ -15,7 +15,7 @@
 
 import "./reglesIA.css";
 import "./discussionsIA.css";
-import { dateDuRapport, perimetreDe, libelleDecision, nomsEnPhrase, MESSAGE_AUCUN_DESACCORD, MESSAGE_CONTEXTE_ABSENT, MENTION_NON_CONFIRME } from "./discussionsIARapportFormat.js";
+import { dateDuRapport, perimetreDe, libelleDecision, libelleZoneDemande, nomsEnPhrase, MESSAGE_AUCUN_DESACCORD, MESSAGE_CONTEXTE_ABSENT, MENTION_NON_CONFIRME } from "./discussionsIARapportFormat.js";
 import { preparerOngletPdf } from "./discussionsIARapportOnglet.js";
 import { defilementVersTitre, creerMemoirePosition, CLASSE_VERROU } from "./discussionsIARapportDefilement.js";
 import { verrouillerArrierePlan } from "./verrouDefilement.js";
@@ -217,6 +217,36 @@ export function creerRapportVue({ surSource, texteRapport, exporterPdf }) {
     return bloc("desaccords", "Désaccords exprimés", ul);
   }
 
+  // Encart « Demande à l'IA » (30/10), juste apres la decision : un clic COPIE la phrase exacte validee dans la synthese, a coller dans la zone IA visee.
+  // Aucune demande dans le rapport = aucun element (null), jamais un encart vide ou masque.
+  function rendreDemandeIA(rapport) {
+    if (!rapport.demandeIA) return null;
+    const demande = rapport.demandeIA;
+    const zone = libelleZoneDemande(demande.zone);
+    const el = creer("div", "disc-rapport-demande-groupe");
+    el.dataset.bloc = "demande-ia";
+    const b = creer("button", "disc-rapport-demande");
+    b.type = "button";
+    b.setAttribute("aria-label", "Demande à l'IA, à coller dans " + zone + " : " + demande.phrase + ". Copier la demande"); // commence par le texte visible (WCAG 2.5.3)
+    const etat = creer("span", "disc-rapport-demande-etat", "Copier");
+    b.append(creer("span", "disc-rapport-demande-zone", "Demande à l'IA, à coller dans " + zone), creer("span", "disc-rapport-demande-phrase", "« " + demande.phrase + " »"), etat);
+    const annonce = creer("span", "disc-rapport-sr");
+    annonce.setAttribute("role", "status");
+    annonce.setAttribute("aria-live", "polite");
+    b.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(demande.phrase);
+        etat.textContent = "Copié";
+        annonce.textContent = "Demande copiée";
+      } catch {
+        etat.textContent = "Copie impossible"; // contexte non securise ou autorisation refusee : la phrase reste lisible a l'ecran
+        annonce.textContent = "Copie impossible";
+      }
+    });
+    el.append(b, annonce);
+    return el;
+  }
+
   function rendreDecision(rapport) {
     const d = rapport.decision;
     const el = bloc("decision", "Décision finale");
@@ -227,6 +257,8 @@ export function creerRapportVue({ surSource, texteRapport, exporterPdf }) {
       el.appendChild(phrase(d.texte, d.statut === "prise" ? d.confirme : true));
       el.appendChild(boutonsSources(d.sources));
     }
+    const demande = rendreDemandeIA(rapport);
+    if (demande) el.appendChild(demande);
     return el;
   }
 

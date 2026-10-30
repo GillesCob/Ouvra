@@ -10,7 +10,7 @@
 import { VERT, PAGE_MOBILE, afficherPdfPleinOnglet, sansSpecial, chargerLogo } from "./exportPdfCommun.js";
 import { afficherPdfDansOnglet } from "./discussionsIARapportOnglet.js";
 import {
-  dateJJMMAAAA, dateDuRapport, perimetreDe, libelleDecision, nomsEnPhrase, refsDe,
+  dateJJMMAAAA, dateDuRapport, perimetreDe, libelleDecision, nomsEnPhrase, refsDe, mentionDemandeIA,
   MESSAGE_AUCUN_DESACCORD, MESSAGE_CONTEXTE_ABSENT, MENTION_NON_CONFIRME
 } from "./discussionsIARapportFormat.js";
 
@@ -47,6 +47,7 @@ export function definitionRapportPdf(rapport) {
     desaccords: rapport.desaccords.map((d) => ({ opposants: t(nomsEnPhrase(d.opposants)), objet: t(d.objet), nonConfirme: !d.confirme, refs: refsDe(rapport, d.sources) })),
     aucunDesaccord: rapport.desaccords.length ? null : MESSAGE_AUCUN_DESACCORD,
     decision: { statut: decision.statut, libelle: libelleDecision(decision), texte: t(decision.texte), nonConfirme: decision.statut === "prise" && !decision.confirme, refs: refsDe(rapport, decision.sources) },
+    demandeIA: rapport.demandeIA ? t(mentionDemandeIA(rapport.demandeIA)) : null,
     sources: rapport.chronologie.map((s, i) => ({ numero: i + 1, expediteur: t(s.auteurNom), date: t(s.quandLibelle), discussion: t(s.discussion), extrait: t(court(s.extrait.texte, EXTRAIT_PDF_MAX)) }))
   };
 }
@@ -131,6 +132,15 @@ export function construireRapportPdf({ jsPDF, autoTable }, def, { logoPng = null
     doc.setFont("helvetica", "normal").setFontSize(corps);
     lignes.forEach((ligne, i) => doc.text(ligne, marge + 6, y + 12.2 + i * inter));
     y += hBoite + 2;
+
+    // Demande a l'IA (30/10) : un PDF ne copie rien, la phrase est donc ecrite en texte selectionnable, sans bouton, et seulement si le rapport en porte une.
+    if (def.demandeIA) {
+      const lignesDemande = doc.splitTextToSize(def.demandeIA, utile - 4);
+      assurer(lignesDemande.length * inter + 3);
+      doc.setFont("helvetica", "italic").setFontSize(corps).setTextColor(30, 40, 33);
+      lignesDemande.forEach((ligne, i) => doc.text(ligne, marge + 2, y + 4 + i * inter));
+      y += lignesDemande.length * inter + 3;
+    }
   }
 
   // 6. Sources, en fin de document : expediteur, date, extrait court.

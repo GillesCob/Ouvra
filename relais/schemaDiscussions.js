@@ -9,7 +9,7 @@ import * as z from "zod/v4";
 import { UNITES } from "../src/reglesCollision.js";
 import { REGISTRE, PERTINENCES } from "../src/discussionsIAMoteur.js";
 import { STATUTS_SUJET } from "../src/discussionsIARegistre.js";
-import { STATUTS_DECISION } from "../src/discussionsIARapportNormaliser.js";
+import { STATUTS_DECISION, ZONES_DEMANDE_IA } from "../src/discussionsIARapportNormaliser.js";
 
 export const RESULTATS_COMPRENDRE = ["commande", "critere_introuvable", "non_comprise"];
 
@@ -130,6 +130,10 @@ export function construireSchemaAnalyseJson(sortie, ids, auteurs = []) {
       statut: z.enum(STATUTS_DECISION).describe("prise : décision énoncée clairement ; rapportee : décision rapportée de seconde main ; incertaine : décision envisagée ou ambiguë ; aucune : aucune décision exprimée"),
       texte: z.string().describe("la décision finale telle qu'écrite dans les messages ; chaîne vide si statut aucune"),
       sources: z.array(id).describe("numéros des messages qui disent la décision ; vide si statut aucune")
+    }),
+    demande_ia: z.object({
+      zone: z.enum([...ZONES_DEMANDE_IA, "aucune"]).describe("zone IA d'Ouvra où coller la demande ; aucune si la décision n'appelle aucune action dans Ouvra"),
+      phrase: z.string().describe("la demande complète à faire à l'IA d'Ouvra pour appliquer la décision ; chaîne vide si zone aucune")
     })
   }));
 }

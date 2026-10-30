@@ -40,7 +40,9 @@ const SORTIE_MODELE = {
     statut: "prise",
     texte: "Ne pas trancher sans métré. Un tableau doit chiffrer les gaines et les raccords à reprendre, le faux plafond à déposer et à refaire, et le linéaire de cloison touchée. Sophie Lambert est d'accord et donne le tracé de travail à Marc pour sortir les quantités de la maquette.",
     sources: ["metre", "accord"]
-  }
+  },
+  // Phrase de l'etape suivante de la demo (decision de Gilles, 30/10) : la decision du rapport depend du metre du niveau 2.
+  demande_ia: { zone: "quantitatif", phrase: "Compte les gaines, les raccords de gaine et les faux plafonds du niveau 2, par famille" }
 };
 
 // Second modele (28/10) : le desaccord sur le degre coupe-feu de la cloison du local technique R+2 (conversation avec Claire Martin), pour l'historique de demonstration.

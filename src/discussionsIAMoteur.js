@@ -227,7 +227,8 @@ export function conclureRapport(sortie, table, index, { sujet = "", termes = [],
     contexte: { ...norme.contexte, sources: sources(norme.contexte.sources) },
     intervenants: norme.intervenants,
     desaccords: norme.desaccords.map((d) => ({ ...d, sources: sources(d.sources) })),
-    decision: { ...norme.decision, sources: sources(norme.decision.sources) }
+    decision: { ...norme.decision, sources: sources(norme.decision.sources) },
+    demandeIA: norme.demandeIA
   };
   rapport.chronologie = Array.from(citees.values()).sort((a, b) => a.quand - b.quand);
   rapport.analyses = table.size;

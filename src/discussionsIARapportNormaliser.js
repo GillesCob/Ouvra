@@ -4,7 +4,7 @@
 //
 // Reponse du modele (schema de relais/schemaDiscussions.js) :
 //   { rien_a_dire, titre, contexte: { texte, sources }, intervenants: [nom], desaccords: [{ opposants: [nom], objet, sources }],
-//     decision: { statut: prise | rapportee | incertaine | aucune, texte, sources } }
+//     decision: { statut: prise | rapportee | incertaine | aucune, texte, sources }, demande_ia?: { zone: viewer | collision | quantitatif | discussions | aucune, phrase } }
 // Regle absolue : aucune information non sourcee, et JAMAIS de decision inventee.
 //  - une source qui n'existe pas est retiree ; un desaccord sans source valide ou sans objet est ecarte ;
 //  - une decision sans texte ou sans source valide devient « aucune » (texte vide) : mieux vaut « Aucune décision prise » qu'une decision douteuse ;
@@ -20,6 +20,10 @@ export const DESACCORDS_MAX = 8;
 export const OPPOSANTS_MAX = 6;
 export const INTERVENANTS_MAX = 12;
 export const SOURCES_PAR_BLOC_MAX = 5;
+// Demande a faire a l'IA d'Ouvra (30/10) : champ OPTIONNEL `demande_ia: { zone, phrase }`, a coller telle quelle dans la zone IA visee. Zone hors liste, phrase vide, trop longue
+// ou avec un chiffre absent de la decision et de ses sources = champ ignore sans erreur (pas d'encart). « aucune » est la valeur du schema quand le rapport ne demande rien.
+export const ZONES_DEMANDE_IA = ["viewer", "collision", "quantitatif", "discussions"];
+export const DEMANDE_IA_MAX = 240;
 
 // ---------- Verification des chiffres et des dates ----------
 // Un bloc ne doit contenir aucun nombre ni nom de mois qui ne figure pas dans l'un de ses messages cites (ou dans leur date, que le modele voit).
@@ -53,13 +57,21 @@ const sourcesValides = (ids, texteDe) => sansDoublon(Array.isArray(ids) ? ids.fi
 
 const verifie = (texte, sources, texteDe) => sources.length > 0 && chiffresSourcesTrouves(texte, sources.map(texteDe));
 
+function normaliserDemandeIA(brute, decision, texteDe) {
+  if (decision.statut === "aucune" || !estObjet(brute) || !ZONES_DEMANDE_IA.includes(brute.zone)) return null;
+  const phrase = nettoyer(brute.phrase);
+  if (!phrase || phrase.length > DEMANDE_IA_MAX) return null;
+  if (!chiffresSourcesTrouves(phrase, [decision.texte, ...decision.sources.map(texteDe)])) return null;
+  return { zone: brute.zone, phrase };
+}
+
 // options : { auteurs: Set<string> des noms reels, texteDe(id) -> texte complet (avec date) ou null, auteurDe?(id) -> nom ou null }.
 // Rend null si la forme est inexploitable, sinon :
-//   { vide, titre, contexte: { texte, sources, confirme }, intervenants, desaccords: [{ opposants, objet, sources, confirme }], decision: { statut, texte, sources, confirme } }
+//   { vide, titre, contexte: { texte, sources, confirme }, intervenants, desaccords: [{ opposants, objet, sources, confirme }], decision: { statut, texte, sources, confirme }, demandeIA: { zone, phrase } | null }
 // (les sources sont des numeros M1..Mn, a la page de les transformer en messages.)
 export function normaliserRapport(sortie, { auteurs, texteDe, auteurDe = () => null }) {
   if (!estObjet(sortie) || typeof sortie.rien_a_dire !== "boolean") return null;
-  const vide = { vide: true, titre: "", contexte: { texte: "", sources: [], confirme: false }, intervenants: [], desaccords: [], decision: { statut: "aucune", texte: "", sources: [], confirme: false } };
+  const vide = { vide: true, titre: "", contexte: { texte: "", sources: [], confirme: false }, intervenants: [], desaccords: [], decision: { statut: "aucune", texte: "", sources: [], confirme: false }, demandeIA: null };
   if (sortie.rien_a_dire) return vide;
   if (!estObjet(sortie.contexte)) return null;
 
@@ -94,6 +106,9 @@ export function normaliserRapport(sortie, { auteurs, texteDe, auteurDe = () => n
     }
   }
 
+  // Demande a l'IA : seulement si une decision existe, jamais inventee (aucun chiffre ou mois hors de la decision et de ses messages cites).
+  const demandeIA = normaliserDemandeIA(sortie.demande_ia, decision, texteDe);
+
   // Intervenants : ceux du modele (auteurs reels), puis les opposants, puis, a defaut, les auteurs des messages cites.
   let intervenants = sansDoublon([...nomsReels(sortie.intervenants, INTERVENANTS_MAX), ...desaccords.flatMap((d) => d.opposants)]);
   if (!intervenants.length) {
@@ -104,5 +119,5 @@ export function normaliserRapport(sortie, { auteurs, texteDe, auteurDe = () => n
 
   const titre = borner(nettoyer(sortie.titre), TITRE_MAX);
   const exploitable = contexte.texte !== "" || desaccords.length > 0 || decision.statut !== "aucune";
-  return { vide: !exploitable, titre, contexte, intervenants, desaccords, decision };
+  return { vide: !exploitable, titre, contexte, intervenants, desaccords, decision, demandeIA };
 }
