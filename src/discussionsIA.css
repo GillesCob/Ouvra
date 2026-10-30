@@ -144,16 +144,28 @@ body.discussions-confirm-actif .disc-rapport-fond { padding-top: calc(52px + var
 @media (prefers-reduced-motion: reduce) { .disc-rapport-source.disc-rapport-source-flash { animation: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--msg-accent) 70%, transparent); } }
 @media (hover: hover) and (pointer: fine) { .disc-rapport-source:hover { border-color: var(--accent); } }
 /* Encart « Demande à l'IA » (30/10) : meme gabarit que les boutons de source (hauteur, bordure, rayon, couleurs), pleine largeur du bloc de decision. */
-.disc-rapport-demande-groupe { display: flex; }
+.disc-rapport-demande-groupe { position: relative; display: flex; }
 .disc-rapport-demande {
-  display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; min-height: 40px; min-width: 0; padding: 4px 10px; background: var(--bg); color: var(--text);
+  display: flex; flex-direction: column; align-items: stretch; gap: 2px; width: 100%; min-height: 40px; min-width: 0; padding: 4px 10px; background: var(--bg); color: var(--text);
   border: 1px solid var(--border); border-radius: 8px; text-align: left; font: inherit; font-size: 12.5px; cursor: pointer; -webkit-tap-highlight-color: transparent;
+  transition: border-color .15s, background-color .15s;
 }
-.disc-rapport-demande-zone { color: var(--muted); font-size: 11.5px; overflow-wrap: anywhere; }
+.disc-rapport-demande-tete { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
+.disc-rapport-demande-zone { color: var(--muted); font-size: 11.5px; overflow-wrap: anywhere; min-width: 0; }
 .disc-rapport-demande-phrase { font-weight: 600; line-height: 1.4; overflow-wrap: anywhere; }
-.disc-rapport-demande-etat { font-size: 11.5px; font-weight: 700; color: var(--accent); }
+/* Pastille d'etat dans l'encart : les trois libelles sont empiles dans la meme cellule (le plus large fixe la taille), seul l'etat courant est visible : aucun saut de mise en page. */
+.disc-rapport-demande-etat { display: inline-grid; flex: none; padding: 1px 8px; border: 1px solid var(--accent); border-radius: 999px; font-size: 11.5px; font-weight: 700; line-height: 1.3; color: var(--text); text-align: center; white-space: nowrap; transition: background-color .15s, color .15s, border-color .15s; }
+.disc-rapport-demande-etat > span { grid-area: 1 / 1; visibility: hidden; }
+.disc-rapport-demande[data-etat="copier"] .disc-rapport-demande-etat > [data-libelle="copier"],
+.disc-rapport-demande[data-etat="copie"] .disc-rapport-demande-etat > [data-libelle="copie"],
+.disc-rapport-demande[data-etat="echec"] .disc-rapport-demande-etat > [data-libelle="echec"] { visibility: visible; }
+/* Etat « copie » : meme vert de validation que le clignotement des sources du rapport (#7fae84), bordure de l'encart + pastille pleine. */
+.disc-rapport-demande[data-etat="copie"] { border-color: #7fae84; background: color-mix(in srgb, #7fae84 16%, var(--bg)); }
+.disc-rapport-demande[data-etat="copie"] .disc-rapport-demande-etat { background: #7fae84; border-color: #7fae84; color: #161c18; }
+.disc-rapport-demande[data-etat="echec"] .disc-rapport-demande-etat { border-color: var(--muted); color: var(--muted); }
 .disc-rapport-demande:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .disc-rapport-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+@media (prefers-reduced-motion: reduce) { .disc-rapport-demande, .disc-rapport-demande-etat { transition: none; } }
 @media (hover: hover) and (pointer: fine) { .disc-rapport-demande:hover { border-color: var(--accent); } }
 .disc-rapport-marque { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-bottom: 10px; margin-bottom: 4px; border-bottom: 2px solid var(--accent); }
 .disc-rapport-logo { height: 40px; width: auto; display: block; }

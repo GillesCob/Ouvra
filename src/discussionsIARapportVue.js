@@ -20,6 +20,7 @@ import { preparerOngletPdf } from "./discussionsIARapportOnglet.js";
 import { defilementVersTitre, creerMemoirePosition, CLASSE_VERROU } from "./discussionsIARapportDefilement.js";
 import { verrouillerArrierePlan } from "./verrouDefilement.js";
 import { REQUETE_MOBILE } from "./seuilMobile.js";
+import { creerEncartDemande } from "./discussionsIADemandeCopie.js";
 
 export const LOGO_RAPPORT = "/images/ouvra-logo.svg";
 const MOBILE = REQUETE_MOBILE;
@@ -226,28 +227,7 @@ export function creerRapportVue({ surSource, texteRapport, exporterPdf }) {
     if (!rapport.demandeIA) return null;
     const demande = rapport.demandeIA;
     const zone = libelleZoneDemande(demande.zone);
-    const el = creer("div", "disc-rapport-demande-groupe");
-    el.dataset.bloc = "demande-ia";
-    const b = creer("button", "disc-rapport-demande");
-    b.type = "button";
-    b.setAttribute("aria-label", "Demande à l'IA, à coller dans " + zone + " : " + demande.phrase + ". Copier la demande"); // commence par le texte visible (WCAG 2.5.3)
-    const etat = creer("span", "disc-rapport-demande-etat", "Copier");
-    b.append(creer("span", "disc-rapport-demande-zone", "Demande à l'IA, à coller dans " + zone), creer("span", "disc-rapport-demande-phrase", "« " + demande.phrase + " »"), etat);
-    const annonce = creer("span", "disc-rapport-sr");
-    annonce.setAttribute("role", "status");
-    annonce.setAttribute("aria-live", "polite");
-    b.addEventListener("click", async () => {
-      try {
-        await navigator.clipboard.writeText(demande.phrase);
-        etat.textContent = "Copié";
-        annonce.textContent = "Demande copiée";
-      } catch {
-        etat.textContent = "Copie impossible"; // contexte non securise ou autorisation refusee : la phrase reste lisible a l'ecran
-        annonce.textContent = "Copie impossible";
-      }
-    });
-    el.append(b, annonce);
-    return el;
+    return creerEncartDemande({ demande, zone, ecrire: (texte) => navigator.clipboard.writeText(texte) });
   }
 
   function rendreDecision(rapport) {
