@@ -50,7 +50,7 @@ export function convertirSortieAnalyse(sortie, sortieAction, extraits = []) {
   });
   if (!rapport) return invalide("Rapport absent.");
   if (rapport.vide) return { ok: true, sortie: { rien_a_dire: true } };
-  return { ok: true, sortie: { rien_a_dire: false, titre: rapport.titre, contexte: rapport.contexte, intervenants: rapport.intervenants, desaccords: rapport.desaccords, decision: rapport.decision } };
+  return { ok: true, sortie: { rien_a_dire: false, titre: rapport.titre, contexte: rapport.contexte, intervenants: rapport.intervenants, desaccords: rapport.desaccords, decision: rapport.decision, ...(rapport.demandeIA ? { demande_ia: rapport.demandeIA } : {}) } };
 }
 
 const NOMS_MOIS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"];

@@ -19,6 +19,11 @@ export const LIBELLES_DECISION = {
 
 export const libelleDecision = (decision) => LIBELLES_DECISION[decision && decision.statut] || MESSAGE_AUCUNE_DECISION;
 
+// Demande a l'IA d'Ouvra (30/10) : zone visee et mention du PDF (le PDF ne copie rien, il affiche la phrase en texte selectionnable).
+export const LIBELLES_ZONE_DEMANDE = { viewer: "Viewer", collision: "Collision", quantitatif: "Quantitatif", discussions: "Discussions" };
+export const libelleZoneDemande = (zone) => LIBELLES_ZONE_DEMANDE[zone] || "";
+export const mentionDemandeIA = (demande) => "Demande à l'IA (" + libelleZoneDemande(demande.zone) + ") : « " + demande.phrase + " »";
+
 const deux = (n) => String(n).padStart(2, "0");
 export const dateJJMMAAAA = (ms) => {
   const d = new Date(ms);

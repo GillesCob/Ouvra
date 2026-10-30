@@ -140,6 +140,18 @@ body.discussions-confirm-actif .disc-rapport-fond { padding-top: calc(52px + var
 .disc-rapport-source-qui { font-weight: 600; }
 .disc-rapport-source-fil { color: var(--muted); font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
 @media (hover: hover) and (pointer: fine) { .disc-rapport-source:hover { border-color: var(--accent); } }
+/* Encart « Demande à l'IA » (30/10) : meme gabarit que les boutons de source (hauteur, bordure, rayon, couleurs), pleine largeur du bloc de decision. */
+.disc-rapport-demande-groupe { display: flex; }
+.disc-rapport-demande {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; min-height: 40px; min-width: 0; padding: 4px 10px; background: var(--bg); color: var(--text);
+  border: 1px solid var(--border); border-radius: 8px; text-align: left; font: inherit; font-size: 12.5px; cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+.disc-rapport-demande-zone { color: var(--muted); font-size: 11.5px; overflow-wrap: anywhere; }
+.disc-rapport-demande-phrase { font-weight: 600; line-height: 1.4; overflow-wrap: anywhere; }
+.disc-rapport-demande-etat { font-size: 11.5px; font-weight: 700; color: var(--accent); }
+.disc-rapport-demande:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.disc-rapport-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+@media (hover: hover) and (pointer: fine) { .disc-rapport-demande:hover { border-color: var(--accent); } }
 .disc-rapport-marque { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-bottom: 10px; margin-bottom: 4px; border-bottom: 2px solid var(--accent); }
 .disc-rapport-logo { height: 40px; width: auto; display: block; }
 .disc-rapport-date { margin: 0; font-size: 12.5px; font-weight: 600; color: var(--muted); text-align: right; }
@@ -168,7 +180,7 @@ body.discussions-confirm-actif .disc-rapport-fond { padding-top: calc(52px + var
   .disc-rapport-bloc { padding: 10px 12px; }
   .disc-rapport-pied { position: sticky; bottom: 0; margin-top: auto; flex-wrap: nowrap; margin: 0 -14px; padding: 10px 14px calc(10px + env(safe-area-inset-bottom)); background: var(--surface); }
   .disc-rapport-btn { flex: 1 1 0; min-width: 0; padding: 0 8px; font-size: 13px; }
-  .disc-rapport-source { min-height: 44px; }
+  .disc-rapport-source, .disc-rapport-demande { min-height: 44px; }
   body.discussions-confirm-actif .regles-ia-fond.disc-rapport-fond { padding-top: calc(52px + var(--discussions-bandeau-h, 44px)); }
 }
 /* Blocs secondaires en menus deroulants (mobile seulement, cf. src/discussionsIARapportVue.js) : meme titre que les autres blocs, chevron a droite. */

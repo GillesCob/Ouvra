@@ -162,7 +162,7 @@ test("schema analyser : numeros cites et noms = enumerations fermees ; format fi
   const rapport = JSON.stringify(brut);
   assert.ok(rapport.includes('"enum":["M1","M2"]') && !rapport.includes("M3"));
   assert.ok(rapport.includes('"enum":["Ana Roux","Bob Lenoir"]'));
-  assert.deepEqual(Object.keys(brut.properties), ["rien_a_dire", "titre", "contexte", "intervenants", "desaccords", "decision"]);
+  assert.deepEqual(Object.keys(brut.properties), ["rien_a_dire", "titre", "contexte", "intervenants", "desaccords", "decision", "demande_ia"]);
   assert.deepEqual(Object.keys(brut.properties.contexte.properties), ["texte", "sources"]);
   assert.deepEqual(Object.keys(brut.properties.desaccords.items.properties), ["opposants", "objet", "sources"]);
   assert.deepEqual(Object.keys(brut.properties.decision.properties), ["statut", "texte", "sources"]);
