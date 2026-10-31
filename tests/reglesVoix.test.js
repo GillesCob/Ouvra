@@ -288,3 +288,15 @@ test("diagnostic : le calcul de la ligne de resultat ne leve jamais, avec ou san
   sans.basculer();
   assert.doesNotThrow(() => FausseReconnaissance.derniere.onresult({ results: [Object.assign([{ transcript: "ok" }], { isFinal: true })] }));
 });
+
+test("echec passager (network) : un nouvel appui relance une ecoute, une seule a la fois", () => {
+  let demarrages = 0;
+  class Compte extends FausseReconnaissance { start() { demarrages += 1; super.start(); } }
+  const dictee = creerDictee({ Reconnaissance: Compte, lire: () => "", ecrire: () => {}, surEtat: () => {}, surErreur: () => {}, longueurMax: 200 });
+  dictee.basculer();
+  Compte.derniere.erreur("network"); // erreur puis fin
+  assert.equal(dictee.ecoute(), false);
+  dictee.basculer();
+  assert.equal(demarrages, 2);
+  assert.equal(dictee.ecoute(), true);
+});
