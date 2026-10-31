@@ -49,7 +49,7 @@ async function viewerPuisQuantitatif(page: IPageSuivie): Promise<void> {
   await dormir(800);
 }
 
-/** Attend la relecture « Est-ce bien votre demande ? ». Pendant la confirmation l'application n'affiche que ce bandeau (le tableau est dans le DOM mais masque jusqu'a « Oui »). */
+/** Attend la relecture « Est-ce bien votre demande ? ». Pendant la confirmation le rapport est deja rendu derriere le bandeau, floute et inerte (31/10). */
 async function attendreTableau(page: IPageSuivie): Promise<void> {
   await page.waitForSelector("#quantitatifBandeau:not([hidden])", { timeout: 25_000 });
   await dormir(400);
@@ -127,10 +127,34 @@ async function laptop(ctx: IContexteTest): Promise<void> {
     verif.controle("R-40 une ligne « Ensemble » (ou « Total ») et origine « Compté »", !!t && t.lignes.length >= 1 && /Ensemble|Total/i.test(JSON.stringify(t)) && /compté/i.test(JSON.stringify(t)), { lignes: t?.lignes, pied: t?.pied });
     verif.controle("R-40 bandeau « Est-ce bien votre demande ? » avec Oui / Non", (await bandeauVisible(page)) && (await page.locator(OUI).count()) > 0 && (await page.locator(NON).count()) > 0);
     verif.controle("R-40 un nombre de portes calcule (a relire a la main, aucun decompte independant)", !!t && t.lignes.length > 0, t?.lignes);
-    verif.controle("R-40 pendant la confirmation seule la relecture est affichee (tableau masque)", !(await page.locator(".qt-resultat").isVisible()));
+    // 31/10 : comme sur les autres pages, le rapport est deja rendu derriere le bandeau, floute (calque partage) et inerte (ni clavier ni lecteur d'ecran) ; « Oui » ne fait que lever le flou.
+    const pendant = await page.evaluate(() => {
+      const zone = document.querySelector<HTMLElement>(".qt-resultat");
+      const tableau = document.querySelector<HTMLElement>(".qt-tableau");
+      const calque = document.getElementById("flouDemande");
+      if (tableau) (tableau as HTMLElement & { __marque?: boolean }).__marque = true;
+      return {
+        rendu: !!zone && !!tableau && !zone.hidden && zone.getBoundingClientRect().height > 0 && !!zone.closest(".qt-zone") && !(zone.closest(".qt-zone") as HTMLElement).hidden,
+        flou: document.body.classList.contains("flou-demande-actif") && !!calque && !calque.hidden && /blur/.test(getComputedStyle(calque).backdropFilter || ""),
+        inerte: !!zone && !!zone.closest("[inert]")
+      };
+    });
+    verif.controle("R-40 pendant la confirmation le rapport est deja rendu derriere le bandeau", pendant.rendu, pendant);
+    verif.controle("R-40 pendant la confirmation le rapport est flou (calque partage) et inerte", pendant.flou && pendant.inerte, pendant);
+    const avantOui = ctx.appelsApi.length;
     await page.click(OUI);
     await dormir(300);
+    const apres = await page.evaluate(() => {
+      const tableau = document.querySelector<HTMLElement>(".qt-tableau") as (HTMLElement & { __marque?: boolean }) | null;
+      const zone = document.querySelector<HTMLElement>(".qt-resultat");
+      return {
+        memeNoeud: !!tableau && tableau.__marque === true,
+        flouLeve: !document.body.classList.contains("flou-demande-actif") && (document.getElementById("flouDemande")?.hidden ?? true),
+        actif: !!zone && !zone.closest("[inert]")
+      };
+    });
     verif.controle("R-40 apres « Oui » le tableau est affiche", await page.locator(".qt-tableau").isVisible());
+    verif.controle("R-40 apres « Oui » seul le flou s'en va : meme tableau (aucun nouveau rendu), aucun appel IA", apres.memeNoeud && apres.flouLeve && apres.actif && ctx.appelsApi.length === avantOui, apres);
   }
 
   // R-41 : regroupements, somme des lignes = total.
@@ -178,6 +202,7 @@ async function laptop(ctx: IContexteTest): Promise<void> {
     await page.click(NON);
     await dormir(500);
     // « Non » rouvre la saisie preremplie (comportement attendu, verifie ici) : on la ferme pour poursuivre.
+    verif.controle("R-43 « Non » : aucun rapport ni flou ne reste", (await page.evaluate(() => !document.querySelector(".qt-tableau") && !document.body.classList.contains("flou-demande-actif"))));
     verif.controle("R-43 « Non » rouvre la saisie preremplie avec la phrase", (await texteModale(page)).length > 0 || (await page.locator(".regles-ia-fond-saisie:not([hidden]) textarea").count()) > 0);
     await page.keyboard.press("Escape");
     await dormir(300);
