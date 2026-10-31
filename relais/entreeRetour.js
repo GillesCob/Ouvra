@@ -1,9 +1,9 @@
 // Validation d'un retour de visiteur (28/10) : POST /api/retour. PURE (ni reseau ni DOM), comme relais/entree.js.
-// Un retour = un type (bug ou idee), un message, la page d'origine et un contact, les deux derniers facultatifs. Le champ « site » est un PIEGE a robots : invisible
+// Un retour = un type (bug = Remarque, idee = Suggestion, diagnostic = journal de la dictee), un message, la page d'origine et un contact, les deux derniers facultatifs. Le champ « site » est un PIEGE a robots : invisible
 // pour une personne, un robot le remplit ; rempli, le retour est ignore sans erreur (le robot ne sait pas qu'il a ete reconnu).
 // Rend { ok: true, type, message, page, contact, piege } ou { ok: false, message }.
 
-export const TYPES_RETOUR = ["bug", "idee"];
+export const TYPES_RETOUR = ["bug", "idee", "diagnostic"]; // bug = « Remarque », idee = « Suggestion » (valeurs internes inchangees) ; diagnostic = journal de la dictee envoye automatiquement (31/10)
 export const MESSAGE_MAX = 1000;
 export const PAGE_MAX = 40;
 export const CONTACT_MAX = 120;
@@ -16,7 +16,7 @@ const EMAIL = /^[^\s@<>"]+@[^\s@<>"]+\.[^\s@<>"]+$/;
 
 export function validerEntreeRetour(corps) {
   if (!estObjet(corps)) return { ok: false, message: "Le retour n'est pas valide." };
-  if (!TYPES_RETOUR.includes(corps.type)) return { ok: false, message: "Choisis « Bug » ou « Idée »." };
+  if (!TYPES_RETOUR.includes(corps.type)) return { ok: false, message: "Choisis « Remarque » ou « Suggestion »." };
   if (typeof corps.message !== "string") return { ok: false, message: "Écris ton retour." };
   const message = sansControle(corps.message.replace(/\r\n?/g, "\n")).trim();
   if (!message) return { ok: false, message: "Écris ton retour." };

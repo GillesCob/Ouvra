@@ -1,4 +1,4 @@
-// Interface des retours de visiteurs (28/10) : bouton « Bug ou idée ? » (barre de navigation) -> modale -> POST /api/retour. Logique pure testee ici ;
+// Interface des retours de visiteurs (28/10) : bouton « Remarque ou suggestion ? » (barre de navigation) -> modale -> POST /api/retour. Logique pure testee ici ;
 // le comportement de la modale est verifie a part dans un navigateur.
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -48,8 +48,8 @@ test("envoyerRetour : POST JSON vers /api/retour ; succes -> ok ; refus serveur 
 test("page : le bouton est dans la barre de navigation, hors des onglets (.nav-link) ; branche dans main.js ; route montee en local", () => {
   const html = lire("index.html");
   // Deux exemplaires, un seul visible a la fois : dans la barre (ordinateur, a droite, loin de « Me contacter » centre) et dans le menu ☰ (mobile).
-  assert.match(html, /<button type="button" class="nav-avis" id="navbarAvisBarre">Bug ou idée \?<\/button>/);
-  assert.match(html, /<button type="button" class="nav-avis" id="navbarAvisTiroir">Bug ou idée \?<\/button>/);
+  assert.match(html, /<button type="button" class="nav-avis" id="navbarAvisBarre">Remarque ou suggestion \?<\/button>/);
+  assert.match(html, /<button type="button" class="nav-avis" id="navbarAvisTiroir">Remarque ou suggestion \?<\/button>/);
   assert.ok(html.indexOf('id="navbarAvisBarre"') > html.indexOf("</nav>") && html.indexOf('id="navbarAvisBarre"') < html.indexOf('id="projectSelect"'), "exemplaire de la barre apres le menu, hors du menu");
   assert.ok(html.indexOf('id="navbarAvisTiroir"') < html.indexOf("</nav>"), "exemplaire du tiroir dans le menu");
   assert.equal(/class="nav-link[^"]*" id="navbarAvis/.test(html), false);
@@ -68,12 +68,14 @@ test("placeholderRetour : un texte d'aide different pour un bug et pour une idee
   const bug = placeholderRetour("bug");
   const idee = placeholderRetour("idee");
   assert.notEqual(bug, idee);
-  assert.match(bug, /attendais|passé/i);
-  assert.match(idee, /idée|permettrait/i);
+  assert.match(bug, /attendais/i);
+  assert.match(bug, /affiché/i);
+  assert.doesNotMatch(bug + idee, /bug/i, "le mot « bug » n'apparait plus dans les textes d'aide");
+  assert.match(idee, /suggestion|permettrait/i);
   assert.equal(placeholderRetour("autre"), idee, "type inconnu : texte de l'idee (le plus general)");
 });
 
-test("modale : le choix Bug / Idee reprend la pastille qui glisse de la barre de navigation (memes valeurs que #navbarThumb)", () => {
+test("modale : le choix Suggestion / Remarque reprend la pastille qui glisse de la barre de navigation (memes valeurs que #navbarThumb)", () => {
   const css = lire("src/retourVisiteur.css");
   const barre = lire("src/style.css");
   const bloc = (texte, selecteur) => texte.slice(texte.indexOf(selecteur), texte.indexOf("}", texte.indexOf(selecteur)));
@@ -88,9 +90,12 @@ test("modale : le choix Bug / Idee reprend la pastille qui glisse de la barre de
   assert.ok(code.includes("placeholderRetour(") && code.includes('addEventListener("change"'));
 });
 
-test("libelle : « Bug ou idée ? » (les deux choix de la modale), titre « Un bug, une idée ? », plus aucune trace des anciens noms", () => {
+test("libelle : « Remarque ou suggestion ? », titre « Une suggestion, une remarque ? », Suggestion en premier et coche, plus de « Bug » visible", () => {
   const code = lire("src/retourVisiteur.js");
-  assert.ok(code.includes('creer("h2", "retour-titre", "Un bug, une idée ?")'));
+  assert.ok(code.includes('creer("h2", "retour-titre", "Une suggestion, une remarque ?")'));
+  assert.ok(code.includes('[["idee", "Suggestion"], ["bug", "Remarque"]]'), "Suggestion avant Remarque");
+  assert.ok(code.includes("radios.idee.checked = true") && code.includes('placeholderRetour("idee")'), "Suggestion cochee a l'ouverture");
+  assert.equal(/"Bug"|Un bug|Bug ou/.test(code + lire("index.html")), false, "plus de « Bug » dans les textes visibles");
   for (const f of ["index.html", "src/retourVisiteur.js", "src/retourVisiteur.css", "src/main.js", "src/style.css", "tests/retour.test.js", "tests/navbarSeuil.test.js"]) {
     const texte = lire(f);
     assert.equal(texte.includes("Donner mon " + "avis"), false, f + " : ancien nom");
@@ -106,7 +111,8 @@ test("modale : plus de phrase d'introduction sous le titre (retiree le 28/10, de
 });
 
 test("placeholder de l'idee : le texte propose par Gilles, tel quel", () => {
-  assert.equal(placeholderRetour("idee"), "Ton idée et ce qu'elle permettrait de faire");
+  assert.equal(placeholderRetour("idee"), "Ta suggestion et ce qu'elle permettrait de faire");
+  assert.equal(placeholderRetour("bug"), "Tu as rencontré une difficulté lors de ton test d'Ouvra ? Indique ce que tu attendais et ce qui s'est affiché à la place.");
 });
 
 test("ecran de remerciement (28/10) : pas de titre de modale, icone, « Merci ! », croix de fermeture du design de la messagerie, plus de gros bouton Fermer", () => {

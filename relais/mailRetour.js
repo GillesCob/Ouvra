@@ -4,7 +4,7 @@
 // La cle n'est lue que par api/retour.js (variable d'environnement de l'hebergeur) ; ni la cle ni le detail d'une erreur Resend ne ressortent d'ici.
 
 const ENDPOINT = "https://api.resend.com/emails";
-const LIBELLES = { bug: "bug", idee: "idée" };
+const LIBELLES = { bug: "remarque", idee: "suggestion", diagnostic: "diagnostic" };
 const uneLigne = (t) => String(t || "").replace(/[\u0000-\u001f\u007f]+/g, " ").replace(/\s+/g, " ").trim();
 
 export function construireMail({ type, message, page = "", contact = "" }, { expediteur, destinataire }) {

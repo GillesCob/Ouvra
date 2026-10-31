@@ -1,4 +1,4 @@
-// Retours des visiteurs (28/10) : formulaire « Bug ou idée ? » -> POST /api/retour -> un mail via Resend. Validation, mail, gestionnaire HTTP (sans reseau :
+// Retours des visiteurs (28/10) : formulaire « Remarque ou suggestion ? » -> POST /api/retour -> un mail via Resend. Validation, mail, gestionnaire HTTP (sans reseau :
 // le fetch est injecte). Aucune cle, aucun contenu de retour dans les journaux ni dans les reponses.
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -42,7 +42,7 @@ test("mail : objet sur une ligne, texte brut avec type, page, contact et message
   assert.equal(mail.from, ENV.RETOUR_EXPEDITEUR);
   assert.equal(mail.to, ENV.RETOUR_DESTINATAIRE);
   assert.equal(/[\r\n]/.test(mail.subject), false);
-  assert.match(mail.subject, /idée/);
+  assert.match(mail.subject, /suggestion/);
   assert.match(mail.text, /Ajouter un mode sombre\.\nMerci\./);
   assert.match(mail.text, /v@example\.com/);
   assert.equal("html" in mail, false);
@@ -105,4 +105,13 @@ test("gestionnaire : limite par visiteur (3 par minute), un autre visiteur n'est
   assert.equal(refus.status, 429);
   assert.ok(refus.headers.get("retry-after"));
   assert.equal((await gerer(requete(valide, { ip: "8.8.8.8" }))).status, 200);
+});
+
+test("type diagnostic (journal de la dictee) : accepte, objet « diagnostic », le mot « bug » n'apparait pas dans l'objet d'une remarque", () => {
+  assert.equal(validerEntreeRetour({ type: "diagnostic", message: "journal" }).ok, true);
+  const d = construireMail({ type: "diagnostic", message: "journal", page: "Dictée IA" }, { expediteur: ENV.RETOUR_EXPEDITEUR, destinataire: ENV.RETOUR_DESTINATAIRE });
+  assert.match(d.subject, /diagnostic/);
+  const b = construireMail({ type: "bug", message: "m" }, { expediteur: ENV.RETOUR_EXPEDITEUR, destinataire: ENV.RETOUR_DESTINATAIRE });
+  assert.match(b.subject, /remarque/);
+  assert.doesNotMatch(b.subject + b.text.split("\n")[0], /bug/i);
 });

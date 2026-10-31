@@ -19,6 +19,7 @@ import "./iaSaisie.css";
 import { creerDictee, detecterReconnaissance, motifDicteeIndisponible, nettoyerPhrase, MESSAGE_RIEN_RECONNU } from "./reglesVoix.js";
 import { demarrerNiveauVoix } from "./niveauVoix.js";
 import { verrouillerArrierePlan } from "./verrouDefilement.js";
+import { envoiDiagnosticSession } from "./diagnosticDicteeEnvoi.js";
 import { modeOuverture, modeApresBascule, annonceMode, aideVocal, suiteFinEcoute, erreurDefinitive } from "./iaSaisieLogique.js";
 import { REQUETE_MOBILE } from "./seuilMobile.js";
 
@@ -190,6 +191,8 @@ export function creerIASaisie({ exemples = [], libelle = "Demande par l'IA", pla
   // Journal de diagnostic de la dictee (31/10) : une ligne par evenement, avec l'heure relative au demarrage. Visible dans la console (« [diag-voix] ») et
   // recuperable par copy(window.__diagVoix.join("\n")). Jamais le texte dit. Temporaire : a retirer une fois la cause du « Rien n'a ete reconnu » trouvee.
   const tableauDiag = (window.__diagVoix = window.__diagVoix || []);
+  const envoiDiag = envoiDiagnosticSession; // un seul compteur pour tous les panneaux IA
+  const signalerBlocage = (motif) => envoiDiag.signaler({ lignes: tableauDiag, motif });
   let debutDiag = 0;
   function diag(ligne) {
     if (/^demarrage/.test(ligne)) { debutDiag = Date.now(); tableauDiag.push("--- nouvelle ecoute " + new Date().toLocaleTimeString("fr-FR") + " ---"); }
@@ -216,6 +219,7 @@ export function creerIASaisie({ exemples = [], libelle = "Demande par l'IA", pla
     },
     surErreur: (message, code) => {
       afficherEtat(message, true);
+      setTimeout(() => signalerBlocage("erreur de dictee " + code), 500); // laisse arriver l'evenement de fin dans le journal
       if (erreurDefinitive(code)) { motifVocal = message; micro.disabled = true; } // refus du micro, micro absent... : vocal desactive jusqu'a la fermeture ; un echec passager laisse le micro actif
     },
     longueurMax: PHRASE_MAX,
@@ -368,7 +372,7 @@ export function creerIASaisie({ exemples = [], libelle = "Demande par l'IA", pla
     diag("fin d'ecoute termineParUtilisateur=" + termine + " car=" + phrase.length + " suite=" + suite);
     if (suite === "envoyer") envoyer(phrase);
     else if (suite === "texte") { champ.value = phrase; montrerVue("texte", { annoncer: true }); focusVue("texte"); } // arret spontane avec une phrase : a verifier, rien ne part tout seul
-    else if (termine) afficherEtat(MESSAGE_RIEN_RECONNU, true);
+    else if (termine) { afficherEtat(MESSAGE_RIEN_RECONNU, true); signalerBlocage("rien reconnu"); }
   }
 
   // Mobile : le clavier virtuel d'iOS ne reduit pas la page, seulement la partie visible (visualViewport). Le fond suit cette zone visible (haut et hauteur),

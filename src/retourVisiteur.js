@@ -1,4 +1,4 @@
-// Retours des visiteurs (28/10) : le bouton « Bug ou idée ? » de la barre de navigation ouvre une modale (type Bug ou Idée, message, e-mail facultatif) qui
+// Retours des visiteurs (28/10) : le bouton « Remarque ou suggestion ? » de la barre de navigation ouvre une modale (Suggestion ou Remarque, message, e-mail facultatif) qui
 // envoie un mail a Gilles par POST /api/retour (api/retour.js, relais/httpRetour.js). Reponse a l'appel final de la presentation (« retours, cas d'usage, essais »).
 // Pas de compte, pas de profil : la page d'origine est ajoutee toute seule. Le CSS (src/retourVisiteur.css) est importe par main.js, ce module reste importable sous Node.
 //  - logique pure en haut (corpsRetour, libellePage, messageEchec, envoyerRetour : testees) ; modale DOM en bas (creerRetourVisiteur), meme apparence que les modales IA
@@ -12,10 +12,10 @@ const ICONE_VALIDE = '<svg viewBox="0 0 24 24" width="56" height="56" fill="none
 const LIBELLES_PAGES = { accueil: "Accueil", viewer: "Viewer", collision: "Collision", discussions: "Discussions", quantitatif: "Quantitatif", plan3d: "2D → 3D", projeteur: "Todo", admin: "Admin" };
 export const libellePage = (vue) => (vue ? LIBELLES_PAGES[vue] || String(vue) : "Application");
 
-// Texte d'aide du champ selon le choix : un bug se decrit (ce qui s'est passe, ce qu'on attendait), une idee se raconte (a quoi elle sert).
+// Texte d'aide du champ selon le choix : une remarque decrit une difficulte (ce qu'on attendait, ce qui s'est affiche), une suggestion se raconte (a quoi elle sert).
 const PLACEHOLDERS = {
-  bug: "Qu'est-ce qui s'est passé ? Ce que tu as fait, et ce que tu attendais.",
-  idee: "Ton idée et ce qu'elle permettrait de faire"
+  bug: "Tu as rencontré une difficulté lors de ton test d'Ouvra ? Indique ce que tu attendais et ce qui s'est affiché à la place.",
+  idee: "Ta suggestion et ce qu'elle permettrait de faire"
 };
 export const placeholderRetour = (type) => PLACEHOLDERS[type] || PLACEHOLDERS.idee;
 
@@ -57,7 +57,7 @@ function creer(tag, classe, texte) {
   return el;
 }
 
-// declencheurs : les boutons « Bug ou idée ? » (barre et menu ☰) ; pageCourante() : nom de la vue affichee (« viewer », « discussions »...).
+// declencheurs : les boutons « Remarque ou suggestion ? » (barre et menu ☰) ; pageCourante() : nom de la vue affichee (« viewer », « discussions »...).
 export function creerRetourVisiteur({ declencheurs, pageCourante }) {
   let declencheur = null; // l'exemplaire du bouton qui a ouvert la modale : il reprend le focus a la fermeture
   let fond = null;
@@ -72,7 +72,7 @@ export function creerRetourVisiteur({ declencheurs, pageCourante }) {
     carte.setAttribute("role", "dialog");
     carte.setAttribute("aria-modal", "true");
     carte.setAttribute("aria-labelledby", "retourTitre");
-    const titre = creer("h2", "retour-titre", "Un bug, une idée ?");
+    const titre = creer("h2", "retour-titre", "Une suggestion, une remarque ?");
     titre.id = "retourTitre";
 
     const formulaire = creer("form", "retour-formulaire");
@@ -85,7 +85,7 @@ export function creerRetourVisiteur({ declencheurs, pageCourante }) {
     pastille.setAttribute("aria-hidden", "true");
     groupe.appendChild(pastille);
     const radios = {};
-    [["bug", "Bug"], ["idee", "Idée"]].forEach(([valeur, libelle], i) => {
+    [["idee", "Suggestion"], ["bug", "Remarque"]].forEach(([valeur, libelle], i) => {
       const label = creer("label", "retour-type");
       const radio = creer("input");
       radio.type = "radio";
@@ -100,7 +100,7 @@ export function creerRetourVisiteur({ declencheurs, pageCourante }) {
     const message = creer("textarea", "retour-message");
     message.rows = 5;
     message.maxLength = MESSAGE_MAX;
-    message.placeholder = placeholderRetour("bug");
+    message.placeholder = placeholderRetour("idee");
     labelMessage.appendChild(message);
     const compteur = creer("p", "retour-compteur");
     compteur.setAttribute("aria-hidden", "true");
@@ -174,7 +174,7 @@ export function creerRetourVisiteur({ declencheurs, pageCourante }) {
   // Comme placerPastilleNavbar : la premiere pose se fait sans transition (la pastille ne traverse pas la modale), les suivantes glissent.
   let pastillePosee = false;
   function placerPastille() {
-    const actif = champs.radios.bug.checked ? champs.radios.bug : champs.radios.idee;
+    const actif = champs.radios.idee.checked ? champs.radios.idee : champs.radios.bug;
     const cible = actif.closest("label");
     if (!cible || !cible.offsetWidth) return;
     const { pastille } = champs;
@@ -204,7 +204,7 @@ export function creerRetourVisiteur({ declencheurs, pageCourante }) {
 
   async function soumettre() {
     if (envoiEnCours) return;
-    const type = champs.radios.bug.checked ? "bug" : "idee";
+    const type = champs.radios.idee.checked ? "idee" : "bug";
     const corps = corpsRetour({ type, message: champs.message.value, contact: champs.contact.value, page: libellePage(pageCourante()), site: champs.piege.value });
     if (!corps.message) { afficherEtat("Écris ton retour avant de l'envoyer."); champs.message.focus(); return; }
     envoiEnCours = true;
@@ -238,8 +238,8 @@ export function creerRetourVisiteur({ declencheurs, pageCourante }) {
     champs.message.value = "";
     champs.contact.value = "";
     champs.piege.value = "";
-    champs.radios.bug.checked = true;
-    champs.message.placeholder = placeholderRetour("bug");
+    champs.radios.idee.checked = true;
+    champs.message.placeholder = placeholderRetour("idee");
     champs.compteur.textContent = "0 / " + MESSAGE_MAX;
     afficherEtat("");
     pastillePosee = false;

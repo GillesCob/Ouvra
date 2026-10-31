@@ -155,7 +155,7 @@ html, body {
 
 /* Mobile (05/09) : la navbar (4 onglets + marque) ne tient pas sur un petit
    ecran, le menu passe en tiroir derriere un bouton hamburger. Seuil releve a 960 px le 28/10 (barre seulement, le reste de l'application garde 768 px) :
-   en dessous, « Me contacter » centre n'a plus la place entre les onglets et « Bug ou idée ? ». */
+   en dessous, « Me contacter » centre n'a plus la place entre les onglets et « Remarque ou suggestion ? ». */
 @media (max-width: 960px) {
   #navbarToggle { display: block; font-size: 26px; padding: 6px 10px; margin-left: 0; }
   #navbar #navbarContact { position: static; transform: none; margin: 0 auto; }
