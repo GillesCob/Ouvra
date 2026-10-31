@@ -13,6 +13,8 @@
 @media (hover: hover) and (pointer: fine) { .regles-ia-lien:hover { color: var(--text); } }
 .regles-ia-lien:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
 @media (max-width: 768px) { .regles-ia-lien { min-height: 44px; } }
+/* Message d'erreur dans la vue vocale : meme apparence que le survol, pour designer la sortie par l'ecriture. */
+.regles-ia-bascule.en-avant { color: var(--text); border-color: var(--accent); }
 @media (hover: hover) and (pointer: fine) { .regles-ia-bascule:hover { color: var(--text); border-color: var(--accent); } }
 @media (max-width: 768px) { .regles-ia-bascule { min-height: 44px; } }
 @media (prefers-reduced-motion: reduce) { .regles-ia-bascule { transition: none; } }

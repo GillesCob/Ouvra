@@ -114,7 +114,7 @@ export function creerDictee({ Reconnaissance, lire, ecrire, surEtat, surErreur, 
   };
 }
 
-export const MESSAGE_RIEN_RECONNU = "Rien n'a été reconnu. Appuyer sur le micro puis parler.";
+export const MESSAGE_RIEN_RECONNU = "Rien n'a été reconnu. Appuyer sur le micro, ou écrire la demande.";
 export const MESSAGE_PHRASE_VIDE = "Écrire la règle voulue, par exemple « écarte les collisions avec un diffuseur ».";
 export const nettoyerPhrase = (texte) => String(texte || "").replace(/\s+/g, " ").trim();
 

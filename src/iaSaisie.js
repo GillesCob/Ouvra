@@ -19,7 +19,7 @@ import "./iaSaisie.css";
 import { creerDictee, detecterReconnaissance, motifDicteeIndisponible, nettoyerPhrase, MESSAGE_RIEN_RECONNU } from "./reglesVoix.js";
 import { demarrerNiveauVoix } from "./niveauVoix.js";
 import { verrouillerArrierePlan } from "./verrouDefilement.js";
-import { modeOuverture, modeApresBascule, annonceMode, aideVocal, suiteFinEcoute } from "./iaSaisieLogique.js";
+import { modeOuverture, modeApresBascule, annonceMode, aideVocal, suiteFinEcoute, erreurDefinitive } from "./iaSaisieLogique.js";
 import { REQUETE_MOBILE } from "./seuilMobile.js";
 
 export const CLASSE_VERROU_SAISIE = "ia-saisie-ouverte"; // posee sur le corps tant que la modale est ouverte (iaSaisie.css : page figee)
@@ -216,7 +216,7 @@ export function creerIASaisie({ exemples = [], libelle = "Demande par l'IA", pla
     },
     surErreur: (message, code) => {
       afficherEtat(message, true);
-      if (code !== "no-speech") { motifVocal = message; micro.disabled = true; } // refus du micro, service injoignable... : vocal desactive jusqu'a la fermeture
+      if (erreurDefinitive(code)) { motifVocal = message; micro.disabled = true; } // refus du micro, micro absent... : vocal desactive jusqu'a la fermeture ; un echec passager laisse le micro actif
     },
     longueurMax: PHRASE_MAX,
     ios,
@@ -235,6 +235,7 @@ export function creerIASaisie({ exemples = [], libelle = "Demande par l'IA", pla
     etat.textContent = texte || "";
     etat.hidden = !texte;
     etat.classList.toggle("erreur", erreur !== false);
+    ecrire.classList.toggle("en-avant", !!texte && erreur !== false && vue === "vocal"); // soucis a l'oral : l'ecriture de la demande est mise en avant
     ajusterListe();
   }
 
@@ -290,7 +291,7 @@ export function creerIASaisie({ exemples = [], libelle = "Demande par l'IA", pla
     fond.hidden = true;
     verrou.deverrouiller();
     champ.value = "";
-    if (dicteeDisponible) motifVocal = null; // un refus est oublie, comme un navigateur sans l'API reste sans vocal
+    if (dicteeDisponible) { motifVocal = null; micro.disabled = false; } // un refus est oublie, comme un navigateur sans l'API reste sans vocal
     if (rendreFocus && retourFocus) retourFocus.focus({ preventScroll: true });
   }
 
@@ -312,6 +313,7 @@ export function creerIASaisie({ exemples = [], libelle = "Demande par l'IA", pla
     }
     montrerVue(vueAvantChargement);
     afficherEtat(message, true);
+    ecrire.classList.remove("en-avant"); // erreur du serveur, pas de la dictee : la mise en avant de l'ecriture ne concerne que l'oral
     focusVue(vueAvantChargement);
   }
 

@@ -22,6 +22,10 @@ export function modeApresBascule(mode, { dicteeDisponible }) {
 export const annonceMode = (mode) => (mode === "vocal" ? ANNONCE_VOCAL : ANNONCE_TEXTE);
 export const aideVocal = (ecoute) => (ecoute ? AIDE_ECOUTE : AIDE_VOCAL);
 
+// Erreur de dictee sans issue en reessayant (micro refuse ou absent, langue non prise en charge) : le micro reste desactive jusqu'a la fermeture.
+// Tout autre echec (rien entendu, reseau, service momentanement muet) laisse le micro actif : un nouvel appui retente (31/10).
+export const erreurDefinitive = (code) => ["not-allowed", "service-not-allowed", "audio-capture", "language-not-supported"].includes(code);
+
 // Que faire quand l'ecoute s'arrete ?
 //   envoyer : l'utilisateur a termine (second clic) et une phrase a ete reconnue ;
 //   texte   : l'ecoute s'est arretee d'elle-meme avec une phrase : on passe en texte pour la verifier, rien n'est perdu ni envoye tout seul ;
