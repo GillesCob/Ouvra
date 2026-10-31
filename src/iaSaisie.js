@@ -187,6 +187,18 @@ export function creerIASaisie({ exemples = [], libelle = "Demande par l'IA", pla
     niveauVoix = suivi;
   }
 
+  // Journal de diagnostic de la dictee (31/10) : une ligne par evenement, avec l'heure relative au demarrage. Visible dans la console (« [diag-voix] ») et
+  // recuperable par copy(window.__diagVoix.join("\n")). Jamais le texte dit. Temporaire : a retirer une fois la cause du « Rien n'a ete reconnu » trouvee.
+  const tableauDiag = (window.__diagVoix = window.__diagVoix || []);
+  let debutDiag = 0;
+  function diag(ligne) {
+    if (/^demarrage/.test(ligne)) { debutDiag = Date.now(); tableauDiag.push("--- nouvelle ecoute " + new Date().toLocaleTimeString("fr-FR") + " ---"); }
+    const entree = "+" + ((Date.now() - debutDiag) / 1000).toFixed(2) + "s " + ligne;
+    tableauDiag.push(entree);
+    if (tableauDiag.length > 500) tableauDiag.splice(0, tableauDiag.length - 500); // plafond : les 500 dernieres lignes
+    console.info("[diag-voix] " + entree);
+  }
+
   // Dictee : le texte reconnu reste en memoire (texteVocal), il ne part qu'au second appui sur le micro.
   const dictee = creerDictee({
     Reconnaissance,
@@ -208,7 +220,8 @@ export function creerIASaisie({ exemples = [], libelle = "Demande par l'IA", pla
     },
     longueurMax: PHRASE_MAX,
     ios,
-    continu: true
+    continu: true,
+    diagnostic: diag
   });
   micro.setAttribute("aria-label", "Micro : appuyer pour parler");
 
@@ -313,9 +326,10 @@ export function creerIASaisie({ exemples = [], libelle = "Demande par l'IA", pla
   micro.addEventListener("click", () => {
     if (!dictee.disponible) return;
     if (dictee.ecoute()) {
+      diag("second appui sur le micro");
       envoiApresArret = true;
       dictee.basculer(); // stop : les derniers resultats arrivent encore, puis l'etat devient « inactif » (finDEcoute)
-      minuteurArret = setTimeout(() => dictee.arreter(), DELAI_ARRET_MS); // filet : le service ne signale jamais la fin
+      minuteurArret = setTimeout(() => { diag("filet " + DELAI_ARRET_MS + " ms atteint, coupure forcee"); dictee.arreter(); }, DELAI_ARRET_MS); // filet : le service ne signale jamais la fin
       return;
     }
     texteVocal = "";
@@ -349,6 +363,7 @@ export function creerIASaisie({ exemples = [], libelle = "Demande par l'IA", pla
     const phrase = nettoyerPhrase(texteVocal);
     texteVocal = "";
     const suite = suiteFinEcoute({ termineParUtilisateur: termine, phrase });
+    diag("fin d'ecoute termineParUtilisateur=" + termine + " car=" + phrase.length + " suite=" + suite);
     if (suite === "envoyer") envoyer(phrase);
     else if (suite === "texte") { champ.value = phrase; montrerVue("texte", { annoncer: true }); focusVue("texte"); } // arret spontane avec une phrase : a verifier, rien ne part tout seul
     else if (termine) afficherEtat(MESSAGE_RIEN_RECONNU, true);

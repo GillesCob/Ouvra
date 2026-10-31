@@ -47,8 +47,10 @@ export function messageErreurVoix(code, { ios = false } = {}) {
 //   Reconnaissance : constructeur (detecterReconnaissance) ou null ; lire() / ecrire(texte) : champ de saisie ;
 //   surEtat("ecoute" | "inactif") ; surErreur(message, codeErreur) ; longueurMax : longueur maximale de la phrase ;
 //   continu : l'ecoute ne s'arrete pas d'elle-meme apres une pause (defaut faux).
-export function creerDictee({ Reconnaissance, lire, ecrire, surEtat, surErreur, longueurMax, ios = false, continu = false }) {
+//   diagnostic(ligne) : facultatif, recoit une ligne par evenement de la reconnaissance (jamais le texte dit, seulement des comptes), pour comprendre un echec.
+export function creerDictee({ Reconnaissance, lire, ecrire, surEtat, surErreur, longueurMax, ios = false, continu = false, diagnostic = null }) {
   let courante = null; // reconnaissance en cours (null : aucune, ou abandonnee)
+  const noter = (ligne) => { if (diagnostic) { try { diagnostic(typeof ligne === "function" ? ligne() : ligne); } catch { /* le journal ne doit jamais gener la dictee */ } } }; // ligne : texte ou fonction (calculee seulement si le journal existe)
 
   function terminer(reco) {
     if (courante !== reco) return;
@@ -63,18 +65,23 @@ export function creerDictee({ Reconnaissance, lire, ecrire, surEtat, surErreur, 
     reco.interimResults = true; // texte provisoire affiche pendant que l'on parle
     reco.continuous = continu; // faux : une phrase par appui ; vrai : l'ecoute dure jusqu'au second appui (modale Vocal)
     reco.maxAlternatives = 1;
+    for (const nom of ["audiostart", "soundstart", "speechstart", "speechend", "soundend", "audioend", "nomatch"]) reco["on" + nom] = () => noter(nom + (courante === reco ? "" : " (apres abandon)"));
+    reco.onstart = () => noter("start");
     reco.onresult = (e) => {
+      noter(() => "result n=" + e.results.length + " finaux=" + Array.from(e.results).filter((r) => r.isFinal).length + " car=" + Array.from(e.results).reduce((somme, r) => somme + String((r[0] && r[0].transcript) || "").length, 0) + (courante === reco ? "" : " (apres abandon)"));
       if (courante !== reco) return; // resultat tardif d'une dictee abandonnee
       let texte = "";
       for (let i = 0; i < e.results.length; i += 1) texte += " " + e.results[i][0].transcript; // finaux puis provisoire, dans l'ordre
       ecrire(assemblerTexte(base, texte, longueurMax));
     };
     reco.onerror = (e) => {
+      noter("error " + e.error + (courante === reco ? "" : " (apres abandon)"));
       if (courante !== reco) return;
       const message = messageErreurVoix(e.error, { ios });
       if (message) surErreur(message, e.error);
     };
-    reco.onend = () => terminer(reco);
+    reco.onend = () => { noter("end" + (courante === reco ? "" : " (apres abandon)")); terminer(reco); };
+    noter("demarrage continu=" + continu);
     courante = reco;
     surEtat("ecoute");
     try {
@@ -92,7 +99,7 @@ export function creerDictee({ Reconnaissance, lire, ecrire, surEtat, surErreur, 
     // Un appui demarre, le suivant arrete (les resultats finaux arrivent encore avant la fin).
     basculer() {
       if (!Reconnaissance) return;
-      if (courante) courante.stop();
+      if (courante) { noter("stop demande"); courante.stop(); }
       else demarrer();
     },
     // Panneau ferme, envoi de la phrase : on coupe sans message et on ignore ce qui arrive ensuite.
@@ -100,6 +107,7 @@ export function creerDictee({ Reconnaissance, lire, ecrire, surEtat, surErreur, 
       const reco = courante;
       if (!reco) return;
       courante = null;
+      noter("abort demande");
       surEtat("inactif");
       try { reco.abort(); } catch { /* deja arretee */ }
     }

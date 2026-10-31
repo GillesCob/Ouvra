@@ -248,3 +248,43 @@ test("contexte non securise : motif HTTPS distinct, y compris sur iPhone ; sinon
   assert.equal(motifDicteeIndisponible({ isSecureContext: true }), motifSansAPI());
   assert.equal(motifDicteeIndisponible({}, true), motifSansAPI(true));
 });
+
+// Journal de diagnostic (31/10) : chaque evenement de la reconnaissance est signale au rappel `diagnostic`, sans changer le comportement.
+test("diagnostic : demarrage, evenements du service, resultats, erreur, fin et arrets sont journalises", () => {
+  const lignes = [];
+  const dictee = creerDictee({ Reconnaissance: FausseReconnaissance, lire: () => "", ecrire: () => {}, surEtat: () => {}, surErreur: () => {}, longueurMax: 200, diagnostic: (l) => lignes.push(l) });
+  dictee.basculer();
+  const reco = FausseReconnaissance.derniere;
+  reco.onaudiostart && reco.onaudiostart();
+  reco.onspeechstart && reco.onspeechstart();
+  reco.dire([{ texte: "bonjour", final: true }, { texte: "les gaines", final: false }]);
+  reco.onnomatch && reco.onnomatch();
+  reco.erreur("network");
+  const texte = lignes.join("\n");
+  for (const attendu of ["start", "audiostart", "speechstart", "result", "nomatch", "error network", "end"]) assert.ok(texte.includes(attendu), "manque : " + attendu);
+  assert.match(texte, /result n=2 finaux=1 car=/);
+  assert.ok(!texte.includes("bonjour"), "le contenu dit n'est jamais journalise");
+});
+
+test("diagnostic : appui d'arret et abandon journalises, aucun diagnostic = aucun effet", () => {
+  const lignes = [];
+  const avec = creerDictee({ Reconnaissance: FausseReconnaissance, lire: () => "", ecrire: () => {}, surEtat: () => {}, surErreur: () => {}, longueurMax: 200, diagnostic: (l) => lignes.push(l) });
+  avec.basculer(); avec.basculer();
+  assert.ok(lignes.some((l) => l.startsWith("stop")));
+  avec.basculer(); avec.arreter();
+  assert.ok(lignes.some((l) => l.startsWith("abort")));
+  const { dictee } = monter();
+  dictee.basculer(); dictee.basculer(); // sans rappel : pas d'exception
+});
+
+// Un resultat sans alternative leve deja dans la boucle d'ecriture d'origine (comportement inchange) : le journal, lui, ne doit jamais etre la cause.
+test("diagnostic : le calcul de la ligne de resultat ne leve jamais, avec ou sans journal", () => {
+  const lignes = [];
+  const d = creerDictee({ Reconnaissance: FausseReconnaissance, lire: () => "", ecrire: () => {}, surEtat: () => {}, surErreur: () => {}, longueurMax: 200, diagnostic: (l) => lignes.push(l) });
+  d.basculer();
+  try { FausseReconnaissance.derniere.onresult({ results: [Object.assign([], { isFinal: false })] }); } catch { /* boucle d'origine */ }
+  assert.ok(lignes.some((l) => /result n=1 finaux=0 car=0/.test(l)));
+  const sans = creerDictee({ Reconnaissance: FausseReconnaissance, lire: () => "", ecrire: () => {}, surEtat: () => {}, surErreur: () => {}, longueurMax: 200 });
+  sans.basculer();
+  assert.doesNotThrow(() => FausseReconnaissance.derniere.onresult({ results: [Object.assign([{ transcript: "ok" }], { isFinal: true })] }));
+});
