@@ -1,4 +1,4 @@
-/* Retours des visiteurs (28/10) : bouton « Bug ou idée ? » de la barre de navigation et sa modale. La modale reprend les classes communes des modales IA
+/* Retours des visiteurs (28/10) : bouton « Remarque ou suggestion ? » de la barre de navigation et sa modale. La modale reprend les classes communes des modales IA
    (regles-ia-fond, regles-ia-carte, regles-ia-valider, regles-ia-bascule de src/reglesIA.css et src/iaSaisie.css) ; seuls les elements propres au formulaire sont ici. */
 /* Deux exemplaires du bouton, un seul visible : dans la barre a droite sur ordinateur (« Me contacter » est centre en absolu, le bouton ne le recouvre jamais),
    dans le menu ☰ sur mobile. */
@@ -20,7 +20,7 @@
 .retour-titre { margin: 0; font-size: 18px; }
 .retour-formulaire { display: flex; flex-direction: column; gap: 12px; }
 .retour-formulaire[hidden], .retour-merci[hidden] { display: none; }
-/* Choix Bug / Idee : meme animation et memes valeurs que les onglets de la barre de navigation (#navbarThumb et .nav-link de src/style.css), valides le 28/10 :
+/* Choix Suggestion / Remarque : meme animation et memes valeurs que les onglets de la barre de navigation (#navbarThumb et .nav-link de src/style.css), valides le 28/10 :
    une pastille accent translucide glisse sous le choix actif ; le texte du choix actif passe de --muted a --text. */
 .retour-types { position: relative; display: flex; gap: 4px; }
 .retour-pastille {
