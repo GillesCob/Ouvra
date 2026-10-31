@@ -14,8 +14,8 @@ export const libellePage = (vue) => (vue ? LIBELLES_PAGES[vue] || String(vue) : 
 
 // Texte d'aide du champ selon le choix : une remarque decrit une difficulte (ce qu'on attendait, ce qui s'est affiche), une suggestion se raconte (a quoi elle sert).
 const PLACEHOLDERS = {
-  bug: "Tu as rencontré une difficulté lors de ton test d'Ouvra ? Indique ce que tu attendais et ce qui s'est affiché à la place.",
-  idee: "Ta suggestion et ce qu'elle permettrait de faire"
+  bug: "Tu as rencontré une difficulté lors de ta navigation dans Ouvra ? Indique ce que tu attendais et ce qui s'est affiché à la place.",
+  idee: "Ta proposition de fonctionnalité et ce qu'elle permettrait de faire"
 };
 export const placeholderRetour = (type) => PLACEHOLDERS[type] || PLACEHOLDERS.idee;
 

@@ -111,8 +111,8 @@ test("modale : plus de phrase d'introduction sous le titre (retiree le 28/10, de
 });
 
 test("placeholder de l'idee : le texte propose par Gilles, tel quel", () => {
-  assert.equal(placeholderRetour("idee"), "Ta suggestion et ce qu'elle permettrait de faire");
-  assert.equal(placeholderRetour("bug"), "Tu as rencontré une difficulté lors de ton test d'Ouvra ? Indique ce que tu attendais et ce qui s'est affiché à la place.");
+  assert.equal(placeholderRetour("idee"), "Ta proposition de fonctionnalité et ce qu'elle permettrait de faire");
+  assert.equal(placeholderRetour("bug"), "Tu as rencontré une difficulté lors de ta navigation dans Ouvra ? Indique ce que tu attendais et ce qui s'est affiché à la place.");
 });
 
 test("ecran de remerciement (28/10) : pas de titre de modale, icone, « Merci ! », croix de fermeture du design de la messagerie, plus de gros bouton Fermer", () => {
