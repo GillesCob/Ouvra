@@ -102,3 +102,18 @@ test("29/10 : formats d'export en vrai menu deroulant (memes classes que Priorit
   assert.match(css, /\.qt-barre:empty \{ display: none; \}/);
   assert.doesNotMatch(js, /Réessaie|exporte-le|Pose une/);
 });
+
+test("31/10 : le rapport est rendu et visible derriere le bandeau de confirmation (flou partage), inerte jusqu'a « Oui », jamais cache puis re-rendu", () => {
+  const dessin = js.slice(js.indexOf("function dessinerRapport"), js.indexOf("// Affiche un rapport"));
+  assert.doesNotMatch(dessin, /resultatZone\.hidden\s*=\s*!!confirmation/); // l'ancien code cachait la zone jusqu'a « Oui » : page vide sous le bandeau
+  assert.match(dessin, /resultatZone\.hidden\s*=\s*false/);
+  assert.match(js, /zoneResultat\.inert\s*=/); // ni clavier ni lecteur d'ecran sur le rapport flou
+  assert.match(js, /const bandeau = creerCommandesBandeau\(/); // le mecanisme partage (bandeau + calque src/flouDemande.js), pas une seconde logique de flou
+  assert.doesNotMatch(js, /backdrop-filter|poserFlou|leverFlou/);
+  const oui = js.slice(js.indexOf("surOui: async"), js.indexOf("// « Non » : rien"));
+  assert.doesNotMatch(oui, /dessinerRapport|afficherRapport|calculer\(|demander\(/); // « Oui » ne refait ni rendu ni calcul ni appel IA
+  assert.match(oui, /enregistrer\(courant\.rapport\)/); // l'historique n'est alimente qu'apres « Oui »
+  const non = js.slice(js.indexOf("surNon:"), js.indexOf("const resultatZone"));
+  assert.match(non, /viderResultat\(\)/); // « Non » : le rapport flou est retire
+  assert.doesNotMatch(non, /enregistrer\(/);
+});

@@ -104,8 +104,7 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
       const courant = dernierResultat;
       if (!courant || !courant.nouveau) return;
       courant.nouveau = false;
-      resultatZone.hidden = false;
-      majVue();
+      majVue(); // le rapport est deja rendu derriere le bandeau : « Oui » leve seulement le flou (deja leve par bandeau.masquer) et l'inertie
       if (!barre.hidden) boutonRetour.focus({ preventScroll: true });
       await enregistrer(courant.rapport);
     },
@@ -150,6 +149,7 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
     zoneResultat.hidden = v !== "resultat";
     zoneHistorique.hidden = v !== "historique";
     racine.dataset.vue = v;
+    zoneResultat.inert = bandeau.visible(); // le rapport flou derriere la confirmation n'est atteignable ni au clavier ni par un lecteur d'ecran
     racine.classList.toggle("qt-confirmation", bandeau.visible()); // sous le bandeau de confirmation, le titre de la page est retire (28/10)
     placerRetour();
   }
@@ -357,7 +357,7 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
     });
   }
 
-  function dessinerRapport(rapport, statut, confirmation = false) {
+  function dessinerRapport(rapport, statut) {
     const resultat = rapport.resultat;
     fermerMenuExport();
     viderZone(resultatZone);
@@ -438,14 +438,15 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
     supprimer.addEventListener("click", () => supprimerRapport(rapport));
     exports.append(boutonExporter, supprimer);
     resultatZone.appendChild(exports);
-    resultatZone.hidden = !!confirmation;
+    resultatZone.hidden = false; // un nouveau rapport est deja rendu derriere le bandeau de confirmation, flou (src/flouDemande.js) et inerte jusqu'a « Oui »
   }
 
   // Affiche un rapport (nouveau ou rouvert) avec son etat de version actuel, recalcule a chaque affichage.
   async function afficherRapport(rapport, { nouveau }) {
     const statut = statutRapport(rapport, await obtenirVersions());
     dernierResultat = { rapport, phrase: rapport.phrase, nouveau };
-    dessinerRapport(rapport, statut, nouveau); // nouveau : le resultat reste cache tant que « Oui » n'est pas cliquee
+    zoneResultat.inert = nouveau; // inerte avant d'etre rempli : la zone annonce ses changements (aria-live), rien ne doit etre lu avant « Oui »
+    dessinerRapport(rapport, statut);
     if (nouveau) bandeau.montrer({ relecture: rapport.relecture }); else bandeau.masquer(false);
     allerA("resultat");
   }
@@ -610,7 +611,7 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
         essaisSource = 0; actualiserSource();
         if (retourEnAttente) { const retour = retourEnAttente; retourEnAttente = null; rouvrirAuRetour(retour); return; }
         allerA("depart"); rafraichirHistorique(); rafraichirRapportAffiche();
-      } else { retourEnAttente = null; bandeau.masquer(false); saisie.fermer(false); clearTimeout(minuteurSource); jeton += 1; occuper(false); }
+      } else { retourEnAttente = null; if (dernierResultat && dernierResultat.nouveau) viderResultat(); bandeau.masquer(false); saisie.fermer(false); clearTimeout(minuteurSource); jeton += 1; occuper(false); }
     },
     lancer,
     rafraichirHistorique,
