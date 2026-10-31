@@ -33,7 +33,7 @@ function creer(tag, classe, texte) {
   return el;
 }
 
-export function creerRapportVue({ surSource, texteRapport, exporterPdf }) {
+export function creerRapportVue({ surSource, texteRapport, exporterPdf, ouvrirDemande = null }) {
   let fond = null;
   let carte = null;
   let corps = null;
@@ -227,7 +227,9 @@ export function creerRapportVue({ surSource, texteRapport, exporterPdf }) {
     if (!rapport.demandeIA) return null;
     const demande = rapport.demandeIA;
     const zone = libelleZoneDemande(demande.zone);
-    return creerEncartDemande({ demande, zone, ecrire: (texte) => navigator.clipboard.writeText(texte) });
+    // Zone Quantitatif (31/10) : le clic quitte la synthese et ouvre la demande ecrite dans l'onglet Quantitatif ; les autres zones gardent la copie.
+    const ouvrir = ouvrirDemande && demande.zone === "quantitatif" ? (phrase) => { fermer(false); ouvrirDemande(phrase); } : null;
+    return creerEncartDemande({ demande, zone, ecrire: (texte) => navigator.clipboard.writeText(texte), ouvrir });
   }
 
   function rendreDecision(rapport) {
