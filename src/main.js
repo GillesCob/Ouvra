@@ -1422,6 +1422,8 @@ navLinks.forEach((link) => {
         discussionsDetailPane.hidden = true;
         discussionsListPane.hidden = false;
       }
+      // Quitter une vue ouverte depuis une conversation : son « Recentrer » ne doit pas survivre sur Collision (activateView ne le remet a null que pour le Viewer).
+      if (depuisVueDiscussion) recenterTarget = null;
       activateView(page, { garder3D: true });
       if (page === "viewer") {
         appliquerCibleViewer(maquettesPrise, depuisCollisionPrecise, depuisCollision, xrayAvantDezoom, !depuisViewer);
@@ -4075,6 +4077,8 @@ function ouvrirViewerSurVue(vue) {
   if (messagerie) messagerie.vueDeConversation(true);
   viewer.camera.projection = "perspective"; // projection de la capture (la page Collision peut avoir laisse l'orthographique du plan)
   viewer.cameraFlight.jumpTo({ eye: vue.etat.camera.eye, look: vue.etat.camera.look, up: vue.etat.camera.up });
+  // « Recentrer » revient au point de vue enregistre, jamais a la maquette entiere (activateView a remis la cible a null plus haut) : meme principe que pour une collision ou un fil.
+  recenterTarget = () => viewer.cameraFlight.flyTo({ eye: vue.etat.camera.eye, look: vue.etat.camera.look, up: vue.etat.camera.up, duration: 1 });
   navbarLinksEl.classList.remove("open");
 }
 
