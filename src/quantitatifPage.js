@@ -198,6 +198,8 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
     majVue();
   }
 
+  let demandeEnAttente = null; // phrase a ouvrir dans la modale IA a la prochaine activation de la page (synthese de Discussions)
+
   // ---------- Saisie : modale commune (vocal d'abord) ----------
   const saisie = creerIASaisie({
     exemples: EXEMPLES_QUANTITATIF,
@@ -609,10 +611,13 @@ export function creerQuantitatifPage({ racine, obtenirDonnees, demander, voirDan
     surVueActivee(nomVue) {
       if (nomVue === "quantitatif") {
         essaisSource = 0; actualiserSource();
-        if (retourEnAttente) { const retour = retourEnAttente; retourEnAttente = null; rouvrirAuRetour(retour); return; }
+        if (retourEnAttente) { const retour = retourEnAttente; retourEnAttente = null; demandeEnAttente = null; rouvrirAuRetour(retour); return; }
         allerA("depart"); rafraichirHistorique(); rafraichirRapportAffiche();
-      } else { retourEnAttente = null; if (dernierResultat && dernierResultat.nouveau) viderResultat(); bandeau.masquer(false); saisie.fermer(false); clearTimeout(minuteurSource); jeton += 1; occuper(false); }
+        if (demandeEnAttente) { const phrase = demandeEnAttente; demandeEnAttente = null; saisie.reformuler(phrase); } // demande venue de la synthese de Discussions (31/10)
+      } else { retourEnAttente = null; demandeEnAttente = null; if (dernierResultat && dernierResultat.nouveau) viderResultat(); bandeau.masquer(false); saisie.fermer(false); clearTimeout(minuteurSource); jeton += 1; occuper(false); }
     },
+    // Demande venue d'ailleurs (synthese de Discussions, 31/10) : la modale s'ouvre en texte avec la phrase deja ecrite, modifiable avant l'envoi.
+    ouvrirDemande(phrase) { demandeEnAttente = phrase; }, // posee ici, ouverte a l'activation reelle de la page (la bascule de la barre est differee de 300 ms)
     lancer,
     rafraichirHistorique,
     // Pour les tests et pour main.js : etat courant.

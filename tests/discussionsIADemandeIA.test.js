@@ -158,7 +158,7 @@ test("rapport modele de la demo : encart Quantitatif avec la phrase exacte de l'
 test("vue : l'encart est un vrai bouton, cree seulement si le rapport a une demande, et copie la phrase exacte", () => {
   const src = readFileSync(new URL("../src/discussionsIARapportVue.js", import.meta.url), "utf8");
   assert.match(src, /if \(!rapport\.demandeIA\) return null/);
-  assert.match(src, /creerEncartDemande\(\{ demande, zone, ecrire: \(texte\) => navigator\.clipboard\.writeText\(texte\) \}\)/);
+  assert.match(src, /creerEncartDemande\(\{ demande, zone, ecrire: \(texte\) => navigator\.clipboard\.writeText\(texte\), ouvrir \}\)/);
   const encart = readFileSync(new URL("../src/discussionsIADemandeCopie.js", import.meta.url), "utf8");
   assert.match(encart, /creer\("button", "disc-rapport-demande"\)/);
   assert.match(encart, /ecrire\(demande\.phrase\)/);

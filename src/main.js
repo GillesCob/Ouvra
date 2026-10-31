@@ -1075,7 +1075,13 @@ async function executerRecolteAuto(cibles) {
 const viewDiscussions = document.getElementById("view-discussions");
 // Discussions par commande IA (24/10) : bouton « IA » de la liste des discussions, tout est assemble dans src/discussionsIAMontage.js. La messagerie
 // rappelle monter / action apres sa construction.
-const discussionsIA = creerDiscussionsIAMontage();
+const discussionsIA = creerDiscussionsIAMontage({
+  // Encart « Demande a l'IA » de la synthese (31/10) : on quitte Discussions, la demande s'ouvre ecrite dans Quantitatif (modifiable avant l'envoi).
+  ouvrirDemande: (phrase) => {
+    navLinks.find((l) => l.dataset.view === "quantitatif").click();
+    if (quantitatif) quantitatif.ouvrirDemande(phrase);
+  }
+});
 const messagerie = DISCUSSIONS_MESSAGERIE ? creerMessagerie({
   surMonte: () => discussionsIA.monter(messagerie),
   surActionIA: (nom) => discussionsIA.action(nom),

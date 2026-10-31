@@ -41,7 +41,7 @@ function dateDuJourLocale() {
   return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
 }
 
-export function creerDiscussionsIAMontage() {
+export function creerDiscussionsIAMontage({ ouvrirDemande = null } = {}) {
   let messagerie = null;
   let flux = null;
   let bandeau = null;
@@ -62,6 +62,15 @@ export function creerDiscussionsIAMontage() {
 
     flux = creerFlux({ messagerie });
     rapportVue = creerRapportVue({
+      // Clic sur l'encart « Demande a l'IA » (zone Quantitatif) : la synthese se ferme et on quitte Discussions, main.js ouvre Quantitatif avec la demande.
+      // Une question « Est-ce bien votre demande ? » encore en attente est abandonnee (comme « Non », sans rouvrir la saisie) : elle ne doit pas survivre sur une autre page.
+      ouvrirDemande: ouvrirDemande ? (phrase) => {
+        rapportEnAttente = null;
+        questionEnPause = null;
+        if (bandeau.visible() || flux.enAttente()) { flux.refuser(); bandeau.masquer(false); }
+        retourRapport.effacer();
+        ouvrirDemande(phrase);
+      } : null,
       texteRapport: rapportEnTexte,
       exporterPdf: async (rapport, onglet) => (await import("./discussionsIARapportPdf.js")).exporterRapportPdf(rapport, { telecharger, onglet, mobile: !!window.matchMedia && window.matchMedia(REQUETE_MOBILE).matches }),
       // Une source du rapport ouvre DIRECTEMENT le message cite dans sa discussion (jamais la liste des echanges du rapport) ; le bandeau « ← Retour au rapport »
