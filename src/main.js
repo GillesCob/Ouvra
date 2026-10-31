@@ -33,6 +33,8 @@ import { cadrerCentre, corrigerSurSilhouette } from "./cadrageCentre.js";
 import { creerHistorique, creerDepotLocal } from "./quantitatifHistorique.js";
 import { amorcerHistoriqueDemo } from "./quantitatifHistoriqueDemo.js";
 import { REQUETE_MOBILE, estMobile } from "./seuilMobile.js";
+import { installerRechargementAuto } from "./rechargementAuto.js";
+installerRechargementAuto({ fenetre: window, stockage: sessionStorage }); // fichier charge a la demande disparu apres un deploiement : la page se recharge une fois
 
 // ============================================================================
 // INTERRUPTEURS DE MASQUAGE : base propre du 19/10
@@ -6899,7 +6901,18 @@ function ouvrirPlan3d() {
     const racine = document.getElementById("plan3dRoot");
     plan3dEnCours = import("./plan3d/plan3dPage.js")
       .then(({ creerPlan3dPage }) => { plan3d = creerPlan3dPage({ racine, voirDansViewer: voirPlanDansViewer }); })
-      .catch(() => { plan3dEnCours = null; racine.textContent = "La page 2D → 3D n'a pas pu se charger. Recharge la page."; });
+      .catch(() => {
+        plan3dEnCours = null;
+        racine.textContent = "";
+        const message = document.createElement("p");
+        message.textContent = "La page 2D → 3D n'a pas pu se charger.";
+        const recharger = document.createElement("button");
+        recharger.type = "button";
+        recharger.className = "btn-principal";
+        recharger.textContent = "Recharger la page";
+        recharger.addEventListener("click", () => window.location.reload());
+        racine.append(message, recharger);
+      });
   }
   plan3dEnCours.then(() => { if (plan3d && !document.getElementById("view-plan3d").hidden) plan3d.surVueActivee("plan3d"); });
 }
