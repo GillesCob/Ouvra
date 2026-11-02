@@ -35,7 +35,7 @@ export const SCENARIOS = [
     batiment: "batiment-estime-4-construire.svg",
     titre: "Réunion de synthèse",
     noeuds: [
-      { type: "humain", icone: "mic", label: "Réunion de synthèse", sub: "Sujets tirés des conversations, réunion déjà cadrée" },
+      { type: "humain", icone: "mic", label: "Réunion de synthèse", sub: "Sujets tirés des conversations" },
       { type: "auto", icone: "wave", label: "Écoute de l'échange" },
       { type: "ia", icone: "text", label: "Retranscription" },
       { type: "auto", icone: "report", label: "Rapport automatisé" },
