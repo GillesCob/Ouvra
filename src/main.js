@@ -575,7 +575,6 @@ const collisionMaquetteToggles = document.getElementById("collisionMaquetteToggl
 const sectionCollisionMaquettes = document.getElementById("section-collision-maquettes");
 if (MASQUE_LISTE_MAQUETTES_COLLISION && sectionCollisionMaquettes) sectionCollisionMaquettes.hidden = true;
 const collisionsList = document.getElementById("collisionsList");
-const collisionFiltres = document.getElementById("collisionFiltres");
 const collisionListTitle = document.getElementById("collisionListTitle");
 const collisionListTitleText = document.getElementById("collisionListTitleText");
 const collisionListTitleCount = document.getElementById("collisionListTitleCount");
@@ -1149,7 +1148,7 @@ let maquettesVueDessus = ""; // maquettes presentes quand la vue a plat a ete ca
 let idsColorieQuantitatif = []; // elements d'une ligne du Quantitatif colories en orange dans le Viewer ; relu par activateView (via retirerCouleurQuantitatif) avant sa definition
 const collisionsFavorisDepot = creerDepotLocal(null, CLE_FAVORIS); // favoris des collisions : cle localStorage propre, separee de l'etat des collisions
 let collisionsFavoris = resoudreFavoris(collisionsFavorisDepot.lire()); // ensemble des identifiants favoris ; relu par renderCollisionsList (via activateView)
-let filtreCollisions = null; // puce active de la liste des collisions (id de FILTRES_COLLISIONS) ou null ; relu par renderCollisionsList
+let filtreCollisions = null; // filtre actif de la liste des collisions (id de FILTRES_COLLISIONS) ou null (pose par ouvrirCollisionsFiltrees, retire par le clic sur Collision de la navbar) ; relu par renderCollisionsList
 let cameraAvantCommande = null; // camera d'avant la commande « IA » en attente de reponse, que « Non » rend : { eye, look, up } ; relue par activateView
 const DUREE_RETOUR_CAMERA_S = 0.6; // vol de retour de la camera apres « Non »
 let commandesViewer = null; // moteur des commandes du Viewer (cree a la premiere commande) ; relu par activateView avant sa definition
@@ -1425,6 +1424,11 @@ let dezoomDejaFait = false; // vrai le temps du clic rejoue a l'arrivee du dezoo
 navLinks.forEach((link) => {
   link.addEventListener("click", () => {
     placerPastilleNavbar(link);
+    // Clic sur Collision de la navbar : le filtre pose depuis Mon espace est retire, la liste redevient complete (pas sur le clic rejoue apres le dezoom, qui suit ouvrirCollisionsFiltrees).
+    if (link.dataset.view === "collision" && !dezoomDejaFait && filtreCollisions) {
+      filtreCollisions = null;
+      rafraichirListeCollisions();
+    }
     // Clic sur Collision ou Viewer alors qu'une collision precise ou une vue ouverte depuis une conversation est affichee : la camera dezoome d'abord, la mise en forme de la maquette
     // (X-ray, fantomes, selection, bulles) ne change pas pendant le vol ; a l'arrivee, l'arrivee classique sur Collision se joue
     // (remise au propre, dissolution progressive, apparition des lignes et des bulles) : le clic est rejoue avec dezoomDejaFait.
@@ -4656,32 +4660,10 @@ function buildEtoileFavori(clash) {
   return etoile;
 }
 
-// Re-rendu de la liste de la paire de maquettes ouverte (puces, favoris).
+// Re-rendu de la liste de la paire de maquettes ouverte (favoris, filtre pose depuis Mon espace).
 function rafraichirListeCollisions() {
   if (!detectionCourante) return;
   renderCollisionsList(CLASHES.filter((c) => c.detectionId === detectionCourante.id));
-}
-
-function renderFiltresCollisions() {
-  collisionFiltres.hidden = false;
-  // Puces creees une seule fois : seul aria-pressed change ensuite, le bouton cliquable garde le focus clavier.
-  if (collisionFiltres.children.length) {
-    collisionFiltres.querySelectorAll(".collision-filtre").forEach((puce) => puce.setAttribute("aria-pressed", String(filtreCollisions === puce.dataset.filtre)));
-    return;
-  }
-  FILTRES_COLLISIONS.forEach((f) => {
-    const puce = document.createElement("button");
-    puce.type = "button";
-    puce.className = "collision-filtre";
-    puce.dataset.filtre = f.id;
-    puce.setAttribute("aria-pressed", String(filtreCollisions === f.id));
-    puce.textContent = f.libelle;
-    puce.addEventListener("click", () => {
-      filtreCollisions = filtreCollisions === f.id ? null : f.id;
-      rafraichirListeCollisions();
-    });
-    collisionFiltres.appendChild(puce);
-  });
 }
 
 function buildCollisionItem(clash) {
@@ -4745,8 +4727,6 @@ function renderCollisionsList(clashes) {
     collisionListTitle.disabled = DETECTIONS.length < 2;
   }
 
-  if (clashes.length) renderFiltresCollisions();
-  else collisionFiltres.hidden = true;
   const visibles = filtrerCollisions(clashes, filtreCollisions, collisionsFavoris);
   const actives = visibles.filter((c) => c.statut !== "ecarte");
   const ecartes = visibles.filter((c) => c.statut === "ecarte");
