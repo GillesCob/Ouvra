@@ -90,7 +90,7 @@ export function creerDiscussionsIAMontage({ ouvrirDemande = null } = {}) {
       id: "discussionsRapportBandeauRetour",
       classeCorps: "disc-rapport-retour-actif",
       ariaLabel: "Retour au rapport",
-      autresClasses: ["msg-retour-actif", "regles-retour-actif", "quantitatif-retour-actif", "plan3d-retour-actif", "discussions-confirm-actif", "msg-echanges-retour-actif"] // un seul bandeau a la fois : le plus recent gagne
+      autresClasses: ["msg-retour-actif", "regles-retour-actif", "quantitatif-retour-actif", "plan3d-retour-actif", "discussions-confirm-actif", "msg-echanges-retour-actif", "espace-retour-actif"] // un seul bandeau a la fois : le plus recent gagne
     });
     bandeau = creerDiscussionsBandeau({
       retourFocus: bouton,

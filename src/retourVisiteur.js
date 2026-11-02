@@ -9,7 +9,7 @@ export const MESSAGE_MAX = 1000; // meme plafond que relais/entreeRetour.js
 const DELAI_ENVOI_MS = 12000;
 const ICONE_VALIDE = '<svg viewBox="0 0 24 24" width="56" height="56" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M7.5 12.5l3 3 6-6.5"/></svg>';
 
-const LIBELLES_PAGES = { accueil: "Accueil", viewer: "Viewer", collision: "Collision", discussions: "Discussions", quantitatif: "Quantitatif", plan3d: "2D → 3D", projeteur: "Todo", admin: "Admin" };
+const LIBELLES_PAGES = { accueil: "Accueil", viewer: "Viewer", collision: "Collision", discussions: "Discussions", quantitatif: "Quantitatif", plan3d: "2D → 3D", idees: "Idées d'évolution", espace: "Mon espace", projeteur: "Todo", admin: "Admin" };
 export const libellePage = (vue) => (vue ? LIBELLES_PAGES[vue] || String(vue) : "Application");
 
 // Texte d'aide du champ selon le choix : une remarque decrit une difficulte (ce qu'on attendait, ce qui s'est affiche), une suggestion se raconte (a quoi elle sert).

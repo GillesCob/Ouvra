@@ -112,13 +112,13 @@ test("css : meme placement, hauteur, z-index et decalage de barre d'outils que l
   }
   assert.match(msg, /#msgBandeauVue, #msgBandeauRetour \{\s*position: fixed; top: 52px; left: 0; right: 0; z-index: 55;/);
   // Le bandeau « Retour au plan 2D » (25/10) partage ces memes regles : meme composant, meme placement.
-  assert.match(css, /body\.quantitatif-retour-actif #viewerToolbar, body\.plan3d-retour-actif #viewerToolbar \{ top: 56px; \}/);
+  assert.match(css, /body\.quantitatif-retour-actif #viewerToolbar, body\.plan3d-retour-actif #viewerToolbar, body\.espace-retour-actif #viewerToolbar \{ top: 56px; \}/);
   assert.match(msg, /body\.msg-retour-actif #viewerToolbar \{ top: 56px; \}/);
   assert.match(css, /min-height: 40px; border-radius: 8px; padding: 6px 16px;/);
   assert.match(css, /@media \(max-width: 768px\)[^\n]*min-height: 44px/);
-  assert.match(css, /#quantitatifBandeauRetour\[hidden\], #plan3dBandeauRetour\[hidden\] \{ display: none !important; \}/);
-  // tous les selecteurs sont propres au bandeau : les deux existants ne sont pas touches
-  for (const ligne of css.replace(/\/\*[\s\S]*?\*\//g, "").split("}").map((b) => b.split("{")[0].trim()).filter((x) => x && !x.startsWith("@"))) assert.match(ligne, /^(#quantitatifBandeauRetour|body\.quantitatif-retour-actif)/);
+  assert.match(css, /#quantitatifBandeauRetour\[hidden\], #plan3dBandeauRetour\[hidden\], #espaceBandeauRetour\[hidden\] \{ display: none !important; \}/);
+  // tous les selecteurs sont propres aux bandeaux de ce fichier (quantitatif, plan 2D, Mon espace) : les deux bandeaux existants de la messagerie et des regles ne sont pas touches
+  for (const ligne of css.replace(/\/\*[\s\S]*?\*\//g, "").split("}").map((b) => b.split("{")[0].trim()).filter((x) => x && !x.startsWith("@"))) assert.match(ligne, /^(#quantitatifBandeauRetour|body\.quantitatif-retour-actif|body\.espace-retour-actif)/);
 });
 
 test("coexistence avec « Est-ce bien votre demande ? » du Viewer : z-index 56 > 55, barre d'outils decalee par la regle plus specifique", () => {
@@ -140,9 +140,29 @@ test("non-regression : les deux bandeaux existants gardent leur identifiant, leu
 test("main.js : le bandeau est efface hors du Viewer, remplace par un autre bandeau de retour, et appele via le rappel de la page", () => {
   const main = lire("src/main.js");
   assert.match(main, /if \(retourQuantitatif && viewName !== "viewer"\) retourQuantitatif\.effacer\(\)/);
-  assert.match(main, /autresClasses: \["msg-retour-actif", "regles-retour-actif"\]/);
+  assert.match(main, /autresClasses: \["msg-retour-actif", "regles-retour-actif", "espace-retour-actif"\]/);
   assert.match(main, /retour\.surRetour\(\)/);
   assert.match(main, /classeCorps: "quantitatif-retour-actif"/);
+});
+
+// ---------- Bandeau « Retour a Mon espace » (02/11) ----------
+test("Mon espace : le bandeau est cree comme les autres, chaque autre bandeau s'efface devant lui et lui devant eux (le plus recent gagne)", () => {
+  const main = lire("src/main.js");
+  assert.match(main, /retourEspace = creerRetourContexte\(\{\s*id: "espaceBandeauRetour",\s*classeCorps: "espace-retour-actif"/);
+  assert.match(main, /if \(retourEspace && viewName !== vueRetourEspace\) retourEspace\.effacer\(\)/);
+  assert.match(main, /autresClasses: \["msg-retour-actif", "regles-retour-actif", "quantitatif-retour-actif", "espace-retour-actif"\]/);
+  assert.match(lire("src/messagerie/messagerie.js"), /"disc-rapport-retour-actif", "espace-retour-actif"\]/);
+  assert.match(lire("src/discussionsIAMontage.js"), /"msg-echanges-retour-actif", "espace-retour-actif"\]/);
+  for (const classe of ["msg-retour-actif", "regles-retour-actif", "quantitatif-retour-actif", "plan3d-retour-actif", "disc-rapport-retour-actif", "msg-echanges-retour-actif", "discussions-confirm-actif"]) {
+    assert.ok(new RegExp('retourEspace = creerRetourContexte[\\s\\S]*?autresClasses: \\[[^\\]]*"' + classe + '"').test(main), classe);
+  }
+});
+
+test("Mon espace : le bandeau decale la page Discussions et la page Collision comme celui du rapport et celui de la regle", () => {
+  assert.match(lire("src/discussionsIA.css"), /body\.espace-retour-actif #view-discussions \{ padding-top: 44px/);
+  const css = lire("src/retourContexte.css");
+  assert.match(css, /body\.espace-retour-actif #collisionMaquetteToggles \{ top: 60px; \}/);
+  assert.match(css, /body\.espace-retour-actif #collisionViewerSlot #viewerToolbar \{ top: 112px; \}/);
 });
 
 // ---------- Retour du systeme (29/10) : une entree d'historique posee a l'ouverture, consommee a la fermeture ----------

@@ -31,9 +31,18 @@ import { creerRetourContexte } from "./retourContexte.js";
 import { vitesseCameraInitiale } from "./vitesseCamera.js";
 import { cadrerCentre, corrigerSurSilhouette } from "./cadrageCentre.js";
 import { creerHistorique, creerDepotLocal } from "./quantitatifHistorique.js";
+import { CLE_FAVORIS, FILTRES_COLLISIONS, filtreValide, filtrerCollisions, compterSuivies, resoudreFavoris, basculerFavori } from "./collisionsFavoris.js";
 import { amorcerHistoriqueDemo } from "./quantitatifHistoriqueDemo.js";
 import { REQUETE_MOBILE, estMobile } from "./seuilMobile.js";
 import { installerRechargementAuto } from "./rechargementAuto.js";
+import "./ideesEvolution.css";
+import "./monEspace.css";
+import { creerIdeesEvolution } from "./ideesEvolution.js";
+import { creerMonEspace } from "./monEspace.js";
+import { TEXTES_ESPACE } from "./monEspaceDonnees.js";
+import { indexer } from "./discussionsIAIndex.js";
+import { collisionTypeFr, decrireCarteCollision, LIBELLES_STATUT_COLLISION, LIBELLES_PRIORITE_COLLISION } from "./collisionCarte.js";
+import { ongletDeVue, VUES_SANS_ONGLET, estVueIdees } from "./vuesIdees.js";
 installerRechargementAuto({ fenetre: window, stockage: sessionStorage }); // fichier charge a la demande disparu apres un deploiement : la page se recharge une fois
 
 // ============================================================================
@@ -76,6 +85,13 @@ installerRechargementAuto({ fenetre: window, stockage: sessionStorage }); // fic
 //   Viewer pour ces vues, hash et localStorage compris. Reactiver : false
 //   (ils restent soumis au filtrage par profil, donc visibles seulement si
 //   MASQUE_PROFILS est aussi a false).
+//
+// MASQUE_PLAN3D
+//   Onglet 2D -> 3D cache (barre de navigation et menu hamburger) ;
+//   activateView renvoie vers le Viewer pour cette vue, hash et localStorage
+//   compris. La page et son code (src/plan3d, relais) restent intacts.
+//   Reactiver : false. L'onglet « Idees d'evolution » (02/11, src/ideesEvolution.js)
+//   occupe sa place dans la barre ; si 2D -> 3D revient, le placer apres lui.
 //
 // MASQUE_ANCIENNE_LANDING
 //   Ancienne landing #view-landing (hero, parties 1 et 2, bouton "Acceder a
@@ -345,6 +361,7 @@ const DISCUSSIONS_MESSAGERIE = true;
 const MASQUE_SELECTEUR_PROJET = true;
 const MASQUE_PROFILS = true;
 const MASQUE_TODO_ADMIN = true;
+const MASQUE_PLAN3D = true;
 const MASQUE_ANCIENNE_LANDING = true;
 const MASQUE_MAQUETTES_LOURDES = true;
 const COLLISIONS_HOPITAL_ECHANTILLON = true;
@@ -457,6 +474,21 @@ const observateurNavbar = new ResizeObserver(() => placerPastilleNavbar());
 navLinks.forEach((l) => observateurNavbar.observe(l));
 const navbarLinksEl = document.getElementById("navbarLinks");
 const navbarEl = document.getElementById("navbar");
+
+// Pages « Idees d'evolution » (#idees, onglet) et « Mon espace » (#espace, sans onglet, atteinte par la derniere frise), 02/11. Creees ici, avant le premier activateView :
+// activateView les appelle (surVueActivee) et ne doit jamais lire une constante pas encore initialisee. Le changement de page passe par la transition habituelle.
+function allerVueIdees(vue) {
+  const lien = estVueIdees(vue) ? null : navLinks.find((l) => l.dataset.view === vue); // Viewer, Discussions... : le clic de l'onglet fait tout le travail de la page (3D, remises a zero)
+  if (lien) { lien.click(); return; }
+  transitionVue(vue, () => {
+    activateView(vue);
+    navbarLinksEl.classList.remove("open");
+  });
+}
+const ideesEvolution = creerIdeesEvolution({ racine: document.getElementById("ideesRoot"), aller: allerVueIdees });
+const monEspace = creerMonEspace({ racine: document.getElementById("espaceRoot"), aller: allerVueIdees, ouvrir: (cible, position) => ouvrirDepuisEspace(cible, position),
+  // Compteurs de « Collisions suivies » : relus a chaque arrivee sur la page, memes favoris que les etoiles (collisionsFavoris), memes collisions que ouvrirCollisionsFiltrees (sans les factices).
+  effectifs: () => compterSuivies(CLASHES.filter((c) => !c.factice), collisionsFavoris) });
 
 // « Me contacter » (28/10) : centre sur la page tant qu'il y a la place, sinon il s'arrete ECART_CONTACT_PX apres le dernier onglet visible, meme si la fenetre
 // se reduit. Mesure sur la barre (comme placerPastilleNavbar), donc valable quel que soit le nombre d'onglets affiches (profils). Menu hamburger (960 px) : position
@@ -919,6 +951,7 @@ const HOSPITAL_CAMERA_STATE = {
 // bouton).
 function redirectMaskedView(viewName) {
   if (MASQUE_TODO_ADMIN && (viewName === "projeteur" || viewName === "admin")) return "viewer";
+  if (MASQUE_PLAN3D && viewName === "plan3d") return "viewer";
   if (MASQUE_PROFILS && (viewName === "profils-intro" || viewName === "persona-intro")) return "viewer";
   return viewName;
 }
@@ -1107,12 +1140,17 @@ let retourQuantitatif = null; // bandeau « ← Retour au quantitatif » (src/re
 let quantitatif = null; // page Quantitatif (creee plus bas) ; relue par activateView avant sa definition
 let plan3d = null; // page 2D -> 3D (src/plan3d/plan3dPage.js), chargee a la premiere ouverture ; relue par activateView avant sa definition
 let plan3dEnCours = null; // chargement de la page 2D -> 3D en route (evite deux creations)
+let retourEspace = null; // bandeau « ← Retour a Mon espace » (src/retourContexte.js), cree plus bas ; relu par activateView avant sa definition
+let vueRetourEspace = null; // page ou le bandeau « Retour a Mon espace » est valable (discussions ou collision)
 let retourPlan3d = null; // bandeau « ← Retour au plan 2D » (src/retourContexte.js), cree plus bas ; relu par activateView avant sa definition
 let planDansViewer = null; // maquette « Plan 2D -> 3D » montree dans le Viewer : { maquette, avant } ; relu par activateView avant sa definition
 let vueAvantDessus = null; // camera avant la vue a plat : { eye, look, up, projection } (voir entrerVueDessus)
 let vitesseAvantDessus = null; // valeur du curseur « Vitesse » avant la vue a plat, rendue en sortant
 let maquettesVueDessus = ""; // maquettes presentes quand la vue a plat a ete cadree : un changement la recadre
 let idsColorieQuantitatif = []; // elements d'une ligne du Quantitatif colories en orange dans le Viewer ; relu par activateView (via retirerCouleurQuantitatif) avant sa definition
+const collisionsFavorisDepot = creerDepotLocal(null, CLE_FAVORIS); // favoris des collisions : cle localStorage propre, separee de l'etat des collisions
+let collisionsFavoris = resoudreFavoris(collisionsFavorisDepot.lire()); // ensemble des identifiants favoris ; relu par renderCollisionsList (via activateView)
+let filtreCollisions = null; // filtre actif de la liste des collisions (id de FILTRES_COLLISIONS) ou null (pose par ouvrirCollisionsFiltrees, retire par le clic sur Collision de la navbar) ; relu par renderCollisionsList
 let cameraAvantCommande = null; // camera d'avant la commande « IA » en attente de reponse, que « Non » rend : { eye, look, up } ; relue par activateView
 const DUREE_RETOUR_CAMERA_S = 0.6; // vol de retour de la camera apres « Non »
 let commandesViewer = null; // moteur des commandes du Viewer (cree a la premiere commande) ; relu par activateView avant sa definition
@@ -1142,7 +1180,7 @@ function activateView(viewName, options = {}) {
   document.querySelector('meta[name="theme-color"]')?.setAttribute("content", viewName === "accueil" ? "#fbf7f0" : "#161c18");
   // La vue est choisie : le logo de demarrage (#splashLogo) peut s'effacer.
   document.documentElement.classList.remove("demarrage");
-  navLinks.forEach((l) => l.classList.toggle("active", l.dataset.view === viewName));
+  navLinks.forEach((l) => l.classList.toggle("active", l.dataset.view === ongletDeVue(viewName))); // « Mon espace » n'a pas d'onglet : celui des idees reste allume
   placerPastilleNavbar();
   placerContactNavbar(); // la barre vient d'etre affichee (masquee sur l'accueil) : « Me contacter » se replace
   document.querySelectorAll(".view").forEach((view) => {
@@ -1150,10 +1188,13 @@ function activateView(viewName, options = {}) {
   });
   if (messagerie) messagerie.surVueActivee(viewName);
   if (quantitatif) quantitatif.surVueActivee(viewName);
+  ideesEvolution.surVueActivee(viewName);
+  monEspace.surVueActivee(viewName);
   if (viewName === "plan3d") ouvrirPlan3d();
   else if (plan3d) plan3d.surVueActivee(viewName);
   if (viewName !== "discussions") discussionsIA.effacerRetour(); // le bandeau « Retour au rapport » ne vit que sur la page Discussions
   if (retourQuantitatif && viewName !== "viewer") retourQuantitatif.effacer(); // le bandeau de retour ne vit que dans le Viewer ouvert par le Quantitatif
+  if (retourEspace && viewName !== vueRetourEspace) retourEspace.effacer(); // « Retour a Mon espace » ne vit que sur la page ouverte depuis Mon espace
   if (viewName !== "viewer") {
     if (retourPlan3d) retourPlan3d.effacer(); // idem pour le bandeau du plan 2D -> 3D
     retirerPlanDuViewer(); // quitter le Viewer rend les maquettes a leur etat d'avant et retire la maquette du plan
@@ -1361,12 +1402,35 @@ function transitionVue(vue, changer, sortieDejaFaite) {
   setTimeout(() => terminerTransitionVue(changer), 300);
 }
 
+// Etat sain avant une page sans 3D : une detection ou un fil qui masquait des maquettes est referme (navbar, et retour a Mon espace).
+function repartirEtatSain() {
+  fermerEchangesGrand(false);
+  restoreAllModelsVisible();
+  if (!collisionDetail.hidden) {
+    collisionDetail.hidden = true;
+    collisionRecap.hidden = false;
+    clearClashMarkers();
+    clearClashElementColors();
+    deselectEntity();
+  }
+  // Meme chose pour un fil de discussion reste ouvert : sinon revenir sur Discussions rouvre le meme fil au lieu de la liste.
+  if (!discussionsDetailPane.hidden) {
+    discussionsDetailPane.hidden = true;
+    discussionsListPane.hidden = false;
+  }
+}
+
 let sortieVueDemarree = false; // vrai si la sortie du contenu a ete lancee pendant le dezoom (0,3 s avant son arrivee)
 let minuteurSortieVue = null;
 let dezoomDejaFait = false; // vrai le temps du clic rejoue a l'arrivee du dezoom (voir le handler ci-dessous)
 navLinks.forEach((link) => {
   link.addEventListener("click", () => {
     placerPastilleNavbar(link);
+    // Clic sur Collision de la navbar : le filtre pose depuis Mon espace est retire, la liste redevient complete (pas sur le clic rejoue apres le dezoom, qui suit ouvrirCollisionsFiltrees).
+    if (link.dataset.view === "collision" && !dezoomDejaFait && filtreCollisions) {
+      filtreCollisions = null;
+      rafraichirListeCollisions();
+    }
     // Clic sur Collision ou Viewer alors qu'une collision precise ou une vue ouverte depuis une conversation est affichee : la camera dezoome d'abord, la mise en forme de la maquette
     // (X-ray, fantomes, selection, bulles) ne change pas pendant le vol ; a l'arrivee, l'arrivee classique sur Collision se joue
     // (remise au propre, dissolution progressive, apparition des lignes et des bulles) : le clic est rejoue avec dezoomDejaFait.
@@ -1453,20 +1517,7 @@ navLinks.forEach((link) => {
       return;
     }
     // Autre page (sans 3D) : repart d'un etat sain (une detection ou un fil qui masquait des maquettes).
-    fermerEchangesGrand(false);
-    restoreAllModelsVisible();
-    if (!collisionDetail.hidden) {
-      collisionDetail.hidden = true;
-      collisionRecap.hidden = false;
-      clearClashMarkers();
-      clearClashElementColors();
-      deselectEntity();
-    }
-    // Meme chose pour un fil de discussion reste ouvert : sinon revenir sur Discussions rouvre le meme fil au lieu de la liste.
-    if (!discussionsDetailPane.hidden) {
-      discussionsDetailPane.hidden = true;
-      discussionsListPane.hidden = false;
-    }
+    repartirEtatSain();
     activateView(page);
     if (page === "discussions") animerEntreeListe(discussionsThreadsList);
     // Admin (porte depuis IES le 16/09) : la liste des maquettes ne doit montrer que celles du projet actuellement charge. Le mockup est un
@@ -1740,7 +1791,7 @@ const initialHash = location.hash;
 const hashView = initialHash.replace("#", "").split("/")[0];
 // "landing" n'est pas un nav-link (accessible via le bouton OUVRA),
 // ajoute a la liste des vues valides pour le hash/localStorage quand meme.
-const validViews = navLinks.map((l) => l.dataset.view).concat(["landing", "accueil"]);
+const validViews = navLinks.map((l) => l.dataset.view).concat(["landing", "accueil"], VUES_SANS_ONGLET);
 
 // Arrivee par defaut : la nouvelle page d'accueil.
 let savedView = "accueil";
@@ -1784,7 +1835,7 @@ const HOSPITAL_PROJECT_KEY = "hospital-xkt";
 // 19/10 : l'hopital devient le projet unique et expose aussi Collision et
 // Discussions, qui fonctionnent sans donnees dessus (listes vides, cf
 // applyProjectData). Ancienne valeur : ["presentation", "viewer"].
-const HOSPITAL_VISIBLE_VIEWS = ["presentation", "viewer", "collision", "discussions", "quantitatif", "plan3d"];
+const HOSPITAL_VISIBLE_VIEWS = ["presentation", "viewer", "collision", "discussions", "quantitatif", "plan3d", "idees"];
 
 // Projet hopital force au demarrage quand le selecteur est masque (aucune
 // valeur memorisee n'est relue : l'hopital s'impose a chaque chargement).
@@ -1850,6 +1901,10 @@ function applyPersona(persona, forceNav) {
       link.hidden = true;
       return;
     }
+    if (MASQUE_PLAN3D && link.dataset.view === "plan3d") {
+      link.hidden = true;
+      return;
+    }
     // Projet hopital (porte depuis IES le 16/09) : plus aucun filtrage par
     // profil, juste Presentation + Viewer visibles dans la navbar (demande
     // explicite de Gilles, cote IES comme ici : jeu de test sans donnees
@@ -1871,7 +1926,8 @@ function applyPersona(persona, forceNav) {
   const currentViewName = currentView ? currentView.id.replace("view-", "") : null;
   // L'accueil n'est pas un onglet de la navbar : il est toujours autorise (sinon le
   // rechargement de l'accueil basculait d'office sur le Viewer, 19/10).
-  const currentViewAllowed = currentViewName === "accueil" || navLinks.some((l) => l.dataset.view === currentViewName && !l.hidden);
+  // « Mon espace » (sans onglet) est autorisee tant que l'onglet des idees l'est (ongletDeVue).
+  const currentViewAllowed = currentViewName === "accueil" || navLinks.some((l) => l.dataset.view === ongletDeVue(currentViewName) && !l.hidden);
   if (forceNav || !currentViewAllowed) {
     activateView(isHospitalProject ? "viewer" : PERSONA_DEFAULT_VIEW[persona]);
   }
@@ -2604,12 +2660,12 @@ const DEMO_CLASHES = [
   }
 ];
 
-const STATUT_LABELS = { nouveau: "Nouveau", confirme: "Confirmé", ecarte: "Écarté" };
+const STATUT_LABELS = { ...LIBELLES_STATUT_COLLISION };
 if (COLLISION_PRIORITES) STATUT_LABELS.resolu = "Résolu";
 
 // ---- COLLISION_PRIORITES : priorites, historique, persistance ----
 const PRIORITE_ORDRE = ["urgente", "haute", "normale", "basse"];
-const PRIORITE_LABELS = { urgente: "Urgente", haute: "Haute", normale: "Normale", basse: "Basse" };
+const PRIORITE_LABELS = { ...LIBELLES_PRIORITE_COLLISION };
 const PRIORITE_DEFAUT = "normale";
 const CLASH_UTILISATEUR_HISTORIQUE = "User 1";
 const COLLISIONS_ETAT_CLE = "ouvra-collisions-etat";
@@ -4488,29 +4544,6 @@ function refreshCollisionMaquetteToggles() {
   }
 }
 
-// Type d'element en francais, deduit du nom Revit (liste des collisions,
-// 19/10). Repli : premier segment du nom avant ":".
-const COLLISION_TYPES_FR = [
-  [/Curtain Wall/i, "Mur-rideau"],
-  [/Basic Wall.*Partition/i, "Cloison"],
-  [/Basic Wall|Wall/i, "Mur"],
-  [/Ceiling/i, "Faux plafond"],
-  [/Duct/i, "Gaine"],
-  [/Pipe/i, "Tuyau"],
-  [/Diffuser/i, "Diffuseur"],
-  [/Grill/i, "Grille"],
-  [/MedGas/i, "Prise gaz médicaux"],
-  [/VAV/i, "Caisson VAV"],
-  [/Takeoff/i, "Piquage"],
-  [/Valve/i, "Vanne"],
-  [/Solar Panel/i, "Panneau solaire"],
-  [/Cooling Tower/i, "Tour de refroidissement"]
-];
-function collisionTypeFr(name) {
-  const hit = COLLISION_TYPES_FR.find(([re]) => re.test(name));
-  return hit ? hit[1] : name.split(":")[0].trim();
-}
-
 // Carte d'une collision de la liste (numero, types en francais, identifiants et niveau, point de statut, filet de priorite). Partagee entre la
 // liste (balise "button") et la modale « Regle a valider » (balise "span", 22/10, creerCarte) : un seul rendu pour les deux.
 function buildCollisionCard(clash, tag = "button") {
@@ -4560,10 +4593,7 @@ function buildCollisionCard(clash, tag = "button") {
       if (COLLISION_LISTE_CARTE) {
         // Carte a deux lignes (19/10) : pastille du numero, types en francais,
         // identifiants et niveau, point de statut ; liseré de couleur a gauche.
-        const [partA, partB] = clash.zone.split(" ↔ ");
-        const typeA = collisionTypeFr(partA || "");
-        const typeB = collisionTypeFr((partB || "").split("·")[0]);
-        const niveau = (levelMatch ? levelMatch[1].trim() : "").replace(/^Level\s*/i, "Niveau ");
+        const { typeA, typeB, titre, sousTitre } = decrireCarteCollision(clash.zone);
 
         const badgeNum = document.createElement("span");
         badgeNum.className = "collision-num-badge";
@@ -4572,10 +4602,10 @@ function buildCollisionCard(clash, tag = "button") {
 
         const types = document.createElement("span");
         types.className = "collision-types";
-        types.textContent = typeA + " ↔ " + typeB;
+        types.textContent = titre;
         const sub = document.createElement("span");
         sub.className = "collision-sub";
-        sub.textContent = ids[0] + " ↔ " + ids[1] + (niveau ? " · " + niveau : "");
+        sub.textContent = sousTitre;
         const text = document.createElement("span");
         text.className = "collision-card-text";
         text.append(types, sub);
@@ -4610,6 +4640,34 @@ function buildCollisionCard(clash, tag = "button") {
   return btn;
 }
 
+function buildEtoileFavori(clash) {
+  const etoile = document.createElement("button");
+  etoile.type = "button";
+  etoile.className = "collision-favori";
+  etoile.setAttribute("aria-label", "Favori : collision n° " + (CLASHES.indexOf(clash) + 1)); // libelle fixe : l'etat est porte par aria-pressed
+  const majEtat = () => {
+    const favori = collisionsFavoris.has(clash.id);
+    etoile.setAttribute("aria-pressed", String(favori));
+    etoile.textContent = favori ? "★" : "☆";
+    etoile.title = favori ? "Retirer des favoris" : "Ajouter aux favoris";
+  };
+  majEtat();
+  etoile.addEventListener("click", () => {
+    collisionsFavorisDepot.ecrire(basculerFavori(collisionsFavorisDepot.lire(), clash.id));
+    collisionsFavoris = resoudreFavoris(collisionsFavorisDepot.lire());
+    // Filtre Favoris actif : la collision quitte la liste ; sinon seule l'etoile change.
+    if (filtreCollisions === "favoris") rafraichirListeCollisions();
+    else majEtat();
+  });
+  return etoile;
+}
+
+// Re-rendu de la liste de la paire de maquettes ouverte (favoris, filtre pose depuis Mon espace).
+function rafraichirListeCollisions() {
+  if (!detectionCourante) return;
+  renderCollisionsList(CLASHES.filter((c) => c.detectionId === detectionCourante.id));
+}
+
 function buildCollisionItem(clash) {
   const li = document.createElement("li");
   li.className = "collision-item-row";
@@ -4640,6 +4698,8 @@ function buildCollisionItem(clash) {
 
   if (MASQUE_OEIL_COLLISION) li.append(btn);
   else li.append(toggle, btn);
+  // Etoile favori : bouton frere de la carte (jamais imbrique dans le bouton de la carte). Pas d'etoile sur une collision fictive.
+  if (!clash.factice) li.append(buildEtoileFavori(clash));
   return li;
 }
 
@@ -4669,8 +4729,15 @@ function renderCollisionsList(clashes) {
     collisionListTitle.disabled = DETECTIONS.length < 2;
   }
 
-  const actives = clashes.filter((c) => c.statut !== "ecarte");
-  const ecartes = clashes.filter((c) => c.statut === "ecarte");
+  const visibles = filtrerCollisions(clashes, filtreCollisions, collisionsFavoris);
+  const actives = visibles.filter((c) => c.statut !== "ecarte");
+  const ecartes = visibles.filter((c) => c.statut === "ecarte");
+  if (clashes.length && visibles.length === 0) {
+    const vide = document.createElement("li");
+    vide.className = "info-empty collision-filtre-vide";
+    vide.textContent = "Aucune collision pour ce filtre.";
+    collisionsList.appendChild(vide);
+  }
 
   if (COLLISION_PRIORITES) {
     PRIORITE_ORDRE.forEach((niveau) => {
@@ -6890,7 +6957,7 @@ retourQuantitatif = creerRetourContexte({
   id: "quantitatifBandeauRetour",
   classeCorps: "quantitatif-retour-actif",
   ariaLabel: "Retour au quantitatif",
-  autresClasses: ["msg-retour-actif", "regles-retour-actif"], // un seul bandeau de retour a la fois : le plus recent gagne
+  autresClasses: ["msg-retour-actif", "regles-retour-actif", "espace-retour-actif"], // un seul bandeau de retour a la fois : le plus recent gagne
   retourSysteme: true // le retour du systeme (geste, bouton arriere) ramene au meme rapport, comme le bandeau
 });
 
@@ -7098,8 +7165,110 @@ retourPlan3d = creerRetourContexte({
   id: "plan3dBandeauRetour",
   classeCorps: "plan3d-retour-actif",
   ariaLabel: "Retour au plan 2D",
-  autresClasses: ["msg-retour-actif", "regles-retour-actif", "quantitatif-retour-actif"]
+  autresClasses: ["msg-retour-actif", "regles-retour-actif", "quantitatif-retour-actif", "espace-retour-actif"]
 });
+
+// Bandeau « ← Retour a Mon espace » (02/11) : une tache, une echeance, une alerte ou une vue de Mon espace envoie voir une discussion ou une collision ;
+// le bandeau ramene a Mon espace, a la position de defilement d'avant. Un seul bandeau de retour a la fois : le plus recent gagne.
+retourEspace = creerRetourContexte({
+  id: "espaceBandeauRetour",
+  classeCorps: "espace-retour-actif",
+  ariaLabel: TEXTES_ESPACE.libelleRetour,
+  autresClasses: ["msg-retour-actif", "regles-retour-actif", "quantitatif-retour-actif", "plan3d-retour-actif", "disc-rapport-retour-actif", "msg-echanges-retour-actif", "discussions-confirm-actif"]
+});
+
+// Rappelle suite() des que condition() est vraie (sondee toutes les 50 ms, 3 s au plus) : la page s'ouvre apres la transition, les marqueurs et les discussions apres elle.
+function attendre(condition, suite) {
+  const debut = performance.now();
+  const sonder = () => {
+    if (condition()) suite();
+    else if (performance.now() - debut < 3000) setTimeout(sonder, 50);
+  };
+  sonder();
+}
+const vueAffichee = (vue) => () => { const el = document.getElementById("view-" + vue); return !!el && !el.hidden; };
+
+function revenirAMonEspace(position) {
+  repartirEtatSain();
+  monEspace.revenir(position);
+}
+
+// cible : { type: "message", convId, sujetId, texte } (discussion, au message source), { type: "collision", clashId } (page Collision, collision choisie avec le vol de camera habituel),
+// { type: "collisions", filtre } (page Collision filtree) ou { type: "vue3d", camera } (Viewer, voir ouvrirVue3dDepuisEspace) ou { type: "viewer" } (Viewer tel quel, tuile « Ajouter une vue »).
+function ouvrirDepuisEspace(cible, position) {
+  if (cible.type === "vue3d" || cible.type === "viewer") { ouvrirVue3dDepuisEspace(cible, position); return; }
+  const vue = cible.type === "collision" || cible.type === "collisions" ? "collision" : "discussions";
+  const lien = navLinks.find((l) => l.dataset.view === vue);
+  if (!lien) return;
+  retourEspace.effacer();
+  vueRetourEspace = vue;
+  const montrerRetour = () => retourEspace.montrer({ libelle: TEXTES_ESPACE.libelleRetour, surRetour: () => revenirAMonEspace(position) });
+  lien.click();
+  if (cible.type === "collisions") {
+    ouvrirCollisionsFiltrees(cible.filtre, montrerRetour);
+    return;
+  }
+  if (cible.type === "collision") {
+    const clash = CLASHES.find((c) => c.id === cible.clashId);
+    if (!clash) return;
+    attendre(() => vueAffichee("collision")() && clashMarkers.has(clash.id), () => {
+      activateClash(clash);
+      montrerRetour();
+    });
+    // La detection de la collision n'est pas ouverte (plusieurs couples de maquettes) : elle l'est avant d'attendre les marqueurs.
+    attendre(vueAffichee("collision"), () => {
+      const detection = DETECTIONS.find((d) => d.id === clash.detectionId);
+      if (detection && detectionCourante !== detection) openDetection(detection);
+    });
+    return;
+  }
+  attendre(() => vueAffichee("discussions")() && !!messagerie && messagerie.donneesPourIA().conversations.length > 0, () => {
+    const { conversations, personnes } = messagerie.donneesPourIA();
+    const message = indexer(conversations, personnes).messages.find((m) => m.convId === cible.convId && m.sujetId === cible.sujetId && m.texte === cible.texte);
+    if (!message) return;
+    messagerie.montrerMessageIA(message.mk);
+    montrerRetour();
+  });
+}
+
+// Point de vue 3D de Mon espace (cible { type: "vue3d", camera: { eye, look, up } }) : ouvre le VIEWER (jamais la page Collision) et la camera vole vers le cadrage enregistre.
+// Aucune collision n'est en jeu : le clic sur l'onglet Viewer remet la 3D au neutre (ni couleur, ni bulle, ni fantome), le tiroir des collisions n'est ni ouvert ni mis a jour.
+function ouvrirVue3dDepuisEspace(cible, position) {
+  const lien = navLinks.find((l) => l.dataset.view === "viewer");
+  const c = cible.camera;
+  if (!lien || (cible.type === "vue3d" && !c)) return;
+  retourEspace.effacer();
+  vueRetourEspace = "viewer";
+  lien.click();
+  attendre(vueAffichee("viewer"), () => {
+    // Tuile « Ajouter une vue » (cible { type: "viewer" }) : le Viewer tel qu'il est, aucun vol de camera, seulement le bandeau de retour.
+    if (!c) {
+      retourEspace.montrer({ libelle: TEXTES_ESPACE.libelleRetour, surRetour: () => revenirAMonEspace(position) });
+      return;
+    }
+    const cadrage = { eye: c.eye.slice(), look: c.look.slice(), up: c.up.slice() };
+    viewer.cameraFlight.cancel();
+    viewer.camera.projection = "perspective";
+    viewer.cameraFlight.flyTo(Object.assign({ duration: 1.2 }, cadrage));
+    // « Recentrer » revient au cadrage enregistre, comme pour une vue ouverte depuis une conversation.
+    recenterTarget = () => viewer.cameraFlight.flyTo(Object.assign({ duration: 1 }, cadrage));
+    retourEspace.montrer({ libelle: TEXTES_ESPACE.libelleRetour, surRetour: () => revenirAMonEspace(position) });
+  });
+}
+
+// Point d'entree « Mon espace » (clic sur un compteur, ex. « 4 En cours ») : ouvre la page Collision filtree (cible { type: "collisions", filtre: "en-cours" } dans ouvrirDepuisEspace).
+// La paire de maquettes ouverte est celle de la premiere collision du filtre ; filtre inconnu = liste entiere.
+function ouvrirCollisionsFiltrees(filtreId, apres = () => {}) {
+  filtreCollisions = filtreValide(filtreId) ? filtreId : null;
+  attendre(vueAffichee("collision"), () => {
+    // Les collisions factices (ex-sm-*, exemples des regles) ne comptent pas : les compteurs de Mon espace ne portent que sur les 15 collisions de l'hopital.
+    const premiere = filtrerCollisions(CLASHES.filter((c) => !c.factice), filtreCollisions, collisionsFavoris)[0];
+    const detection = (premiere && DETECTIONS.find((d) => d.id === premiere.detectionId)) || detectionCourante || DETECTIONS[0];
+    if (detection && detectionCourante !== detection) openDetection(detection);
+    else rafraichirListeCollisions();
+    apres();
+  });
+}
 
 const quantitatifHistorique = creerHistorique({ depot: creerDepotLocal() });
 quantitatif = creerQuantitatifPage({
@@ -7115,6 +7284,8 @@ amorcerHistoriqueDemo({ historique: quantitatifHistorique }).then((ajoute) => { 
 // Rechargement direct sur la page (hash ou dernier onglet) : activateView s'est execute avant la creation de la page.
 // Differe d'un cran : appelee pendant l'initialisation du module, la page lirait des constantes declarees plus bas (HOSPITAL_MISPLACED_RAILING_IDS...) avant leur initialisation.
 if (!document.getElementById("view-quantitatif").hidden) setTimeout(() => quantitatif.surVueActivee("quantitatif"), 0);
+// Meme raison pour les compteurs de Mon espace : un rechargement sur #espace les calcule avant la declaration de CLASHES, ils sont recalcules apres l'initialisation.
+setTimeout(() => monEspace.majCompteurs(), 0);
 
 commandesIA = creerCommandesIA({
   bouton: commandesIABtn,
@@ -7222,6 +7393,11 @@ function selectClash(clash, surArrivee) {
 // Point d'entree commun pour selectionner un clash, que ce soit via la
 // ligne de la liste ou un clic direct sur sa bulle 3D dans le viewer.
 function activateClash(clash, surArrivee) {
+  // Une collision que le filtre masque (marqueur 3D, lien depuis une autre page) : le filtre est levé pour qu'elle apparaisse dans la liste.
+  if (filtreCollisions && !filtrerCollisions([clash], filtreCollisions, collisionsFavoris).length) {
+    filtreCollisions = null;
+    rafraichirListeCollisions();
+  }
   collisionsList.querySelectorAll(".collision-item").forEach((el) => {
     el.classList.toggle("active", el.dataset.clashId === clash.id);
   });

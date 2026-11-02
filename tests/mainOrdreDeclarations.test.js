@@ -12,3 +12,11 @@ test("idsColorieQuantitatif est declare avant activateView (retirerCouleurQuanti
   assert.ok(declaration > -1 && activateView > -1);
   assert.ok(declaration < activateView, "let idsColorieQuantitatif doit preceder function activateView");
 });
+
+test("filtreCollisions et collisionsFavoris sont declares avant activateView (renderCollisionsList les lit a l'initialisation)", () => {
+  const activateView = source.indexOf("\nfunction activateView(");
+  ["\nlet collisionsFavoris", "\nlet filtreCollisions"].forEach((decl) => {
+    const i = source.indexOf(decl);
+    assert.ok(i > -1 && i < activateView, decl.trim() + " doit preceder function activateView");
+  });
+});
