@@ -149,24 +149,37 @@ test("donnees : le texte de chaque message cible existe dans le corpus de la mes
   const { readFileSync } = await import("node:fs");
   const corpus = ["dm", "sujets", "groupes", "coordination"].map((f) => readFileSync(new URL("../src/messagerie/corpus/" + f + ".json", import.meta.url), "utf8")).join("\n");
   const cibles = WIDGETS.flatMap((w) => w.items).filter((i) => i.cible && i.cible.type === "message").map((i) => i.cible);
-  assert.equal(cibles.length, 7);
+  assert.equal(cibles.length, 11);
   for (const c of cibles) assert.ok(corpus.includes(c.texte), c.texte);
 });
 
-test("alertes : le bouton « Voir » n'existe que sur l'alerte qui a une cible (collision n° 10), jamais sur le document ni la mise a jour de maquette", () => {
+test("alertes : « Voir » sur la collision n° 10 et sur le document mis a jour, jamais sur la mise a jour de maquette", () => {
   const alertes = WIDGETS.find((w) => w.id === "alertes");
-  assert.deepEqual(alertes.items.filter((a) => a.cible).map((a) => a.cible), [{ type: "collision", clashId: "hosp-clash-10" }]);
+  assert.deepEqual(alertes.items.filter((a) => a.cible).map((a) => a.id), ["alerte-document", "alerte-collision-10"]);
   const h = htmlPageEspace();
-  assert.equal((h.match(/class="esp-btn-voir"/g) || []).length, 1);
   assert.match(h, /Collision n° 10 passée en urgente<\/p><\/div><button type="button" class="esp-btn-voir" data-cible="alerte-collision-10"/);
-  assert.match(h, /nomenclature_gaines_R2\.xlsx<\/p><\/div><\/li>/);
+  assert.match(h, /Document mis à jour : nomenclature_gaines_R2\.xlsx<\/p><\/div><button type="button" class="esp-btn-voir" data-cible="alerte-document" aria-label="Voir : Document mis à jour : nomenclature_gaines_R2\.xlsx">Voir<\/button>/);
   assert.match(h, /passée en V3\.1 par Claire Martin<\/p><\/div><\/li>/);
 });
 
-test("documents : les trois pieces jointes citees, aucune GED affirmee", () => {
-  const docs = WIDGETS.find((w) => w.id === "documents").items.map((d) => d.texte);
-  assert.deepEqual(docs, ["coupe-gaine-cloison-R2.pdf", "nomenclature_gaines_R2.xlsx", "archi-V3.1.ifc"]);
-  assert.doesNotMatch(htmlPageEspace(), /\bGED\b/);
+test("documents : les trois pieces jointes citees, aucune GED affirmee, chacune avec un bouton « Voir » vers le message qui la porte", () => {
+  const docs = WIDGETS.find((w) => w.id === "documents").items;
+  assert.deepEqual(docs.map((d) => d.texte), ["coupe-gaine-cloison-R2.pdf", "nomenclature_gaines_R2.xlsx", "archi-V3.1.ifc"]);
+  for (const d of docs) {
+    assert.equal(d.cible.type, "message");
+    assert.ok(d.cible.texte.includes("[fichier : " + d.texte + "]"), d.texte);
+    assert.deepEqual(trouverCible(WIDGETS, d.id), d.cible);
+  }
+  const h = htmlPageEspace();
+  assert.doesNotMatch(h, /\bGED\b/);
+  assert.equal((h.match(/class="esp-btn-voir" data-cible="doc-/g) || []).length, 3);
+  assert.match(h, /archi-V3\.1\.ifc<\/p><p class="esp-meta">[^<]*<\/p><\/div><span class="esp-heure esp-heure-large">28\/10<\/span><button type="button" class="esp-btn-voir" data-cible="doc-archi" aria-label="Voir : archi-V3\.1\.ifc">Voir<\/button>/);
+});
+
+test("documents : un document sans cible n'a pas de bouton « Voir »", async () => {
+  const { htmlWidget } = await import("../src/monEspaceRendu.js");
+  const h = htmlWidget({ type: "documents", id: "d", zone: "docs", titre: "Docs", phrase: "p", items: [{ id: "x", texte: "a.pdf", quand: "Hier" }] }, 0);
+  assert.doesNotMatch(h, /esp-btn-voir/);
 });
 
 test("echeances : une seule liste dans l'ordre des dates, quatre lignes, etiquettes Reunion, Modification, Decision, proximite et pastille de date", () => {
@@ -202,7 +215,8 @@ test("cibles : retrouvees par identifiant dans tous les widgets, null sans cible
   assert.deepEqual(trouverCible(WIDGETS, "clash-2"), { type: "collision", clashId: "hosp-clash-2" });
   assert.equal(trouverCible(WIDGETS, "todo-bcf").convId, "karim");
   assert.equal(trouverCible(WIDGETS, "ech-poutre-axe-c").sujetId, "k1");
-  assert.equal(trouverCible(WIDGETS, "alerte-document"), null);
+  assert.equal(trouverCible(WIDGETS, "alerte-maquette"), null);
+  assert.equal(trouverCible(WIDGETS, "alerte-document").convId, "g-fluides");
   assert.equal(trouverCible(WIDGETS, "inconnu"), null);
 });
 

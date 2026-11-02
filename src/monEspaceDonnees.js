@@ -36,9 +36,10 @@ export const WIDGETS = [
   },
   {
     id: "alertes", zone: "alertes", type: "alertes", titre: "Alertes", phrase: "Ajoute les alertes de la maquette structure",
-    // Pas de bouton « Voir » sans cible : le document n'a aucun lien (l'application ne branche aucune GED reelle), la mise a jour de maquette n'en a jamais.
+    // Pas de bouton « Voir » sans cible : la mise a jour de maquette n'en a pas. Un document mis a jour ouvre la discussion ou il a ete depose (l'application ne branche aucune GED reelle).
     items: [
-      { id: "alerte-document", heure: "30/10", texte: "Document mis à jour : nomenclature_gaines_R2.xlsx" },
+      { id: "alerte-document", heure: "30/10", texte: "Document mis à jour : nomenclature_gaines_R2.xlsx",
+        cible: { type: "message", convId: "g-fluides", sujetId: null, texte: "[fichier : nomenclature_gaines_R2.xlsx]" } },
       { id: "alerte-maquette", heure: "28/10", texte: "Maquette Architecture passée en V3.1 par Claire Martin" },
       { id: "alerte-collision-10", heure: "15/10", texte: "Collision n° 10 passée en urgente", cible: { type: "collision", clashId: "hosp-clash-10" } }
     ]
@@ -94,12 +95,18 @@ export const WIDGETS = [
     ]
   },
   {
-    // Pas de GED reelle dans l'application : ce sont les pieces jointes citees dans les messages, avec leur auteur et leur discussion.
+    // Pas de GED reelle dans l'application : ce sont les pieces jointes citees dans les messages, avec leur auteur et leur discussion. « Voir » ouvre le message qui porte la piece jointe.
     id: "documents", zone: "docs", type: "documents", titre: "Documents consultés récemment", phrase: "Garde mes derniers documents consultés",
     items: [
-      { texte: "coupe-gaine-cloison-R2.pdf", quand: "Aujourd'hui", meta: "Déposé par Sophie Lambert · Collision gaine rectangulaire / cloison, couloir R+2" },
-      { texte: "nomenclature_gaines_R2.xlsx", quand: "30/10", meta: "Déposé par Marc Dubois · Lots fluides" },
-      { texte: "archi-V3.1.ifc", quand: "28/10", meta: "Déposé par Claire Martin · Maquette V3 : retours" }
+      {
+        id: "doc-coupe", texte: "coupe-gaine-cloison-R2.pdf", quand: "Aujourd'hui", meta: "Déposé par Sophie Lambert · Collision gaine rectangulaire / cloison, couloir R+2",
+        cible: { type: "message", convId: "sophie", sujetId: "s1", texte: "Je te mets la coupe avec le passage actuel en attendant. [fichier : coupe-gaine-cloison-R2.pdf]" }
+      },
+      { id: "doc-nomenclature", texte: "nomenclature_gaines_R2.xlsx", quand: "30/10", meta: "Déposé par Marc Dubois · Lots fluides", cible: { type: "message", convId: "g-fluides", sujetId: null, texte: "[fichier : nomenclature_gaines_R2.xlsx]" } },
+      {
+        id: "doc-archi", texte: "archi-V3.1.ifc", quand: "28/10", meta: "Déposé par Claire Martin · Maquette V3 : retours",
+        cible: { type: "message", convId: "claire", sujetId: "c3", texte: "V3.1 déposée. [fichier : archi-V3.1.ifc] Tu peux relancer le contrôle ?" }
+      }
     ]
   },
   {

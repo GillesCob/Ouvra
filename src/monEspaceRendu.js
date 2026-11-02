@@ -51,9 +51,11 @@ function htmlVue(v) {
     + `${htmlCarteCollision(clash)}</button>${htmlActions(nom, true)}</li>`;
 }
 
-// Bouton « Voir » seulement quand l'alerte a une cible reelle (collision, discussion) : une mise a jour de maquette ou un document sans lien n'en ont pas.
-const htmlAlerte = (a) => `<li><span class="esp-heure">${echapper(a.heure)}</span><div class="esp-corps"><p>${echapper(a.texte)}</p></div>`
-  + (a.cible ? `<button type="button" class="esp-btn-voir" data-cible="${echapper(a.id)}" aria-label="Voir : ${echapper(a.texte)}">Voir</button>` : "") + "</li>";
+// Bouton « Voir » (alertes et documents) : seulement quand la ligne a une cible reelle (collision, discussion) ; une mise a jour de maquette n'en a pas.
+const htmlBoutonVoir = (item, libelle) => (item.cible ? `<button type="button" class="esp-btn-voir" data-cible="${echapper(item.id)}" aria-label="Voir : ${echapper(libelle)}">Voir</button>` : "");
+const htmlAlerte = (a) => `<li><span class="esp-heure">${echapper(a.heure)}</span><div class="esp-corps"><p>${echapper(a.texte)}</p></div>${htmlBoutonVoir(a, a.texte)}</li>`;
+const htmlDocument = (d) => `<li><div class="esp-corps"><p>${echapper(d.texte)}</p>${d.meta ? `<p class="esp-meta">${echapper(d.meta)}</p>` : ""}</div>`
+  + `<span class="esp-heure esp-heure-large">${echapper(d.quand)}</span>${htmlBoutonVoir(d, d.texte)}</li>`;
 
 function htmlEcheance(e, maintenant) {
   const p = pastilleDate(e.date);
@@ -74,7 +76,7 @@ const CORPS = {
     + (t.citation ? `<p class="esp-tache-citation">« ${echapper(t.citation)} »</p>` : "") + "</div>"
     + `<span class="esp-urgence">${echapper(t.urgence)}</span></li>`).join("")}</ul>`,
   echeances: (items, maintenant) => `<ol class="esp-echeances">${items.map((e) => htmlEcheance(e, maintenant)).join("")}</ol>`,
-  documents: (items) => `<ul class="esp-liste">${items.map((d) => `<li><div class="esp-corps"><p>${echapper(d.texte)}</p>${d.meta ? `<p class="esp-meta">${echapper(d.meta)}</p>` : ""}</div><span class="esp-heure esp-heure-large">${echapper(d.quand)}</span></li>`).join("")}</ul>`,
+  documents: (items) => `<ul class="esp-liste">${items.map(htmlDocument).join("")}</ul>`,
   compteurs: (items) => `<ul class="esp-compteurs">${items.map((c) => `<li${c.urgent ? ' class="esp-urgent"' : ""}><strong>${echapper(c.valeur)}</strong><span>${echapper(c.libelle)}</span></li>`).join("")}</ul>`
 };
 
