@@ -1,17 +1,17 @@
-// Page « Mon espace » (02/11) : barre d'instruction, six widgets, journal. Pas un onglet de la barre : on y arrive par le lien de la derniere frise de la page
+// Page « Mon espace » (02/11) : barre d'instruction, cinq widgets. Pas un onglet de la barre : on y arrive par le lien de la derniere frise de la page
 // Idees d'evolution (#espace), le fil d'Ariane ramene aux idees. Le HTML vient de src/monEspaceRendu.js, les donnees de src/monEspaceDonnees.js, la logique de
 // src/monEspaceLogique.js ; le CSS (src/monEspace.css) est importe par main.js (ce module reste importable sous Node).
 // Principe de la page : tout se regle par instruction, aucune manipulation.
 // PAGE FIGEE (demonstration, aucun risque venant de l'IA) : la barre d'instruction (champ, Valider, micro, suggestions), les stylos et les boutons « Voir » des
-// alertes et des documents sont affiches mais desactives (voir monEspaceRendu.js) ; aucun handler ni appel d'API IA ici. Reste actif :
-//  - la croix retire un widget ou une vue (bouton « Annuler » pendant 8 secondes) ; « Annuler » du journal masque le dernier ;
+// alertes sont affiches mais desactives (voir monEspaceRendu.js) ; aucun handler ni appel d'API IA ici. Reste actif :
+//  - la croix retire un widget ou une vue (bouton « Annuler » pendant 8 secondes) ;
 //  - la tuile « Ajouter une vue » ouvre le Viewer tel qu'il est (cible { type: "viewer" }, sans cadrage), avec le bandeau de retour ;
 //  - un point de vue ouvre le Viewer cadre, un compteur de collisions ouvre la page Collision filtree, la puce de discussion d'une tache ou d'une echeance ouvre
 //    la discussion au message source (main.js, ouvrirDepuisEspace) ; un bandeau « Retour a Mon espace » ramene ici, a la meme position de defilement (revenir).
 // Rien n'est memorise : un rechargement remet tout.
 import { WIDGETS } from "./monEspaceDonnees.js";
 import { htmlPageEspace, htmlCompteurs } from "./monEspaceRendu.js";
-import { MESSAGES_ESPACE, DELAI_ANNULATION_MS, retirerWidget, restaurer, lignesJournal, idVue, trouverCible, creerMemoireDefilement } from "./monEspaceLogique.js";
+import { MESSAGES_ESPACE, DELAI_ANNULATION_MS, retirerWidget, restaurer, idVue, trouverCible, creerMemoireDefilement } from "./monEspaceLogique.js";
 import { VUE_ESPACE } from "./vuesIdees.js";
 
 // ouvrir(cible, position) : ouvre la discussion ou la collision visee ; position = defilement de la page, que le bandeau de retour rendra (revenir).
@@ -19,8 +19,6 @@ import { VUE_ESPACE } from "./vuesIdees.js";
 export function creerMonEspace({ racine, aller, ouvrir = () => {}, effectifs = () => ({}), fenetre = window }) {
   racine.innerHTML = htmlPageEspace();
   const etat = racine.querySelector(".esp-etat-saisie");
-  const liste = racine.querySelector(".esp-journal-liste");
-  const vide = racine.querySelector(".esp-vide");
   const elements = new Map();
   racine.querySelectorAll(".esp-widget").forEach((el) => elements.set(el.dataset.widget, el));
   racine.querySelectorAll(".esp-vue-item").forEach((el) => elements.set(idVue(el.dataset.vueId), el));
@@ -44,25 +42,6 @@ export function creerMonEspace({ racine, aller, ouvrir = () => {}, effectifs = (
 
   function rendre(message, annuler) {
     elements.forEach((el, id) => { el.hidden = masques.has(id); });
-    liste.textContent = "";
-    const lignes = lignesJournal(WIDGETS, masques);
-    lignes.forEach((l) => {
-      const li = document.createElement("li");
-      const phrase = document.createElement("span");
-      phrase.className = "esp-phrase";
-      phrase.textContent = l.phrase;
-      li.appendChild(phrase);
-      if (l.annulable) {
-        const bouton = document.createElement("button");
-        bouton.type = "button";
-        bouton.className = "esp-btn-annuler";
-        bouton.textContent = "Annuler";
-        bouton.addEventListener("click", () => appliquer(retirerWidget(masques, l.id, MESSAGES_ESPACE.annulee)));
-        li.appendChild(bouton);
-      }
-      liste.appendChild(li);
-    });
-    vide.hidden = lignes.length > 0;
     if (message !== undefined) ecrireEtat(message, annuler);
   }
   function appliquer(resultat, annuler) {

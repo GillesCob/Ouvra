@@ -72,8 +72,6 @@
 .ide-chaine .ide-node + .ide-node::before { content: ""; position: absolute; left: calc(var(--ar-x, calc(-1 * (var(--fleche) + var(--ecart)))) + var(--fleche) - 9px); top: 21px; width: 9px; height: 9px; border-top: 2px solid var(--accent-line); border-right: 2px solid var(--accent-line); transform: rotate(45deg); }
 .ide-chaine .ide-node.ide-debut::before, .ide-chaine .ide-node.ide-debut::after { display: none; }
 
-.ide-note-ged { margin: 18px 0 0; font-size: 13px; color: var(--fg-2); }
-
 
 /* Apparition : l'information voyage d'une etape a l'autre.
    Etat initial : toutes les bulles et fleches sont deja la, en fantomes (contour fin, opacite reduite), la structure se lit d'emblee.
@@ -153,7 +151,6 @@
   .ide-node { min-height: 52px; }
   .ide-lab { font-size: 16px; overflow-wrap: break-word; hyphens: manual; }
   .ide-sub { font-size: 14px; }
-  .ide-note-ged { font-size: 16px; margin-top: 22px; }
   .ide-voir-page { font-size: 16px; margin-top: 22px; }
   .ide-voir-page a { display: inline-flex; align-items: center; min-height: 44px; }
 }

@@ -1,59 +1,39 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { WIDGETS, TEXTES_ESPACE } from "../src/monEspaceDonnees.js";
-import { trouverCible, creerMemoireDefilement, idVue, restaurer, widgetsAffiches, lignesJournal, retirerWidget, MESSAGES_ESPACE } from "../src/monEspaceLogique.js";
+import { trouverCible, creerMemoireDefilement, idVue, restaurer, retirerWidget, MESSAGES_ESPACE } from "../src/monEspaceLogique.js";
 import { htmlPageEspace } from "../src/monEspaceRendu.js";
 
 const aucun = () => new Set();
 
-test("donnees : six widgets, identifiants et phrases uniques", () => {
-  assert.equal(WIDGETS.length, 6);
-  assert.equal(new Set(WIDGETS.map((w) => w.id)).size, 6);
-  assert.equal(new Set(WIDGETS.map((w) => w.phrase)).size, 6);
+test("donnees : cinq widgets, identifiants et phrases uniques", () => {
+  assert.equal(WIDGETS.length, 5);
+  assert.equal(new Set(WIDGETS.map((w) => w.id)).size, 5);
+  assert.equal(new Set(WIDGETS.map((w) => w.phrase)).size, 5);
 });
 
-test("journal : une ligne par widget affiche, seule la derniere est annulable", () => {
-  const l = lignesJournal(WIDGETS, aucun());
-  assert.equal(l.length, 6);
-  assert.deepEqual(l.map((x) => x.annulable), [false, false, false, false, false, true]);
-  assert.equal(l[0].phrase, "« Montre mes vues du niveau 2 »");
-});
-
-test("journal : tout retire = aucune ligne ; un seul reste = il est annulable", () => {
-  const tous = new Set(WIDGETS.map((w) => w.id));
-  assert.deepEqual(lignesJournal(WIDGETS, tous), []);
-  tous.delete("todo");
-  const l = lignesJournal(WIDGETS, tous);
-  assert.equal(l.length, 1);
-  assert.equal(l[0].annulable, true);
-});
-
-test("retirer : ajoute au masque sans modifier l'ancien ensemble ; annuler retire le dernier affiche", () => {
+test("retirer : ajoute au masque sans modifier l'ancien ensemble ; restaurer le rend", () => {
   const avant = aucun();
   const r = retirerWidget(avant, "alertes");
   assert.equal(avant.size, 0);
   assert.ok(r.masques.has("alertes"));
   assert.equal(r.message, MESSAGES_ESPACE.retire);
-  const dernier = lignesJournal(WIDGETS, r.masques).filter((x) => x.annulable)[0];
-  assert.equal(dernier.id, "collisions");
-  const a = retirerWidget(r.masques, dernier.id, MESSAGES_ESPACE.annulee);
-  assert.equal(a.message, "Dernière instruction annulée.");
-  assert.equal(widgetsAffiches(WIDGETS, a.masques).length, 4);
+  assert.equal(restaurer(r.masques, "alertes").size, 0);
 });
 
-test("rendu : fil d'Ariane interne vers les idees, six widgets, aucun lien vers un fichier .html, aucun marqueur « Mockup », jamais le mot interdit", () => {
+test("rendu : fil d'Ariane interne vers les idees, cinq widgets, aucun lien vers un fichier .html, aucun marqueur « Mockup », jamais le mot interdit", () => {
   assert.doesNotMatch(htmlPageEspace(), /Ajouté par|Retirer|esp-origine/);
   const h = htmlPageEspace();
   assert.match(h, /<a href="#idees" data-vue="idees">Idées d&#x27;évolution<\/a> › <span aria-current="page">Mon espace<\/span>/);
-  assert.equal((h.match(/<section class="esp-widget /g) || []).length, 6);
+  assert.equal((h.match(/<section class="esp-widget /g) || []).length, 5);
   assert.doesNotMatch(h, new RegExp("\\.html|Mockup|" + "pe" + "tit", "i"));
-  assert.equal((h.match(/aria-label="Modifier [^"]*"/g) || []).length, 10, "un stylo par widget et par vue (affiche, fige)");
+  assert.equal((h.match(/aria-label="Modifier [^"]*"/g) || []).length, 9, "un stylo par widget et par vue (affiche, fige)");
   assert.doesNotMatch(h, /data-action="modifier"/);
-  assert.equal((h.match(/data-action="supprimer"/g) || []).length, 10);
+  assert.equal((h.match(/data-action="supprimer"/g) || []).length, 9);
   assert.match(h, /aria-label="Modifier Ma todo"/);
   assert.match(h, /aria-label="Supprimer Ma todo"/);
   assert.match(h, /<button type="button" class="esp-btn-principal" disabled aria-disabled="true">Valider<\/button>/);
-  assert.match(h, /<details class="esp-journal">/);
+  assert.doesNotMatch(h, /esp-journal|Ce que tu as demandé|Documents consultés récemment/);
 });
 
 test("rendu : un widget de type inconnu est refuse", async () => {
@@ -64,7 +44,7 @@ test("rendu : un widget de type inconnu est refuse", async () => {
 test("croix puis Annuler : le retrait d'une vue ne touche pas les widgets et se defait sans modifier l'ancien ensemble", () => {
   assert.equal(idVue("clash-2"), "vue:clash-2");
   const r = retirerWidget(new Set(), idVue("clash-2"));
-  assert.equal(lignesJournal(WIDGETS, r.masques).length, 6, "le journal ne liste que des widgets");
+  assert.equal(r.masques.size, 1);
   const retabli = restaurer(r.masques, idVue("clash-2"));
   assert.equal(retabli.size, 0);
   assert.equal(r.masques.size, 1);
@@ -115,7 +95,7 @@ test("donnees : le texte de chaque message cible existe dans le corpus de la mes
   const { readFileSync } = await import("node:fs");
   const corpus = ["dm", "sujets", "groupes", "coordination"].map((f) => readFileSync(new URL("../src/messagerie/corpus/" + f + ".json", import.meta.url), "utf8")).join("\n");
   const cibles = WIDGETS.flatMap((w) => w.items).filter((i) => i.cible && i.cible.type === "message").map((i) => i.cible);
-  assert.equal(cibles.length, 11);
+  assert.equal(cibles.length, 8);
   for (const c of cibles) assert.ok(corpus.includes(c.texte), c.texte);
 });
 
@@ -126,26 +106,6 @@ test("alertes : « Voir » sur la collision n° 10 et sur le document mis a jour
   assert.match(h, /Collision n° 10 passée en urgente<\/p><\/div><button type="button" class="esp-btn-voir" disabled aria-disabled="true"/);
   assert.match(h, /Document mis à jour : nomenclature_gaines_R2\.xlsx<\/p><\/div><button type="button" class="esp-btn-voir" disabled aria-disabled="true" aria-label="Voir : Document mis à jour : nomenclature_gaines_R2\.xlsx">Voir<\/button>/);
   assert.match(h, /passée en V3\.1 par Claire Martin<\/p><\/div><\/li>/);
-});
-
-test("documents : les trois pieces jointes citees, aucune GED affirmee, chacune avec un bouton « Voir » vers le message qui la porte", () => {
-  const docs = WIDGETS.find((w) => w.id === "documents").items;
-  assert.deepEqual(docs.map((d) => d.texte), ["coupe-gaine-cloison-R2.pdf", "nomenclature_gaines_R2.xlsx", "archi-V3.1.ifc"]);
-  for (const d of docs) {
-    assert.equal(d.cible.type, "message");
-    assert.ok(d.cible.texte.includes("[fichier : " + d.texte + "]"), d.texte);
-    assert.deepEqual(trouverCible(WIDGETS, d.id), d.cible);
-  }
-  const h = htmlPageEspace();
-  assert.doesNotMatch(h, /\bGED\b/);
-  assert.equal((h.match(/class="esp-btn-voir" disabled aria-disabled="true" aria-label="Voir : (coupe|nomenclature|archi)/g) || []).length, 3);
-  assert.match(h, /archi-V3\.1\.ifc<\/p><p class="esp-meta">[^<]*<\/p><\/div><span class="esp-heure esp-heure-large">28\/10<\/span><button type="button" class="esp-btn-voir" disabled aria-disabled="true" aria-label="Voir : archi-V3\.1\.ifc">Voir<\/button>/);
-});
-
-test("documents : un document sans cible n'a pas de bouton « Voir »", async () => {
-  const { htmlWidget } = await import("../src/monEspaceRendu.js");
-  const h = htmlWidget({ type: "documents", id: "d", zone: "docs", titre: "Docs", phrase: "p", items: [{ id: "x", texte: "a.pdf", quand: "Hier" }] }, 0);
-  assert.doesNotMatch(h, /esp-btn-voir/);
 });
 
 test("echeances : une seule liste dans l'ordre des dates, quatre lignes, chacune = un titre et le lien vers sa conversation, rien d'autre", () => {
@@ -251,7 +211,7 @@ test("page figee : aucun bouton « Voir » ni stylo n'est cible d'un clic ; rest
   assert.equal((h.match(/class="esp-vue-ajout"/g) || []).length, 1);
   assert.equal((h.match(/class="esp-compteur-bouton" data-cible="compteur-/g) || []).length, 4);
   assert.equal((h.match(/class="esp-source" data-cible="/g) || []).length, 7);
-  assert.equal((h.match(/data-action="supprimer"/g) || []).length, 10);
+  assert.equal((h.match(/data-action="supprimer"/g) || []).length, 9);
 });
 
 test("page figee : aucun chemin de code de Mon espace n'atteint l'IA (aucun fetch, XMLHttpRequest, WebSocket, import d'un module IA)", async () => {

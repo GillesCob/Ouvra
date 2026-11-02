@@ -63,8 +63,7 @@ export const SCENARIOS = [
       { type: "ia", icone: "link", label: "Documents de la GED reliés à l'élément" },
       { type: "auto", icone: "cloud", label: "Un lien pour l'ouvrir dans la GED" },
       { type: "auto", icone: "export", label: "Ou téléchargement direct depuis Ouvra" }
-    ],
-    note: "Des documents sont sur la GED, l'IA les met à disposition selon l'endroit où l'on se trouve dans la maquette et ce qui y est affiché."
+    ]
   },
   {
     batiment: "batiment-estime-2-consulter.svg",

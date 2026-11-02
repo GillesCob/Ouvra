@@ -54,11 +54,9 @@
 .esp-liste > li:last-child { padding-bottom: 0; }
 .esp-corps { flex: 1 1 auto; min-width: 0; }
 .esp-corps p { margin: 0; overflow-wrap: anywhere; }
-.esp-meta { color: var(--muted); font-size: 12px; margin-top: 2px; overflow-wrap: anywhere; }
 .esp-btn-voir { flex: 0 0 auto; min-height: 44px; min-width: 56px; padding: 0 12px; background: none; border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 13px; font-weight: 600; transition: border-color .18s ease; }
 .esp-btn-voir:not(:disabled):hover { border-color: var(--accent); }
 .esp-heure { flex: 0 0 auto; width: 44px; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
-.esp-heure.esp-heure-large { width: auto; }
 
 
 .esp-compteurs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 0; padding: 0; list-style: none; }
@@ -68,20 +66,6 @@
 .esp-compteurs strong { display: block; font-size: 24px; line-height: 1.1; font-variant-numeric: tabular-nums; }
 .esp-compteurs span { color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
 .esp-compteurs .esp-urgent strong { color: var(--bad); }
-
-/* Journal */
-.esp-journal { margin-top: 20px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; }
-.esp-journal summary { list-style: none; display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 48px; padding: 0 16px; cursor: pointer; font-weight: 600; }
-.esp-journal summary::-webkit-details-marker { display: none; }
-.esp-journal summary::after { content: "+"; color: var(--muted); font-size: 18px; }
-.esp-journal[open] summary::after { content: "\2212"; }
-.esp-journal-liste { margin: 0; padding: 0 16px 14px; list-style: none; counter-reset: n; }
-.esp-journal-liste li { counter-increment: n; display: flex; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--border); min-width: 0; }
-.esp-journal-liste li::before { content: counter(n); flex: 0 0 22px; text-align: center; font-size: 12px; color: var(--muted); }
-.esp-journal-liste .esp-phrase { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
-.esp-btn-annuler { flex: 0 0 auto; min-height: 44px; padding: 0 12px; background: none; border: 1px solid var(--border); border-radius: 8px; color: var(--muted); font-size: 13px; font-weight: 600; }
-.esp-btn-annuler:hover { color: var(--text); border-color: var(--accent); }
-.esp-vide { padding: 4px 16px 16px; margin: 0; color: var(--muted); }
 
 @media (max-width: 420px) { .esp-instruction-ligne { flex-wrap: wrap; } .esp-champ { flex-basis: calc(100% - 58px); } .esp-btn-principal { flex-basis: 100%; } }
 
@@ -97,31 +81,29 @@
   .esp-heure { width: 52px; }
   .esp-compteurs span { font-size: 14px; }
   .esp-liste > li { padding: 12px 0; }
-  .esp-journal-liste li { padding: 10px 0; }
-  .esp-journal-liste li::before { font-size: 14px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .esp-widget { animation: none; }
-  .esp-micro, .esp-puce, .esp-vue, .esp-btn-voir, .esp-btn-annuler, .esp-compteur-bouton { transition: none; }
+  .esp-micro, .esp-puce, .esp-vue, .esp-btn-voir, .esp-compteur-bouton { transition: none; }
   .esp-vue:hover { transform: none; }
 }
 
 /* Grille : la todo est le premier bloc sous la barre d'instruction, pleine largeur ; les autres widgets suivent. */
 .esp-w-todo { grid-area: todo; } .esp-w-vues { grid-area: vues; } .esp-w-alertes { grid-area: alertes; }
-.esp-w-docs { grid-area: docs; } .esp-w-coll { grid-area: coll; } .esp-w-ech { grid-area: ech; }
+.esp-w-coll { grid-area: coll; } .esp-w-ech { grid-area: ech; }
 @media (min-width: 768px) {
   .esp-page { padding: 24px 24px 48px; }
   .esp-titre { font-size: 26px; }
-  .esp-grille { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-areas: "todo todo" "ech ech" "vues vues" "alertes docs" "coll coll"; gap: 16px; }
+  .esp-grille { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-areas: "todo todo" "ech ech" "vues vues" "alertes coll"; gap: 16px; }
 }
 @media (min-width: 1100px) {
-  .esp-grille { grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-areas: "todo todo ech" "vues vues alertes" "docs coll coll"; }
+  .esp-grille { grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-areas: "todo todo ech" "vues vues alertes" "coll coll coll"; }
 }
 /* Mobile : une colonne, dans l'ordre Alertes, Todo, Échéances, Vues, puis les autres. */
 @media (max-width: 767px) {
   .esp-grille { grid-template-areas: none; }
-  .esp-w-todo, .esp-w-vues, .esp-w-alertes, .esp-w-docs, .esp-w-coll, .esp-w-ech { grid-area: auto; }
+  .esp-w-todo, .esp-w-vues, .esp-w-alertes, .esp-w-coll, .esp-w-ech { grid-area: auto; }
   .esp-w-alertes { order: -4; } .esp-w-todo { order: -3; } .esp-w-ech { order: -2; } .esp-w-vues { order: -1; }
 }
 
@@ -168,7 +150,7 @@
 .esp-urgence { align-self: center; padding: 2px 10px; border: 1px solid var(--border); border-radius: 999px; color: var(--muted); font-size: 12px; font-weight: 600; white-space: nowrap; }
 
 @media (max-width: 767px) {
-  .esp-repere-ia, .esp-meta, .esp-etat-saisie { font-size: 14px; }
+  .esp-repere-ia, .esp-etat-saisie { font-size: 14px; }
   .esp-annuler-retrait { font-size: 14px; }
   .esp-widget-tete { padding-right: 92px; }
   .esp-vues { grid-template-columns: minmax(0, 1fr); }
