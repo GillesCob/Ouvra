@@ -49,7 +49,7 @@ export const SCENARIOS = [
       { type: "humain", icone: "cloud", label: "Dépôt sur la GED", sub: "ou par le BIM manager, le bureau d'études" },
       { type: "auto", icone: "refresh", label: "Mise à jour d'Ouvra" },
       { type: "auto", icone: "search", label: "Analyse selon la convention" },
-      { type: "auto", icone: "compare", label: "Rapport des écarts (GUID)", sub: "disparu, remplacé, déplacé, avec validation humaine" },
+      { type: "auto", icone: "compare", label: "Rapport des écarts (GUID)" },
       { type: "ouvert", icone: "dots", srSeul: "Suite non définie" }
     ]
   },

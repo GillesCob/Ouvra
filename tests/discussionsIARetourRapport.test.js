@@ -33,7 +33,7 @@ test("main : quitter la page Discussions efface le bandeau de retour au rapport"
 test("css : le bandeau a le meme placement que les autres bandeaux de retour et la page Discussions descend d'autant", () => {
   const css = lire("src/discussionsIA.css");
   assert.match(css, /#discussionsRapportBandeauRetour,\n#msgBandeauRetourEchanges \{[^}]*position: fixed; top: 52px;[^}]*height: 44px/);
-  assert.match(css, /body\.disc-rapport-retour-actif #view-discussions,\nbody\.msg-echanges-retour-actif #view-discussions \{[^}]*padding-top: 44px/);
+  assert.match(css, /body\.disc-rapport-retour-actif #view-discussions,\nbody\.msg-echanges-retour-actif #view-discussions,\nbody\.espace-retour-actif #view-discussions \{[^}]*padding-top: 44px/);
 });
 
 test("coeur : « Retour au rapport » appelle le rappel une seule fois et disparait", () => {
@@ -81,7 +81,7 @@ test("retour du systeme : une entree d'historique est posee a l'ouverture d'une 
 });
 
 test("mobile : la fleche vers la liste des echanges disparait tant que « Retour au rapport » est visible", () => {
-  assert.match(lire("src/discussionsIA.css"), /@media \(max-width: 768px\) \{ body\.disc-rapport-retour-actif \.msg-retour, body\.msg-echanges-retour-actif \.msg-retour \{ display: none; \} \}/);
+  assert.match(lire("src/discussionsIA.css"), /@media \(max-width: 768px\) \{ body\.disc-rapport-retour-actif \.msg-retour, body\.msg-echanges-retour-actif \.msg-retour, body\.espace-retour-actif \.msg-retour \{ display: none; \} \}/);
 });
 
 // 29/10, laptop (>= 769 px) : la liste des echanges filtres vit au CENTRE ; un echange ouvert porte « ← Retour aux echanges de ma demande ».
