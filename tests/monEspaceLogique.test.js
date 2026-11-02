@@ -101,23 +101,18 @@ test("croix puis Annuler : le retrait d'une vue ne touche pas les widgets et se 
   assert.equal(restaurer(new Set(), "inconnu").size, 0);
 });
 
-test("vues : chaque instruction est une phrase deja acceptee par l'application (Viewer ou regles de collision), recopiee a l'identique", async () => {
-  const { EXEMPLES_COMMANDES } = await import("../src/commandesExemples.js");
-  const { EXEMPLES_REGLES } = await import("../src/reglesExemples.js");
-  const sources = { viewer: new Set(EXEMPLES_COMMANDES.map((e) => e.demande)), collision: new Set(EXEMPLES_REGLES.map((e) => e.demande)) };
+test("vues : quatre collisions, rien d'autre que leur identifiant et leur cible", () => {
   const vues = WIDGETS.find((w) => w.id === "vues").items;
   assert.equal(vues.length, 4);
-  for (const v of vues.filter((x) => x.instruction)) assert.ok(sources[v.page].has(v.instruction), v.instruction);
+  for (const v of vues) assert.deepEqual(Object.keys(v).sort(), ["cible", "clashId", "id"]);
 });
 
-test("rendu : tuile d'ajout sans boutons, miniatures JPEG, carte de collision, mentions de chaque vue, todo avec compteur et urgences", () => {
+test("rendu : vues sans titre ni instruction ni tuile d'ajout, miniatures JPEG, cartes de collision, todo avec compteur et urgences", () => {
   const h = htmlPageEspace();
-  assert.match(h, /<button type="button" class="esp-vue-ajout">.*Ajouter une vue<\/button>/);
-  assert.equal((h.match(/class="esp-vue-ajout"/g) || []).length, 1);
+  assert.doesNotMatch(h, /Mes points de vue<\/h2>|Instruction (du Viewer|de la page Collision)|Cadrage enregistré|esp-vue-ajout|Ajouter une vue/);
+  assert.match(h, /<section class="esp-widget esp-w-vues"[^>]*aria-label="Mes points de vue"/);
   assert.equal((h.match(/<img src="\/images\/vues\/hosp-clash-(2|10|1|5)\.jpg"/g) || []).length, 4);
   assert.equal((h.match(/collision-item collision-item-carte /g) || []).length, 4);
-  assert.equal((h.match(/Instruction (du Viewer|de la page Collision)/g) || []).length, 3, "la collision n° 5 n'a aucune phrase d'exemple");
-  assert.equal((h.match(/Cadrage enregistré/g) || []).length, 4);
   assert.match(h, /3 à traiter/);
   assert.match(h, /esp-urgence">Aujourd&#x27;hui/);
   assert.match(h, /Demandé par Sophie Lambert/);

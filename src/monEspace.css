@@ -140,21 +140,11 @@
 .esp-annuler-retrait { min-height: 44px; padding: 0 6px; background: none; border: 0; color: var(--accent-texte); text-decoration: underline; font-size: 13px; font-weight: 600; }
 .esp-annuler-retrait:hover { color: var(--text); }
 
-/* Mes points de vue : miniature 3D de la collision, sa carte (memes classes que la liste de la page Collision, style.css), phrase d'instruction, cadrage enregistre */
+/* Mes points de vue : miniature 3D de la collision, sa carte (memes classes que la liste de la page Collision, style.css) */
 .esp-vues { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr)); gap: 10px; margin: 0; padding: 0; list-style: none; }
 .esp-vue-item { position: relative; min-width: 0; display: flex; }
 .esp-vue { display: flex; flex-direction: column; align-items: stretch; gap: 8px; width: 100%; padding: 10px; text-align: left; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; transition: border-color .18s ease, transform .18s ease; }
 .esp-vue:hover { border-color: var(--accent); transform: translateY(-1px); }
-.esp-vue-instr { display: flex; flex-direction: column; gap: 2px; min-width: 0; font-size: 12px; line-height: 1.35; color: var(--text); }
-.esp-vue-etiquette { color: var(--muted); font-size: 11px; letter-spacing: .04em; text-transform: uppercase; }
-.esp-vue-phrase { overflow-wrap: anywhere; }
-.esp-vue-cadrage { margin-top: auto; align-self: flex-start; font-size: 11px; color: var(--muted); }
-.esp-vue-cadrage::before { content: ""; display: inline-block; width: 6px; height: 6px; margin-right: 6px; border-radius: 50%; background: var(--accent); vertical-align: 1px; }
-/* Tuile « Ajouter une vue » : meme gabarit que les vues, bordure en pointillés ; pas de boutons stylo et croix */
-.esp-vue-ajout { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 44px; padding: 10px; background: none; color: var(--muted); border: 1px dashed var(--border); border-radius: 8px; font-weight: 600; transition: color .18s ease, border-color .18s ease; }
-.esp-vue-ajout:hover { color: var(--text); border-color: var(--accent); }
-.esp-vues > li:last-child { display: flex; min-width: 0; }
-.esp-vue-plus { font-size: 20px; line-height: 1; }
 
 /* Ma todo : bloc plein largeur, bordure d'accent a gauche */
 .esp-w-todo { border-left: 3px solid var(--accent); gap: 14px; }
@@ -181,9 +171,6 @@
   .esp-widget-tete { padding-right: 92px; }
   .esp-vues { grid-template-columns: minmax(0, 1fr); }
   .esp-vue { padding: 12px; gap: 10px; }
-    .esp-vue-instr { font-size: 14px; }
-  .esp-vue-etiquette, .esp-vue-cadrage { font-size: 13px; }
-  .esp-vue-ajout { font-size: 16px; min-height: 48px; }
   .esp-tache { grid-template-columns: auto minmax(0, 1fr); align-items: start; padding: 14px 8px; }
   .esp-etat { margin-top: 2px; }
   .esp-urgence { grid-column: 2; justify-self: start; margin-top: 4px; font-size: 14px; }
@@ -192,10 +179,10 @@
   .esp-compteur { font-size: 14px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .esp-rond-vis, .esp-vue-ajout, .esp-tache, .esp-source { transition: none; }
+  .esp-rond-vis, .esp-tache, .esp-source { transition: none; }
 }
 
-/* Mes points de vue (collisions) : miniature JPEG 640 x 400, carte de la collision, instruction, cadrage */
+/* Mes points de vue (collisions) : miniature JPEG 640 x 400, carte de la collision */
 .esp-vue-image { display: block; aspect-ratio: 8 / 5; overflow: hidden; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; }
 .esp-vue-image img { display: block; width: 100%; height: 100%; object-fit: cover; }
 /* La carte garde le style de la liste (style.css) ; ici elle n'a ni survol ni curseur propres (le bouton entier est la cible), et ses deux lignes passent a la ligne plutot que d'etre tronquees. */

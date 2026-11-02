@@ -1,6 +1,6 @@
 // Rendu HTML de la page « Mon espace » (02/11) : fonctions pures (sans DOM, testables sous Node). Reproduit le HTML du mockup ouvra-mon-espace.html,
 // classes prefixees esp- (voir src/monEspace.css). Toutes les valeurs passent par echapper().
-import { WIDGETS, SUGGESTIONS, TEXTES_ESPACE, PAGES_INSTRUCTION } from "./monEspaceDonnees.js";
+import { WIDGETS, SUGGESTIONS, TEXTES_ESPACE } from "./monEspaceDonnees.js";
 import { proximite, pastilleDate } from "./monEspaceLogique.js";
 import { HOSPITAL_CLASHES } from "./clashesHospital.js";
 import { decrireCarteCollision, LIBELLES_STATUT_COLLISION, LIBELLES_PRIORITE_COLLISION } from "./collisionCarte.js";
@@ -45,13 +45,10 @@ function htmlVue(v) {
   const clash = clashParId(v.clashId);
   if (!clash) throw new Error(`Collision inconnue : ${v.clashId}`);
   const nom = nomVue(clash);
-  const instruction = v.instruction
-    ? `<span class="esp-vue-instr"><span class="esp-vue-etiquette">Instruction ${echapper(PAGES_INSTRUCTION[v.page] || "")}</span><span class="esp-vue-phrase">« ${echapper(v.instruction)} »</span></span>`
-    : "";
   return `<li class="esp-vue-item" data-vue-id="${echapper(v.id)}" data-nom="${echapper(nom)}">`
     + `<button type="button" class="esp-vue" data-cible="${echapper(v.id)}" aria-label="Ouvrir ${echapper(nom.toLowerCase())} sur la page Collision">`
     + `<span class="esp-vue-image"><img src="${echapper(urlMiniature(v.clashId))}" alt="" width="640" height="400" loading="lazy" decoding="async"></span>`
-    + `${htmlCarteCollision(clash)}${instruction}<span class="esp-vue-cadrage">Cadrage enregistré</span></button>${htmlActions(nom, true)}</li>`;
+    + `${htmlCarteCollision(clash)}</button>${htmlActions(nom, true)}</li>`;
 }
 
 // Bouton « Voir » seulement quand l'alerte a une cible reelle (collision, discussion) : une mise a jour de maquette ou un document sans lien n'en ont pas.
@@ -69,8 +66,7 @@ function htmlEcheance(e, maintenant) {
 }
 
 const CORPS = {
-  vues: (items) => `<ul class="esp-vues">${items.map(htmlVue).join("")}`
-    + `<li><button type="button" class="esp-vue-ajout"><span class="esp-vue-plus" aria-hidden="true">+</span>${echapper(TEXTES_ESPACE.ajoutVue)}</button></li></ul>`,
+  vues: (items) => `<ul class="esp-vues">${items.map(htmlVue).join("")}</ul>`,
   alertes: (items) => `<ul class="esp-liste">${items.map(htmlAlerte).join("")}</ul>`,
   todo: (items) => `<ul class="esp-taches">${items.map((t) => `<li class="esp-tache"><span class="esp-etat" aria-hidden="true"></span><div class="esp-tache-corps"><p class="esp-tache-titre">${echapper(t.titre)}</p>`
     + `<p class="esp-tache-contexte"><span class="esp-initiale" aria-hidden="true">${echapper(initiale(t.par))}</span><span>Demandé par ${echapper(t.par)}</span>`
@@ -85,11 +81,13 @@ const CORPS = {
 export function htmlWidget(widget, rang, maintenant = new Date()) {
   const corps = CORPS[widget.type];
   if (!corps) throw new Error(`Type de widget inconnu : ${widget.type}`);
+  // « Mes points de vue » n'affiche aucun titre : seules les collisions sont visibles, le nom reste porte par la section (lecteurs d'ecran) et par les boutons stylo et croix.
   const titre = widget.type === "todo"
     ? `<div class="esp-todo-entete"><h2>${echapper(widget.titre)}</h2><span class="esp-compteur">${widget.items.length} à traiter</span></div>`
-    : `<h2>${echapper(widget.titre)}</h2>`;
+    : widget.type === "vues" ? "" : `<h2>${echapper(widget.titre)}</h2>`;
+  const nomAccessible = widget.type === "vues" ? ` aria-label="${echapper(widget.titre)}"` : "";
   const repere = widget.repereIA ? `<p class="esp-repere-ia">${echapper(widget.repereIA)}</p>` : "";
-  return `<section class="esp-widget esp-w-${echapper(widget.zone)}" style="--i:${rang}" data-widget="${echapper(widget.id)}" data-phrase="${echapper(widget.phrase)}" data-nom="${echapper(widget.titre)}">`
+  return `<section class="esp-widget esp-w-${echapper(widget.zone)}" style="--i:${rang}" data-widget="${echapper(widget.id)}" data-phrase="${echapper(widget.phrase)}" data-nom="${echapper(widget.titre)}"${nomAccessible}>`
     + `${htmlActions(widget.titre)}<div class="esp-widget-tete">${titre}${repere}</div>${corps(widget.items, maintenant)}</section>`;
 }
 

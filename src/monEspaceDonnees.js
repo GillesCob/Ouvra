@@ -13,8 +13,6 @@ export const TEXTES_ESPACE = {
   sousTitre: "Ce que tu consultes souvent, au même endroit. Tu le composes en le disant ou en l'écrivant.",
   placeholder: "Dis ou écris ce que tu veux voir ici",
   journal: "Ce que tu as demandé",
-  ajoutVue: "Ajouter une vue",
-  ajoutVuePhrase: "Ajoute une vue : ",
   journalVide: "Aucune instruction pour l'instant.",
   libelleRetour: "Retour à Mon espace"
 };
@@ -25,20 +23,15 @@ export const SUGGESTIONS = [
   "Fais-moi une todo de ce qu'on m'a demandé"
 ];
 
-// Page d'ou vient la phrase d'une vue (fin de l'etiquette « Instruction ... »).
-export const PAGES_INSTRUCTION = { viewer: "du Viewer", collision: "de la page Collision" };
-
 export const WIDGETS = [
   {
     id: "vues", zone: "vues", type: "vues", titre: "Mes points de vue", phrase: "Montre mes vues du niveau 2",
-    // Chaque vue est une collision de l'hopital, avec sa miniature 3D (public/images/vues/<clashId>.jpg). L'instruction est une phrase DEJA acceptee par l'application,
-    // recopiee a l'identique : « Affiche-moi les gaines au niveau 2 » (src/commandesExemples.js) retrouve la collision n° 2 ; les deux autres viennent de src/reglesExemples.js.
-    // La collision n° 5 (niveau 4) n'a aucune phrase d'exemple qui la vise : elle n'en porte pas.
+    // Chaque vue est une collision de l'hopital, avec sa miniature 3D (public/images/vues/<clashId>.jpg). Rien d'autre n'est affiche : ni titre de section, ni phrase d'instruction.
     items: [
-      { id: "clash-2", clashId: "hosp-clash-2", page: "viewer", instruction: "Affiche-moi les gaines au niveau 2", cible: { type: "collision", clashId: "hosp-clash-2" } },
-      { id: "clash-10", clashId: "hosp-clash-10", page: "collision", instruction: "Affiche les collisions urgentes sans message depuis 3 jours", cible: { type: "collision", clashId: "hosp-clash-10" } },
-      { id: "clash-1", clashId: "hosp-clash-1", page: "collision", instruction: "Passe en haute priorité les collisions qui impliquent des murs du niveau 1", cible: { type: "collision", clashId: "hosp-clash-1" } },
-      { id: "clash-5", clashId: "hosp-clash-5", page: null, instruction: null, cible: { type: "collision", clashId: "hosp-clash-5" } }
+      { id: "clash-2", clashId: "hosp-clash-2", cible: { type: "collision", clashId: "hosp-clash-2" } },
+      { id: "clash-10", clashId: "hosp-clash-10", cible: { type: "collision", clashId: "hosp-clash-10" } },
+      { id: "clash-1", clashId: "hosp-clash-1", cible: { type: "collision", clashId: "hosp-clash-1" } },
+      { id: "clash-5", clashId: "hosp-clash-5", cible: { type: "collision", clashId: "hosp-clash-5" } }
     ]
   },
   {
