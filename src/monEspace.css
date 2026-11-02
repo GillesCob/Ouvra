@@ -62,7 +62,9 @@
 
 
 .esp-compteurs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 0; padding: 0; list-style: none; }
-.esp-compteurs li { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; min-width: 0; }
+.esp-compteurs li { min-width: 0; display: flex; }
+.esp-compteur-bouton { display: block; width: 100%; min-height: 44px; padding: 10px 12px; text-align: left; color: inherit; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; transition: border-color .18s ease; }
+.esp-compteur-bouton:hover { border-color: var(--accent); }
 .esp-compteurs strong { display: block; font-size: 24px; line-height: 1.1; font-variant-numeric: tabular-nums; }
 .esp-compteurs span { color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
 .esp-compteurs .esp-urgent strong { color: var(--bad); }
@@ -101,7 +103,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .esp-widget { animation: none; }
-  .esp-micro, .esp-puce, .esp-vue, .esp-btn-voir, .esp-btn-annuler { transition: none; }
+  .esp-micro, .esp-puce, .esp-vue, .esp-btn-voir, .esp-btn-annuler, .esp-compteur-bouton { transition: none; }
   .esp-vue:hover { transform: none; }
 }
 

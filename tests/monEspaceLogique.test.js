@@ -195,6 +195,23 @@ test("echeances : une seule liste dans l'ordre des dates, quatre lignes, chacune
   assert.match(h, /<button type="button" class="esp-source" data-cible="ech-synthese">Synthèse hebdomadaire<\/button>/);
 });
 
+test("compteurs : chaque compteur ouvre la page Collision filtree sur son statut (filtre connu de la page Collision), l'effectif annonce est celui des collisions du filtre", async () => {
+  const { FILTRES_COLLISIONS, filtrerCollisions } = await import("../src/collisionsFavoris.js");
+  const { HOSPITAL_CLASHES } = await import("../src/clashesHospital.js");
+  const compteurs = WIDGETS.find((w) => w.id === "collisions").items;
+  assert.deepEqual(compteurs.map((c) => c.cible.filtre), ["nouvelles", "en-cours", "urgentes", "resolues"]);
+  for (const c of compteurs) {
+    assert.equal(c.cible.type, "collisions");
+    assert.ok(FILTRES_COLLISIONS.some((f) => f.id === c.cible.filtre), c.cible.filtre);
+    assert.deepEqual(trouverCible(WIDGETS, c.id), c.cible);
+    assert.equal(filtrerCollisions(HOSPITAL_CLASHES, c.cible.filtre, new Set()).length, c.valeur, c.libelle);
+  }
+  const h = htmlPageEspace();
+  assert.equal((h.match(/class="esp-compteur-bouton" data-cible="compteur-/g) || []).length, 4);
+  assert.match(h, /<li><button type="button" class="esp-compteur-bouton" data-cible="compteur-en-cours" aria-label="Voir les collisions : 4 en cours"><strong>4<\/strong><span>En cours<\/span><\/button><\/li>/);
+  assert.match(h, /<li class="esp-urgent"><button type="button" class="esp-compteur-bouton" data-cible="compteur-urgentes"/);
+});
+
 test("cibles : retrouvees par identifiant dans tous les widgets, null sans cible", () => {
   assert.deepEqual(trouverCible(WIDGETS, "clash-2"), { type: "collision", clashId: "hosp-clash-2" });
   assert.equal(trouverCible(WIDGETS, "todo-bcf").convId, "karim");

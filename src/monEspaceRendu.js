@@ -68,7 +68,9 @@ const CORPS = {
     + `<span class="esp-urgence">${echapper(t.urgence)}</span></li>`).join("")}</ul>`,
   echeances: (items) => `<ol class="esp-echeances">${items.map(htmlEcheance).join("")}</ol>`,
   documents: (items) => `<ul class="esp-liste">${items.map(htmlDocument).join("")}</ul>`,
-  compteurs: (items) => `<ul class="esp-compteurs">${items.map((c) => `<li${c.urgent ? ' class="esp-urgent"' : ""}><strong>${echapper(c.valeur)}</strong><span>${echapper(c.libelle)}</span></li>`).join("")}</ul>`
+  // Chaque compteur est un bouton : il ouvre la page Collision filtree sur ces collisions.
+  compteurs: (items) => `<ul class="esp-compteurs">${items.map((c) => `<li${c.urgent ? ' class="esp-urgent"' : ""}><button type="button" class="esp-compteur-bouton" data-cible="${echapper(c.id)}" aria-label="Voir les collisions : ${echapper(c.valeur)} ${echapper(c.libelle.toLowerCase())}">`
+    + `<strong>${echapper(c.valeur)}</strong><span>${echapper(c.libelle)}</span></button></li>`).join("")}</ul>`
 };
 
 export function htmlWidget(widget, rang) {

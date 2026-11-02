@@ -1,6 +1,8 @@
 // Page « Idees d'evolution » (02/11) : quatre frises-scenarios, legende. Le HTML vient de src/ideesEvolutionRendu.js (donnees : src/ideesEvolutionDonnees.js),
 // le CSS de src/ideesEvolution.css (importe par main.js : ce module reste importable sous Node). Comportements repris du mockup :
-//  - chaque frise ne se deroule qu'a son entree a l'ecran (IntersectionObserver, classe ide-vu) ; tout est deroule d'emblee si le systeme demande moins d'animations ;
+//  - chaque frise est une section pleine page (--ide-hauteur, posee ici d'apres la hauteur de #view-idees) et un point d'accroche du defilement (classe ide-accroche sur #view-idees,
+//    posee seulement tant que la page est affichee, retiree des qu'on la quitte) ; seule la frise qui franchit le milieu de l'ecran est animee (IntersectionObserver, classe ide-vu),
+//    les autres reviennent a l'etat initial et l'animation se rejoue quand elles redeviennent centrales ; tout est deroule d'emblee, sans accroche, si le systeme demande moins d'animations ;
 //  - a partir de 900 px, quand une frise passe a la ligne, le premier rond de chaque nouvelle ligne perd sa fleche d'entree (classe ide-debut) ;
 //  - le lien de la derniere frise est une navigation interne (aller("espace")), jamais un fichier .html.
 import { htmlPage } from "./ideesEvolutionRendu.js";
@@ -15,6 +17,16 @@ export function indicesDebutDeLigne(positions) {
     if (positions[i] > positions[i - 1] + 2) debuts.push(i);
   }
   return debuts;
+}
+
+// Bande d'observation : le dixieme central de la hauteur de la page (40 % retires en haut et en bas). Une frise est « centrale » des qu'elle la franchit,
+// ce qui marche aussi pour une frise verticale plus haute que l'ecran (mobile), ou aucun seuil de visibilite ne serait atteint.
+export const MARGE_FRISE_CENTRALE = "-40% 0px -40% 0px";
+
+// entrees : IntersectionObserverEntry (ou objet equivalent). Une frise qui entre dans la bande s'anime, une qui en sort revient a l'etat initial.
+// Entre deux frises (aucune dans la bande), rien ne change : la derniere reste allumee jusqu'a ce que la suivante prenne le relais.
+export function appliquerFriseCentrale(entrees) {
+  entrees.forEach((e) => e.target.classList.toggle("ide-vu", Boolean(e.isIntersecting)));
 }
 
 export function creerIdeesEvolution({ racine, aller, fenetre = window }) {
@@ -35,13 +47,18 @@ export function creerIdeesEvolution({ racine, aller, fenetre = window }) {
   else fenetre.addEventListener("resize", marquerDebuts);
   marquerDebuts();
 
+  function ajusterHauteur() {
+    if (conteneur && conteneur.clientHeight > 0) racine.style.setProperty("--ide-hauteur", conteneur.clientHeight + "px"); // masquee : 0, on garde la derniere valeur
+  }
+  if (typeof ResizeObserver === "function" && conteneur) new ResizeObserver(ajusterHauteur).observe(conteneur);
+  else fenetre.addEventListener("resize", ajusterHauteur);
+  ajusterHauteur();
+
   const toutDerouler = () => scenarios.forEach((s) => s.classList.add("ide-vu"));
   const reduit = fenetre.matchMedia && fenetre.matchMedia("(prefers-reduced-motion: reduce)").matches;
   if (reduit || typeof IntersectionObserver !== "function") toutDerouler();
   else {
-    const observateur = new IntersectionObserver((entrees) => {
-      entrees.forEach((e) => { if (e.isIntersecting) { e.target.classList.add("ide-vu"); observateur.unobserve(e.target); } });
-    }, { threshold: 0.2 });
+    const observateur = new IntersectionObserver(appliquerFriseCentrale, { root: conteneur || null, rootMargin: MARGE_FRISE_CENTRALE, threshold: 0 });
     scenarios.forEach((s) => observateur.observe(s));
   }
 
@@ -55,8 +72,10 @@ export function creerIdeesEvolution({ racine, aller, fenetre = window }) {
   return {
     // Appelee a chaque changement de vue : la page s'ouvre toujours en haut.
     surVueActivee(vue) {
+      if (conteneur) conteneur.classList.toggle("ide-accroche", vue === VUE_IDEES && !reduit); // l'accroche ne vit que sur #idees (« Mon espace » a son propre conteneur)
       if (vue !== VUE_IDEES) return;
       if (conteneur) conteneur.scrollTop = 0;
+      ajusterHauteur();
       marquerDebuts();
     }
   };

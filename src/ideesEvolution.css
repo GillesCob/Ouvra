@@ -41,8 +41,13 @@
 
 .ide-ico { width: 24px; height: 24px; fill: none; stroke: var(--accent); stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex: none; }
 
-/* Scénario */
-.ide-scn { margin-top: clamp(28px, 3.6vw, 56px); }
+/* Scénario : une vraie section pleine page (--ide-hauteur = hauteur de #view-idees, posee par ideesEvolution.js), contenu centre, un point d'accroche du defilement.
+   Accroche : classe ide-accroche posee sur #view-idees par ideesEvolution.js seulement tant que #idees est affichee (retiree a la sortie) ; ordinateur obligatoire,
+   mobile « proximity » pour ne jamais bloquer le defilement dans une frise verticale plus haute que l'ecran ; aucune accroche si le systeme demande moins d'animations. */
+#view-idees.ide-accroche { scroll-snap-type: y mandatory; }
+.ide-scn { display: flex; flex-direction: column; justify-content: center; min-height: var(--ide-hauteur, 100vh); margin: 0; padding: 24px 0; scroll-snap-align: center; scroll-snap-stop: always; }
+.ide-kicker { scroll-snap-align: start; }
+.ide-legende { scroll-snap-align: end; }
 .ide-scn-tete { display: flex; align-items: center; gap: 14px; min-width: 0; }
 .ide-bat-img { display: block; height: clamp(46px, 4vw, 64px); width: auto; flex: none; }
 .ide-scn-tete h3 { margin: 0; min-width: 0; font-size: clamp(17px, 1.5vw, 24px); letter-spacing: -0.01em; line-height: 1.15; }
@@ -167,8 +172,8 @@
 @media (max-width: 899px) {
   .ide-page { padding-top: 24px; }
   .ide-kicker { font-size: 14px; }
-  .ide-scn { margin-top: 48px; padding-top: 28px; border-top: 1px solid var(--border); }
-  .ide-scn:first-of-type { margin-top: 32px; }
+  #view-idees.ide-accroche { scroll-snap-type: y proximity; }
+  .ide-scn { border-top: 1px solid var(--border); }
   .ide-scn-tete h3 { font-size: 20px; }
   .ide-chaine { margin-top: 24px; }
   .ide-node { min-height: 52px; }
@@ -180,6 +185,8 @@
   .ide-legende { font-size: 15px; }
 }
 @media (prefers-reduced-motion: reduce) {
+  #view-idees.ide-accroche { scroll-snap-type: none; }
+  .ide-scn { scroll-snap-stop: normal; }
   #view-idees *, #view-idees *::before, #view-idees *::after { animation: none !important; transition: none !important; }
 }
 

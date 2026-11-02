@@ -7247,7 +7247,7 @@ function ouvrirDepuisEspace(cible, position) {
   });
 }
 
-// Point d'entree « Mon espace » (clic sur « 9 nouvelles ») : ouvre la page Collision filtree (cible { type: "collisions", filtre: "favoris" } dans ouvrirDepuisEspace).
+// Point d'entree « Mon espace » (clic sur un compteur, ex. « 4 En cours ») : ouvre la page Collision filtree (cible { type: "collisions", filtre: "en-cours" } dans ouvrirDepuisEspace).
 // La paire de maquettes ouverte est celle de la premiere collision du filtre ; filtre inconnu = liste entiere.
 function ouvrirCollisionsFiltrees(filtreId, apres = () => {}) {
   filtreCollisions = filtreValide(filtreId) ? filtreId : null;

@@ -113,10 +113,11 @@ export const WIDGETS = [
     id: "collisions", zone: "coll", type: "compteurs", titre: "Collisions suivies", phrase: "Compte mes collisions par statut",
     items: [
       // Decompte reel des 15 collisions de l'hopital a l'etat initial (src/clashesHospital.js) : 9 au statut Nouveau, 4 Confirme (« En cours »), 1 priorite Urgente (n° 10), 0 Resolu.
-      { valeur: 9, libelle: "Nouvelles" },
-      { valeur: 4, libelle: "En cours" },
-      { valeur: 1, libelle: "Urgentes", urgent: true },
-      { valeur: 0, libelle: "Résolues" }
+      // Un clic ouvre la page Collision filtree sur ces collisions (cible type « collisions », filtre = identifiant de FILTRES_COLLISIONS, src/collisionsFavoris.js).
+      { id: "compteur-nouvelles", valeur: 9, libelle: "Nouvelles", cible: { type: "collisions", filtre: "nouvelles" } },
+      { id: "compteur-en-cours", valeur: 4, libelle: "En cours", cible: { type: "collisions", filtre: "en-cours" } },
+      { id: "compteur-urgentes", valeur: 1, libelle: "Urgentes", urgent: true, cible: { type: "collisions", filtre: "urgentes" } },
+      { id: "compteur-resolues", valeur: 0, libelle: "Résolues", cible: { type: "collisions", filtre: "resolues" } }
     ]
   }
 ];

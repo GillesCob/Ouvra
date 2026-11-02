@@ -55,3 +55,29 @@ test("retour visiteur : les deux pages ont un libelle lisible", async () => {
   assert.equal(libellePage("idees"), "Idées d'évolution");
   assert.equal(libellePage("espace"), "Mon espace");
 });
+
+test("idees : appliquerFriseCentrale allume la frise qui entre dans la bande centrale et remet a l'etat initial celle qui en sort (l'animation se rejoue)", async () => {
+  const { appliquerFriseCentrale, MARGE_FRISE_CENTRALE } = await import("../src/ideesEvolution.js");
+  const fausse = () => { const c = new Set(); return { classList: { toggle: (n, v) => (v ? c.add(n) : c.delete(n)), contains: (n) => c.has(n) } }; };
+  const a = fausse(), b = fausse();
+  appliquerFriseCentrale([{ target: a, isIntersecting: true }]);
+  assert.ok(a.classList.contains("ide-vu") && !b.classList.contains("ide-vu"));
+  appliquerFriseCentrale([{ target: a, isIntersecting: false }, { target: b, isIntersecting: true }]);
+  assert.ok(!a.classList.contains("ide-vu") && b.classList.contains("ide-vu"), "une seule frise animee a la fois");
+  appliquerFriseCentrale([{ target: a, isIntersecting: true }, { target: b, isIntersecting: false }]);
+  assert.ok(a.classList.contains("ide-vu"), "revenue au centre, elle se rallume (donc rejoue)");
+  assert.match(MARGE_FRISE_CENTRALE, /^-40% 0px -40% 0px$/);
+});
+
+test("idees : l'accroche (scroll-snap) est portee par #view-idees seulement via la classe ide-accroche, posee et retiree par surVueActivee, desactivee si moins d'animations", () => {
+  const css = lire("src/ideesEvolution.css");
+  const js = lire("src/ideesEvolution.js");
+  assert.match(css, /#view-idees\.ide-accroche \{ scroll-snap-type: y mandatory; \}/);
+  assert.match(css, /@media \(max-width: 899px\) \{[^}]*#view-idees\.ide-accroche \{ scroll-snap-type: y proximity; \}/s, "mobile : proximity, jamais de blocage dans une frise verticale haute");
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{\s*#view-idees\.ide-accroche \{ scroll-snap-type: none; \}/);
+  assert.doesNotMatch(css, /(^|\n)#view-idees(?!\.ide-accroche)[^{]*\{[^}]*scroll-snap-type/, "aucune accroche hors de la classe");
+  assert.match(css, /\.ide-scn \{[^}]*min-height: var\(--ide-hauteur[^}]*scroll-snap-align: center;/);
+  assert.match(js, /classList\.toggle\("ide-accroche", vue === VUE_IDEES && !reduit\)/);
+  assert.match(js, /new IntersectionObserver\(appliquerFriseCentrale, \{ root: conteneur \|\| null, rootMargin: MARGE_FRISE_CENTRALE/);
+  assert.doesNotMatch(js, /unobserve/, "la frise ne reste plus allumee a vie");
+});
