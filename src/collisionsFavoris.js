@@ -1,0 +1,53 @@
+// Favoris et filtres de la liste des collisions (02/11). Module pur (sans DOM, testable sous Node) : predicats des puces Nouvelles / En cours / Urgentes /
+// Resolues / Favoris, et gestion des favoris. La page (main.js) ne fait que l'affichage et la lecture/ecriture du depot (creerDepotLocal, cle propre).
+// « En cours » = statut confirme : la recommandation est faite, Gilles n'a pas encore repondu.
+// Persistance : une liste de choix { id, favori } plutot qu'une liste d'identifiants. Un favori prerempli retire reste un choix explicite (favori: false) ;
+// sans cela, rien ne distinguerait « jamais touche » (defaut applique) de « tout retire » (liste vide).
+
+export const CLE_FAVORIS = "ouvra-collisions-favoris";
+
+// Les 9 collisions « Nouveau » de l'hopital prefavorites : n° 1, 3, 4, 6, 9, 11, 12, 13, 14 (ids hosp-clash-N, cf clashesHospital.js).
+export const FAVORIS_PAR_DEFAUT = [1, 3, 4, 6, 9, 11, 12, 13, 14].map((n) => "hosp-clash-" + n);
+
+const statutEst = (statut) => (clash) => !!clash && clash.statut === statut;
+
+export const estNouvelle = statutEst("nouveau");
+export const estEnCours = statutEst("confirme");
+export const estResolue = statutEst("resolu");
+export const estUrgente = (clash) => !!clash && clash.priorite === "urgente";
+export const estFavori = (clash, favoris) => !!clash && !!favoris && favoris.has(clash.id);
+
+export const FILTRES_COLLISIONS = [
+  { id: "nouvelles", libelle: "Nouvelles", garde: estNouvelle },
+  { id: "en-cours", libelle: "En cours", garde: estEnCours },
+  { id: "urgentes", libelle: "Urgentes", garde: estUrgente },
+  { id: "resolues", libelle: "Résolues", garde: estResolue },
+  { id: "favoris", libelle: "Favoris", garde: estFavori }
+];
+
+export const filtreValide = (id) => FILTRES_COLLISIONS.some((f) => f.id === id);
+
+// Sans filtre (null) ou filtre inconnu : la liste entiere.
+export function filtrerCollisions(clashes, filtreId, favoris) {
+  const liste = Array.isArray(clashes) ? clashes : [];
+  const filtre = FILTRES_COLLISIONS.find((f) => f.id === filtreId);
+  return filtre ? liste.filter((c) => filtre.garde(c, favoris)) : liste.slice();
+}
+
+// Ensemble des identifiants favoris : le defaut, recouvert par les choix enregistres (entrees invalides ignorees).
+export function resoudreFavoris(choix) {
+  const favoris = new Set(FAVORIS_PAR_DEFAUT);
+  (Array.isArray(choix) ? choix : []).forEach((e) => {
+    if (!e || typeof e.id !== "string" || !e.id || typeof e.favori !== "boolean") return;
+    if (e.favori) favoris.add(e.id);
+    else favoris.delete(e.id);
+  });
+  return favoris;
+}
+
+// Nouveau tableau de choix avec l'etat de la collision inverse (jamais de mutation).
+export function basculerFavori(choix, id) {
+  if (typeof id !== "string" || !id) return Array.isArray(choix) ? choix.slice() : [];
+  const autres = (Array.isArray(choix) ? choix : []).filter((e) => e && e.id !== id);
+  return autres.concat({ id, favori: !resoudreFavoris(choix).has(id) });
+}

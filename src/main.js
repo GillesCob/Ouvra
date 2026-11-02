@@ -31,6 +31,7 @@ import { creerRetourContexte } from "./retourContexte.js";
 import { vitesseCameraInitiale } from "./vitesseCamera.js";
 import { cadrerCentre, corrigerSurSilhouette } from "./cadrageCentre.js";
 import { creerHistorique, creerDepotLocal } from "./quantitatifHistorique.js";
+import { CLE_FAVORIS, FILTRES_COLLISIONS, filtreValide, filtrerCollisions, resoudreFavoris, basculerFavori } from "./collisionsFavoris.js";
 import { amorcerHistoriqueDemo } from "./quantitatifHistoriqueDemo.js";
 import { REQUETE_MOBILE, estMobile } from "./seuilMobile.js";
 import { installerRechargementAuto } from "./rechargementAuto.js";
@@ -574,6 +575,7 @@ const collisionMaquetteToggles = document.getElementById("collisionMaquetteToggl
 const sectionCollisionMaquettes = document.getElementById("section-collision-maquettes");
 if (MASQUE_LISTE_MAQUETTES_COLLISION && sectionCollisionMaquettes) sectionCollisionMaquettes.hidden = true;
 const collisionsList = document.getElementById("collisionsList");
+const collisionFiltres = document.getElementById("collisionFiltres");
 const collisionListTitle = document.getElementById("collisionListTitle");
 const collisionListTitleText = document.getElementById("collisionListTitleText");
 const collisionListTitleCount = document.getElementById("collisionListTitleCount");
@@ -1145,6 +1147,9 @@ let vueAvantDessus = null; // camera avant la vue a plat : { eye, look, up, proj
 let vitesseAvantDessus = null; // valeur du curseur « Vitesse » avant la vue a plat, rendue en sortant
 let maquettesVueDessus = ""; // maquettes presentes quand la vue a plat a ete cadree : un changement la recadre
 let idsColorieQuantitatif = []; // elements d'une ligne du Quantitatif colories en orange dans le Viewer ; relu par activateView (via retirerCouleurQuantitatif) avant sa definition
+const collisionsFavorisDepot = creerDepotLocal(null, CLE_FAVORIS); // favoris des collisions : cle localStorage propre, separee de l'etat des collisions
+let collisionsFavoris = resoudreFavoris(collisionsFavorisDepot.lire()); // ensemble des identifiants favoris ; relu par renderCollisionsList (via activateView)
+let filtreCollisions = null; // puce active de la liste des collisions (id de FILTRES_COLLISIONS) ou null ; relu par renderCollisionsList
 let cameraAvantCommande = null; // camera d'avant la commande « IA » en attente de reponse, que « Non » rend : { eye, look, up } ; relue par activateView
 const DUREE_RETOUR_CAMERA_S = 0.6; // vol de retour de la camera apres « Non »
 let commandesViewer = null; // moteur des commandes du Viewer (cree a la premiere commande) ; relu par activateView avant sa definition
@@ -4629,6 +4634,56 @@ function buildCollisionCard(clash, tag = "button") {
   return btn;
 }
 
+function buildEtoileFavori(clash) {
+  const etoile = document.createElement("button");
+  etoile.type = "button";
+  etoile.className = "collision-favori";
+  etoile.setAttribute("aria-label", "Favori : collision n° " + (CLASHES.indexOf(clash) + 1)); // libelle fixe : l'etat est porte par aria-pressed
+  const majEtat = () => {
+    const favori = collisionsFavoris.has(clash.id);
+    etoile.setAttribute("aria-pressed", String(favori));
+    etoile.textContent = favori ? "★" : "☆";
+    etoile.title = favori ? "Retirer des favoris" : "Ajouter aux favoris";
+  };
+  majEtat();
+  etoile.addEventListener("click", () => {
+    collisionsFavorisDepot.ecrire(basculerFavori(collisionsFavorisDepot.lire(), clash.id));
+    collisionsFavoris = resoudreFavoris(collisionsFavorisDepot.lire());
+    // Filtre Favoris actif : la collision quitte la liste ; sinon seule l'etoile change.
+    if (filtreCollisions === "favoris") rafraichirListeCollisions();
+    else majEtat();
+  });
+  return etoile;
+}
+
+// Re-rendu de la liste de la paire de maquettes ouverte (puces, favoris).
+function rafraichirListeCollisions() {
+  if (!detectionCourante) return;
+  renderCollisionsList(CLASHES.filter((c) => c.detectionId === detectionCourante.id));
+}
+
+function renderFiltresCollisions() {
+  collisionFiltres.hidden = false;
+  // Puces creees une seule fois : seul aria-pressed change ensuite, le bouton cliquable garde le focus clavier.
+  if (collisionFiltres.children.length) {
+    collisionFiltres.querySelectorAll(".collision-filtre").forEach((puce) => puce.setAttribute("aria-pressed", String(filtreCollisions === puce.dataset.filtre)));
+    return;
+  }
+  FILTRES_COLLISIONS.forEach((f) => {
+    const puce = document.createElement("button");
+    puce.type = "button";
+    puce.className = "collision-filtre";
+    puce.dataset.filtre = f.id;
+    puce.setAttribute("aria-pressed", String(filtreCollisions === f.id));
+    puce.textContent = f.libelle;
+    puce.addEventListener("click", () => {
+      filtreCollisions = filtreCollisions === f.id ? null : f.id;
+      rafraichirListeCollisions();
+    });
+    collisionFiltres.appendChild(puce);
+  });
+}
+
 function buildCollisionItem(clash) {
   const li = document.createElement("li");
   li.className = "collision-item-row";
@@ -4659,6 +4714,8 @@ function buildCollisionItem(clash) {
 
   if (MASQUE_OEIL_COLLISION) li.append(btn);
   else li.append(toggle, btn);
+  // Etoile favori : bouton frere de la carte (jamais imbrique dans le bouton de la carte). Pas d'etoile sur une collision fictive.
+  if (!clash.factice) li.append(buildEtoileFavori(clash));
   return li;
 }
 
@@ -4688,8 +4745,17 @@ function renderCollisionsList(clashes) {
     collisionListTitle.disabled = DETECTIONS.length < 2;
   }
 
-  const actives = clashes.filter((c) => c.statut !== "ecarte");
-  const ecartes = clashes.filter((c) => c.statut === "ecarte");
+  if (clashes.length) renderFiltresCollisions();
+  else collisionFiltres.hidden = true;
+  const visibles = filtrerCollisions(clashes, filtreCollisions, collisionsFavoris);
+  const actives = visibles.filter((c) => c.statut !== "ecarte");
+  const ecartes = visibles.filter((c) => c.statut === "ecarte");
+  if (clashes.length && visibles.length === 0) {
+    const vide = document.createElement("li");
+    vide.className = "info-empty collision-filtre-vide";
+    vide.textContent = "Aucune collision pour ce filtre.";
+    collisionsList.appendChild(vide);
+  }
 
   if (COLLISION_PRIORITES) {
     PRIORITE_ORDRE.forEach((niveau) => {
@@ -7147,13 +7213,17 @@ function revenirAMonEspace(position) {
 
 // cible : { type: "message", convId, sujetId, texte } (discussion, au message source) ou { type: "collision", clashId } (page Collision, collision choisie avec le vol de camera habituel).
 function ouvrirDepuisEspace(cible, position) {
-  const vue = cible.type === "collision" ? "collision" : "discussions";
+  const vue = cible.type === "collision" || cible.type === "collisions" ? "collision" : "discussions";
   const lien = navLinks.find((l) => l.dataset.view === vue);
   if (!lien) return;
   retourEspace.effacer();
   vueRetourEspace = vue;
   const montrerRetour = () => retourEspace.montrer({ libelle: TEXTES_ESPACE.libelleRetour, surRetour: () => revenirAMonEspace(position) });
   lien.click();
+  if (cible.type === "collisions") {
+    ouvrirCollisionsFiltrees(cible.filtre, montrerRetour);
+    return;
+  }
   if (cible.type === "collision") {
     const clash = CLASHES.find((c) => c.id === cible.clashId);
     if (!clash) return;
@@ -7174,6 +7244,19 @@ function ouvrirDepuisEspace(cible, position) {
     if (!message) return;
     messagerie.montrerMessageIA(message.mk);
     montrerRetour();
+  });
+}
+
+// Point d'entree « Mon espace » (clic sur « 9 nouvelles ») : ouvre la page Collision filtree (cible { type: "collisions", filtre: "favoris" } dans ouvrirDepuisEspace).
+// La paire de maquettes ouverte est celle de la premiere collision du filtre ; filtre inconnu = liste entiere.
+function ouvrirCollisionsFiltrees(filtreId, apres = () => {}) {
+  filtreCollisions = filtreValide(filtreId) ? filtreId : null;
+  attendre(vueAffichee("collision"), () => {
+    const premiere = filtrerCollisions(CLASHES, filtreCollisions, collisionsFavoris)[0];
+    const detection = (premiere && DETECTIONS.find((d) => d.id === premiere.detectionId)) || detectionCourante || DETECTIONS[0];
+    if (detection && detectionCourante !== detection) openDetection(detection);
+    else rafraichirListeCollisions();
+    apres();
   });
 }
 
@@ -7298,6 +7381,11 @@ function selectClash(clash, surArrivee) {
 // Point d'entree commun pour selectionner un clash, que ce soit via la
 // ligne de la liste ou un clic direct sur sa bulle 3D dans le viewer.
 function activateClash(clash, surArrivee) {
+  // Une collision que le filtre masque (marqueur 3D, lien depuis une autre page) : le filtre est levé pour qu'elle apparaisse dans la liste.
+  if (filtreCollisions && !filtrerCollisions([clash], filtreCollisions, collisionsFavoris).length) {
+    filtreCollisions = null;
+    rafraichirListeCollisions();
+  }
   collisionsList.querySelectorAll(".collision-item").forEach((el) => {
     el.classList.toggle("active", el.dataset.clashId === clash.id);
   });
