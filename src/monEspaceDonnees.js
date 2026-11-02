@@ -15,7 +15,6 @@ export const TEXTES_ESPACE = {
   placeholder: "Dis ou écris ce que tu veux voir ici",
   journal: "Ce que tu as demandé",
   ajoutVue: "Ajouter une vue",
-  ajoutVuePhrase: "Ajoute une vue : ",
   journalVide: "Aucune instruction pour l'instant.",
   libelleRetour: "Retour à Mon espace"
 };

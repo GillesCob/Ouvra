@@ -7194,9 +7194,9 @@ function revenirAMonEspace(position) {
 }
 
 // cible : { type: "message", convId, sujetId, texte } (discussion, au message source), { type: "collision", clashId } (page Collision, collision choisie avec le vol de camera habituel),
-// { type: "collisions", filtre } (page Collision filtree) ou { type: "vue3d", camera } (Viewer, voir ouvrirVue3dDepuisEspace).
+// { type: "collisions", filtre } (page Collision filtree) ou { type: "vue3d", camera } (Viewer, voir ouvrirVue3dDepuisEspace) ou { type: "viewer" } (Viewer tel quel, tuile « Ajouter une vue »).
 function ouvrirDepuisEspace(cible, position) {
-  if (cible.type === "vue3d") { ouvrirVue3dDepuisEspace(cible, position); return; }
+  if (cible.type === "vue3d" || cible.type === "viewer") { ouvrirVue3dDepuisEspace(cible, position); return; }
   const vue = cible.type === "collision" || cible.type === "collisions" ? "collision" : "discussions";
   const lien = navLinks.find((l) => l.dataset.view === vue);
   if (!lien) return;
@@ -7236,11 +7236,16 @@ function ouvrirDepuisEspace(cible, position) {
 function ouvrirVue3dDepuisEspace(cible, position) {
   const lien = navLinks.find((l) => l.dataset.view === "viewer");
   const c = cible.camera;
-  if (!lien || !c) return;
+  if (!lien || (cible.type === "vue3d" && !c)) return;
   retourEspace.effacer();
   vueRetourEspace = "viewer";
   lien.click();
   attendre(vueAffichee("viewer"), () => {
+    // Tuile « Ajouter une vue » (cible { type: "viewer" }) : le Viewer tel qu'il est, aucun vol de camera, seulement le bandeau de retour.
+    if (!c) {
+      retourEspace.montrer({ libelle: TEXTES_ESPACE.libelleRetour, surRetour: () => revenirAMonEspace(position) });
+      return;
+    }
     const cadrage = { eye: c.eye.slice(), look: c.look.slice(), up: c.up.slice() };
     viewer.cameraFlight.cancel();
     viewer.camera.projection = "perspective";

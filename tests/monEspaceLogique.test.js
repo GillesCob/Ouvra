@@ -241,5 +241,20 @@ test("main.js : l'ouverture d'un point de vue ouvre le Viewer et ne touche a auc
   const corps = src.slice(debut, src.indexOf("\n}\n", debut));
   assert.ok(debut > 0 && corps.includes('l.dataset.view === "viewer"') && corps.includes("cameraFlight.flyTo"));
   assert.doesNotMatch(corps, /activateClash|selectClash|openDetection|openCollision|CLASHES|DETECTIONS|clashId|collisionInfoPanel|Drawer|"collision"/);
-  assert.match(src, /if \(cible\.type === "vue3d"\) \{ ouvrirVue3dDepuisEspace\(cible, position\); return; \}/);
+  assert.match(src, /if \(cible\.type === "vue3d" \|\| cible\.type === "viewer"\) \{ ouvrirVue3dDepuisEspace\(cible, position\); return; \}/);
+});
+
+test("tuile « Ajouter une vue » : ouvre le Viewer tel quel (cible viewer), ne prepare plus aucune phrase dans la barre", async () => {
+  const { readFileSync } = await import("node:fs");
+  const lire = (f) => readFileSync(new URL("../src/" + f, import.meta.url), "utf8");
+  const espace = lire("monEspace.js");
+  const ligne = espace.split("\n").find((l) => l.includes('closest(".esp-vue-ajout")'));
+  assert.match(ligne, /ouvrir\(\{ type: "viewer" \}/);
+  assert.doesNotMatch(ligne, /preparerPhrase/);
+  assert.doesNotMatch(lire("monEspaceDonnees.js"), /ajoutVuePhrase|Ajoute une vue :/);
+  const main = lire("main.js");
+  assert.match(main, /cible\.type === "vue3d" \|\| cible\.type === "viewer"/);
+  // Sans cadrage : aucun vol de camera, le bandeau de retour est montre.
+  const corps = main.slice(main.indexOf("function ouvrirVue3dDepuisEspace"), main.indexOf("function ouvrirCollisionsFiltrees") );
+  assert.match(corps, /if \(!c\) \{\s*retourEspace\.montrer/);
 });

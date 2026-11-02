@@ -4,7 +4,7 @@
 // Principe de la page : tout se regle par instruction, aucune manipulation.
 //  - une phrase du journal retapee refait apparaitre son widget ; « Annuler » du journal masque le dernier ;
 //  - le stylo d'un widget ou d'une vue prepare « Modifie ... : » dans la barre ; la croix retire (bouton « Annuler » pendant 8 secondes, ou phrase retapee) ;
-//  - la tuile « Ajouter une vue » prepare « Ajoute une vue : » dans la barre ;
+//  - la tuile « Ajouter une vue » ouvre le Viewer tel qu'il est (cible { type: "viewer" }, sans cadrage), avec le bandeau de retour ;
 //  - une vue ou l'alerte d'une collision ouvre la page Collision sur cette collision, la puce de discussion d'une tache ou d'une echeance ouvre la discussion au message source
 //    (main.js, ouvrirDepuisEspace) ; un bandeau « Retour a Mon espace » ramene ici, a la meme position de defilement (revenir) ;
 //  - le micro bascule seulement son etat (aucune dictee reelle ici). Rien n'est memorise : un rechargement remet tout.
@@ -94,7 +94,7 @@ export function creerMonEspace({ racine, aller, ouvrir = () => {}, effectifs = (
       }
       return;
     }
-    if (e.target.closest(".esp-vue-ajout")) { preparerPhrase(TEXTES_ESPACE.ajoutVuePhrase); return; }
+    if (e.target.closest(".esp-vue-ajout")) { ouvrir({ type: "viewer" }, conteneur ? conteneur.scrollTop : 0); return; }
     const puce = e.target.closest(".esp-puce");
     if (puce) { champ.value = puce.textContent; champ.focus(); return; }
     const ciblee = e.target.closest("[data-cible]");
