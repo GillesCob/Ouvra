@@ -46,24 +46,25 @@ export const SCENARIOS = [
     batiment: "batiment-estime-3-preparer.svg",
     titre: "Mise à jour des maquettes",
     noeuds: [
-      { type: "humain", icone: "inbox", label: "Je reçois une maquette" },
+      { type: "humain", icone: "inbox", label: "Maquette mise à jour" },
       { type: "humain", icone: "cloud", label: "Dépôt sur la GED" },
       { type: "auto", icone: "refresh", label: "Mise à jour d'Ouvra" },
-      { type: "auto", icone: "search", label: "Analyse selon la convention" },
+      { type: "ia", icone: "wand", label: "L'IA comprend la convention", sub: "et choisit les outils d'analyse" },
+      { type: "ia", icone: "search", label: "Analyse selon la convention" },
       { type: "auto", icone: "compare", label: "Rapport des écarts (GUID)" },
       { type: "ouvert", icone: "dots", srSeul: "Suite non définie" }
     ]
   },
   {
     batiment: "batiment-estime-2-consulter.svg",
-    titre: "Consulter les documents de la GED",
+    titre: "Lien vers les documents de la GED",
     noeuds: [
       { type: "humain", icone: "cursor", label: "Je sélectionne un élément de la maquette" },
       { type: "ia", icone: "link", label: "Documents de la GED reliés à l'élément" },
       { type: "auto", icone: "cloud", label: "Un lien pour l'ouvrir dans la GED" },
       { type: "auto", icone: "export", label: "Ou téléchargement direct depuis Ouvra" }
     ],
-    note: "La GED reste la source de vérité, Ouvra sert de passerelle."
+    note: "Des documents sont sur la GED, l'IA les met à disposition selon l'endroit où l'on se trouve dans la maquette et ce qui y est affiché."
   },
   {
     batiment: "batiment-estime-2-consulter.svg",
@@ -78,7 +79,7 @@ export const SCENARIOS = [
   },
   {
     batiment: "batiment-estime-3-preparer.svg",
-    titre: "Création d'une page personnelle",
+    titre: "Un dashboard personnalisé",
     noeuds: [
       { type: "humain", icone: "mic", label: "Je dis ce que je veux" },
       { type: "ia", icone: "wand", label: "L'IA comprend" },

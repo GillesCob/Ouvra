@@ -19,6 +19,12 @@ export function indicesDebutDeLigne(positions) {
   return debuts;
 }
 
+// Debut d'une fleche de longueur `longueur` placee a mi-distance entre deux ronds : finPrec = bord du rond precedent (cote fleche), debutCourant = bord du rond courant,
+// origine = bord du noeud courant (la fleche est positionnee par rapport a lui). Tout dans le meme repere, en px de mise en page (offset*, insensibles aux animations).
+export function debutFlecheCentree(finPrec, debutCourant, longueur, origine) {
+  return finPrec + (debutCourant - finPrec - longueur) / 2 - origine;
+}
+
 // Bande d'observation : le dixieme central de la hauteur de la page (40 % retires en haut et en bas). Une frise est « centrale » des qu'elle la franchit,
 // ce qui marche aussi pour une frise verticale plus haute que l'ecran (mobile), ou aucun seuil de visibilite ne serait atteint.
 export const MARGE_FRISE_CENTRALE = "-40% 0px -40% 0px";
@@ -43,9 +49,35 @@ export function creerIdeesEvolution({ racine, aller, fenetre = window }) {
       indicesDebutDeLigne(ronds.map((n) => n.offsetTop)).forEach((i) => ronds[i].classList.add("ide-debut"));
     });
   }
-  if (typeof ResizeObserver === "function") new ResizeObserver(marquerDebuts).observe(racine); // aussi a l'affichage de la page (elle est masquee tant qu'on n'y est pas)
-  else fenetre.addEventListener("resize", marquerDebuts);
-  marquerDebuts();
+  // Fleches a mi-distance des deux ronds voisins : la largeur des noeuds (libelles) et leur hauteur (mobile) varient, l'ecart entre ronds aussi, donc mesure en JS.
+  // Horizontal : --ar-x ; vertical (moins de 900 px) : --ar-y ; l'autre variable est retiree. Valeur par defaut du CSS tant que rien n'est mesure.
+  function centrerFleches() {
+    const vertical = fenetre.innerWidth < LARGEUR_FRISE_HORIZONTALE;
+    chaines.forEach((chaine) => {
+      const noeuds = Array.from(chaine.children);
+      noeuds.forEach((n, i) => {
+        n.style.removeProperty(vertical ? "--ar-x" : "--ar-y");
+        const rond = n.querySelector(".ide-rond");
+        const precedent = i > 0 ? noeuds[i - 1].querySelector(".ide-rond") : null;
+        if (!rond || !precedent || !rond.offsetWidth) { n.style.removeProperty(vertical ? "--ar-y" : "--ar-x"); return; }
+        const longueur = parseFloat(fenetre.getComputedStyle(chaine).getPropertyValue("--fleche"));
+        if (!(longueur > 0)) return;
+        if (vertical) {
+          const debut = debutFlecheCentree(noeuds[i - 1].offsetTop + precedent.offsetTop + precedent.offsetHeight, n.offsetTop + rond.offsetTop, longueur, n.offsetTop);
+          n.style.setProperty("--ar-y", debut + "px");
+        } else if (Math.abs(noeuds[i - 1].offsetTop - n.offsetTop) < 2) { // meme ligne seulement
+          // Rects des noeuds (jamais animes) et non offsetLeft : celui-ci est arrondi a l'entier et fausserait l'ecart de pres de 1 px. Le rond est centre dans son noeud.
+          const rp = noeuds[i - 1].getBoundingClientRect(), rc = n.getBoundingClientRect();
+          const debut = debutFlecheCentree(rp.left + (rp.width + precedent.offsetWidth) / 2, rc.left + (rc.width - rond.offsetWidth) / 2, longueur, rc.left);
+          n.style.setProperty("--ar-x", debut + "px");
+        } else n.style.removeProperty("--ar-x");
+      });
+    });
+  }
+  const remesurer = () => { marquerDebuts(); centrerFleches(); };
+  if (typeof ResizeObserver === "function") { const obsFrises = new ResizeObserver(remesurer); obsFrises.observe(racine); racine.querySelectorAll(".ide-node").forEach((n) => obsFrises.observe(n)); } // aussi a l'affichage de la page (elle est masquee tant qu'on n'y est pas)
+  else fenetre.addEventListener("resize", remesurer);
+  remesurer();
 
   function ajusterHauteur() {
     if (!conteneur || conteneur.clientHeight <= 0) return; // page masquee : on garde les dernieres valeurs
@@ -77,7 +109,7 @@ export function creerIdeesEvolution({ racine, aller, fenetre = window }) {
       if (vue !== VUE_IDEES) return;
       ajusterHauteur(); // avant le retour en haut : le navigateur raccroche au point voulu seulement si la marge d'accroche est deja posee
       if (conteneur) conteneur.scrollTop = 0;
-      marquerDebuts();
+      remesurer();
     }
   };
 }
