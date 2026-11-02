@@ -35,7 +35,7 @@ export const SCENARIOS = [
     batiment: "batiment-estime-4-construire.svg",
     titre: "Réunion de synthèse",
     noeuds: [
-      { type: "humain", icone: "mic", label: "Réunion de synthèse" },
+      { type: "humain", icone: "mic", label: "Réunion de synthèse", sub: "Sujets tirés des conversations, réunion déjà cadrée" },
       { type: "auto", icone: "wave", label: "Écoute de l'échange" },
       { type: "ia", icone: "text", label: "Retranscription" },
       { type: "auto", icone: "report", label: "Rapport automatisé" },
@@ -48,7 +48,7 @@ export const SCENARIOS = [
     titre: "Mise à jour des maquettes",
     noeuds: [
       { type: "humain", icone: "inbox", label: "Je reçois une maquette" },
-      { type: "humain", icone: "cloud", label: "Dépôt sur la GED", sub: "ou par le BIM manager, le bureau d'études" },
+      { type: "humain", icone: "cloud", label: "Dépôt sur la GED" },
       { type: "auto", icone: "refresh", label: "Mise à jour d'Ouvra" },
       { type: "auto", icone: "search", label: "Analyse selon la convention" },
       { type: "auto", icone: "compare", label: "Rapport des écarts (GUID)" },
@@ -60,7 +60,7 @@ export const SCENARIOS = [
     titre: "Le bon document, là où je regarde",
     noeuds: [
       { type: "humain", icone: "cursor", label: "Je sélectionne un élément de la maquette" },
-      { type: "ia", icone: "link", label: "Documents de la GED reliés à l'élément", sub: "plans, fiches techniques, notices, comptes rendus" },
+      { type: "ia", icone: "link", label: "Documents de la GED reliés à l'élément" },
       { type: "auto", icone: "cloud", label: "Un lien pour l'ouvrir dans la GED" },
       { type: "auto", icone: "export", label: "Ou téléchargement direct depuis Ouvra" }
     ],
