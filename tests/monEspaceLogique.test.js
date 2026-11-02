@@ -6,17 +6,17 @@ import { htmlPageEspace } from "../src/monEspaceRendu.js";
 
 const aucun = () => new Set();
 
-test("donnees : six widgets, identifiants et phrases uniques, chaque suggestion rejoue un widget", () => {
-  assert.equal(WIDGETS.length, 6);
-  assert.equal(new Set(WIDGETS.map((w) => w.id)).size, 6);
-  assert.equal(new Set(WIDGETS.map((w) => w.phrase)).size, 6);
+test("donnees : cinq widgets, identifiants et phrases uniques, chaque suggestion rejoue un widget", () => {
+  assert.equal(WIDGETS.length, 5);
+  assert.equal(new Set(WIDGETS.map((w) => w.id)).size, 5);
+  assert.equal(new Set(WIDGETS.map((w) => w.phrase)).size, 5);
   for (const s of SUGGESTIONS) assert.ok(widgetDeLaPhrase(WIDGETS, s), s);
 });
 
 test("journal : une ligne par widget affiche, seule la derniere est annulable", () => {
   const l = lignesJournal(WIDGETS, aucun());
-  assert.equal(l.length, 6);
-  assert.deepEqual(l.map((x) => x.annulable), [false, false, false, false, false, true]);
+  assert.equal(l.length, 5);
+  assert.deepEqual(l.map((x) => x.annulable), [false, false, false, false, true]);
   assert.equal(l[0].phrase, "« Montre mes vues du niveau 2 »");
 });
 
@@ -39,7 +39,7 @@ test("retirer : ajoute au masque sans modifier l'ancien ensemble ; annuler retir
   assert.equal(dernier.id, "collisions");
   const a = retirerWidget(r.masques, dernier.id, MESSAGES_ESPACE.annulee);
   assert.equal(a.message, "Dernière instruction annulée.");
-  assert.equal(widgetsAffiches(WIDGETS, a.masques).length, 4);
+  assert.equal(widgetsAffiches(WIDGETS, a.masques).length, 3);
 });
 
 test("instruction : phrase connue = le widget revient (espaces autour ignores) ; vide = message sans vider le champ ; inconnue = message et champ vide", () => {
@@ -67,14 +67,14 @@ test("instruction deja affichee : rien ne change, message « Fait »", () => {
   assert.match(r.message, /^Fait : /);
 });
 
-test("rendu : fil d'Ariane interne vers les idees, six widgets, aucun lien vers un fichier .html, aucun marqueur « Mockup », jamais le mot interdit", () => {
+test("rendu : fil d'Ariane interne vers les idees, cinq widgets, aucun lien vers un fichier .html, aucun marqueur « Mockup », jamais le mot interdit", () => {
   assert.doesNotMatch(htmlPageEspace(), /Ajouté par|Retirer|esp-origine/);
   const h = htmlPageEspace();
   assert.match(h, /<a href="#idees" data-vue="idees">Idées d&#x27;évolution<\/a> › <span aria-current="page">Mon espace<\/span>/);
-  assert.equal((h.match(/<section class="esp-widget /g) || []).length, 6);
+  assert.equal((h.match(/<section class="esp-widget /g) || []).length, 5);
   assert.doesNotMatch(h, new RegExp("\\.html|Mockup|" + "pe" + "tit", "i"));
-  assert.equal((h.match(/data-action="modifier"/g) || []).length, 9, "un stylo par widget et par vue");
-  assert.equal((h.match(/data-action="supprimer"/g) || []).length, 9);
+  assert.equal((h.match(/data-action="modifier"/g) || []).length, 8, "un stylo par widget et par vue");
+  assert.equal((h.match(/data-action="supprimer"/g) || []).length, 8);
   assert.match(h, /aria-label="Modifier Ma todo"/);
   assert.match(h, /aria-label="Supprimer Ma todo"/);
   assert.match(h, /<button type="submit" class="esp-btn-principal">Valider<\/button>/);
@@ -94,7 +94,7 @@ test("stylo : la phrase preparee nomme le widget ou la vue et se termine par deu
 test("croix puis Annuler : le retrait d'une vue ne touche pas les widgets et se defait sans modifier l'ancien ensemble", () => {
   assert.equal(idVue("gaines"), "vue:gaines");
   const r = retirerWidget(new Set(), idVue("gaines"));
-  assert.equal(lignesJournal(WIDGETS, r.masques).length, 6, "le journal ne liste que des widgets");
+  assert.equal(lignesJournal(WIDGETS, r.masques).length, 5, "le journal ne liste que des widgets");
   const retabli = restaurer(r.masques, idVue("gaines"));
   assert.equal(retabli.size, 0);
   assert.equal(r.masques.size, 1);

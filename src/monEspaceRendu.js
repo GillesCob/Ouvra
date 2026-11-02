@@ -29,7 +29,6 @@ const CORPS = {
     + `<p class="esp-tache-contexte"><span class="esp-initiale" aria-hidden="true">${echapper(initiale(t.par))}</span><span>Demandé par ${echapper(t.par)}</span>`
     + `<button type="button" class="esp-source" data-vue="discussions">${echapper(t.discussion)}</button><span class="esp-tache-heure">${echapper(t.heure)}</span></p></div>`
     + `<span class="esp-urgence">${echapper(t.urgence)}</span></li>`).join("")}</ul>`,
-  surveilles: (items) => `<ul class="esp-liste">${items.map((e) => `<li><div class="esp-corps"><p>${echapper(e.nom)}</p><p class="esp-meta">${echapper(e.meta)}</p></div><span class="esp-statut esp-s-${echapper(e.statut)}">${echapper(e.libelleStatut)}</span></li>`).join("")}</ul>`,
   documents: (items) => `<ul class="esp-liste">${items.map((d) => `<li><div class="esp-corps"><p>${echapper(d.texte)}</p></div><span class="esp-heure esp-heure-large">${echapper(d.quand)}</span></li>`).join("")}</ul>`,
   compteurs: (items) => `<ul class="esp-compteurs">${items.map((c) => `<li${c.urgent ? ' class="esp-urgent"' : ""}><strong>${echapper(c.valeur)}</strong><span>${echapper(c.libelle)}</span></li>`).join("")}</ul>`
 };

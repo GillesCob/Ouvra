@@ -1,7 +1,7 @@
 // Donnees de la page « Mon espace » (portage de vault-perso/Projets/Ouvra/mockups/ouvra-mon-espace.html, 02/11).
 // Six widgets d'exemple, chacun ajoute par une phrase (la phrase est aussi celle qu'on retape dans la barre d'instruction pour le faire reapparaitre),
 // des suggestions, et les textes de la page. Aucune donnee de projet reelle : tout est factice, pour evoquer l'idee.
-// type : "vues" (points de vue), "alertes", "todo", "surveilles", "documents", "compteurs". zone : place dans la grille (grid-area du CSS).
+// type : "vues" (points de vue), "alertes", "todo", "documents", "compteurs". zone : place dans la grille (grid-area du CSS).
 export const TEXTES_ESPACE = {
   filIdees: "Idées d'évolution",
   filCourant: "Mon espace",
@@ -44,14 +44,6 @@ export const WIDGETS = [
       { titre: "Valider le passage de la gaine G12", par: "Camille", discussion: "Réservations niveau 2", heure: "09:12", urgence: "Aujourd'hui" },
       { titre: "Répondre sur l'accès de la grue", par: "Nadir", discussion: "Installation de chantier", heure: "Hier", urgence: "Aujourd'hui" },
       { titre: "Confirmer la cote du plancher bas, niveau 3", par: "Inès", discussion: "Structure et CVC, niveau 3", heure: "Lundi", urgence: "Cette semaine" }
-    ]
-  },
-  {
-    id: "surveilles", zone: "surv", type: "surveilles", titre: "Éléments surveillés", phrase: "Surveille la gaine G12, la poutre P7 et le poteau C4",
-    items: [
-      { nom: "Gaine G12", meta: "CVC, niveau 2", statut: "deplace", libelleStatut: "Déplacé" },
-      { nom: "Poutre P7", meta: "Structure, niveau 2", statut: "inchange", libelleStatut: "Inchangé" },
-      { nom: "Poteau C4", meta: "Structure, niveau 1", statut: "supprime", libelleStatut: "Supprimé" }
     ]
   },
   {

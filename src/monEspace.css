@@ -60,10 +60,6 @@
 .esp-heure { flex: 0 0 auto; width: 44px; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
 .esp-heure.esp-heure-large { width: auto; }
 
-.esp-statut { flex: 0 0 auto; font-size: 12px; font-weight: 600; padding: 2px 10px; border-radius: 999px; border: 1px solid currentColor; }
-.esp-s-inchange { color: var(--muted); }
-.esp-s-deplace { color: var(--warn); }
-.esp-s-supprime { color: var(--bad); }
 
 .esp-compteurs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 0; padding: 0; list-style: none; }
 .esp-compteurs li { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; min-width: 0; }
@@ -96,7 +92,6 @@
   .esp-sous-titre { font-size: 16px; }
   .esp-fil { font-size: 14px; }
   .esp-fil a { display: inline-flex; align-items: center; min-height: 44px; }
-  .esp-puce, .esp-btn-voir, .esp-btn-annuler, .esp-statut, .esp-heure { font-size: 14px; }
   .esp-heure { width: 52px; }
   .esp-compteurs span { font-size: 14px; }
   .esp-liste > li { padding: 12px 0; }
@@ -112,19 +107,19 @@
 
 /* Grille : la todo est le premier bloc sous la barre d'instruction, pleine largeur ; les autres widgets suivent. */
 .esp-w-todo { grid-area: todo; } .esp-w-vues { grid-area: vues; } .esp-w-alertes { grid-area: alertes; }
-.esp-w-surv { grid-area: surv; } .esp-w-docs { grid-area: docs; } .esp-w-coll { grid-area: coll; }
+.esp-w-docs { grid-area: docs; } .esp-w-coll { grid-area: coll; }
 @media (min-width: 768px) {
   .esp-page { padding: 24px 24px 48px; }
   .esp-titre { font-size: 26px; }
-  .esp-grille { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-areas: "todo todo" "vues vues" "alertes surv" "docs coll"; gap: 16px; }
+  .esp-grille { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-areas: "todo todo" "vues vues" "alertes docs" "coll coll"; gap: 16px; }
 }
 @media (min-width: 1100px) {
-  .esp-grille { grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-areas: "todo todo todo" "vues vues alertes" "surv docs coll"; }
+  .esp-grille { grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-areas: "todo todo todo" "vues vues alertes" "docs coll coll"; }
 }
 /* Mobile : une colonne, dans l'ordre Alertes, Todo, Vues, puis les autres. */
 @media (max-width: 767px) {
   .esp-grille { grid-template-areas: none; }
-  .esp-w-todo, .esp-w-vues, .esp-w-alertes, .esp-w-surv, .esp-w-docs, .esp-w-coll { grid-area: auto; }
+  .esp-w-todo, .esp-w-vues, .esp-w-alertes, .esp-w-docs, .esp-w-coll { grid-area: auto; }
   .esp-w-alertes { order: -3; } .esp-w-todo { order: -2; } .esp-w-vues { order: -1; }
 }
 
