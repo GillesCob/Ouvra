@@ -26,12 +26,10 @@ function htmlVue(v) {
     + `<span class="esp-vue-titre">${echapper(v.titre)}</span></button>${htmlActions(v.titre, true)}</li>`;
 }
 
-// Bouton « Voir » (alertes et documents) : affiche quand la ligne a une cible (collision, discussion), mais fige (page de demonstration) : desactive, sans data-cible,
+// Bouton « Voir » (alertes) : affiche quand la ligne a une cible (collision, discussion), mais fige (page de demonstration) : desactive, sans data-cible,
 // donc rien ne peut l'atteindre ; une mise a jour de maquette n'en a pas.
 const htmlBoutonVoir = (item, libelle) => (item.cible ? `<button type="button" class="esp-btn-voir" disabled aria-disabled="true" aria-label="Voir : ${echapper(libelle)}">Voir</button>` : "");
 const htmlAlerte = (a) => `<li><span class="esp-heure">${echapper(a.heure)}</span><div class="esp-corps"><p>${echapper(a.texte)}</p></div>${htmlBoutonVoir(a, a.texte)}</li>`;
-const htmlDocument = (d) => `<li><div class="esp-corps"><p>${echapper(d.texte)}</p>${d.meta ? `<p class="esp-meta">${echapper(d.meta)}</p>` : ""}</div>`
-  + `<span class="esp-heure esp-heure-large">${echapper(d.quand)}</span>${htmlBoutonVoir(d, d.texte)}</li>`;
 
 // Une echeance = son titre et le lien vers la conversation d'origine (meme puce que la todo), rien d'autre.
 const htmlEcheance = (e) => `<li class="esp-echeance"><p class="esp-ech-titre">${echapper(e.titre)}</p>`
@@ -54,7 +52,6 @@ const CORPS = {
     + (t.citation ? `<p class="esp-tache-citation">« ${echapper(t.citation)} »</p>` : "") + "</div>"
     + `<span class="esp-urgence">${echapper(t.urgence)}</span></li>`).join("")}</ul>`,
   echeances: (items) => `<ol class="esp-echeances">${items.map(htmlEcheance).join("")}</ol>`,
-  documents: (items) => `<ul class="esp-liste">${items.map(htmlDocument).join("")}</ul>`,
   // Chaque compteur est un bouton : il ouvre la page Collision filtree sur ces collisions.
   compteurs: (items, effectifs) => htmlCompteurs(items, effectifs)
 };
@@ -86,6 +83,5 @@ export function htmlPageEspace(widgets = WIDGETS, suggestions = SUGGESTIONS, tex
     + '<p class="esp-etat-saisie" role="status" aria-live="polite"></p>'
     + "</section>"
     + `<div class="esp-grille">${widgets.map((w, i) => htmlWidget(w, i, effectifs)).join("")}</div>`
-    + `<details class="esp-journal"><summary>${echapper(textes.journal)}</summary><ol class="esp-journal-liste"></ol><p class="esp-vide" hidden>${echapper(textes.journalVide)}</p></details>`
     + "</main>";
 }

@@ -35,9 +35,8 @@ export function htmlScenario(scenario, indice) {
   const id = `ide-scn${indice + 1}`;
   const tete = `<header class="ide-scn-tete"><img class="ide-bat-img" src="/images/idees/${echapper(scenario.batiment)}" alt=""><h3 id="${id}">${echapper(scenario.titre)}</h3><div class="ide-s3-trait"></div></header>`;
   const chaine = `<ol class="ide-chaine">${scenario.noeuds.map(htmlNoeud).join("")}</ol>`;
-  const note = scenario.note ? `<p class="ide-note-ged">${echapper(scenario.note)}</p>` : "";
   const lien = scenario.lien ? `<p class="ide-voir-page"><a href="#${echapper(scenario.lien.vue)}" data-vue="${echapper(scenario.lien.vue)}">${echapper(scenario.lien.texte)}</a></p>` : "";
-  return `<section class="ide-scn" aria-labelledby="${id}">${tete}${chaine}${note}${lien}</section>`;
+  return `<section class="ide-scn" aria-labelledby="${id}">${tete}${chaine}${lien}</section>`;
 }
 
 export function htmlPage(scenarios = SCENARIOS) {

@@ -1,8 +1,7 @@
-// Logique pure de la page « Mon espace » (02/11) : quels widgets sont affiches, que montre le journal.
-// L'etat est un ensemble d'identifiants affiches, dans l'ordre ou ils ont ete ajoutes ; aucun acces au DOM ici (testable sous Node).
+// Logique pure de la page « Mon espace » (02/11) : quels widgets sont retires.
+// L'etat est un ensemble d'identifiants masques, dans l'ordre ou ils ont ete ajoutes ; aucun acces au DOM ici (testable sous Node).
 
 export const MESSAGES_ESPACE = {
-  annulee: "Dernière instruction annulée.",
   retire: "Widget retiré.",
   vueRetiree: "Vue retirée."
 };
@@ -16,14 +15,6 @@ export function restaurer(masques, id) {
   const suivant = new Set(masques);
   suivant.delete(id);
   return suivant;
-}
-
-export const widgetsAffiches = (widgets, masques) => widgets.filter((w) => !masques.has(w.id));
-
-// Journal : une ligne par widget affiche (dans l'ordre de la page) ; seule la derniere porte « Annuler ».
-export function lignesJournal(widgets, masques) {
-  const actifs = widgetsAffiches(widgets, masques);
-  return actifs.map((w, i) => ({ id: w.id, phrase: "« " + w.phrase + " »", annulable: i === actifs.length - 1 }));
 }
 
 export function retirerWidget(masques, id, message = MESSAGES_ESPACE.retire) {

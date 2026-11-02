@@ -1,21 +1,19 @@
 // Donnees de la page « Mon espace » (portage de vault-perso/Projets/Ouvra/mockups/ouvra-mon-espace.html, 02/11).
-// Six widgets, chacun ajoute par une phrase (la phrase est aussi celle qu'on retape dans la barre d'instruction pour le faire reapparaitre),
+// Cinq widgets, chacun ajoute par une phrase (la phrase est aussi celle qu'on retape dans la barre d'instruction pour le faire reapparaitre),
 // des suggestions, et les textes de la page. Les donnees viennent des messages et des collisions DEJA presents dans l'application :
 //  - messages : corpus de la messagerie (src/messagerie/corpus/*.json) ; la cible d'un element est { type: "message", convId, sujetId, texte }, le texte etant celui du
 //    message source, recopie tel quel (la page le retrouve par ce texte : les messages n'ont pas d'identifiant et leur position change avec les evenements du journal) ;
 //  - collisions : les 15 collisions de l'hopital (src/clashesHospital.js) ; la cible est { type: "collision", clashId } et la carte lit la collision elle-meme ;
 //  - points de vue : cadrages du Viewer 3D, cible { type: "vue3d", camera: { eye, look, up } }, sans aucun lien avec une collision ;
 //  - un message (Karim) s'adresse a l'utilisateur par « Gilles » : le texte est cite tel quel.
-// type : "vues" (points de vue 3D enregistres), "alertes", "todo", "echeances", "documents", "compteurs". zone : place dans la grille (grid-area du CSS).
+// type : "vues" (points de vue 3D enregistres), "alertes", "todo", "echeances", "compteurs". zone : place dans la grille (grid-area du CSS).
 export const TEXTES_ESPACE = {
   filIdees: "Idées d'évolution",
   filCourant: "Mon espace",
   titre: "Mon espace",
   sousTitre: "Ce que tu consultes souvent, au même endroit.",
   placeholder: "Dis ou écris ce que tu veux voir ici",
-  journal: "Ce que tu as demandé",
   ajoutVue: "Ajouter une vue",
-  journalVide: "Aucune instruction pour l'instant.",
   libelleRetour: "Retour à Mon espace"
 };
 
@@ -95,21 +93,6 @@ export const WIDGETS = [
         id: "ech-synthese", date: "2026-11-05", titre: "Synthèse : figer les réservations et les trémies, apporter les listes à jour",
         discussion: "Synthèse hebdomadaire",
         cible: { type: "message", convId: "g-synthese", sujetId: null, texte: "Jeudi prochain, on fige les réservations et les trémies avant l'indice du 5. Merci d'amener vos listes à jour." }
-      }
-    ]
-  },
-  {
-    // Pas de GED reelle dans l'application : ce sont les pieces jointes citees dans les messages, avec leur auteur et leur discussion. « Voir » ouvre le message qui porte la piece jointe.
-    id: "documents", zone: "docs", type: "documents", titre: "Documents consultés récemment", phrase: "Garde mes derniers documents consultés",
-    items: [
-      {
-        id: "doc-coupe", texte: "coupe-gaine-cloison-R2.pdf", quand: "Aujourd'hui", meta: "Déposé par Sophie Lambert · Collision gaine rectangulaire / cloison, couloir R+2",
-        cible: { type: "message", convId: "sophie", sujetId: "s1", texte: "Je te mets la coupe avec le passage actuel en attendant. [fichier : coupe-gaine-cloison-R2.pdf]" }
-      },
-      { id: "doc-nomenclature", texte: "nomenclature_gaines_R2.xlsx", quand: "30/10", meta: "Déposé par Marc Dubois · Lots fluides", cible: { type: "message", convId: "g-fluides", sujetId: null, texte: "[fichier : nomenclature_gaines_R2.xlsx]" } },
-      {
-        id: "doc-archi", texte: "archi-V3.1.ifc", quand: "28/10", meta: "Déposé par Claire Martin · Maquette V3 : retours",
-        cible: { type: "message", convId: "claire", sujetId: "c3", texte: "V3.1 déposée. [fichier : archi-V3.1.ifc] Tu peux relancer le contrôle ?" }
       }
     ]
   },

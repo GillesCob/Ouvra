@@ -89,7 +89,7 @@ test("debuts de ligne : un rond dont le haut depasse de plus de 2 px celui du pr
   assert.deepEqual(indicesDebutDeLigne([0, 0, 90, 90, 180]), [2, 4]);
 });
 
-test("donnees : retours du 02/11, premiere bulle, etape IA de la convention, sous-texte GED", () => {
+test("donnees : retours du 02/11, premiere bulle, etape IA de la convention, plus de sous-texte GED", () => {
   const maj = SCENARIOS[1].noeuds;
   assert.equal(maj[0].label, "Maquette mise à jour");
   assert.doesNotMatch(JSON.stringify(maj[0]), /projeteur|BIM manager|automatique/i);
@@ -97,7 +97,8 @@ test("donnees : retours du 02/11, premiere bulle, etape IA de la convention, sou
   assert.equal(maj[i].type, "ia");
   assert.equal(maj[i - 1].type, "ia");
   assert.match(maj[i - 1].label + maj[i - 1].sub, /comprend la convention.*choisit les outils d'analyse/);
-  assert.match(SCENARIOS[2].note, /documents sont sur la GED.*l'IA les met à disposition.*endroit.*maquette/);
+  assert.equal(SCENARIOS[2].note, undefined);
+  assert.doesNotMatch(htmlPage(), /ide-note-ged|l'IA les met à disposition/);
   assert.doesNotMatch(htmlPage(), /Création d'une page personnelle|Consulter les documents de la GED|Le bon document/);
 });
 
