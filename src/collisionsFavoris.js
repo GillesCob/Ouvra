@@ -6,9 +6,11 @@
 
 export const CLE_FAVORIS = "ouvra-collisions-favoris";
 
-// Les 13 collisions actives de l'hopital prefavorites (ids hosp-clash-N, cf clashesHospital.js) : 9 « Nouveau » (n° 1, 3, 4, 6, 9, 11, 12, 13, 14) et 4 « En cours » (n° 2, 5, 10, 15).
-// Les 2 ecartees (n° 7 et 8) ne sont pas suivies.
-export const FAVORIS_PAR_DEFAUT = [1, 3, 4, 6, 9, 11, 12, 13, 14, 2, 5, 10, 15].map((n) => "hosp-clash-" + n);
+// Favoris prefaits de la demo (02/11) : 4 collisions seulement, choisies pour la variete de leurs cas (ids hosp-clash-N, cf clashesHospital.js).
+// n° 1 : Nouveau, haute, gaine ronde contre cloison ; n° 9 : Nouveau, normale, diffuseur contre faux plafond (a verifier avant d'ecarter) ;
+// n° 2 : En cours, haute, gaine rectangulaire du niveau 2 (cible de la regle de demo « Passe en urgent... gaines du niveau 2 ») ;
+// n° 10 : En cours, urgente, prise de gaz medicaux (equipement). Les autres collisions restent a ajouter par l'utilisateur.
+export const FAVORIS_PAR_DEFAUT = [1, 9, 2, 10].map((n) => "hosp-clash-" + n);
 
 const statutEst = (statut) => (clash) => !!clash && clash.statut === statut;
 
