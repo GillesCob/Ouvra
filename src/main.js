@@ -77,6 +77,12 @@ installerRechargementAuto({ fenetre: window, stockage: sessionStorage }); // fic
 //   (ils restent soumis au filtrage par profil, donc visibles seulement si
 //   MASQUE_PROFILS est aussi a false).
 //
+// MASQUE_PLAN3D
+//   Onglet 2D -> 3D cache (barre de navigation et menu hamburger) ;
+//   activateView renvoie vers le Viewer pour cette vue, hash et localStorage
+//   compris. La page et son code (src/plan3d, relais) restent intacts.
+//   Reactiver : false.
+//
 // MASQUE_ANCIENNE_LANDING
 //   Ancienne landing #view-landing (hero, parties 1 et 2, bouton "Acceder a
 //   la demo") masquee au profit de la nouvelle page d'accueil #view-accueil
@@ -345,6 +351,7 @@ const DISCUSSIONS_MESSAGERIE = true;
 const MASQUE_SELECTEUR_PROJET = true;
 const MASQUE_PROFILS = true;
 const MASQUE_TODO_ADMIN = true;
+const MASQUE_PLAN3D = true;
 const MASQUE_ANCIENNE_LANDING = true;
 const MASQUE_MAQUETTES_LOURDES = true;
 const COLLISIONS_HOPITAL_ECHANTILLON = true;
@@ -919,6 +926,7 @@ const HOSPITAL_CAMERA_STATE = {
 // bouton).
 function redirectMaskedView(viewName) {
   if (MASQUE_TODO_ADMIN && (viewName === "projeteur" || viewName === "admin")) return "viewer";
+  if (MASQUE_PLAN3D && viewName === "plan3d") return "viewer";
   if (MASQUE_PROFILS && (viewName === "profils-intro" || viewName === "persona-intro")) return "viewer";
   return viewName;
 }
@@ -1847,6 +1855,10 @@ function applyPersona(persona, forceNav) {
   navLinks.forEach((link) => {
     // Onglets Todo et Admin masques (19/10), quel que soit le profil/projet.
     if (MASQUE_TODO_ADMIN && (link.dataset.view === "projeteur" || link.dataset.view === "admin")) {
+      link.hidden = true;
+      return;
+    }
+    if (MASQUE_PLAN3D && link.dataset.view === "plan3d") {
       link.hidden = true;
       return;
     }
