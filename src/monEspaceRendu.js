@@ -9,10 +9,12 @@ export const ICONE_STYLO = SVG_TRAIT('<path d="M4 20l1-4L16 5l3 3L8 19z"/><path 
 export const ICONE_CROIX = SVG_TRAIT('<path d="M6 6l12 12M18 6L6 18"/>');
 export const ICONE_MICRO = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>';
 
-// Deux boutons ronds (stylo = modifier, croix = supprimer) : zone tactile de 44 px, rond visible de 32 px (28 px sur une vue). Le stylo ecrit dans la barre d'instruction, la croix retire.
+// Deux boutons ronds (stylo = modifier, croix = supprimer) : zone tactile de 44 px, rond visible de 32 px (28 px sur une vue). La croix retire ; le stylo, qui
+// preparait une phrase dans la barre d'instruction, est fige (page de demonstration : la barre est desactivee), sans data-action donc sans effet possible.
 export function htmlActions(nom, compact = false) {
   const bouton = (action, libelle, icone) => `<button type="button" class="esp-rond" data-action="${action}" aria-label="${libelle} ${echapper(nom)}"><span class="esp-rond-vis">${icone}</span></button>`;
-  return `<div class="esp-actions${compact ? " esp-actions-vue" : ""}">${bouton("modifier", "Modifier", ICONE_STYLO)}${bouton("supprimer", "Supprimer", ICONE_CROIX)}</div>`;
+  const stylo = `<button type="button" class="esp-rond" disabled aria-disabled="true" aria-label="Modifier ${echapper(nom)}"><span class="esp-rond-vis">${ICONE_STYLO}</span></button>`;
+  return `<div class="esp-actions${compact ? " esp-actions-vue" : ""}">${stylo}${bouton("supprimer", "Supprimer", ICONE_CROIX)}</div>`;
 }
 
 const initiale = (nom) => String(nom).trim().charAt(0).toUpperCase();
@@ -24,8 +26,9 @@ function htmlVue(v) {
     + `<span class="esp-vue-titre">${echapper(v.titre)}</span></button>${htmlActions(v.titre, true)}</li>`;
 }
 
-// Bouton « Voir » (alertes et documents) : seulement quand la ligne a une cible reelle (collision, discussion) ; une mise a jour de maquette n'en a pas.
-const htmlBoutonVoir = (item, libelle) => (item.cible ? `<button type="button" class="esp-btn-voir" data-cible="${echapper(item.id)}" aria-label="Voir : ${echapper(libelle)}">Voir</button>` : "");
+// Bouton « Voir » (alertes et documents) : affiche quand la ligne a une cible (collision, discussion), mais fige (page de demonstration) : desactive, sans data-cible,
+// donc rien ne peut l'atteindre ; une mise a jour de maquette n'en a pas.
+const htmlBoutonVoir = (item, libelle) => (item.cible ? `<button type="button" class="esp-btn-voir" disabled aria-disabled="true" aria-label="Voir : ${echapper(libelle)}">Voir</button>` : "");
 const htmlAlerte = (a) => `<li><span class="esp-heure">${echapper(a.heure)}</span><div class="esp-corps"><p>${echapper(a.texte)}</p></div>${htmlBoutonVoir(a, a.texte)}</li>`;
 const htmlDocument = (d) => `<li><div class="esp-corps"><p>${echapper(d.texte)}</p>${d.meta ? `<p class="esp-meta">${echapper(d.meta)}</p>` : ""}</div>`
   + `<span class="esp-heure esp-heure-large">${echapper(d.quand)}</span>${htmlBoutonVoir(d, d.texte)}</li>`;
@@ -73,12 +76,13 @@ export function htmlPageEspace(widgets = WIDGETS, suggestions = SUGGESTIONS, tex
     + `<h1 class="esp-titre">${echapper(textes.titre)}</h1>`
     + `<p class="esp-sous-titre">${echapper(textes.sousTitre)}</p>`
     + '<section class="esp-instruction" aria-label="Instruction">'
-    + '<form class="esp-instruction-ligne" autocomplete="off">'
-    + `<button type="button" class="esp-micro" aria-label="Dicter une instruction" aria-pressed="false">${ICONE_MICRO}</button>`
-    + `<input class="esp-champ" type="text" placeholder="${echapper(textes.placeholder)}" aria-label="${echapper(textes.placeholder)}">`
-    + '<button type="submit" class="esp-btn-principal">Valider</button>'
-    + "</form>"
-    + `<ul class="esp-puces" aria-label="Suggestions">${suggestions.map((s) => `<li><button type="button" class="esp-puce">${echapper(s)}</button></li>`).join("")}</ul>`
+    // Barre d'instruction affichee mais figee (page de demonstration, aucun appel IA possible) : tout est desactive, ni formulaire ni handler.
+    + '<div class="esp-instruction-ligne" role="group" aria-label="Instruction">'
+    + `<button type="button" class="esp-micro" disabled aria-disabled="true" aria-label="Dicter une instruction">${ICONE_MICRO}</button>`
+    + `<input class="esp-champ" type="text" disabled aria-disabled="true" placeholder="${echapper(textes.placeholder)}" aria-label="${echapper(textes.placeholder)}">`
+    + '<button type="button" class="esp-btn-principal" disabled aria-disabled="true">Valider</button>'
+    + "</div>"
+    + `<ul class="esp-puces" aria-label="Suggestions">${suggestions.map((s) => `<li><button type="button" class="esp-puce" disabled aria-disabled="true">${echapper(s)}</button></li>`).join("")}</ul>`
     + '<p class="esp-etat-saisie" role="status" aria-live="polite"></p>'
     + "</section>"
     + `<div class="esp-grille">${widgets.map((w, i) => htmlWidget(w, i, effectifs)).join("")}</div>`
