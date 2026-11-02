@@ -2,16 +2,16 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { SCENARIOS, ICONES, TYPES_NOEUD } from "../src/ideesEvolutionDonnees.js";
 import { echapper, htmlNoeud, htmlScenario, htmlPage, htmlSprite } from "../src/ideesEvolutionRendu.js";
-import { indicesDebutDeLigne } from "../src/ideesEvolution.js";
+import { indicesDebutDeLigne, debutFlecheCentree } from "../src/ideesEvolution.js";
 
 const tousLesNoeuds = () => SCENARIOS.flatMap((s) => s.noeuds);
 
 test("donnees : cinq frises, la derniere avec le lien interne vers Mon espace, aucune trace des idees retirees", () => {
   assert.equal(SCENARIOS.length, 5);
-  assert.deepEqual(SCENARIOS.map((s) => s.noeuds.length), [6, 6, 4, 5, 6]);
+  assert.deepEqual(SCENARIOS.map((s) => s.noeuds.length), [6, 7, 4, 5, 6]);
   assert.deepEqual(SCENARIOS[4].lien, { vue: "espace", texte: "Voir la page personnelle →" });
   assert.equal(SCENARIOS.filter((s) => s.lien).length, 1);
-  assert.deepEqual(SCENARIOS.map((s) => s.titre), ["Réunion de synthèse", "Mise à jour des maquettes", "Consulter les documents de la GED", "Échéances tirées des discussions", "Création d'une page personnelle"]);
+  assert.deepEqual(SCENARIOS.map((s) => s.titre), ["Réunion de synthèse", "Mise à jour des maquettes", "Lien vers les documents de la GED", "Échéances tirées des discussions", "Un dashboard personnalisé"]);
   assert.doesNotMatch(htmlPage(), /BCF|Autres idées|enchaînement|À évoquer|ide-autres|ide-isoles|ide-lead/);
 });
 
@@ -87,4 +87,24 @@ test("debuts de ligne : un rond dont le haut depasse de plus de 2 px celui du pr
   assert.deepEqual(indicesDebutDeLigne([0, 0, 0]), []);
   assert.deepEqual(indicesDebutDeLigne([0, 1, 2]), []); // 2 px de tolerance
   assert.deepEqual(indicesDebutDeLigne([0, 0, 90, 90, 180]), [2, 4]);
+});
+
+test("donnees : retours du 02/11, premiere bulle, etape IA de la convention, sous-texte GED", () => {
+  const maj = SCENARIOS[1].noeuds;
+  assert.equal(maj[0].label, "Maquette mise à jour");
+  assert.doesNotMatch(JSON.stringify(maj[0]), /projeteur|BIM manager|automatique/i);
+  const i = maj.findIndex((n) => n.label === "Analyse selon la convention");
+  assert.equal(maj[i].type, "ia");
+  assert.equal(maj[i - 1].type, "ia");
+  assert.match(maj[i - 1].label + maj[i - 1].sub, /comprend la convention.*choisit les outils d'analyse/);
+  assert.match(SCENARIOS[2].note, /documents sont sur la GED.*l'IA les met à disposition.*endroit.*maquette/);
+  assert.doesNotMatch(htmlPage(), /Création d'une page personnelle|Consulter les documents de la GED|Le bon document/);
+});
+
+test("fleche : debut place a mi-distance entre deux ronds, quelle que soit la largeur des noeuds", () => {
+  // ronds de 52 px : precedent [0,52], courant [152,204], fleche de 36 px (valeur d exemple) -> centree sur 102, debut a 84
+  assert.equal(debutFlecheCentree(52, 152, 36, 0), 84);
+  assert.equal(debutFlecheCentree(52, 152, 36, 100), -16); // relatif au bord du noeud courant
+  const d = debutFlecheCentree(100, 300, 36, 0);
+  assert.equal(d - 100, 300 - (d + 36)); // marges egales de part et d'autre
 });

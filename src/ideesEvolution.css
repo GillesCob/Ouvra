@@ -24,8 +24,8 @@
 }
 /* :not([hidden]) : sans lui, display: block l'emporterait sur .view[hidden] (style.css) et la page resterait affichee sous les autres. */
 #view-idees:not([hidden]) { display: block; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; background: var(--bg); color: var(--fg); font-family: var(--font-sans); font-size: 16px; line-height: 1.45; -webkit-font-smoothing: antialiased; }
-/* Ordinateur (900 px et plus) : fleche de 36 px et ecart de 8 px, valeurs uniques pour toutes les frises, pour que chacune tienne sur une ligne a 1280 px (MacBook 13 pouces). Mobile : 44 px et 10 px. */
-@media (min-width: 900px) { #view-idees { --fleche: 36px; --ecart: 8px; } }
+/* Ordinateur (900 px et plus) : fleche de 32 px et ecart de 8 px, valeurs uniques pour toutes les frises, pour que chacune tienne sur une ligne a 1280 px (MacBook 13 pouces). Mobile : 44 px et 10 px. */
+@media (min-width: 900px) { #view-idees { --fleche: 32px; --ecart: 8px; } }
 #view-idees *, #view-idees *::before, #view-idees *::after { box-sizing: border-box; }
 #view-idees :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 6px; }
 
@@ -68,8 +68,8 @@
 }
 
 /* Flèche : appartient au nœud qui la suit, longueur et écarts uniques (--fleche, --ecart) */
-.ide-chaine .ide-node + .ide-node::after { content: ""; position: absolute; left: calc(-1 * (var(--fleche) + var(--ecart))); top: 25px; width: var(--fleche); height: 2px; background: var(--accent-line); transform-origin: left center; }
-.ide-chaine .ide-node + .ide-node::before { content: ""; position: absolute; left: calc(-1 * var(--ecart) - 9px); top: 21px; width: 9px; height: 9px; border-top: 2px solid var(--accent-line); border-right: 2px solid var(--accent-line); transform: rotate(45deg); }
+.ide-chaine .ide-node + .ide-node::after { content: ""; position: absolute; left: var(--ar-x, calc(-1 * (var(--fleche) + var(--ecart)))); top: 25px; width: var(--fleche); height: 2px; background: var(--accent-line); transform-origin: left center; }
+.ide-chaine .ide-node + .ide-node::before { content: ""; position: absolute; left: calc(var(--ar-x, calc(-1 * (var(--fleche) + var(--ecart)))) + var(--fleche) - 9px); top: 21px; width: 9px; height: 9px; border-top: 2px solid var(--accent-line); border-right: 2px solid var(--accent-line); transform: rotate(45deg); }
 .ide-chaine .ide-node.ide-debut::before, .ide-chaine .ide-node.ide-debut::after { display: none; }
 
 .ide-note-ged { margin: 18px 0 0; font-size: 13px; color: var(--fg-2); }
@@ -93,7 +93,7 @@
 .ide-rond::after, .ide-onde { border: 1.5px solid var(--accent); opacity: 0; }
 .ide-node.ide-auto .ide-rond::after, .ide-node.ide-ouvert .ide-rond::after { display: none; }
 .ide-node:not(.ide-ia) .ide-rond::after { --anneau: .35; }
-.ide-impulsion { display: none; position: absolute; left: calc(-1 * (var(--fleche) + var(--ecart)) - 12px); top: 18px; width: 16px; height: 16px; opacity: 0; pointer-events: none;
+.ide-impulsion { display: none; position: absolute; left: calc(var(--ar-x, calc(-1 * (var(--fleche) + var(--ecart)))) - 12px); top: 18px; width: 16px; height: 16px; opacity: 0; pointer-events: none;
   background: radial-gradient(circle at 12px 8px, var(--accent) 0 3px, transparent 3.5px), radial-gradient(circle at 12px 8px, var(--accent-line) 0 4px, transparent 8px), linear-gradient(90deg, transparent, var(--accent)) 0 7px / 12px 2px no-repeat; }
 .ide-chaine .ide-node + .ide-node .ide-impulsion { display: block; }
 .ide-chaine .ide-node.ide-debut .ide-impulsion { display: none; }
@@ -126,7 +126,7 @@
 /* Ligne du temps verticale (moins de 900 px) : meme principe, l'impulsion descend */
 @media (max-width: 899px) {
   .ide-rond::before { transform-origin: 50% 0; }
-  .ide-impulsion { left: 18px; top: calc(-1 * (var(--fleche) + var(--ecart)) - 12px);
+  .ide-impulsion { left: 18px; top: calc(var(--ar-y, calc(-1 * (var(--fleche) + var(--ecart)))) - 12px);
     background: radial-gradient(circle at 8px 12px, var(--accent) 0 3px, transparent 3.5px), radial-gradient(circle at 8px 12px, var(--accent-line) 0 4px, transparent 8px), linear-gradient(180deg, transparent, var(--accent)) 7px 0 / 2px 12px no-repeat; }
   .ide-chaine .ide-node.ide-debut .ide-impulsion { display: block; }
   .ide-chaine .ide-node:first-child .ide-impulsion { display: none; }
@@ -170,8 +170,8 @@
   .ide-node { flex-direction: row; align-items: flex-start; gap: 14px; padding: 0; text-align: left; }
   .ide-rond { flex: none; }
   .ide-lab { margin-top: 0; padding-top: 7px; }
-  .ide-chaine .ide-node + .ide-node::after { left: 25px; top: calc(-1 * (var(--fleche) + var(--ecart))); width: 2px; height: var(--fleche); transform-origin: top center; }
-  .ide-chaine .ide-node + .ide-node::before { left: 21.5px; top: calc(-1 * var(--ecart) - 9px); transform: rotate(135deg); }
+  .ide-chaine .ide-node + .ide-node::after { left: 25px; top: var(--ar-y, calc(-1 * (var(--fleche) + var(--ecart)))); width: 2px; height: var(--fleche); transform-origin: top center; }
+  .ide-chaine .ide-node + .ide-node::before { left: 21.5px; top: calc(var(--ar-y, calc(-1 * (var(--fleche) + var(--ecart)))) + var(--fleche) - 9px); transform: rotate(135deg); }
   .ide-chaine .ide-node.ide-debut::before, .ide-chaine .ide-node.ide-debut::after { display: block; }
 }
 @media (max-width: 480px) {
