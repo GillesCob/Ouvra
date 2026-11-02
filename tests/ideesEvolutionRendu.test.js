@@ -75,6 +75,12 @@ test("rendu : la page n'a plus de legende, chaque frise relie son titre a sa sec
   assert.match(s, /<h3 id="ide-scn1">Réunion de synthèse<\/h3>/);
 });
 
+test("rendu : aucun titre affiche en tete de page (l'onglet le porte), titre h2 reserve aux lecteurs d'ecran", () => {
+  const h = htmlPage();
+  assert.doesNotMatch(h, /ide-kicker|ide-titre|Ouvra · Idées d'évolution/);
+  assert.match(h, /<main class="ide-page"><h2 class="ide-sr">Ce qu'on pourrait ajouter<\/h2><section/);
+});
+
 test("debuts de ligne : un rond dont le haut depasse de plus de 2 px celui du precedent ouvre une ligne (vide, un seul rond, une seule ligne, plusieurs lignes)", () => {
   assert.deepEqual(indicesDebutDeLigne([]), []);
   assert.deepEqual(indicesDebutDeLigne([0]), []);

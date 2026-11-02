@@ -4,7 +4,6 @@ import { ICONES, SCENARIOS, TYPES_NOEUD } from "./ideesEvolutionDonnees.js";
 
 const PREFIXE_ICONE = "ide-i-";
 export const TITRE_PAGE = "Ce qu'on pourrait ajouter";
-export const KICKER_PAGE = "Ouvra · Idées d'évolution";
 
 export function echapper(texte) {
   return String(texte).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#x27;");
@@ -44,8 +43,7 @@ export function htmlScenario(scenario, indice) {
 export function htmlPage(scenarios = SCENARIOS) {
   return htmlSprite()
     + '<main class="ide-page">'
-    + `<p class="ide-kicker">${KICKER_PAGE}</p>`
-    + `<h2 class="ide-titre"><span>${TITRE_PAGE}</span><i class="ide-titre-trait"></i></h2>`
+    + `<h2 class="ide-sr">${TITRE_PAGE}</h2>`
     + scenarios.map(htmlScenario).join("")
     + "</main>";
 }

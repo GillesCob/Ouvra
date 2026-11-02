@@ -50,10 +50,8 @@ export function creerIdeesEvolution({ racine, aller, fenetre = window }) {
   function ajusterHauteur() {
     if (!conteneur || conteneur.clientHeight <= 0) return; // page masquee : on garde les dernieres valeurs
     racine.style.setProperty("--ide-hauteur", conteneur.clientHeight + "px");
-    // Hauteur de l'en-tete (kicker + titre) : la premiere frise s'accroche en haut de page avec lui, pas de point d'arret separe pour le titre.
-    if (scenarios[0]) racine.style.setProperty("--ide-entete", Math.max(0, Math.round(scenarios[0].getBoundingClientRect().top - conteneur.getBoundingClientRect().top + conteneur.scrollTop)) + "px");
   }
-  if (typeof ResizeObserver === "function" && conteneur) { const obs = new ResizeObserver(ajusterHauteur); obs.observe(conteneur); obs.observe(racine); } // racine : l'en-tete peut changer de hauteur (police chargee, titre sur deux lignes)
+  if (typeof ResizeObserver === "function" && conteneur) { const obs = new ResizeObserver(ajusterHauteur); obs.observe(conteneur); obs.observe(racine); }
   else fenetre.addEventListener("resize", ajusterHauteur);
   ajusterHauteur();
 

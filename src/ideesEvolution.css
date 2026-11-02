@@ -33,11 +33,7 @@
 .ide-voir-page a { color: var(--accent); font-weight: 600; text-decoration: none; }
 .ide-voir-page a:hover { text-decoration: underline; }
 .ide-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-.ide-page { width: 100%; max-width: 1760px; margin: 0 auto; padding: clamp(20px, 3.2vw, 56px) clamp(16px, 1.6vw, 32px) clamp(28px, 4vw, 64px); }
-.ide-kicker { font-family: var(--font-mono); font-size: clamp(12px, 1.1vw, 16px); color: var(--accent); letter-spacing: .04em; text-transform: uppercase; margin: 0 0 10px; }
-.ide-titre { margin: 0; font-size: clamp(26px, 3.2vw, 52px); letter-spacing: -0.02em; line-height: 1.08; position: relative; display: block; width: fit-content; max-width: 100%; padding-bottom: 14px; }
-.ide-titre-trait { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: var(--accent-line); transform-origin: left center; }
-.ide-titre-trait::after { content: ""; position: absolute; left: 50%; top: 50%; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%; background: var(--accent); }
+.ide-page { width: 100%; max-width: 1760px; margin: 0 auto; padding: 0 clamp(16px, 1.6vw, 32px); position: relative; }
 
 .ide-ico { width: 24px; height: 24px; fill: none; stroke: var(--accent); stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex: none; }
 
@@ -46,7 +42,6 @@
    mobile « proximity » pour ne jamais bloquer le defilement dans une frise verticale plus haute que l'ecran ; aucune accroche si le systeme demande moins d'animations. */
 #view-idees.ide-accroche { scroll-snap-type: y mandatory; }
 .ide-scn { display: flex; flex-direction: column; justify-content: center; min-height: var(--ide-hauteur, 100vh); margin: 0; padding: 24px 0; scroll-snap-align: center; scroll-snap-stop: always; }
-.ide-scn:first-of-type { scroll-snap-align: start; scroll-margin-top: var(--ide-entete, 0px); } /* premiere frise : accrochee en haut de page (scrollTop 0), titre compris */
 .ide-scn-tete { display: flex; align-items: center; gap: 14px; min-width: 0; }
 .ide-bat-img { display: block; height: clamp(46px, 4vw, 64px); width: auto; flex: none; }
 .ide-scn-tete h3 { margin: 0; min-width: 0; font-size: clamp(17px, 1.5vw, 24px); letter-spacing: -0.01em; line-height: 1.15; }
@@ -79,13 +74,6 @@
 
 .ide-note-ged { margin: 18px 0 0; font-size: 13px; color: var(--fg-2); }
 
-
-/* Apparition échelonnée */
-@keyframes ide-fondu { from { opacity: 0; } to { opacity: 1; } }
-@keyframes ide-trace { from { opacity: 0; transform: scaleX(0); } to { opacity: 1; transform: scaleX(1); } }
-.ide-kicker { animation: ide-fondu .5s ease both; }
-.ide-titre > span { display: block; animation: ide-fondu .6s ease .15s both; }
-.ide-titre-trait { animation: ide-trace .7s var(--ease-out) .45s both; }
 
 /* Apparition : l'information voyage d'une etape a l'autre.
    Etat initial : toutes les bulles et fleches sont deja la, en fantomes (contour fin, opacite reduite), la structure se lit d'emblee.
@@ -157,10 +145,9 @@
 
 /* Mobile (360 à 899 px) : chaque frise devient une ligne du temps verticale, texte courant à 16 px, cibles de 44 px, aucun mot coupé */
 @media (max-width: 899px) {
-  .ide-page { padding-top: 24px; }
-  .ide-kicker { font-size: 14px; }
   #view-idees.ide-accroche { scroll-snap-type: y proximity; }
   .ide-scn { border-top: 1px solid var(--border); }
+  .ide-scn:first-of-type { border-top: 0; }
   .ide-scn-tete h3 { font-size: 20px; }
   .ide-chaine { margin-top: 24px; }
   .ide-node { min-height: 52px; }
