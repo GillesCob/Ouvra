@@ -1,4 +1,4 @@
-// Page « Idees d'evolution » (02/11) : quatre frises-scenarios, legende. Le HTML vient de src/ideesEvolutionRendu.js (donnees : src/ideesEvolutionDonnees.js),
+// Page « Idees d'evolution » (02/11) : quatre frises-scenarios. Le HTML vient de src/ideesEvolutionRendu.js (donnees : src/ideesEvolutionDonnees.js),
 // le CSS de src/ideesEvolution.css (importe par main.js : ce module reste importable sous Node). Comportements repris du mockup :
 //  - chaque frise est une section pleine page (--ide-hauteur, posee ici d'apres la hauteur de #view-idees) et un point d'accroche du defilement (classe ide-accroche sur #view-idees,
 //    posee seulement tant que la page est affichee, retiree des qu'on la quitte) ; seule la frise qui franchit le milieu de l'ecran est animee (IntersectionObserver, classe ide-vu),

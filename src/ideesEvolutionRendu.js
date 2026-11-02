@@ -17,7 +17,7 @@ export function htmlSprite(icones = ICONES) {
 }
 
 const svgIcone = (nom, classe) => `<svg ${classe ? `class="${classe}" ` : ""}viewBox="0 0 24 24" aria-hidden="true"><use href="#${PREFIXE_ICONE}${echapper(nom)}"/></svg>`;
-const pastilleAuto = () => `<span class="ide-auto-tag" title="Automatique">${svgIcone("gear")}</span>`;
+const pastilleAuto = () => '<span class="ide-auto-tag">Auto</span>';
 
 export function htmlNoeud(noeud, rang) {
   if (!TYPES_NOEUD.includes(noeud.type)) throw new Error(`Type de noeud inconnu : ${noeud.type}`);
@@ -41,22 +41,11 @@ export function htmlScenario(scenario, indice) {
   return `<section class="ide-scn" aria-labelledby="${id}">${tete}${chaine}${note}${lien}</section>`;
 }
 
-export function htmlLegende() {
-  const rond = (classe, pastille) => `<span class="ide-leg-rond${classe ? " " + classe : ""}">${pastille}</span>`;
-  return '<ul class="ide-legende" aria-label="Légende">'
-    + `<li>${rond("ide-ia", '<span class="ide-ia-tag">IA</span>')}IA</li>`
-    + `<li>${rond("ide-auto", pastilleAuto())}Automatique</li>`
-    + `<li>${rond("", "")}Humain</li>`
-    + `<li>${rond("ide-ouvert", "")}Suite non définie</li>`
-    + "</ul>";
-}
-
 export function htmlPage(scenarios = SCENARIOS) {
   return htmlSprite()
     + '<main class="ide-page">'
     + `<p class="ide-kicker">${KICKER_PAGE}</p>`
     + `<h2 class="ide-titre"><span>${TITRE_PAGE}</span><i class="ide-titre-trait"></i></h2>`
     + scenarios.map(htmlScenario).join("")
-    + htmlLegende()
     + "</main>";
 }

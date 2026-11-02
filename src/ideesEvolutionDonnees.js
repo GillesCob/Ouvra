@@ -1,13 +1,12 @@
 // Donnees de la page « Idees d'evolution » (portage de vault-perso/Projets/Ouvra/mockups/ouvra-idees-fonctionnalites.html, 02/11).
 // Quatre frises-scenarios : contenu pur, rendu par src/ideesEvolutionRendu.js. Pas de donnee de projet ici, seulement des idees a evoquer.
-// type d'un noeud : "humain" (rond neutre), "auto" (pastille engrenage), "ia" (pastille IA), "ouvert" (suite non definie, rond en pointilles).
+// type d'un noeud : "humain" (rond neutre), "auto" (pastille Auto), "ia" (pastille IA), "ouvert" (suite non definie, rond en pointilles).
 // lien : navigation interne (vue de l'application), jamais un fichier .html.
 
 export const TYPES_NOEUD = ["humain", "auto", "ia", "ouvert"];
 
 // Icones : contenu des <symbol viewBox="0 0 24 24"> du mockup (traits, une seule epaisseur posee par le CSS).
 export const ICONES = {
-  gear: "<circle cx=\"12\" cy=\"12\" r=\"3\"/><path d=\"M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1\"/>",
   mic: "<rect x=\"9\" y=\"3\" width=\"6\" height=\"11\" rx=\"3\"/><path d=\"M5 11a7 7 0 0 0 14 0M12 18v3\"/>",
   wave: "<path d=\"M3 12h2M7 8v8M11 5v14M15 8v8M19 10v4\"/>",
   text: "<path d=\"M4 6h16M4 11h16M4 16h10\"/>",

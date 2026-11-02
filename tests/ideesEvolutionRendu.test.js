@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { SCENARIOS, ICONES, TYPES_NOEUD } from "../src/ideesEvolutionDonnees.js";
-import { echapper, htmlNoeud, htmlScenario, htmlPage, htmlSprite, htmlLegende } from "../src/ideesEvolutionRendu.js";
+import { echapper, htmlNoeud, htmlScenario, htmlPage, htmlSprite } from "../src/ideesEvolutionRendu.js";
 import { indicesDebutDeLigne } from "../src/ideesEvolution.js";
 
 const tousLesNoeuds = () => SCENARIOS.flatMap((s) => s.noeuds);
@@ -21,7 +21,6 @@ test("donnees : chaque noeud a un type connu, une icone du sprite et un libelle 
     assert.ok(ICONES[n.icone], "icone " + n.icone);
     assert.ok(n.label || n.srSeul);
   }
-  assert.ok(ICONES.gear, "l'icone de la pastille « Automatique »");
 });
 
 test("donnees : un seul noeud « suite non definie », sans libelle visible", () => {
@@ -31,13 +30,13 @@ test("donnees : un seul noeud « suite non definie », sans libelle visible", ()
   assert.equal(ouverts[0].label, undefined);
 });
 
-test("rendu : le noeud IA porte la pastille IA, l'automatique la pastille engrenage, l'humain aucune", () => {
+test("rendu : le noeud IA porte la pastille IA, l'automatique la pastille Auto, l'humain aucune", () => {
   const ia = htmlNoeud({ type: "ia", icone: "text", label: "Retranscription" }, 2);
   assert.match(ia, /^<li class="ide-node ide-ia" style="--n:2">/);
   assert.match(ia, /<span class="ide-ia-tag">IA<\/span>/);
   const auto = htmlNoeud({ type: "auto", icone: "wave", label: "Écoute" }, 1);
-  assert.match(auto, /ide-auto-tag" title="Automatique"/);
-  assert.match(auto, /#ide-i-gear/);
+  assert.match(auto, /<span class="ide-auto-tag">Auto<\/span>/);
+  assert.doesNotMatch(auto, /gear/);
   const humain = htmlNoeud({ type: "humain", icone: "mic", label: "Réunion" }, 0);
   assert.match(humain, /^<li class="ide-node" /);
   assert.doesNotMatch(humain, /ide-ia-tag|ide-auto-tag/);
@@ -66,11 +65,11 @@ test("rendu : la page contient cinq sections, des liens internes seulement (aucu
 });
 
 test("rendu : jamais le mot interdit dans un texte visible", () => {
-  assert.doesNotMatch(htmlPage() + htmlLegende(), new RegExp("pe" + "tit", "i"));
+  assert.doesNotMatch(htmlPage(), new RegExp("pe" + "tit", "i"));
 });
 
-test("rendu : la legende donne les quatre cas, chaque frise relie son titre a sa section", () => {
-  assert.match(htmlLegende(), /IA<\/li><li>.*Automatique<\/li><li>.*Humain<\/li><li>.*Suite non définie<\/li>/);
+test("rendu : la page n'a plus de legende, chaque frise relie son titre a sa section", () => {
+  assert.doesNotMatch(htmlPage(), /ide-legende|ide-leg-rond/);
   const s = htmlScenario(SCENARIOS[0], 0);
   assert.match(s, /aria-labelledby="ide-scn1"/);
   assert.match(s, /<h3 id="ide-scn1">Réunion de synthèse<\/h3>/);

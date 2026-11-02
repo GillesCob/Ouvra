@@ -47,7 +47,6 @@
 #view-idees.ide-accroche { scroll-snap-type: y mandatory; }
 .ide-scn { display: flex; flex-direction: column; justify-content: center; min-height: var(--ide-hauteur, 100vh); margin: 0; padding: 24px 0; scroll-snap-align: center; scroll-snap-stop: always; }
 .ide-kicker { scroll-snap-align: start; }
-.ide-legende { scroll-snap-align: end; }
 .ide-scn-tete { display: flex; align-items: center; gap: 14px; min-width: 0; }
 .ide-bat-img { display: block; height: clamp(46px, 4vw, 64px); width: auto; flex: none; }
 .ide-scn-tete h3 { margin: 0; min-width: 0; font-size: clamp(17px, 1.5vw, 24px); letter-spacing: -0.01em; line-height: 1.15; }
@@ -62,8 +61,7 @@
 .ide-node.ide-ia .ide-rond { border: 2px solid var(--accent); background: var(--accent-soft); }
 .ide-node.ide-ia .ide-ico { stroke: var(--accent); }
 .ide-node.ide-auto .ide-rond { border: 1px solid var(--border); background: var(--surface-2); }
-.ide-auto-tag { position: absolute; top: -7px; right: -9px; display: grid; place-items: center; width: 18px; height: 18px; border: 1px solid var(--border-strong); border-radius: 50%; background: var(--surface); }
-.ide-auto-tag svg { width: 11px; height: 11px; fill: none; stroke: var(--muted); stroke-width: 2; stroke-linecap: round; }
+.ide-auto-tag { position: absolute; top: -9px; right: -12px; padding: 0 6px; border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--muted); font-family: var(--font-mono); font-size: 10px; font-weight: 700; line-height: 16px; letter-spacing: .04em; }
 .ide-node.ide-ouvert .ide-rond { border: 1.5px dashed var(--muted); background: transparent; }
 .ide-node.ide-ouvert .ide-ico { stroke: var(--muted); }
 .ide-ia-tag { position: absolute; top: -9px; right: -12px; padding: 0 6px; border: 1px solid var(--accent); border-radius: 999px; background: var(--surface); color: var(--accent); font-family: var(--font-mono); font-size: 10px; font-weight: 700; line-height: 16px; letter-spacing: .04em; }
@@ -82,23 +80,12 @@
 .ide-note-ged { margin: 18px 0 0; font-size: 13px; color: var(--fg-2); }
 
 
-/* Légende */
-.ide-legende { display: flex; flex-wrap: wrap; gap: 12px 28px; margin: clamp(30px, 3.6vw, 56px) 0 0; padding: 14px 0 0; border-top: 1px solid var(--border); list-style: none; font-size: 13px; color: var(--fg-2); }
-.ide-legende li { display: flex; align-items: center; gap: 10px; }
-.ide-leg-rond { position: relative; width: 24px; height: 24px; border-radius: 50%; background: var(--surface); border: 1.5px solid var(--border-strong); }
-.ide-leg-rond.ide-ia { border: 2px solid var(--accent); background: var(--accent-soft); }
-.ide-leg-rond.ide-auto { border: 1px solid var(--border); background: var(--surface-2); }
-.ide-leg-rond .ide-auto-tag { top: -6px; right: -9px; width: 16px; height: 16px; }
-.ide-leg-rond.ide-ouvert { border: 1.5px dashed var(--muted); background: transparent; }
-.ide-leg-rond .ide-ia-tag { top: -8px; right: -14px; font-size: 9px; line-height: 14px; padding: 0 5px; }
-
 /* Apparition échelonnée */
 @keyframes ide-fondu { from { opacity: 0; } to { opacity: 1; } }
 @keyframes ide-trace { from { opacity: 0; transform: scaleX(0); } to { opacity: 1; transform: scaleX(1); } }
 .ide-kicker { animation: ide-fondu .5s ease both; }
 .ide-titre > span { display: block; animation: ide-fondu .6s ease .15s both; }
 .ide-titre-trait { animation: ide-trace .7s var(--ease-out) .45s both; }
-.ide-legende { animation: ide-fondu .6s ease .3s both; }
 
 /* Apparition : l'information voyage d'une etape a l'autre.
    Etat initial : toutes les bulles et fleches sont deja la, en fantomes (contour fin, opacite reduite), la structure se lit d'emblee.
@@ -182,7 +169,6 @@
   .ide-note-ged { font-size: 16px; margin-top: 22px; }
   .ide-voir-page { font-size: 16px; margin-top: 22px; }
   .ide-voir-page a { display: inline-flex; align-items: center; min-height: 44px; }
-  .ide-legende { font-size: 15px; }
 }
 @media (prefers-reduced-motion: reduce) {
   #view-idees.ide-accroche { scroll-snap-type: none; }
