@@ -4,7 +4,7 @@
 // Principe de la page : tout se regle par instruction, aucune manipulation.
 // PAGE FIGEE (demonstration, aucun risque venant de l'IA) : la barre d'instruction (champ, Valider, micro, suggestions), les stylos et les boutons « Voir » des
 // alertes et des documents sont affiches mais desactives (voir monEspaceRendu.js) ; aucun handler ni appel d'API IA ici. Reste actif :
-//  - la croix retire un widget ou une vue (bouton « Annuler » pendant 8 secondes)  ;
+//  - la croix retire un widget ou une vue (bouton « Annuler » pendant 8 secondes) ;
 //  - la tuile « Ajouter une vue » ouvre le Viewer tel qu'il est (cible { type: "viewer" }, sans cadrage), avec le bandeau de retour ;
 //  - un point de vue ouvre le Viewer cadre, un compteur de collisions ouvre la page Collision filtree, la puce de discussion d'une tache ou d'une echeance ouvre
 //    la discussion au message source (main.js, ouvrirDepuisEspace) ; un bandeau « Retour a Mon espace » ramene ici, a la meme position de defilement (revenir).
