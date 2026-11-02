@@ -178,9 +178,9 @@ test("compteurs : chaque compteur ouvre la page Collision filtree sur son statut
   for (const c of compteurs) assert.match(h, new RegExp('data-cible="' + c.id + '" aria-label="Voir les collisions suivies : ' + effectifs[c.cible.filtre] + " "), c.libelle);
   // Une etoile retiree change le compteur affiche (meme source : les favoris).
   const moins = compterSuivies(HOSPITAL_CLASHES, resoudreFavoris([{ id: "hosp-clash-1", favori: false }]));
-  assert.match(htmlCompteurs(compteurs, moins), /Voir les collisions suivies : 8 nouvelles"><strong>8<\/strong>/);
+  assert.match(htmlCompteurs(compteurs, moins), /Voir les collisions suivies : 1 nouvelles"><strong>1<\/strong>/);
   assert.equal((h.match(/class="esp-compteur-bouton" data-cible="compteur-/g) || []).length, 4);
-  assert.match(h, /<li><button type="button" class="esp-compteur-bouton" data-cible="compteur-en-cours" aria-label="Voir les collisions suivies : 4 en cours"><strong>4<\/strong><span>En cours<\/span><\/button><\/li>/);
+  assert.match(h, /<li><button type="button" class="esp-compteur-bouton" data-cible="compteur-en-cours" aria-label="Voir les collisions suivies : 2 en cours"><strong>2<\/strong><span>En cours<\/span><\/button><\/li>/);
   assert.match(h, /<li class="esp-urgent"><button type="button" class="esp-compteur-bouton" data-cible="compteur-urgentes"/);
 });
 

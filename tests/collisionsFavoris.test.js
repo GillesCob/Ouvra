@@ -14,8 +14,8 @@ test("cle propre, distincte de l'etat des collisions", () => {
   assert.equal(CLE_FAVORIS, "ouvra-collisions-favoris");
 });
 
-test("les 13 favoris par defaut sont les collisions actives : Nouveau n° 1, 3, 4, 6, 9, 11, 12, 13, 14 et En cours n° 2, 5, 10, 15 (les ecartees 7 et 8 ne sont pas suivies)", () => {
-  assert.deepEqual(FAVORIS_PAR_DEFAUT, [1, 3, 4, 6, 9, 11, 12, 13, 14, 2, 5, 10, 15].map((n) => "hosp-clash-" + n));
+test("les 4 favoris par defaut illustrent la demo : Nouveau n° 1 et 9, En cours n° 2 et 10 (les 9 autres collisions ne sont pas suivies)", () => {
+  assert.deepEqual(FAVORIS_PAR_DEFAUT, [1, 9, 2, 10].map((n) => "hosp-clash-" + n));
 });
 
 test("predicats : nouvelle = nouveau, en cours = confirme, resolue = resolu, urgente = priorite urgente", () => {
@@ -78,7 +78,7 @@ test("resoudreFavoris : un choix enregistre l'emporte sur le defaut, les entrees
   const set = resoudreFavoris([{ id: "hosp-clash-1", favori: false }, { id: "hosp-clash-7", favori: true }, null, { id: 5, favori: true }, { favori: true }, "x"]);
   assert.equal(set.has("hosp-clash-1"), false);
   assert.equal(set.has("hosp-clash-7"), true);
-  assert.equal(set.has("hosp-clash-3"), true);
+  assert.equal(set.has("hosp-clash-2"), true);
   assert.equal(set.size, FAVORIS_PAR_DEFAUT.length);
 });
 
@@ -109,20 +109,20 @@ test("persistance sur le depot local : aller-retour, JSON corrompu et stockage a
   assert.equal(sansStockage.ecrire([]), false);
 });
 
-test("compteurs de Mon espace : sur les 15 collisions de l'hopital et les favoris par defaut, 9 Nouvelles, 4 En cours, 1 Urgente, 0 Resolue ; l'etoile ajoutee ou retiree change le compteur, et le clic liste exactement ces collisions", async () => {
+test("compteurs de Mon espace : sur les 15 collisions de l'hopital et les favoris par defaut, 2 Nouvelles, 2 En cours, 1 Urgente, 0 Resolue ; l'etoile ajoutee ou retiree change le compteur, et le clic liste exactement ces collisions", async () => {
   const { HOSPITAL_CLASHES } = await import("../src/clashesHospital.js");
   const depot = creerDepotLocal(stockageMemoire(), CLE_FAVORIS);
   const effectifs = () => compterSuivies(HOSPITAL_CLASHES, resoudreFavoris(depot.lire()));
-  assert.deepEqual(effectifs(), { nouvelles: 9, "en-cours": 4, urgentes: 1, resolues: 0 });
-  // Retrait d'une etoile « Nouveau » (n° 1) : 8 Nouvelles, et la liste filtree ne contient plus la collision.
+  assert.deepEqual(effectifs(), { nouvelles: 2, "en-cours": 2, urgentes: 1, resolues: 0 });
+  // Retrait d'une etoile « Nouveau » (n° 1) : 1 Nouvelle, et la liste filtree ne contient plus la collision.
   depot.ecrire(basculerFavori(depot.lire(), "hosp-clash-1"));
-  assert.equal(effectifs().nouvelles, 8);
+  assert.equal(effectifs().nouvelles, 1);
   const liste = (f) => filtrerCollisions(HOSPITAL_CLASHES, f, resoudreFavoris(depot.lire())).map((x) => x.id);
-  assert.equal(liste("nouvelles").length, 8);
+  assert.equal(liste("nouvelles").length, 1);
   assert.equal(liste("nouvelles").includes("hosp-clash-1"), false);
-  // Retrait de l'etoile de la n° 10 (seule Urgente, En cours) : 0 Urgente, 3 En cours.
+  // Retrait de l'etoile de la n° 10 (seule Urgente, En cours) : 0 Urgente, 1 En cours.
   depot.ecrire(basculerFavori(depot.lire(), "hosp-clash-10"));
-  assert.deepEqual([effectifs().urgentes, effectifs()["en-cours"]], [0, 3]);
+  assert.deepEqual([effectifs().urgentes, effectifs()["en-cours"]], [0, 1]);
   // Etoile ajoutee sur une ecartee (n° 7) : aucun compteur ne bouge (ni Nouveau, ni En cours, ni Resolu).
   const avant = effectifs();
   depot.ecrire(basculerFavori(depot.lire(), "hosp-clash-7"));
