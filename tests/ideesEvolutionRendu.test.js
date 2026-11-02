@@ -8,7 +8,7 @@ const tousLesNoeuds = () => SCENARIOS.flatMap((s) => s.noeuds);
 
 test("donnees : quatre frises, la derniere avec le lien interne vers Mon espace, aucune trace des idees retirees", () => {
   assert.equal(SCENARIOS.length, 4);
-  assert.deepEqual(SCENARIOS.map((s) => s.noeuds.length), [7, 6, 4, 6]);
+  assert.deepEqual(SCENARIOS.map((s) => s.noeuds.length), [6, 6, 4, 6]);
   assert.deepEqual(SCENARIOS[3].lien, { vue: "espace", texte: "Voir la page personnelle →" });
   assert.equal(SCENARIOS.filter((s) => s.lien).length, 1);
   assert.deepEqual(SCENARIOS.map((s) => s.titre), ["Réunion de synthèse", "Mise à jour des maquettes", "Le bon document, là où je regarde", "Une page qui s'adapte à moi, à la voix"]);

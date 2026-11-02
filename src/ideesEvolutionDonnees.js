@@ -36,7 +36,6 @@ export const SCENARIOS = [
       { type: "humain", icone: "mic", label: "Réunion de synthèse" },
       { type: "auto", icone: "wave", label: "Écoute de l'échange" },
       { type: "ia", icone: "text", label: "Retranscription" },
-      { type: "auto", icone: "screen", label: "Compte rendu relié" },
       { type: "auto", icone: "report", label: "Rapport automatisé" },
       { type: "ia", icone: "tasks", label: "Tâches projeteurs" },
       { type: "humain", icone: "export", label: "Export vers Revit" }
