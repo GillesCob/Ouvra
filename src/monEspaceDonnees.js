@@ -1,7 +1,11 @@
 // Donnees de la page « Mon espace » (portage de vault-perso/Projets/Ouvra/mockups/ouvra-mon-espace.html, 02/11).
-// Six widgets d'exemple, chacun ajoute par une phrase (la phrase est aussi celle qu'on retape dans la barre d'instruction pour le faire reapparaitre),
-// des suggestions, et les textes de la page. Aucune donnee de projet reelle : tout est factice, pour evoquer l'idee.
-// type : "vues" (points de vue), "alertes", "todo", "documents", "compteurs". zone : place dans la grille (grid-area du CSS).
+// Six widgets, chacun ajoute par une phrase (la phrase est aussi celle qu'on retape dans la barre d'instruction pour le faire reapparaitre),
+// des suggestions, et les textes de la page. Les donnees viennent des messages et des collisions DEJA presents dans l'application :
+//  - messages : corpus de la messagerie (src/messagerie/corpus/*.json) ; la cible d'un element est { type: "message", convId, sujetId, texte }, le texte etant celui du
+//    message source, recopie tel quel (la page le retrouve par ce texte : les messages n'ont pas d'identifiant et leur position change avec les evenements du journal) ;
+//  - collisions : les 15 collisions de l'hopital (src/clashesHospital.js) ; la cible est { type: "collision", clashId } et la carte lit la collision elle-meme ;
+//  - un message (Karim) s'adresse a l'utilisateur par « Gilles » : le texte est cite tel quel.
+// type : "vues" (collisions suivies en vue), "alertes", "todo", "echeances", "documents", "compteurs". zone : place dans la grille (grid-area du CSS).
 export const TEXTES_ESPACE = {
   filIdees: "Idées d'évolution",
   filCourant: "Mon espace",
@@ -11,7 +15,8 @@ export const TEXTES_ESPACE = {
   journal: "Ce que tu as demandé",
   ajoutVue: "Ajouter une vue",
   ajoutVuePhrase: "Ajoute une vue : ",
-  journalVide: "Aucune instruction pour l'instant."
+  journalVide: "Aucune instruction pour l'instant.",
+  libelleRetour: "Retour à Mon espace"
 };
 
 export const SUGGESTIONS = [
@@ -20,38 +25,88 @@ export const SUGGESTIONS = [
   "Fais-moi une todo de ce qu'on m'a demandé"
 ];
 
+// Page d'ou vient la phrase d'une vue (fin de l'etiquette « Instruction ... »).
+export const PAGES_INSTRUCTION = { viewer: "du Viewer", collision: "de la page Collision" };
+
 export const WIDGETS = [
   {
     id: "vues", zone: "vues", type: "vues", titre: "Mes points de vue", phrase: "Montre mes vues du niveau 2",
-    // Chaque vue est produite par une phrase DEJA acceptee par le Viewer (src/commandesExemples.js, champ demande, recopiee a l'identique) et garde un cadrage de camera propre.
+    // Chaque vue est une collision de l'hopital, avec sa miniature 3D (public/images/vues/<clashId>.jpg). L'instruction est une phrase DEJA acceptee par l'application,
+    // recopiee a l'identique : « Affiche-moi les gaines au niveau 2 » (src/commandesExemples.js) retrouve la collision n° 2 ; les deux autres viennent de src/reglesExemples.js.
+    // La collision n° 5 (niveau 4) n'a aucune phrase d'exemple qui la vise : elle n'en porte pas.
     items: [
-      { id: "gaines", libelle: "Gaines niveau 2", instruction: "Affiche-moi les gaines au niveau 2", vignette: "gaines" },
-      { id: "cvc", libelle: "CVC et Architecture", instruction: "Affiche uniquement le niveau 2 avec les maquettes CVC et Architecture", vignette: "cvc" },
-      { id: "plafonds", libelle: "Faux plafonds niveau 1", instruction: "Mets en évidence les faux plafonds du niveau 1", vignette: "plafonds" }
+      { id: "clash-2", clashId: "hosp-clash-2", page: "viewer", instruction: "Affiche-moi les gaines au niveau 2", cible: { type: "collision", clashId: "hosp-clash-2" } },
+      { id: "clash-10", clashId: "hosp-clash-10", page: "collision", instruction: "Affiche les collisions urgentes sans message depuis 3 jours", cible: { type: "collision", clashId: "hosp-clash-10" } },
+      { id: "clash-1", clashId: "hosp-clash-1", page: "collision", instruction: "Passe en haute priorité les collisions qui impliquent des murs du niveau 1", cible: { type: "collision", clashId: "hosp-clash-1" } },
+      { id: "clash-5", clashId: "hosp-clash-5", page: null, instruction: null, cible: { type: "collision", clashId: "hosp-clash-5" } }
     ]
   },
   {
     id: "alertes", zone: "alertes", type: "alertes", titre: "Alertes", phrase: "Ajoute les alertes de la maquette structure",
+    // Pas de bouton « Voir » sans cible : le document n'a aucun lien (l'application ne branche aucune GED reelle), la mise a jour de maquette n'en a jamais.
     items: [
-      { heure: "09:12", texte: "Maquette Structure passée de V3 à V4 : 12 éléments modifiés, 3 supprimés" },
-      { heure: "08:40", texte: "Document mis à jour : Notice désenfumage, indice C" },
-      { heure: "Hier", texte: "Collision n°14 passée en urgente" }
+      { id: "alerte-document", heure: "30/10", texte: "Document mis à jour : nomenclature_gaines_R2.xlsx" },
+      { id: "alerte-maquette", heure: "28/10", texte: "Maquette Architecture passée en V3.1 par Claire Martin" },
+      { id: "alerte-collision-10", heure: "15/10", texte: "Collision n° 10 passée en urgente", cible: { type: "collision", clashId: "hosp-clash-10" } }
     ]
   },
   {
     id: "todo", zone: "todo", type: "todo", titre: "Ma todo", repereIA: "Construite à partir des échanges", phrase: "Fais-moi une todo de ce qu'on m'a demandé",
+    // citation = message source, recopie tel quel. heure = quand il a ete ecrit.
     items: [
-      { titre: "Valider le passage de la gaine G12", par: "Camille", discussion: "Réservations niveau 2", heure: "09:12", urgence: "Aujourd'hui" },
-      { titre: "Répondre sur l'accès de la grue", par: "Nadir", discussion: "Installation de chantier", heure: "Hier", urgence: "Aujourd'hui" },
-      { titre: "Confirmer la cote du plancher bas, niveau 3", par: "Inès", discussion: "Structure et CVC, niveau 3", heure: "Lundi", urgence: "Cette semaine" }
+      {
+        id: "todo-metre", titre: "Sortir le métré du R+2 et prévenir Claire et Julien", par: "Sophie Lambert", discussion: "Collision gaine rectangulaire / cloison, couloir R+2",
+        heure: "09:48", urgence: "Aujourd'hui",
+        citation: "Tu me dis dès que le métré est sorti, je ne fige rien avant. Et tu préviens Claire et Julien que ça reste ouvert ?",
+        cible: { type: "message", convId: "sophie", sujetId: "s1", texte: "Tu me dis dès que le métré est sorti, je ne fige rien avant. Et tu préviens Claire et Julien que ça reste ouvert ?" }
+      },
+      {
+        id: "todo-bcf", titre: "Envoyer le BCF à Karim (percement poutre R+1)", par: "Karim Benali", discussion: "Karim Benali",
+        heure: "Hier", urgence: "Cette semaine",
+        citation: "D'accord. Envoie-moi le BCF d'abord",
+        cible: { type: "message", convId: "karim", sujetId: null, texte: "D'accord. Envoie-moi le BCF d'abord" }
+      },
+      {
+        id: "todo-poutre", titre: "Confirmer la retombée de la poutre de rive R+3", par: "Claire Martin", discussion: "Claire Martin",
+        heure: "Vendredi", urgence: "Cette semaine",
+        citation: "Réservation fenêtre R+3 : j'ai un conflit entre l'allège et la poutre de rive, tu peux regarder la coupe BCF que je t'ai envoyée ?",
+        cible: { type: "message", convId: "claire", sujetId: null, texte: "Réservation fenêtre R+3 : j'ai un conflit entre l'allège et la poutre de rive, tu peux regarder la coupe BCF que je t'ai envoyée ?" }
+      }
     ]
   },
   {
+    id: "echeances", zone: "ech", type: "echeances", titre: "Échéances", repereIA: "Tirées des discussions", phrase: "Ajoute mes échéances tirées des discussions",
+    // Une seule liste, dans l'ordre des dates. date : jour reel (la proximite « Aujourd'hui », « Dans 2 jours »... se calcule a l'affichage). label : reunion, modification ou decision.
+    items: [
+      {
+        id: "ech-poutre-axe-c", date: "2026-11-02", titre: "Point avec Nadia sur la poutre axe C (C40/50 avec section 60 contre section 70)", label: "decision",
+        personne: "Vous, avec Nadia Faure", discussion: "Poutre axe C : reprise de section",
+        cible: { type: "message", convId: "karim", sujetId: "k1", texte: "Parfait, je prends ça demain pour le point avec Nadia. Je garde la section 70 comme hypothèse de travail dans la V4." }
+      },
+      {
+        id: "ech-visite-maquette", date: "2026-11-04", titre: "Visite de la maquette avec la direction des soins", label: "reunion",
+        personne: "Nadia Faure", discussion: "Coordination tous lots",
+        cible: { type: "message", convId: "g-coord", sujetId: null, texte: "Bonjour, pouvez-vous me confirmer que la visite de la maquette avec la direction des soins reste calée le 4 novembre ?" }
+      },
+      {
+        id: "ech-plans-coffrage", date: "2026-11-05", titre: "Geler les plans de coffrage R+2 avec l'indice D", label: "modification",
+        personne: "Karim Benali, demandé par Claire Martin", discussion: "Lot Structure",
+        cible: { type: "message", convId: "g-structure", sujetId: null, texte: "On gèle les plans avant le 5, tu seras prêt ?" }
+      },
+      {
+        id: "ech-synthese", date: "2026-11-05", titre: "Synthèse : figer les réservations et les trémies, apporter les listes à jour", label: "reunion",
+        personne: "Vous", discussion: "Synthèse hebdomadaire",
+        cible: { type: "message", convId: "g-synthese", sujetId: null, texte: "Jeudi prochain, on fige les réservations et les trémies avant l'indice du 5. Merci d'amener vos listes à jour." }
+      }
+    ]
+  },
+  {
+    // Pas de GED reelle dans l'application : ce sont les pieces jointes citees dans les messages, avec leur auteur et leur discussion.
     id: "documents", zone: "docs", type: "documents", titre: "Documents consultés récemment", phrase: "Garde mes derniers documents consultés",
     items: [
-      { texte: "Notice désenfumage, indice C", quand: "Aujourd'hui" },
-      { texte: "Plan de réservations, niveau 2", quand: "Hier" },
-      { texte: "CCTP lot CVC", quand: "29/10" }
+      { texte: "coupe-gaine-cloison-R2.pdf", quand: "Aujourd'hui", meta: "Déposé par Sophie Lambert · Collision gaine rectangulaire / cloison, couloir R+2" },
+      { texte: "nomenclature_gaines_R2.xlsx", quand: "30/10", meta: "Déposé par Marc Dubois · Lots fluides" },
+      { texte: "archi-V3.1.ifc", quand: "28/10", meta: "Déposé par Claire Martin · Maquette V3 : retours" }
     ]
   },
   {

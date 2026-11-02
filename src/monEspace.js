@@ -5,14 +5,16 @@
 //  - une phrase du journal retapee refait apparaitre son widget ; « Annuler » du journal masque le dernier ;
 //  - le stylo d'un widget ou d'une vue prepare « Modifie ... : » dans la barre ; la croix retire (bouton « Annuler » pendant 8 secondes, ou phrase retapee) ;
 //  - la tuile « Ajouter une vue » prepare « Ajoute une vue : » dans la barre ;
-//  - une vue ouvre le Viewer, une discussion source ouvre Discussions : navigation seulement, la commande du Viewer n'est PAS appliquee (pas branche) ;
+//  - une vue ou l'alerte d'une collision ouvre la page Collision sur cette collision, la puce de discussion d'une tache ou d'une echeance ouvre la discussion au message source
+//    (main.js, ouvrirDepuisEspace) ; un bandeau « Retour a Mon espace » ramene ici, a la meme position de defilement (revenir) ;
 //  - le micro bascule seulement son etat (aucune dictee reelle ici). Rien n'est memorise : un rechargement remet tout.
 import { WIDGETS, TEXTES_ESPACE } from "./monEspaceDonnees.js";
 import { htmlPageEspace } from "./monEspaceRendu.js";
-import { MESSAGES_ESPACE, DELAI_ANNULATION_MS, appliquerInstruction, retirerWidget, restaurer, lignesJournal, idVue, phraseModifier } from "./monEspaceLogique.js";
+import { MESSAGES_ESPACE, DELAI_ANNULATION_MS, appliquerInstruction, retirerWidget, restaurer, lignesJournal, idVue, phraseModifier, trouverCible, creerMemoireDefilement } from "./monEspaceLogique.js";
 import { VUE_ESPACE } from "./vuesIdees.js";
 
-export function creerMonEspace({ racine, aller, fenetre = window }) {
+// ouvrir(cible, position) : ouvre la discussion ou la collision visee ; position = defilement de la page, que le bandeau de retour rendra (revenir).
+export function creerMonEspace({ racine, aller, ouvrir = () => {}, fenetre = window }) {
   racine.innerHTML = htmlPageEspace();
   const champ = racine.querySelector(".esp-champ");
   const etat = racine.querySelector(".esp-etat-saisie");
@@ -23,6 +25,7 @@ export function creerMonEspace({ racine, aller, fenetre = window }) {
   racine.querySelectorAll(".esp-widget").forEach((el) => elements.set(el.dataset.widget, el));
   racine.querySelectorAll(".esp-vue-item").forEach((el) => elements.set(idVue(el.dataset.vueId), el));
   const conteneur = racine.parentElement; // #view-espace : c'est lui qui defile
+  const memoire = creerMemoireDefilement();
   let masques = new Set();
   let minuteur = 0;
 
@@ -82,7 +85,7 @@ export function creerMonEspace({ racine, aller, fenetre = window }) {
       const conteneurVue = action.closest("[data-vue-id]");
       const widget = action.closest("[data-widget]");
       if (action.dataset.action === "modifier") {
-        const nom = conteneurVue ? conteneurVue.querySelector(".esp-vue-nom").textContent : widget.dataset.nom;
+        const nom = conteneurVue ? conteneurVue.dataset.nom : widget.dataset.nom;
         preparerPhrase(phraseModifier(nom, !!conteneurVue));
       } else {
         const id = conteneurVue ? idVue(conteneurVue.dataset.vueId) : widget.dataset.widget;
@@ -93,6 +96,12 @@ export function creerMonEspace({ racine, aller, fenetre = window }) {
     if (e.target.closest(".esp-vue-ajout")) { preparerPhrase(TEXTES_ESPACE.ajoutVuePhrase); return; }
     const puce = e.target.closest(".esp-puce");
     if (puce) { champ.value = puce.textContent; champ.focus(); return; }
+    const ciblee = e.target.closest("[data-cible]");
+    if (ciblee) {
+      const cible = trouverCible(WIDGETS, ciblee.dataset.cible);
+      if (cible) ouvrir(cible, conteneur ? conteneur.scrollTop : 0);
+      return;
+    }
     const lien = e.target.closest("[data-vue]");
     if (lien) {
       e.preventDefault();
@@ -114,9 +123,14 @@ export function creerMonEspace({ racine, aller, fenetre = window }) {
   rendre();
 
   return {
-    // Appelee a chaque changement de vue : la page s'ouvre toujours en haut.
+    // Appelee a chaque changement de vue : la page s'ouvre en haut, sauf au retour par le bandeau (revenir).
     surVueActivee(vue) {
-      if (vue === VUE_ESPACE && conteneur) conteneur.scrollTop = 0;
+      if (vue === VUE_ESPACE && conteneur) conteneur.scrollTop = memoire.consommer();
+    },
+    // Retour par le bandeau « Retour a Mon espace » : la page se rouvre a la position memorisee (une seule fois).
+    revenir(position) {
+      memoire.memoriser(position);
+      aller(VUE_ESPACE);
     }
   };
 }

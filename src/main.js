@@ -38,6 +38,7 @@ import "./ideesEvolution.css";
 import "./monEspace.css";
 import { creerIdeesEvolution } from "./ideesEvolution.js";
 import { creerMonEspace } from "./monEspace.js";
+import { collisionTypeFr, decrireCarteCollision, LIBELLES_STATUT_COLLISION, LIBELLES_PRIORITE_COLLISION } from "./collisionCarte.js";
 import { ongletDeVue, VUES_SANS_ONGLET, estVueIdees } from "./vuesIdees.js";
 installerRechargementAuto({ fenetre: window, stockage: sessionStorage }); // fichier charge a la demande disparu apres un deploiement : la page se recharge une fois
 
@@ -2638,12 +2639,12 @@ const DEMO_CLASHES = [
   }
 ];
 
-const STATUT_LABELS = { nouveau: "Nouveau", confirme: "Confirmé", ecarte: "Écarté" };
+const STATUT_LABELS = { ...LIBELLES_STATUT_COLLISION };
 if (COLLISION_PRIORITES) STATUT_LABELS.resolu = "Résolu";
 
 // ---- COLLISION_PRIORITES : priorites, historique, persistance ----
 const PRIORITE_ORDRE = ["urgente", "haute", "normale", "basse"];
-const PRIORITE_LABELS = { urgente: "Urgente", haute: "Haute", normale: "Normale", basse: "Basse" };
+const PRIORITE_LABELS = { ...LIBELLES_PRIORITE_COLLISION };
 const PRIORITE_DEFAUT = "normale";
 const CLASH_UTILISATEUR_HISTORIQUE = "User 1";
 const COLLISIONS_ETAT_CLE = "ouvra-collisions-etat";
@@ -4522,29 +4523,6 @@ function refreshCollisionMaquetteToggles() {
   }
 }
 
-// Type d'element en francais, deduit du nom Revit (liste des collisions,
-// 19/10). Repli : premier segment du nom avant ":".
-const COLLISION_TYPES_FR = [
-  [/Curtain Wall/i, "Mur-rideau"],
-  [/Basic Wall.*Partition/i, "Cloison"],
-  [/Basic Wall|Wall/i, "Mur"],
-  [/Ceiling/i, "Faux plafond"],
-  [/Duct/i, "Gaine"],
-  [/Pipe/i, "Tuyau"],
-  [/Diffuser/i, "Diffuseur"],
-  [/Grill/i, "Grille"],
-  [/MedGas/i, "Prise gaz médicaux"],
-  [/VAV/i, "Caisson VAV"],
-  [/Takeoff/i, "Piquage"],
-  [/Valve/i, "Vanne"],
-  [/Solar Panel/i, "Panneau solaire"],
-  [/Cooling Tower/i, "Tour de refroidissement"]
-];
-function collisionTypeFr(name) {
-  const hit = COLLISION_TYPES_FR.find(([re]) => re.test(name));
-  return hit ? hit[1] : name.split(":")[0].trim();
-}
-
 // Carte d'une collision de la liste (numero, types en francais, identifiants et niveau, point de statut, filet de priorite). Partagee entre la
 // liste (balise "button") et la modale « Regle a valider » (balise "span", 22/10, creerCarte) : un seul rendu pour les deux.
 function buildCollisionCard(clash, tag = "button") {
@@ -4594,10 +4572,7 @@ function buildCollisionCard(clash, tag = "button") {
       if (COLLISION_LISTE_CARTE) {
         // Carte a deux lignes (19/10) : pastille du numero, types en francais,
         // identifiants et niveau, point de statut ; liseré de couleur a gauche.
-        const [partA, partB] = clash.zone.split(" ↔ ");
-        const typeA = collisionTypeFr(partA || "");
-        const typeB = collisionTypeFr((partB || "").split("·")[0]);
-        const niveau = (levelMatch ? levelMatch[1].trim() : "").replace(/^Level\s*/i, "Niveau ");
+        const { typeA, typeB, titre, sousTitre } = decrireCarteCollision(clash.zone);
 
         const badgeNum = document.createElement("span");
         badgeNum.className = "collision-num-badge";
@@ -4606,10 +4581,10 @@ function buildCollisionCard(clash, tag = "button") {
 
         const types = document.createElement("span");
         types.className = "collision-types";
-        types.textContent = typeA + " ↔ " + typeB;
+        types.textContent = titre;
         const sub = document.createElement("span");
         sub.className = "collision-sub";
-        sub.textContent = ids[0] + " ↔ " + ids[1] + (niveau ? " · " + niveau : "");
+        sub.textContent = sousTitre;
         const text = document.createElement("span");
         text.className = "collision-card-text";
         text.append(types, sub);

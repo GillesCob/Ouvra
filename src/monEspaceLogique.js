@@ -54,3 +54,42 @@ export function appliquerInstruction(widgets, masques, texte) {
 export function retirerWidget(masques, id, message = MESSAGES_ESPACE.retire) {
   return { masques: new Set(masques).add(id), message };
 }
+
+// Cible d'un element (tache, echeance, alerte, vue) : { type: "message", convId, sujetId, texte } ou { type: "collision", clashId }, ou null. L'identifiant est celui de l'element.
+export function trouverCible(widgets, id) {
+  for (const w of widgets) {
+    const item = (w.items || []).find((i) => i.id === id && i.cible);
+    if (item) return item.cible;
+  }
+  return null;
+}
+
+// Proximite d'une echeance (date « AAAA-MM-JJ ») par rapport a un jour donne : « Aujourd'hui », « Demain », « Dans 3 jours », « Hier », « Il y a 2 jours ». Calcul en jours civils.
+const JOUR_MS = 86400000;
+export function proximite(dateIso, maintenant = new Date()) {
+  const [a, m, j] = String(dateIso).split("-").map(Number);
+  if (!a || !m || !j) return "";
+  const ecart = Math.round((Date.UTC(a, m - 1, j) - Date.UTC(maintenant.getFullYear(), maintenant.getMonth(), maintenant.getDate())) / JOUR_MS);
+  if (ecart === 0) return "Aujourd'hui";
+  if (ecart === 1) return "Demain";
+  if (ecart === -1) return "Hier";
+  return ecart > 0 ? "Dans " + ecart + " jours" : "Il y a " + -ecart + " jours";
+}
+
+const JOURS = ["dimanche", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi"];
+const MOIS = ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."];
+// « 2026-11-05 » -> { jourSemaine: "jeudi", jour: "05", mois: "nov." } (pastille de date d'une echeance).
+export function pastilleDate(dateIso) {
+  const [a, m, j] = String(dateIso).split("-").map(Number);
+  if (!a || !m || !j) return { jourSemaine: "", jour: "", mois: "" };
+  return { jourSemaine: JOURS[new Date(Date.UTC(a, m - 1, j)).getUTCDay()], jour: String(j).padStart(2, "0"), mois: MOIS[m - 1] };
+}
+
+// Retour a Mon espace : la position de defilement memorisee a l'ouverture est rendue a la prochaine arrivee sur la page, une seule fois (sinon la page s'ouvre en haut).
+export function creerMemoireDefilement() {
+  let enAttente = null;
+  return {
+    memoriser: (position) => { enAttente = Number.isFinite(position) && position > 0 ? position : null; },
+    consommer() { const p = enAttente; enAttente = null; return p === null ? 0 : p; }
+  };
+}

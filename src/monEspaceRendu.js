@@ -1,7 +1,9 @@
 // Rendu HTML de la page « Mon espace » (02/11) : fonctions pures (sans DOM, testables sous Node). Reproduit le HTML du mockup ouvra-mon-espace.html,
 // classes prefixees esp- (voir src/monEspace.css). Toutes les valeurs passent par echapper().
-import { WIDGETS, SUGGESTIONS, TEXTES_ESPACE } from "./monEspaceDonnees.js";
-import { htmlVignette } from "./monEspaceVignettes.js";
+import { WIDGETS, SUGGESTIONS, TEXTES_ESPACE, PAGES_INSTRUCTION } from "./monEspaceDonnees.js";
+import { proximite, pastilleDate } from "./monEspaceLogique.js";
+import { HOSPITAL_CLASHES } from "./clashesHospital.js";
+import { decrireCarteCollision, LIBELLES_STATUT_COLLISION, LIBELLES_PRIORITE_COLLISION } from "./collisionCarte.js";
 
 export const echapper = (texte) => String(texte).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#x27;");
 
@@ -18,22 +20,69 @@ export function htmlActions(nom, compact = false) {
 
 const initiale = (nom) => String(nom).trim().charAt(0).toUpperCase();
 
+const LABELS_ECHEANCE = { reunion: "Réunion", modification: "Modification", decision: "Décision" };
+
+// Carte d'une collision : meme contenu et memes classes que buildCollisionCard (main.js), donc le meme style (style.css) : pastille du numero, types en francais,
+// identifiants et niveau, point de statut, filet de couleur = priorite. Le libelle du statut et la priorite sont ecrits en toutes lettres (pas de survol sur mobile).
+export function htmlCarteCollision(clash, clashes = HOSPITAL_CLASHES) {
+  const infos = decrireCarteCollision(clash.zone);
+  if (!infos) throw new Error(`Collision sans deux identifiants : ${clash.id}`);
+  const numero = clashes.indexOf(clash) + 1;
+  const statut = LIBELLES_STATUT_COLLISION[clash.statut] || clash.statut;
+  const prio = LIBELLES_PRIORITE_COLLISION[clash.priorite] ? clash.priorite : "normale";
+  return `<span class="collision-item collision-item-carte ${echapper(clash.statut)} prio-${prio}">`
+    + `<span class="collision-num-badge" aria-hidden="true">${numero}</span>`
+    + `<span class="collision-card-text"><span class="collision-types">${echapper(infos.titre)}</span><span class="collision-sub">${echapper(infos.sousTitre)}</span></span>`
+    + `<span class="collision-statut"><span class="collision-statut-dot ${echapper(clash.statut)}"></span><span class="collision-statut-label">${echapper(statut)}</span>`
+    + `<span class="esp-vue-prio">Priorité ${echapper(LIBELLES_PRIORITE_COLLISION[prio].toLowerCase())}</span></span></span>`;
+}
+
+const clashParId = (id, clashes = HOSPITAL_CLASHES) => clashes.find((c) => c.id === id) || null;
+export const urlMiniature = (clashId) => `/images/vues/${clashId}.jpg`;
+export const nomVue = (clash, clashes = HOSPITAL_CLASHES) => "Collision n° " + (clashes.indexOf(clash) + 1);
+
+function htmlVue(v) {
+  const clash = clashParId(v.clashId);
+  if (!clash) throw new Error(`Collision inconnue : ${v.clashId}`);
+  const nom = nomVue(clash);
+  const instruction = v.instruction
+    ? `<span class="esp-vue-instr"><span class="esp-vue-etiquette">Instruction ${echapper(PAGES_INSTRUCTION[v.page] || "")}</span><span class="esp-vue-phrase">« ${echapper(v.instruction)} »</span></span>`
+    : "";
+  return `<li class="esp-vue-item" data-vue-id="${echapper(v.id)}" data-nom="${echapper(nom)}">`
+    + `<button type="button" class="esp-vue" data-cible="${echapper(v.id)}" aria-label="Ouvrir ${echapper(nom.toLowerCase())} sur la page Collision">`
+    + `<span class="esp-vue-image"><img src="${echapper(urlMiniature(v.clashId))}" alt="" width="640" height="400" loading="lazy" decoding="async"></span>`
+    + `${htmlCarteCollision(clash)}${instruction}<span class="esp-vue-cadrage">Cadrage enregistré</span></button>${htmlActions(nom, true)}</li>`;
+}
+
+// Bouton « Voir » seulement quand l'alerte a une cible reelle (collision, discussion) : une mise a jour de maquette ou un document sans lien n'en ont pas.
+const htmlAlerte = (a) => `<li><span class="esp-heure">${echapper(a.heure)}</span><div class="esp-corps"><p>${echapper(a.texte)}</p></div>`
+  + (a.cible ? `<button type="button" class="esp-btn-voir" data-cible="${echapper(a.id)}" aria-label="Voir : ${echapper(a.texte)}">Voir</button>` : "") + "</li>";
+
+function htmlEcheance(e, maintenant) {
+  const p = pastilleDate(e.date);
+  const label = LABELS_ECHEANCE[e.label] || e.label;
+  return `<li class="esp-echeance"><div class="esp-date"><span class="esp-date-prox">${echapper(proximite(e.date, maintenant))}</span>`
+    + `<span class="esp-date-jour">${echapper(p.jour)}</span><span class="esp-date-mois">${echapper(p.mois)}</span></div>`
+    + `<div class="esp-ech-corps"><p class="esp-ech-titre">${echapper(e.titre)}</p>`
+    + `<p class="esp-ech-contexte"><span class="esp-label esp-label-${echapper(e.label)}">${echapper(label)}</span><span>${echapper(e.personne)}</span>`
+    + `<button type="button" class="esp-source" data-cible="${echapper(e.id)}">${echapper(e.discussion)}</button></p></div></li>`;
+}
+
 const CORPS = {
-  vues: (items) => `<ul class="esp-vues">${items.map((v) => `<li class="esp-vue-item" data-vue-id="${echapper(v.id)}">`
-    + `<button type="button" class="esp-vue" data-vue="viewer">${htmlVignette(v.vignette)}<span class="esp-vue-nom">${echapper(v.libelle)}</span>`
-    + `<span class="esp-vue-instr"><span class="esp-vue-etiquette">Instruction du Viewer</span><span class="esp-vue-phrase">« ${echapper(v.instruction)} »</span></span>`
-    + `<span class="esp-vue-cadrage">Cadrage enregistré</span></button>${htmlActions(v.libelle, true)}</li>`).join("")}`
+  vues: (items) => `<ul class="esp-vues">${items.map(htmlVue).join("")}`
     + `<li><button type="button" class="esp-vue-ajout"><span class="esp-vue-plus" aria-hidden="true">+</span>${echapper(TEXTES_ESPACE.ajoutVue)}</button></li></ul>`,
-  alertes: (items) => `<ul class="esp-liste">${items.map((a) => `<li><span class="esp-heure">${echapper(a.heure)}</span><div class="esp-corps"><p>${echapper(a.texte)}</p></div><button type="button" class="esp-btn-voir">Voir</button></li>`).join("")}</ul>`,
+  alertes: (items) => `<ul class="esp-liste">${items.map(htmlAlerte).join("")}</ul>`,
   todo: (items) => `<ul class="esp-taches">${items.map((t) => `<li class="esp-tache"><span class="esp-etat" aria-hidden="true"></span><div class="esp-tache-corps"><p class="esp-tache-titre">${echapper(t.titre)}</p>`
     + `<p class="esp-tache-contexte"><span class="esp-initiale" aria-hidden="true">${echapper(initiale(t.par))}</span><span>Demandé par ${echapper(t.par)}</span>`
-    + `<button type="button" class="esp-source" data-vue="discussions">${echapper(t.discussion)}</button><span class="esp-tache-heure">${echapper(t.heure)}</span></p></div>`
+    + `<button type="button" class="esp-source" data-cible="${echapper(t.id)}">${echapper(t.discussion)}</button><span class="esp-tache-heure">${echapper(t.heure)}</span></p>`
+    + (t.citation ? `<p class="esp-tache-citation">« ${echapper(t.citation)} »</p>` : "") + "</div>"
     + `<span class="esp-urgence">${echapper(t.urgence)}</span></li>`).join("")}</ul>`,
-  documents: (items) => `<ul class="esp-liste">${items.map((d) => `<li><div class="esp-corps"><p>${echapper(d.texte)}</p></div><span class="esp-heure esp-heure-large">${echapper(d.quand)}</span></li>`).join("")}</ul>`,
+  echeances: (items, maintenant) => `<ol class="esp-echeances">${items.map((e) => htmlEcheance(e, maintenant)).join("")}</ol>`,
+  documents: (items) => `<ul class="esp-liste">${items.map((d) => `<li><div class="esp-corps"><p>${echapper(d.texte)}</p>${d.meta ? `<p class="esp-meta">${echapper(d.meta)}</p>` : ""}</div><span class="esp-heure esp-heure-large">${echapper(d.quand)}</span></li>`).join("")}</ul>`,
   compteurs: (items) => `<ul class="esp-compteurs">${items.map((c) => `<li${c.urgent ? ' class="esp-urgent"' : ""}><strong>${echapper(c.valeur)}</strong><span>${echapper(c.libelle)}</span></li>`).join("")}</ul>`
 };
 
-export function htmlWidget(widget, rang) {
+export function htmlWidget(widget, rang, maintenant = new Date()) {
   const corps = CORPS[widget.type];
   if (!corps) throw new Error(`Type de widget inconnu : ${widget.type}`);
   const titre = widget.type === "todo"
@@ -41,7 +90,7 @@ export function htmlWidget(widget, rang) {
     : `<h2>${echapper(widget.titre)}</h2>`;
   const repere = widget.repereIA ? `<p class="esp-repere-ia">${echapper(widget.repereIA)}</p>` : "";
   return `<section class="esp-widget esp-w-${echapper(widget.zone)}" style="--i:${rang}" data-widget="${echapper(widget.id)}" data-phrase="${echapper(widget.phrase)}" data-nom="${echapper(widget.titre)}">`
-    + `${htmlActions(widget.titre)}<div class="esp-widget-tete">${titre}${repere}</div>${corps(widget.items)}</section>`;
+    + `${htmlActions(widget.titre)}<div class="esp-widget-tete">${titre}${repere}</div>${corps(widget.items, maintenant)}</section>`;
 }
 
 export function htmlPageEspace(widgets = WIDGETS, suggestions = SUGGESTIONS, textes = TEXTES_ESPACE) {
@@ -58,7 +107,7 @@ export function htmlPageEspace(widgets = WIDGETS, suggestions = SUGGESTIONS, tex
     + `<ul class="esp-puces" aria-label="Suggestions">${suggestions.map((s) => `<li><button type="button" class="esp-puce">${echapper(s)}</button></li>`).join("")}</ul>`
     + '<p class="esp-etat-saisie" role="status" aria-live="polite"></p>'
     + "</section>"
-    + `<div class="esp-grille">${widgets.map(htmlWidget).join("")}</div>`
+    + `<div class="esp-grille">${widgets.map((w, i) => htmlWidget(w, i)).join("")}</div>`
     + `<details class="esp-journal"><summary>${echapper(textes.journal)}</summary><ol class="esp-journal-liste"></ol><p class="esp-vide" hidden>${echapper(textes.journalVide)}</p></details>`
     + "</main>";
 }
