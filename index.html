@@ -54,6 +54,7 @@
         <button type="button" class="nav-link" data-view="discussions" data-persona="presentation-globale bim-manager synthese be">Discussions</button>
         <button type="button" class="nav-link" data-view="quantitatif" data-persona="presentation-globale bim-manager synthese be">Quantitatif</button>
         <button type="button" class="nav-link" data-view="plan3d" data-persona="presentation-globale bim-manager synthese be">2D → 3D</button>
+        <button type="button" class="nav-link" data-view="idees" data-persona="presentation-globale bim-manager synthese be">Idées d'évolution</button>
         <button type="button" class="nav-link" data-view="projeteur" data-persona="projeteur" hidden>Todo</button>
         <button type="button" class="nav-link" data-view="admin" data-persona="bim-manager" hidden>Admin</button>
         <button type="button" class="nav-avis" id="navbarAvisTiroir">Remarque ou suggestion ?</button>
@@ -595,6 +596,16 @@
       <!-- 2D -> 3D (25/10) : page construite par src/plan3d/plan3dPage.js dans #plan3dRoot (import d'un plan PDF ou PNG, plan 2D editable, maquette 3D, export IFC). Chargee a la premiere ouverture. -->
       <div id="view-plan3d" class="view" hidden>
         <div id="plan3dRoot"></div>
+      </div>
+
+      <!-- Idees d'evolution (02/11) : page construite par src/ideesEvolution.js dans #ideesRoot (neuf frises-scenarios, autres idees, legende). Remplace l'onglet 2D -> 3D (MASQUE_PLAN3D). -->
+      <div id="view-idees" class="view" hidden>
+        <div id="ideesRoot"></div>
+      </div>
+
+      <!-- Mon espace (02/11) : page construite par src/monEspace.js dans #espaceRoot. Pas un onglet : on y arrive par le lien de la derniere frise des Idees d'evolution (#espace), l'onglet « Idees d'evolution » reste allume. -->
+      <div id="view-espace" class="view" hidden>
+        <div id="espaceRoot"></div>
       </div>
 
       <div id="view-projeteur" class="view" hidden>

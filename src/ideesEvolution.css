@@ -1,0 +1,202 @@
+/* Page « Idees d'evolution » (02/11) : portage de vault-perso/Projets/Ouvra/mockups/ouvra-idees-fonctionnalites.html, design inchange.
+   - Toutes les classes sont prefixees ide- et les regles limitees a #view-idees : aucune autre page n'est touchee (les noms du mockup, .page, .lab, .node..., auraient pu entrer en conflit).
+   - L'application n'a que le theme sombre : seule la variante sombre des variables du mockup est portee (pas de prefers-color-scheme).
+   - La barre de navigation du mockup n'est pas portee : c'est celle de l'application (index.html, onglet « Idees d'evolution »).
+   - --fleche et --ecart : longueur unique des fleches et ecart unique entre une fleche et ses deux ronds, horizontalement comme a la verticale. */
+#view-idees {
+  --fleche: 44px;
+  --ecart: 10px;
+  --bg: #0E1011;
+  --surface: #15181A;
+  --surface-2: #1B1F21;
+  --border: #2A2E31;
+  --border-strong: #3C4145;
+  --fg: #F2F2EF;
+  --fg-2: #CFCFC8;
+  --muted: #9A9EA3;
+  --accent: #8DBDBD;
+  --accent-soft: rgba(141, 189, 189, 0.14);
+  --accent-line: rgba(141, 189, 189, 0.32);
+  --font-sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, "JetBrains Mono", "Cascadia Code", SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --ease-out: cubic-bezier(.2, .7, .2, 1);
+  color-scheme: dark;
+}
+/* :not([hidden]) : sans lui, display: block l'emporterait sur .view[hidden] (style.css) et la page resterait affichee sous les autres. */
+#view-idees:not([hidden]) { display: block; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; background: var(--bg); color: var(--fg); font-family: var(--font-sans); font-size: 16px; line-height: 1.45; -webkit-font-smoothing: antialiased; }
+/* Ordinateur (900 px et plus) : fleche de 36 px et ecart de 8 px, valeurs uniques pour toutes les frises, pour que chacune tienne sur une ligne a 1280 px (MacBook 13 pouces). Mobile : 44 px et 10 px. */
+@media (min-width: 900px) { #view-idees { --fleche: 36px; --ecart: 8px; } }
+#view-idees *, #view-idees *::before, #view-idees *::after { box-sizing: border-box; }
+#view-idees :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 6px; }
+
+.ide-voir-page { margin: 18px 0 0; font-size: 13px; }
+.ide-voir-page a { color: var(--accent); font-weight: 600; text-decoration: none; }
+.ide-voir-page a:hover { text-decoration: underline; }
+.ide-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.ide-page { width: 100%; max-width: 1760px; margin: 0 auto; padding: clamp(20px, 3.2vw, 56px) clamp(16px, 1.6vw, 32px) clamp(28px, 4vw, 64px); }
+.ide-kicker { font-family: var(--font-mono); font-size: clamp(12px, 1.1vw, 16px); color: var(--accent); letter-spacing: .04em; text-transform: uppercase; margin: 0 0 10px; }
+.ide-titre { margin: 0; font-size: clamp(26px, 3.2vw, 52px); letter-spacing: -0.02em; line-height: 1.08; position: relative; display: block; width: fit-content; max-width: 100%; padding-bottom: 14px; }
+.ide-titre-trait { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: var(--accent-line); transform-origin: left center; }
+.ide-titre-trait::after { content: ""; position: absolute; left: 50%; top: 50%; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%; background: var(--accent); }
+
+.ide-ico { width: 24px; height: 24px; fill: none; stroke: var(--accent); stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+
+/* Scénario */
+.ide-scn { margin-top: clamp(28px, 3.6vw, 56px); }
+.ide-scn-tete { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.ide-bat-img { display: block; height: clamp(46px, 4vw, 64px); width: auto; flex: none; }
+.ide-scn-tete h3 { margin: 0; min-width: 0; font-size: clamp(17px, 1.5vw, 24px); letter-spacing: -0.01em; line-height: 1.15; }
+.ide-s3-trait { position: relative; flex: 1; min-width: 24px; height: 2px; background: var(--accent-line); transform-origin: left center; }
+.ide-s3-trait::after { content: ""; position: absolute; right: 0; top: 50%; width: 10px; height: 10px; margin: -5px 0 0 0; border-radius: 50%; background: var(--accent); }
+
+/* Chaîne horizontale */
+.ide-chaine { list-style: none; margin: 26px 0 0; padding: 0; display: flex; flex-wrap: wrap; align-items: flex-start; row-gap: 26px; column-gap: calc(var(--fleche) + 2 * var(--ecart)); }
+.ide-node { --t: calc(.5s + var(--n) * .55s); position: relative; display: flex; flex-direction: column; align-items: center; flex: 0 0 auto; padding: 0; text-align: center; }
+.ide-rond { position: relative; z-index: 1; display: grid; place-items: center; width: 52px; height: 52px; border-radius: 50%; background: var(--surface); border: 1.5px solid var(--border-strong); }
+.ide-node .ide-ico { stroke: var(--fg-2); }
+.ide-node.ide-ia .ide-rond { border: 2px solid var(--accent); background: var(--accent-soft); }
+.ide-node.ide-ia .ide-ico { stroke: var(--accent); }
+.ide-node.ide-auto .ide-rond { border: 1px solid var(--border); background: var(--surface-2); }
+.ide-auto-tag { position: absolute; top: -7px; right: -9px; display: grid; place-items: center; width: 18px; height: 18px; border: 1px solid var(--border-strong); border-radius: 50%; background: var(--surface); }
+.ide-auto-tag svg { width: 11px; height: 11px; fill: none; stroke: var(--muted); stroke-width: 2; stroke-linecap: round; }
+.ide-node.ide-ouvert .ide-rond { border: 1.5px dashed var(--muted); background: transparent; }
+.ide-node.ide-ouvert .ide-ico { stroke: var(--muted); }
+.ide-ia-tag { position: absolute; top: -9px; right: -12px; padding: 0 6px; border: 1px solid var(--accent); border-radius: 999px; background: var(--surface); color: var(--accent); font-family: var(--font-mono); font-size: 10px; font-weight: 700; line-height: 16px; letter-spacing: .04em; }
+.ide-lab { display: block; margin-top: 10px; min-width: 0; font-size: 13px; font-weight: 600; line-height: 1.25; color: var(--fg); overflow-wrap: anywhere; hyphens: auto; }
+.ide-sub { display: block; margin-top: 3px; font-size: 12px; font-weight: 400; line-height: 1.3; color: var(--muted); }
+@media (min-width: 900px) {
+  .ide-chaine .ide-lab { white-space: nowrap; overflow-wrap: normal; hyphens: none; }
+  .ide-chaine .ide-sub { max-width: 26ch; }
+}
+
+/* Flèche : appartient au nœud qui la suit, longueur et écarts uniques (--fleche, --ecart) */
+.ide-chaine .ide-node + .ide-node::after { content: ""; position: absolute; left: calc(-1 * (var(--fleche) + var(--ecart))); top: 25px; width: var(--fleche); height: 2px; background: var(--accent-line); transform-origin: left center; }
+.ide-chaine .ide-node + .ide-node::before { content: ""; position: absolute; left: calc(-1 * var(--ecart) - 9px); top: 21px; width: 9px; height: 9px; border-top: 2px solid var(--accent-line); border-right: 2px solid var(--accent-line); transform: rotate(45deg); }
+.ide-chaine .ide-node.ide-debut::before, .ide-chaine .ide-node.ide-debut::after { display: none; }
+
+.ide-note-ged { margin: 18px 0 0; font-size: 13px; color: var(--fg-2); }
+
+
+/* Légende */
+.ide-legende { display: flex; flex-wrap: wrap; gap: 12px 28px; margin: clamp(30px, 3.6vw, 56px) 0 0; padding: 14px 0 0; border-top: 1px solid var(--border); list-style: none; font-size: 13px; color: var(--fg-2); }
+.ide-legende li { display: flex; align-items: center; gap: 10px; }
+.ide-leg-rond { position: relative; width: 24px; height: 24px; border-radius: 50%; background: var(--surface); border: 1.5px solid var(--border-strong); }
+.ide-leg-rond.ide-ia { border: 2px solid var(--accent); background: var(--accent-soft); }
+.ide-leg-rond.ide-auto { border: 1px solid var(--border); background: var(--surface-2); }
+.ide-leg-rond .ide-auto-tag { top: -6px; right: -9px; width: 16px; height: 16px; }
+.ide-leg-rond.ide-ouvert { border: 1.5px dashed var(--muted); background: transparent; }
+.ide-leg-rond .ide-ia-tag { top: -8px; right: -14px; font-size: 9px; line-height: 14px; padding: 0 5px; }
+
+/* Apparition échelonnée */
+@keyframes ide-fondu { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ide-trace { from { opacity: 0; transform: scaleX(0); } to { opacity: 1; transform: scaleX(1); } }
+.ide-kicker { animation: ide-fondu .5s ease both; }
+.ide-titre > span { display: block; animation: ide-fondu .6s ease .15s both; }
+.ide-titre-trait { animation: ide-trace .7s var(--ease-out) .45s both; }
+.ide-legende { animation: ide-fondu .6s ease .3s both; }
+
+/* Apparition : l'information voyage d'une etape a l'autre.
+   Etat initial : toutes les bulles et fleches sont deja la, en fantomes (contour fin, opacite reduite), la structure se lit d'emblee.
+   A l'entree de la frise a l'ecran (classe vu), 0,2 s plus tard : le batiment se redessine, puis une impulsion (un point accent avec une traine) part de la premiere bulle et
+   parcourt chaque fleche (0,42 s, acceleration douce) ; chaque bulle atteinte s'allume : remplissage depuis le point d'impact, anneau qui s'elargit, leger rebond.
+   IA : second anneau decale ; Automatique : tic net sans halo ; Humain : allumage sobre ; derniere bulle : relachement ; « Suite non definie » : reste fantome, clignote une fois.
+   transform et opacity seulement (le batiment utilise en plus clip-path, sans effet sur la mise en page). Une frise deja jouee ne rejoue pas (classe vu posee une fois). */
+.ide-bat-img { opacity: 1; }
+.ide-rond { opacity: .4; }
+.ide-lab { opacity: .5; }
+.ide-chaine .ide-node + .ide-node::after, .ide-chaine .ide-node + .ide-node::before { opacity: .35; }
+.ide-ico { position: relative; z-index: 1; }
+.ide-rond::before, .ide-rond::after, .ide-onde { content: ""; position: absolute; inset: 0; border-radius: 50%; pointer-events: none; }
+.ide-rond::before { background: var(--accent-soft); transform: scale(0); transform-origin: 0 50%; }
+.ide-node.ide-ia .ide-rond::before { background: color-mix(in srgb, var(--accent) 22%, transparent); }
+.ide-node.ide-auto .ide-rond::before, .ide-node.ide-ouvert .ide-rond::before { display: none; }
+.ide-rond::after, .ide-onde { border: 1.5px solid var(--accent); opacity: 0; }
+.ide-node.ide-auto .ide-rond::after, .ide-node.ide-ouvert .ide-rond::after { display: none; }
+.ide-node:not(.ide-ia) .ide-rond::after { --anneau: .35; }
+.ide-impulsion { display: none; position: absolute; left: calc(-1 * (var(--fleche) + var(--ecart)) - 12px); top: 18px; width: 16px; height: 16px; opacity: 0; pointer-events: none;
+  background: radial-gradient(circle at 12px 8px, var(--accent) 0 3px, transparent 3.5px), radial-gradient(circle at 12px 8px, var(--accent-line) 0 4px, transparent 8px), linear-gradient(90deg, transparent, var(--accent)) 0 7px / 12px 2px no-repeat; }
+.ide-chaine .ide-node + .ide-node .ide-impulsion { display: block; }
+.ide-chaine .ide-node.ide-debut .ide-impulsion { display: none; }
+
+.ide-vu .ide-bat-img { animation: ide-batir .5s var(--ease-out) .2s both; }
+.ide-vu .ide-rond { animation: ide-allume .5s var(--ease-out) var(--t) both; }
+.ide-vu .ide-chaine .ide-node:last-child .ide-rond { animation-name: ide-pose; animation-duration: .6s; }
+.ide-vu .ide-node.ide-auto .ide-rond { animation: ide-tic .2s linear var(--t) both; }
+.ide-vu .ide-node.ide-ouvert .ide-rond { animation: ide-clignote 1s ease var(--t) both; }
+.ide-vu .ide-rond::before { animation: ide-remplit .35s var(--ease-out) var(--t) both; }
+.ide-vu .ide-rond::after { animation: ide-anneau .45s ease-out var(--t) both; }
+.ide-vu .ide-onde { animation: ide-anneau .5s ease-out calc(var(--t) + .15s) both; }
+.ide-vu .ide-lab { animation: ide-lab-allume .3s ease calc(var(--t) + .1s) both; }
+.ide-vu .ide-node.ide-ouvert .ide-lab { animation: none; }
+.ide-vu .ide-chaine .ide-node + .ide-node::after, .ide-vu .ide-chaine .ide-node + .ide-node::before { animation: ide-ligne-allume .42s linear calc(var(--t) - .42s) both; }
+.ide-vu .ide-impulsion { animation: ide-voyage .42s cubic-bezier(.55, .05, .25, 1) calc(var(--t) - .42s) both; }
+.ide-node { --t: calc(.5s + var(--n) * .42s); }
+
+@keyframes ide-batir { from { clip-path: inset(100% 0 0 0); } to { clip-path: inset(0 0 0 0); } }
+@keyframes ide-allume { 0% { opacity: .4; transform: scale(1); } 40% { opacity: 1; transform: scale(1.04); } 70% { transform: scale(.99); } 100% { opacity: 1; transform: scale(1); } }
+@keyframes ide-pose { 0% { opacity: .4; transform: scale(1); } 35% { opacity: 1; transform: scale(1.05); } 65% { transform: scale(.97); } 100% { opacity: 1; transform: scale(1); } }
+@keyframes ide-tic { 0% { opacity: .4; transform: scale(1); } 30% { opacity: 1; transform: scale(1.07); } 100% { opacity: 1; transform: scale(1); } }
+@keyframes ide-clignote { 0% { opacity: .4; } 50% { opacity: .85; } 100% { opacity: .4; } }
+@keyframes ide-remplit { from { transform: scale(0); } to { transform: scale(1); } }
+@keyframes ide-anneau { from { transform: scale(1); opacity: var(--anneau, .7); } to { transform: scale(1.9); opacity: 0; } }
+@keyframes ide-lab-allume { from { opacity: .5; } to { opacity: 1; } }
+@keyframes ide-ligne-allume { from { opacity: .35; } to { opacity: .95; } }
+@keyframes ide-voyage { 0% { opacity: 0; transform: translateX(0); } 15% { opacity: 1; } 85% { opacity: 1; } 100% { opacity: 0; transform: translateX(calc(var(--fleche) + var(--ecart))); } }
+
+/* Ligne du temps verticale (moins de 900 px) : meme principe, l'impulsion descend */
+@media (max-width: 899px) {
+  .ide-rond::before { transform-origin: 50% 0; }
+  .ide-impulsion { left: 18px; top: calc(-1 * (var(--fleche) + var(--ecart)) - 12px);
+    background: radial-gradient(circle at 8px 12px, var(--accent) 0 3px, transparent 3.5px), radial-gradient(circle at 8px 12px, var(--accent-line) 0 4px, transparent 8px), linear-gradient(180deg, transparent, var(--accent)) 7px 0 / 2px 12px no-repeat; }
+  .ide-chaine .ide-node.ide-debut .ide-impulsion { display: block; }
+  .ide-chaine .ide-node:first-child .ide-impulsion { display: none; }
+  .ide-vu .ide-impulsion { animation-name: ide-voyageV; }
+}
+@keyframes ide-voyageV { 0% { opacity: 0; transform: translateY(0); } 15% { opacity: 1; } 85% { opacity: 1; } 100% { opacity: 0; transform: translateY(calc(var(--fleche) + var(--ecart))); } }
+
+/* Moins d'animations : tout est affiche allume, sans mouvement */
+@media (prefers-reduced-motion: reduce) {
+  .ide-rond, .ide-lab { opacity: 1; }
+  .ide-node.ide-ouvert .ide-rond { opacity: .7; }
+  .ide-chaine .ide-node + .ide-node::after, .ide-chaine .ide-node + .ide-node::before { opacity: .95; }
+  .ide-rond::before { transform: none; }
+  .ide-impulsion { display: none !important; }
+}
+
+/* Mobile (360 à 899 px) : chaque frise devient une ligne du temps verticale, texte courant à 16 px, cibles de 44 px, aucun mot coupé */
+@media (max-width: 899px) {
+  .ide-page { padding-top: 24px; }
+  .ide-kicker { font-size: 14px; }
+  .ide-scn { margin-top: 48px; padding-top: 28px; border-top: 1px solid var(--border); }
+  .ide-scn:first-of-type { margin-top: 32px; }
+  .ide-scn-tete h3 { font-size: 20px; }
+  .ide-chaine { margin-top: 24px; }
+  .ide-node { min-height: 52px; }
+  .ide-lab { font-size: 16px; overflow-wrap: break-word; hyphens: manual; }
+  .ide-sub { font-size: 14px; }
+  .ide-note-ged { font-size: 16px; margin-top: 22px; }
+  .ide-voir-page { font-size: 16px; margin-top: 22px; }
+  .ide-voir-page a { display: inline-flex; align-items: center; min-height: 44px; }
+  .ide-legende { font-size: 15px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #view-idees *, #view-idees *::before, #view-idees *::after { animation: none !important; transition: none !important; }
+}
+
+/* Étroit : la chaîne passe à la verticale */
+@media (max-width: 899px) {
+  .ide-chaine { flex-direction: column; flex-wrap: nowrap; row-gap: calc(var(--fleche) + 2 * var(--ecart)); column-gap: 0; margin-top: 20px; }
+  .ide-node { flex: 1 1 auto; }
+  .ide-node { flex-direction: row; align-items: flex-start; gap: 14px; padding: 0; text-align: left; }
+  .ide-rond { flex: none; }
+  .ide-lab { margin-top: 0; padding-top: 7px; }
+  .ide-chaine .ide-node + .ide-node::after { left: 25px; top: calc(-1 * (var(--fleche) + var(--ecart))); width: 2px; height: var(--fleche); transform-origin: top center; }
+  .ide-chaine .ide-node + .ide-node::before { left: 21.5px; top: calc(-1 * var(--ecart) - 9px); transform: rotate(135deg); }
+  .ide-chaine .ide-node.ide-debut::before, .ide-chaine .ide-node.ide-debut::after { display: block; }
+}
+@media (max-width: 480px) {
+  .ide-scn-tete { flex-wrap: wrap; row-gap: 8px; }
+  .ide-scn-tete h3 { flex: 1 1 calc(100% - 70px); }
+  .ide-scn-tete .ide-s3-trait { flex-basis: 100%; order: 3; }
+  .ide-bat-img { height: 46px; }
+}

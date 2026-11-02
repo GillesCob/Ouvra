@@ -34,6 +34,11 @@ import { creerHistorique, creerDepotLocal } from "./quantitatifHistorique.js";
 import { amorcerHistoriqueDemo } from "./quantitatifHistoriqueDemo.js";
 import { REQUETE_MOBILE, estMobile } from "./seuilMobile.js";
 import { installerRechargementAuto } from "./rechargementAuto.js";
+import "./ideesEvolution.css";
+import "./monEspace.css";
+import { creerIdeesEvolution } from "./ideesEvolution.js";
+import { creerMonEspace } from "./monEspace.js";
+import { ongletDeVue, VUES_SANS_ONGLET, estVueIdees } from "./vuesIdees.js";
 installerRechargementAuto({ fenetre: window, stockage: sessionStorage }); // fichier charge a la demande disparu apres un deploiement : la page se recharge une fois
 
 // ============================================================================
@@ -81,7 +86,8 @@ installerRechargementAuto({ fenetre: window, stockage: sessionStorage }); // fic
 //   Onglet 2D -> 3D cache (barre de navigation et menu hamburger) ;
 //   activateView renvoie vers le Viewer pour cette vue, hash et localStorage
 //   compris. La page et son code (src/plan3d, relais) restent intacts.
-//   Reactiver : false.
+//   Reactiver : false. L'onglet « Idees d'evolution » (02/11, src/ideesEvolution.js)
+//   occupe sa place dans la barre ; si 2D -> 3D revient, le placer apres lui.
 //
 // MASQUE_ANCIENNE_LANDING
 //   Ancienne landing #view-landing (hero, parties 1 et 2, bouton "Acceder a
@@ -464,6 +470,19 @@ const observateurNavbar = new ResizeObserver(() => placerPastilleNavbar());
 navLinks.forEach((l) => observateurNavbar.observe(l));
 const navbarLinksEl = document.getElementById("navbarLinks");
 const navbarEl = document.getElementById("navbar");
+
+// Pages « Idees d'evolution » (#idees, onglet) et « Mon espace » (#espace, sans onglet, atteinte par la derniere frise), 02/11. Creees ici, avant le premier activateView :
+// activateView les appelle (surVueActivee) et ne doit jamais lire une constante pas encore initialisee. Le changement de page passe par la transition habituelle.
+function allerVueIdees(vue) {
+  const lien = estVueIdees(vue) ? null : navLinks.find((l) => l.dataset.view === vue); // Viewer, Discussions... : le clic de l'onglet fait tout le travail de la page (3D, remises a zero)
+  if (lien) { lien.click(); return; }
+  transitionVue(vue, () => {
+    activateView(vue);
+    navbarLinksEl.classList.remove("open");
+  });
+}
+const ideesEvolution = creerIdeesEvolution({ racine: document.getElementById("ideesRoot"), aller: allerVueIdees });
+const monEspace = creerMonEspace({ racine: document.getElementById("espaceRoot"), aller: allerVueIdees });
 
 // « Me contacter » (28/10) : centre sur la page tant qu'il y a la place, sinon il s'arrete ECART_CONTACT_PX apres le dernier onglet visible, meme si la fenetre
 // se reduit. Mesure sur la barre (comme placerPastilleNavbar), donc valable quel que soit le nombre d'onglets affiches (profils). Menu hamburger (960 px) : position
@@ -1150,7 +1169,7 @@ function activateView(viewName, options = {}) {
   document.querySelector('meta[name="theme-color"]')?.setAttribute("content", viewName === "accueil" ? "#fbf7f0" : "#161c18");
   // La vue est choisie : le logo de demarrage (#splashLogo) peut s'effacer.
   document.documentElement.classList.remove("demarrage");
-  navLinks.forEach((l) => l.classList.toggle("active", l.dataset.view === viewName));
+  navLinks.forEach((l) => l.classList.toggle("active", l.dataset.view === ongletDeVue(viewName))); // « Mon espace » n'a pas d'onglet : celui des idees reste allume
   placerPastilleNavbar();
   placerContactNavbar(); // la barre vient d'etre affichee (masquee sur l'accueil) : « Me contacter » se replace
   document.querySelectorAll(".view").forEach((view) => {
@@ -1158,6 +1177,8 @@ function activateView(viewName, options = {}) {
   });
   if (messagerie) messagerie.surVueActivee(viewName);
   if (quantitatif) quantitatif.surVueActivee(viewName);
+  ideesEvolution.surVueActivee(viewName);
+  monEspace.surVueActivee(viewName);
   if (viewName === "plan3d") ouvrirPlan3d();
   else if (plan3d) plan3d.surVueActivee(viewName);
   if (viewName !== "discussions") discussionsIA.effacerRetour(); // le bandeau « Retour au rapport » ne vit que sur la page Discussions
@@ -1748,7 +1769,7 @@ const initialHash = location.hash;
 const hashView = initialHash.replace("#", "").split("/")[0];
 // "landing" n'est pas un nav-link (accessible via le bouton OUVRA),
 // ajoute a la liste des vues valides pour le hash/localStorage quand meme.
-const validViews = navLinks.map((l) => l.dataset.view).concat(["landing", "accueil"]);
+const validViews = navLinks.map((l) => l.dataset.view).concat(["landing", "accueil"], VUES_SANS_ONGLET);
 
 // Arrivee par defaut : la nouvelle page d'accueil.
 let savedView = "accueil";
@@ -1792,7 +1813,7 @@ const HOSPITAL_PROJECT_KEY = "hospital-xkt";
 // 19/10 : l'hopital devient le projet unique et expose aussi Collision et
 // Discussions, qui fonctionnent sans donnees dessus (listes vides, cf
 // applyProjectData). Ancienne valeur : ["presentation", "viewer"].
-const HOSPITAL_VISIBLE_VIEWS = ["presentation", "viewer", "collision", "discussions", "quantitatif", "plan3d"];
+const HOSPITAL_VISIBLE_VIEWS = ["presentation", "viewer", "collision", "discussions", "quantitatif", "plan3d", "idees"];
 
 // Projet hopital force au demarrage quand le selecteur est masque (aucune
 // valeur memorisee n'est relue : l'hopital s'impose a chaque chargement).
@@ -1883,7 +1904,8 @@ function applyPersona(persona, forceNav) {
   const currentViewName = currentView ? currentView.id.replace("view-", "") : null;
   // L'accueil n'est pas un onglet de la navbar : il est toujours autorise (sinon le
   // rechargement de l'accueil basculait d'office sur le Viewer, 19/10).
-  const currentViewAllowed = currentViewName === "accueil" || navLinks.some((l) => l.dataset.view === currentViewName && !l.hidden);
+  // « Mon espace » (sans onglet) est autorisee tant que l'onglet des idees l'est (ongletDeVue).
+  const currentViewAllowed = currentViewName === "accueil" || navLinks.some((l) => l.dataset.view === ongletDeVue(currentViewName) && !l.hidden);
   if (forceNav || !currentViewAllowed) {
     activateView(isHospitalProject ? "viewer" : PERSONA_DEFAULT_VIEW[persona]);
   }
