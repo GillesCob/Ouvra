@@ -11,7 +11,7 @@ test("donnees : cinq frises, la derniere avec le lien interne vers Mon espace, a
   assert.deepEqual(SCENARIOS.map((s) => s.noeuds.length), [6, 6, 4, 5, 6]);
   assert.deepEqual(SCENARIOS[4].lien, { vue: "espace", texte: "Voir la page personnelle →" });
   assert.equal(SCENARIOS.filter((s) => s.lien).length, 1);
-  assert.deepEqual(SCENARIOS.map((s) => s.titre), ["Réunion de synthèse", "Mise à jour des maquettes", "Le bon document, là où je regarde", "Échéances tirées des discussions", "Une page qui s'adapte à moi, à la voix"]);
+  assert.deepEqual(SCENARIOS.map((s) => s.titre), ["Réunion de synthèse", "Mise à jour des maquettes", "Consulter les documents de la GED", "Échéances tirées des discussions", "Création d'une page personnelle"]);
   assert.doesNotMatch(htmlPage(), /BCF|Autres idées|enchaînement|À évoquer|ide-autres|ide-isoles|ide-lead/);
 });
 
