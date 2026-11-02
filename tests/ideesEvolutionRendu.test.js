@@ -6,12 +6,12 @@ import { indicesDebutDeLigne } from "../src/ideesEvolution.js";
 
 const tousLesNoeuds = () => SCENARIOS.flatMap((s) => s.noeuds);
 
-test("donnees : quatre frises, la derniere avec le lien interne vers Mon espace, aucune trace des idees retirees", () => {
-  assert.equal(SCENARIOS.length, 4);
-  assert.deepEqual(SCENARIOS.map((s) => s.noeuds.length), [6, 6, 4, 6]);
-  assert.deepEqual(SCENARIOS[3].lien, { vue: "espace", texte: "Voir la page personnelle →" });
+test("donnees : cinq frises, la derniere avec le lien interne vers Mon espace, aucune trace des idees retirees", () => {
+  assert.equal(SCENARIOS.length, 5);
+  assert.deepEqual(SCENARIOS.map((s) => s.noeuds.length), [6, 6, 4, 5, 6]);
+  assert.deepEqual(SCENARIOS[4].lien, { vue: "espace", texte: "Voir la page personnelle →" });
   assert.equal(SCENARIOS.filter((s) => s.lien).length, 1);
-  assert.deepEqual(SCENARIOS.map((s) => s.titre), ["Réunion de synthèse", "Mise à jour des maquettes", "Le bon document, là où je regarde", "Une page qui s'adapte à moi, à la voix"]);
+  assert.deepEqual(SCENARIOS.map((s) => s.titre), ["Réunion de synthèse", "Mise à jour des maquettes", "Le bon document, là où je regarde", "Échéances tirées des discussions", "Une page qui s'adapte à moi, à la voix"]);
   assert.doesNotMatch(htmlPage(), /BCF|Autres idées|enchaînement|À évoquer|ide-autres|ide-isoles|ide-lead/);
 });
 
@@ -55,9 +55,9 @@ test("rendu : tout texte est echappe", () => {
   assert.doesNotMatch(h, /<img/);
 });
 
-test("rendu : la page contient quatre sections, des liens internes seulement (aucun fichier .html), et chaque icone utilisee existe dans le sprite", () => {
+test("rendu : la page contient cinq sections, des liens internes seulement (aucun fichier .html), et chaque icone utilisee existe dans le sprite", () => {
   const page = htmlPage();
-  assert.equal((page.match(/<section class="ide-scn"/g) || []).length, 4);
+  assert.equal((page.match(/<section class="ide-scn"/g) || []).length, 5);
   assert.doesNotMatch(page, /\.html/);
   assert.match(page, /<a href="#espace" data-vue="espace">Voir la page personnelle →<\/a>/);
   const sprite = htmlSprite();

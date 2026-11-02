@@ -24,6 +24,8 @@ export const ICONES = {
   cursor: "<path d=\"M5 3l6 16 2.5-6.5L20 10z\"/>",
   eye: "<path d=\"M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z\"/><circle cx=\"12\" cy=\"12\" r=\"3\"/>",
   link: "<path d=\"M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1\"/><path d=\"M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1\"/>",
+  bubble: "<path d=\"M4 5h16v11H10l-4 4v-4H4z\"/>",
+  check: "<path d=\"M5 12.5l4.5 4.5L19 7\"/>",
   pencil: "<path d=\"M4 20l1-4L16 5l3 3L8 19z\"/><path d=\"M14 7l3 3\"/>",
   wand: "<path d=\"M5 19L17 7\"/><path d=\"M15 5l4 4\"/><path d=\"M19 2v3M17.5 3.5h3M6 3v2.5M4.75 4.25h2.5\"/>",
 };
@@ -63,6 +65,17 @@ export const SCENARIOS = [
       { type: "auto", icone: "export", label: "Ou téléchargement direct depuis Ouvra" }
     ],
     note: "La GED reste la source de vérité, Ouvra sert de passerelle."
+  },
+  {
+    batiment: "batiment-estime-2-consulter.svg",
+    titre: "Échéances tirées des discussions",
+    noeuds: [
+      { type: "humain", icone: "bubble", label: "Discussions de l'équipe" },
+      { type: "ia", icone: "search", label: "L'IA repère dates et engagements" },
+      { type: "humain", icone: "check", label: "Je valide" },
+      { type: "auto", icone: "tasks", label: "Échéances dans mon planning" },
+      { type: "auto", icone: "refresh", label: "Rappel avant la date" }
+    ]
   },
   {
     batiment: "batiment-estime-3-preparer.svg",

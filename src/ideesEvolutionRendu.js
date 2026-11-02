@@ -4,7 +4,7 @@ import { ICONES, SCENARIOS, TYPES_NOEUD } from "./ideesEvolutionDonnees.js";
 
 const PREFIXE_ICONE = "ide-i-";
 export const TITRE_PAGE = "Ce qu'on pourrait ajouter";
-export const KICKER_PAGE = "Ouvra · Idées de fonctionnalités";
+export const KICKER_PAGE = "Ouvra · Idées d'évolution";
 
 export function echapper(texte) {
   return String(texte).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#x27;");
