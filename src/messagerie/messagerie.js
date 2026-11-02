@@ -1591,7 +1591,7 @@ export function creerMessagerie({ racine, lienNavbar, capturerVue, allerA, ouvri
     id: "msgBandeauRetourEchanges",
     classeCorps: "msg-echanges-retour-actif",
     ariaLabel: "Retour aux échanges de ma demande",
-    autresClasses: ["msg-retour-actif", "regles-retour-actif", "quantitatif-retour-actif", "plan3d-retour-actif", "disc-rapport-retour-actif"]
+    autresClasses: ["msg-retour-actif", "regles-retour-actif", "quantitatif-retour-actif", "plan3d-retour-actif", "disc-rapport-retour-actif", "espace-retour-actif"]
   });
   // Le bandeau s'en va (retour, autre demande, autre onglet, filtre retire) : la question mise en pause revient.
   function quitterEchange() {

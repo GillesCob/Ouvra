@@ -38,6 +38,8 @@ import "./ideesEvolution.css";
 import "./monEspace.css";
 import { creerIdeesEvolution } from "./ideesEvolution.js";
 import { creerMonEspace } from "./monEspace.js";
+import { TEXTES_ESPACE } from "./monEspaceDonnees.js";
+import { indexer } from "./discussionsIAIndex.js";
 import { collisionTypeFr, decrireCarteCollision, LIBELLES_STATUT_COLLISION, LIBELLES_PRIORITE_COLLISION } from "./collisionCarte.js";
 import { ongletDeVue, VUES_SANS_ONGLET, estVueIdees } from "./vuesIdees.js";
 installerRechargementAuto({ fenetre: window, stockage: sessionStorage }); // fichier charge a la demande disparu apres un deploiement : la page se recharge une fois
@@ -483,7 +485,7 @@ function allerVueIdees(vue) {
   });
 }
 const ideesEvolution = creerIdeesEvolution({ racine: document.getElementById("ideesRoot"), aller: allerVueIdees });
-const monEspace = creerMonEspace({ racine: document.getElementById("espaceRoot"), aller: allerVueIdees });
+const monEspace = creerMonEspace({ racine: document.getElementById("espaceRoot"), aller: allerVueIdees, ouvrir: (cible, position) => ouvrirDepuisEspace(cible, position) });
 
 // « Me contacter » (28/10) : centre sur la page tant qu'il y a la place, sinon il s'arrete ECART_CONTACT_PX apres le dernier onglet visible, meme si la fenetre
 // se reduit. Mesure sur la barre (comme placerPastilleNavbar), donc valable quel que soit le nombre d'onglets affiches (profils). Menu hamburger (960 px) : position
@@ -1135,6 +1137,8 @@ let retourQuantitatif = null; // bandeau « ← Retour au quantitatif » (src/re
 let quantitatif = null; // page Quantitatif (creee plus bas) ; relue par activateView avant sa definition
 let plan3d = null; // page 2D -> 3D (src/plan3d/plan3dPage.js), chargee a la premiere ouverture ; relue par activateView avant sa definition
 let plan3dEnCours = null; // chargement de la page 2D -> 3D en route (evite deux creations)
+let retourEspace = null; // bandeau « ← Retour a Mon espace » (src/retourContexte.js), cree plus bas ; relu par activateView avant sa definition
+let vueRetourEspace = null; // page ou le bandeau « Retour a Mon espace » est valable (discussions ou collision)
 let retourPlan3d = null; // bandeau « ← Retour au plan 2D » (src/retourContexte.js), cree plus bas ; relu par activateView avant sa definition
 let planDansViewer = null; // maquette « Plan 2D -> 3D » montree dans le Viewer : { maquette, avant } ; relu par activateView avant sa definition
 let vueAvantDessus = null; // camera avant la vue a plat : { eye, look, up, projection } (voir entrerVueDessus)
@@ -1184,6 +1188,7 @@ function activateView(viewName, options = {}) {
   else if (plan3d) plan3d.surVueActivee(viewName);
   if (viewName !== "discussions") discussionsIA.effacerRetour(); // le bandeau « Retour au rapport » ne vit que sur la page Discussions
   if (retourQuantitatif && viewName !== "viewer") retourQuantitatif.effacer(); // le bandeau de retour ne vit que dans le Viewer ouvert par le Quantitatif
+  if (retourEspace && viewName !== vueRetourEspace) retourEspace.effacer(); // « Retour a Mon espace » ne vit que sur la page ouverte depuis Mon espace
   if (viewName !== "viewer") {
     if (retourPlan3d) retourPlan3d.effacer(); // idem pour le bandeau du plan 2D -> 3D
     retirerPlanDuViewer(); // quitter le Viewer rend les maquettes a leur etat d'avant et retire la maquette du plan
@@ -1391,6 +1396,24 @@ function transitionVue(vue, changer, sortieDejaFaite) {
   setTimeout(() => terminerTransitionVue(changer), 300);
 }
 
+// Etat sain avant une page sans 3D : une detection ou un fil qui masquait des maquettes est referme (navbar, et retour a Mon espace).
+function repartirEtatSain() {
+  fermerEchangesGrand(false);
+  restoreAllModelsVisible();
+  if (!collisionDetail.hidden) {
+    collisionDetail.hidden = true;
+    collisionRecap.hidden = false;
+    clearClashMarkers();
+    clearClashElementColors();
+    deselectEntity();
+  }
+  // Meme chose pour un fil de discussion reste ouvert : sinon revenir sur Discussions rouvre le meme fil au lieu de la liste.
+  if (!discussionsDetailPane.hidden) {
+    discussionsDetailPane.hidden = true;
+    discussionsListPane.hidden = false;
+  }
+}
+
 let sortieVueDemarree = false; // vrai si la sortie du contenu a ete lancee pendant le dezoom (0,3 s avant son arrivee)
 let minuteurSortieVue = null;
 let dezoomDejaFait = false; // vrai le temps du clic rejoue a l'arrivee du dezoom (voir le handler ci-dessous)
@@ -1483,20 +1506,7 @@ navLinks.forEach((link) => {
       return;
     }
     // Autre page (sans 3D) : repart d'un etat sain (une detection ou un fil qui masquait des maquettes).
-    fermerEchangesGrand(false);
-    restoreAllModelsVisible();
-    if (!collisionDetail.hidden) {
-      collisionDetail.hidden = true;
-      collisionRecap.hidden = false;
-      clearClashMarkers();
-      clearClashElementColors();
-      deselectEntity();
-    }
-    // Meme chose pour un fil de discussion reste ouvert : sinon revenir sur Discussions rouvre le meme fil au lieu de la liste.
-    if (!discussionsDetailPane.hidden) {
-      discussionsDetailPane.hidden = true;
-      discussionsListPane.hidden = false;
-    }
+    repartirEtatSain();
     activateView(page);
     if (page === "discussions") animerEntreeListe(discussionsThreadsList);
     // Admin (porte depuis IES le 16/09) : la liste des maquettes ne doit montrer que celles du projet actuellement charge. Le mockup est un
@@ -6899,7 +6909,7 @@ retourQuantitatif = creerRetourContexte({
   id: "quantitatifBandeauRetour",
   classeCorps: "quantitatif-retour-actif",
   ariaLabel: "Retour au quantitatif",
-  autresClasses: ["msg-retour-actif", "regles-retour-actif"], // un seul bandeau de retour a la fois : le plus recent gagne
+  autresClasses: ["msg-retour-actif", "regles-retour-actif", "espace-retour-actif"], // un seul bandeau de retour a la fois : le plus recent gagne
   retourSysteme: true // le retour du systeme (geste, bouton arriere) ramene au meme rapport, comme le bandeau
 });
 
@@ -7107,8 +7117,65 @@ retourPlan3d = creerRetourContexte({
   id: "plan3dBandeauRetour",
   classeCorps: "plan3d-retour-actif",
   ariaLabel: "Retour au plan 2D",
-  autresClasses: ["msg-retour-actif", "regles-retour-actif", "quantitatif-retour-actif"]
+  autresClasses: ["msg-retour-actif", "regles-retour-actif", "quantitatif-retour-actif", "espace-retour-actif"]
 });
+
+// Bandeau « ← Retour a Mon espace » (02/11) : une tache, une echeance, une alerte ou une vue de Mon espace envoie voir une discussion ou une collision ;
+// le bandeau ramene a Mon espace, a la position de defilement d'avant. Un seul bandeau de retour a la fois : le plus recent gagne.
+retourEspace = creerRetourContexte({
+  id: "espaceBandeauRetour",
+  classeCorps: "espace-retour-actif",
+  ariaLabel: TEXTES_ESPACE.libelleRetour,
+  autresClasses: ["msg-retour-actif", "regles-retour-actif", "quantitatif-retour-actif", "plan3d-retour-actif", "disc-rapport-retour-actif", "msg-echanges-retour-actif", "discussions-confirm-actif"]
+});
+
+// Rappelle suite() des que condition() est vraie (sondee toutes les 50 ms, 3 s au plus) : la page s'ouvre apres la transition, les marqueurs et les discussions apres elle.
+function attendre(condition, suite) {
+  const debut = performance.now();
+  const sonder = () => {
+    if (condition()) suite();
+    else if (performance.now() - debut < 3000) setTimeout(sonder, 50);
+  };
+  sonder();
+}
+const vueAffichee = (vue) => () => { const el = document.getElementById("view-" + vue); return !!el && !el.hidden; };
+
+function revenirAMonEspace(position) {
+  repartirEtatSain();
+  monEspace.revenir(position);
+}
+
+// cible : { type: "message", convId, sujetId, texte } (discussion, au message source) ou { type: "collision", clashId } (page Collision, collision choisie avec le vol de camera habituel).
+function ouvrirDepuisEspace(cible, position) {
+  const vue = cible.type === "collision" ? "collision" : "discussions";
+  const lien = navLinks.find((l) => l.dataset.view === vue);
+  if (!lien) return;
+  retourEspace.effacer();
+  vueRetourEspace = vue;
+  const montrerRetour = () => retourEspace.montrer({ libelle: TEXTES_ESPACE.libelleRetour, surRetour: () => revenirAMonEspace(position) });
+  lien.click();
+  if (cible.type === "collision") {
+    const clash = CLASHES.find((c) => c.id === cible.clashId);
+    if (!clash) return;
+    attendre(() => vueAffichee("collision")() && clashMarkers.has(clash.id), () => {
+      activateClash(clash);
+      montrerRetour();
+    });
+    // La detection de la collision n'est pas ouverte (plusieurs couples de maquettes) : elle l'est avant d'attendre les marqueurs.
+    attendre(vueAffichee("collision"), () => {
+      const detection = DETECTIONS.find((d) => d.id === clash.detectionId);
+      if (detection && detectionCourante !== detection) openDetection(detection);
+    });
+    return;
+  }
+  attendre(() => vueAffichee("discussions")() && !!messagerie && messagerie.donneesPourIA().conversations.length > 0, () => {
+    const { conversations, personnes } = messagerie.donneesPourIA();
+    const message = indexer(conversations, personnes).messages.find((m) => m.convId === cible.convId && m.sujetId === cible.sujetId && m.texte === cible.texte);
+    if (!message) return;
+    messagerie.montrerMessageIA(message.mk);
+    montrerRetour();
+  });
+}
 
 const quantitatifHistorique = creerHistorique({ depot: creerDepotLocal() });
 quantitatif = creerQuantitatifPage({

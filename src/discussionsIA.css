@@ -229,7 +229,8 @@ body.discussions-confirm-actif .disc-rapport-fond { padding-top: calc(52px + var
 #discussionsRapportBandeauRetour button:focus-visible,
 #msgBandeauRetourEchanges button:focus-visible { outline: 2px solid var(--text); outline-offset: 1px; }
 body.disc-rapport-retour-actif #view-discussions,
-body.msg-echanges-retour-actif #view-discussions { padding-top: 44px; box-sizing: border-box; }
+body.msg-echanges-retour-actif #view-discussions,
+body.espace-retour-actif #view-discussions { padding-top: 44px; box-sizing: border-box; }
 @media (max-width: 768px) { #discussionsRapportBandeauRetour { padding: 0 12px; } #discussionsRapportBandeauRetour button { min-height: 44px; } }
 
 /* Survol des boutons de l'IA de Discussions (28/10, Gilles) : memes motifs que le reste de l'application (bouton neutre : bordure accent, bouton plein : fond assombri comme .btn-principal). */
@@ -246,7 +247,7 @@ body.msg-echanges-retour-actif #view-discussions { padding-top: 44px; box-sizing
 }
 
 /* Discussion ouverte depuis une source du rapport (29/10) : le bandeau « Retour au rapport » est le seul chemin de retour, la fleche vers la liste des echanges disparait (mobile). */
-@media (max-width: 768px) { body.disc-rapport-retour-actif .msg-retour, body.msg-echanges-retour-actif .msg-retour { display: none; } }
+@media (max-width: 768px) { body.disc-rapport-retour-actif .msg-retour, body.msg-echanges-retour-actif .msg-retour, body.espace-retour-actif .msg-retour { display: none; } }
 
 /* Laptop (29/10) : echanges filtres au centre, meme format de ligne que la liste de gauche (.msg-conv), qui defile. */
 .msg-ia-centre { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 8px; }
