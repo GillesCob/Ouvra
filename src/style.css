@@ -2215,6 +2215,11 @@ body.acc-actif #appBody { height: 100%; }
 .collision-statut-dot.confirme { background: #f85149; }
 .collision-statut-dot.ecarte { background: #8b949e; }
 .collision-statut-label { display: none; }
+/* Priorite en toutes lettres a cote du statut (03/11) : meme ligne que le statut, jamais de retour a la ligne ; « Priorité » masque a l'ecran, lu par les lecteurs d'ecran. */
+.collision-prio { flex: 0 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--muted); font-weight: 600; }
+.collision-statut { position: relative; }
+.collision-prio::before { content: "· "; }
+.collision-prio-mot { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
 /* ==========================================================================
    Priorites des collisions (19/10, COLLISION_PRIORITES) : groupes par urgence,
@@ -3460,26 +3465,16 @@ button.disc-pin:hover { transform: scale(1.18); box-shadow: 0 0 0 3px color-mix(
   html body :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="hidden"]):not([type="button"]):not([type="submit"]), textarea, select, [contenteditable]:not([contenteditable="false"])) { font-size: 16px; }
 }
 
-/* Favoris et filtres de la liste des collisions (02/11). Puces : meme famille que les segments des Discussions (.disc-seg), en pastilles qui passent a la ligne
-   dans le volet etroit. Etoile : bouton frere de la carte, au bout de la ligne, alignee sur le centre de la carte. */
-.collision-filtres { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 4px 4px; }
-.collision-filtres[hidden] { display: none; }
-.collision-filtre {
-  min-height: 28px; padding: 3px 10px; box-sizing: border-box; background: var(--surface); border: 1px solid var(--border); border-radius: 999px;
-  font: inherit; font-size: 12px; color: var(--muted); cursor: pointer; transition: background 0.3s, color 0.3s, border-color 0.3s;
-}
-.collision-filtre:hover { color: var(--text); border-color: var(--muted); }
-.collision-filtre[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+/* Favoris de la liste des collisions (02/11). Etoile : bouton frere de la carte, au bout de la ligne, alignee sur le centre de la carte. */
 .collision-favori {
   flex: none; align-self: stretch; width: 28px; padding: 0; border: none; background: none; font: inherit; font-size: 15px; line-height: 1;
   color: var(--muted); cursor: pointer;
 }
 .collision-favori:hover { color: var(--text); }
-.collision-favori:focus-visible, .collision-filtre:focus-visible { outline: 2px solid #e8935c; outline-offset: 2px; }
+.collision-favori:focus-visible { outline: 2px solid #e8935c; outline-offset: 2px; }
 .collision-ecartes li.collision-item-row { padding: 0; gap: 0; }
 .collision-favori[aria-pressed="true"] { color: #e3b341; }
 .collision-filtre-vide { list-style: none; padding: 8px 9px; }
 @media (max-width: 768px) {
-  .collision-filtre { min-height: 44px; padding: 0 14px; font-size: 14px; }
   .collision-favori { width: 44px; min-height: 44px; font-size: 20px; }
 }

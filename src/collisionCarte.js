@@ -23,6 +23,13 @@ const COLLISION_TYPES_FR = [
 export const LIBELLES_STATUT_COLLISION = { nouveau: "Nouveau", confirme: "Confirmé", ecarte: "Écarté" };
 export const LIBELLES_PRIORITE_COLLISION = { urgente: "Urgente", haute: "Haute", normale: "Normale", basse: "Basse" };
 
+// Priorite a cote du statut (03/11) : « Urgente » seul a l'ecran (le statut et la priorite tiennent sur une ligne, meme a 172 px), « Priorité » reste lu par les lecteurs d'ecran.
+// Un seul balisage pour toutes les vues qui ecrivent le statut en toutes lettres (Mon espace).
+export function htmlPrioriteCollision(prio) {
+  const cle = LIBELLES_PRIORITE_COLLISION[prio] ? prio : "normale";
+  return `<span class="collision-prio"><span class="collision-prio-mot">Priorité </span>${LIBELLES_PRIORITE_COLLISION[cle]}</span>`;
+}
+
 export function collisionTypeFr(name) {
   const hit = COLLISION_TYPES_FR.find(([re]) => re.test(name));
   return hit ? hit[1] : name.split(":")[0].trim();

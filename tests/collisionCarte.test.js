@@ -27,3 +27,9 @@ test("libelles de statut et de priorite", () => {
   assert.equal(LIBELLES_STATUT_COLLISION.confirme, "Confirmé");
   assert.equal(LIBELLES_PRIORITE_COLLISION.urgente, "Urgente");
 });
+
+test("htmlPrioriteCollision : libelle visible court, mot « Priorité » lu par les lecteurs d'écran, repli sur normale", async () => {
+  const { htmlPrioriteCollision } = await import("../src/collisionCarte.js");
+  assert.match(htmlPrioriteCollision("urgente"), /collision-prio-mot">Priorité <\/span>Urgente</);
+  assert.match(htmlPrioriteCollision("inconnue"), /Normale</);
+});

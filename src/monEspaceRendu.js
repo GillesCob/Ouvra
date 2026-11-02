@@ -2,7 +2,7 @@
 // classes prefixees esp- (voir src/monEspace.css). Toutes les valeurs passent par echapper().
 import { WIDGETS, SUGGESTIONS, TEXTES_ESPACE } from "./monEspaceDonnees.js";
 import { HOSPITAL_CLASHES } from "./clashesHospital.js";
-import { decrireCarteCollision, LIBELLES_STATUT_COLLISION, LIBELLES_PRIORITE_COLLISION } from "./collisionCarte.js";
+import { decrireCarteCollision, htmlPrioriteCollision, LIBELLES_STATUT_COLLISION, LIBELLES_PRIORITE_COLLISION } from "./collisionCarte.js";
 
 export const echapper = (texte) => String(texte).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#x27;");
 
@@ -31,7 +31,7 @@ export function htmlCarteCollision(clash, clashes = HOSPITAL_CLASHES) {
     + `<span class="collision-num-badge" aria-hidden="true">${numero}</span>`
     + `<span class="collision-card-text"><span class="collision-types">${echapper(infos.titre)}</span><span class="collision-sub">${echapper(infos.sousTitre)}</span></span>`
     + `<span class="collision-statut"><span class="collision-statut-dot ${echapper(clash.statut)}"></span><span class="collision-statut-label">${echapper(statut)}</span>`
-    + `<span class="esp-vue-prio">Priorité ${echapper(LIBELLES_PRIORITE_COLLISION[prio].toLowerCase())}</span></span></span>`;
+    + `${htmlPrioriteCollision(prio)}</span></span>`;
 }
 
 const clashParId = (id, clashes = HOSPITAL_CLASHES) => clashes.find((c) => c.id === id) || null;
