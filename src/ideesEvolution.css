@@ -46,7 +46,7 @@
    mobile « proximity » pour ne jamais bloquer le defilement dans une frise verticale plus haute que l'ecran ; aucune accroche si le systeme demande moins d'animations. */
 #view-idees.ide-accroche { scroll-snap-type: y mandatory; }
 .ide-scn { display: flex; flex-direction: column; justify-content: center; min-height: var(--ide-hauteur, 100vh); margin: 0; padding: 24px 0; scroll-snap-align: center; scroll-snap-stop: always; }
-.ide-kicker { scroll-snap-align: start; }
+.ide-scn:first-of-type { scroll-snap-align: start; scroll-margin-top: var(--ide-entete, 0px); } /* premiere frise : accrochee en haut de page (scrollTop 0), titre compris */
 .ide-scn-tete { display: flex; align-items: center; gap: 14px; min-width: 0; }
 .ide-bat-img { display: block; height: clamp(46px, 4vw, 64px); width: auto; flex: none; }
 .ide-scn-tete h3 { margin: 0; min-width: 0; font-size: clamp(17px, 1.5vw, 24px); letter-spacing: -0.01em; line-height: 1.15; }

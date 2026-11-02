@@ -73,7 +73,8 @@ test("idees : l'accroche (scroll-snap) est portee par #view-idees seulement via 
   const css = lire("src/ideesEvolution.css");
   const js = lire("src/ideesEvolution.js");
   assert.match(css, /#view-idees\.ide-accroche \{ scroll-snap-type: y mandatory; \}/);
-  assert.match(css, /@media \(max-width: 899px\) \{[^}]*#view-idees\.ide-accroche \{ scroll-snap-type: y proximity; \}/s, "mobile : proximity, jamais de blocage dans une frise verticale haute");
+  const proximity = css.indexOf("#view-idees.ide-accroche { scroll-snap-type: y proximity; }");
+  assert.ok(proximity > css.lastIndexOf("@media (max-width: 899px)", proximity) && css.lastIndexOf("@media (max-width: 899px)", proximity) > css.lastIndexOf("@media (min-width", proximity), "mobile : proximity, jamais de blocage dans une frise verticale haute");
   assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{\s*#view-idees\.ide-accroche \{ scroll-snap-type: none; \}/);
   assert.doesNotMatch(css, /(^|\n)#view-idees(?!\.ide-accroche)[^{]*\{[^}]*scroll-snap-type/, "aucune accroche hors de la classe");
   assert.match(css, /\.ide-scn \{[^}]*min-height: var\(--ide-hauteur[^}]*scroll-snap-align: center;/);

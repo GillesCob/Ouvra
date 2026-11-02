@@ -48,9 +48,12 @@ export function creerIdeesEvolution({ racine, aller, fenetre = window }) {
   marquerDebuts();
 
   function ajusterHauteur() {
-    if (conteneur && conteneur.clientHeight > 0) racine.style.setProperty("--ide-hauteur", conteneur.clientHeight + "px"); // masquee : 0, on garde la derniere valeur
+    if (!conteneur || conteneur.clientHeight <= 0) return; // page masquee : on garde les dernieres valeurs
+    racine.style.setProperty("--ide-hauteur", conteneur.clientHeight + "px");
+    // Hauteur de l'en-tete (kicker + titre) : la premiere frise s'accroche en haut de page avec lui, pas de point d'arret separe pour le titre.
+    if (scenarios[0]) racine.style.setProperty("--ide-entete", Math.max(0, Math.round(scenarios[0].getBoundingClientRect().top - conteneur.getBoundingClientRect().top + conteneur.scrollTop)) + "px");
   }
-  if (typeof ResizeObserver === "function" && conteneur) new ResizeObserver(ajusterHauteur).observe(conteneur);
+  if (typeof ResizeObserver === "function" && conteneur) { const obs = new ResizeObserver(ajusterHauteur); obs.observe(conteneur); obs.observe(racine); } // racine : l'en-tete peut changer de hauteur (police chargee, titre sur deux lignes)
   else fenetre.addEventListener("resize", ajusterHauteur);
   ajusterHauteur();
 
@@ -74,8 +77,8 @@ export function creerIdeesEvolution({ racine, aller, fenetre = window }) {
     surVueActivee(vue) {
       if (conteneur) conteneur.classList.toggle("ide-accroche", vue === VUE_IDEES && !reduit); // l'accroche ne vit que sur #idees (« Mon espace » a son propre conteneur)
       if (vue !== VUE_IDEES) return;
+      ajusterHauteur(); // avant le retour en haut : le navigateur raccroche au point voulu seulement si la marge d'accroche est deja posee
       if (conteneur) conteneur.scrollTop = 0;
-      ajusterHauteur();
       marquerDebuts();
     }
   };
