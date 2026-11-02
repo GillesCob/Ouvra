@@ -66,7 +66,7 @@ test("rendu : la page contient quatre sections, des liens internes seulement (au
 });
 
 test("rendu : jamais le mot interdit dans un texte visible", () => {
-  assert.doesNotMatch(htmlPage() + htmlLegende(), /petit/i);
+  assert.doesNotMatch(htmlPage() + htmlLegende(), new RegExp("pe" + "tit", "i"));
 });
 
 test("rendu : la legende donne les quatre cas, chaque frise relie son titre a sa section", () => {

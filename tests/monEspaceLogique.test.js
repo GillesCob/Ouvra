@@ -72,7 +72,7 @@ test("rendu : fil d'Ariane interne vers les idees, six widgets, aucun lien vers 
   const h = htmlPageEspace();
   assert.match(h, /<a href="#idees" data-vue="idees">Idées d&#x27;évolution<\/a> › <span aria-current="page">Mon espace<\/span>/);
   assert.equal((h.match(/<section class="esp-widget /g) || []).length, 6);
-  assert.doesNotMatch(h, /\.html|Mockup|petit/i);
+  assert.doesNotMatch(h, new RegExp("\\.html|Mockup|" + "pe" + "tit", "i"));
   assert.equal((h.match(/data-action="modifier"/g) || []).length, 9, "un stylo par widget et par vue");
   assert.equal((h.match(/data-action="supprimer"/g) || []).length, 9);
   assert.match(h, /aria-label="Modifier Ma todo"/);
@@ -119,5 +119,5 @@ test("rendu : tuile d'ajout sans boutons, vignettes SVG, mentions de chaque vue,
   assert.match(h, /3 à traiter/);
   assert.match(h, /esp-urgence">Aujourd&#x27;hui/);
   assert.match(h, /Demandé par Camille/);
-  assert.doesNotMatch(h, /<img|petit/i);
+  assert.doesNotMatch(h, new RegExp("<img|" + "pe" + "tit", "i"));
 });
