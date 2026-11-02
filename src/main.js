@@ -7252,7 +7252,8 @@ function ouvrirDepuisEspace(cible, position) {
 function ouvrirCollisionsFiltrees(filtreId, apres = () => {}) {
   filtreCollisions = filtreValide(filtreId) ? filtreId : null;
   attendre(vueAffichee("collision"), () => {
-    const premiere = filtrerCollisions(CLASHES, filtreCollisions, collisionsFavoris)[0];
+    // Les collisions factices (ex-sm-*, exemples des regles) ne comptent pas : les compteurs de Mon espace ne portent que sur les 15 collisions de l'hopital.
+    const premiere = filtrerCollisions(CLASHES.filter((c) => !c.factice), filtreCollisions, collisionsFavoris)[0];
     const detection = (premiere && DETECTIONS.find((d) => d.id === premiere.detectionId)) || detectionCourante || DETECTIONS[0];
     if (detection && detectionCourante !== detection) openDetection(detection);
     else rafraichirListeCollisions();
