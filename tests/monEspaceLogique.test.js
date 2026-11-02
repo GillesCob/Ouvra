@@ -196,7 +196,8 @@ test("echeances : une seule liste dans l'ordre des dates, quatre lignes, chacune
 });
 
 test("compteurs : chaque compteur ouvre la page Collision filtree sur son statut (filtre connu de la page Collision), l'effectif annonce est celui des collisions du filtre", async () => {
-  const { FILTRES_COLLISIONS, filtrerCollisions } = await import("../src/collisionsFavoris.js");
+  const { FILTRES_COLLISIONS, filtrerCollisions, compterSuivies, resoudreFavoris } = await import("../src/collisionsFavoris.js");
+  const { htmlCompteurs } = await import("../src/monEspaceRendu.js");
   const { HOSPITAL_CLASHES } = await import("../src/clashesHospital.js");
   const compteurs = WIDGETS.find((w) => w.id === "collisions").items;
   assert.deepEqual(compteurs.map((c) => c.cible.filtre), ["nouvelles", "en-cours", "urgentes", "resolues"]);
@@ -204,11 +205,16 @@ test("compteurs : chaque compteur ouvre la page Collision filtree sur son statut
     assert.equal(c.cible.type, "collisions");
     assert.ok(FILTRES_COLLISIONS.some((f) => f.id === c.cible.filtre), c.cible.filtre);
     assert.deepEqual(trouverCible(WIDGETS, c.id), c.cible);
-    assert.equal(filtrerCollisions(HOSPITAL_CLASHES, c.cible.filtre, new Set()).length, c.valeur, c.libelle);
+    assert.equal("valeur" in c, false, "aucune valeur ecrite en dur : " + c.libelle);
   }
-  const h = htmlPageEspace();
+  const effectifs = compterSuivies(HOSPITAL_CLASHES, resoudreFavoris([]));
+  const h = htmlPageEspace(WIDGETS, undefined, undefined, effectifs);
+  for (const c of compteurs) assert.match(h, new RegExp('data-cible="' + c.id + '" aria-label="Voir les collisions suivies : ' + effectifs[c.cible.filtre] + " "), c.libelle);
+  // Une etoile retiree change le compteur affiche (meme source : les favoris).
+  const moins = compterSuivies(HOSPITAL_CLASHES, resoudreFavoris([{ id: "hosp-clash-1", favori: false }]));
+  assert.match(htmlCompteurs(compteurs, moins), /Voir les collisions suivies : 8 nouvelles"><strong>8<\/strong>/);
   assert.equal((h.match(/class="esp-compteur-bouton" data-cible="compteur-/g) || []).length, 4);
-  assert.match(h, /<li><button type="button" class="esp-compteur-bouton" data-cible="compteur-en-cours" aria-label="Voir les collisions : 4 en cours"><strong>4<\/strong><span>En cours<\/span><\/button><\/li>/);
+  assert.match(h, /<li><button type="button" class="esp-compteur-bouton" data-cible="compteur-en-cours" aria-label="Voir les collisions suivies : 4 en cours"><strong>4<\/strong><span>En cours<\/span><\/button><\/li>/);
   assert.match(h, /<li class="esp-urgent"><button type="button" class="esp-compteur-bouton" data-cible="compteur-urgentes"/);
 });
 

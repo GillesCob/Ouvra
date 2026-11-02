@@ -112,12 +112,12 @@ export const WIDGETS = [
   {
     id: "collisions", zone: "coll", type: "compteurs", titre: "Collisions suivies", phrase: "Compte mes collisions par statut",
     items: [
-      // Decompte reel des 15 collisions de l'hopital a l'etat initial (src/clashesHospital.js) : 9 au statut Nouveau, 4 Confirme (« En cours »), 1 priorite Urgente (n° 10), 0 Resolu.
-      // Un clic ouvre la page Collision filtree sur ces collisions (cible type « collisions », filtre = identifiant de FILTRES_COLLISIONS, src/collisionsFavoris.js).
-      { id: "compteur-nouvelles", valeur: 9, libelle: "Nouvelles", cible: { type: "collisions", filtre: "nouvelles" } },
-      { id: "compteur-en-cours", valeur: 4, libelle: "En cours", cible: { type: "collisions", filtre: "en-cours" } },
-      { id: "compteur-urgentes", valeur: 1, libelle: "Urgentes", urgent: true, cible: { type: "collisions", filtre: "urgentes" } },
-      { id: "compteur-resolues", valeur: 0, libelle: "Résolues", cible: { type: "collisions", filtre: "resolues" } }
+      // Pas de valeur ici : l'effectif de chaque compteur est calcule a l'affichage (compterSuivies, src/collisionsFavoris.js) a partir des favoris enregistres et du statut des collisions.
+      // Un clic ouvre la page Collision filtree sur les collisions suivies de ce statut (cible type « collisions », filtre = identifiant de FILTRES_COLLISIONS).
+      { id: "compteur-nouvelles", libelle: "Nouvelles", cible: { type: "collisions", filtre: "nouvelles" } },
+      { id: "compteur-en-cours", libelle: "En cours", cible: { type: "collisions", filtre: "en-cours" } },
+      { id: "compteur-urgentes", libelle: "Urgentes", urgent: true, cible: { type: "collisions", filtre: "urgentes" } },
+      { id: "compteur-resolues", libelle: "Résolues", cible: { type: "collisions", filtre: "resolues" } }
     ]
   }
 ];

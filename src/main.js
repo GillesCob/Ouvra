@@ -31,7 +31,7 @@ import { creerRetourContexte } from "./retourContexte.js";
 import { vitesseCameraInitiale } from "./vitesseCamera.js";
 import { cadrerCentre, corrigerSurSilhouette } from "./cadrageCentre.js";
 import { creerHistorique, creerDepotLocal } from "./quantitatifHistorique.js";
-import { CLE_FAVORIS, FILTRES_COLLISIONS, filtreValide, filtrerCollisions, resoudreFavoris, basculerFavori } from "./collisionsFavoris.js";
+import { CLE_FAVORIS, FILTRES_COLLISIONS, filtreValide, filtrerCollisions, compterSuivies, resoudreFavoris, basculerFavori } from "./collisionsFavoris.js";
 import { amorcerHistoriqueDemo } from "./quantitatifHistoriqueDemo.js";
 import { REQUETE_MOBILE, estMobile } from "./seuilMobile.js";
 import { installerRechargementAuto } from "./rechargementAuto.js";
@@ -486,7 +486,9 @@ function allerVueIdees(vue) {
   });
 }
 const ideesEvolution = creerIdeesEvolution({ racine: document.getElementById("ideesRoot"), aller: allerVueIdees });
-const monEspace = creerMonEspace({ racine: document.getElementById("espaceRoot"), aller: allerVueIdees, ouvrir: (cible, position) => ouvrirDepuisEspace(cible, position) });
+const monEspace = creerMonEspace({ racine: document.getElementById("espaceRoot"), aller: allerVueIdees, ouvrir: (cible, position) => ouvrirDepuisEspace(cible, position),
+  // Compteurs de « Collisions suivies » : relus a chaque arrivee sur la page, memes favoris que les etoiles (collisionsFavoris), memes collisions que ouvrirCollisionsFiltrees (sans les factices).
+  effectifs: () => compterSuivies(CLASHES.filter((c) => !c.factice), collisionsFavoris) });
 
 // « Me contacter » (28/10) : centre sur la page tant qu'il y a la place, sinon il s'arrete ECART_CONTACT_PX apres le dernier onglet visible, meme si la fenetre
 // se reduit. Mesure sur la barre (comme placerPastilleNavbar), donc valable quel que soit le nombre d'onglets affiches (profils). Menu hamburger (960 px) : position
@@ -7255,6 +7257,8 @@ amorcerHistoriqueDemo({ historique: quantitatifHistorique }).then((ajoute) => { 
 // Rechargement direct sur la page (hash ou dernier onglet) : activateView s'est execute avant la creation de la page.
 // Differe d'un cran : appelee pendant l'initialisation du module, la page lirait des constantes declarees plus bas (HOSPITAL_MISPLACED_RAILING_IDS...) avant leur initialisation.
 if (!document.getElementById("view-quantitatif").hidden) setTimeout(() => quantitatif.surVueActivee("quantitatif"), 0);
+// Meme raison pour les compteurs de Mon espace : un rechargement sur #espace les calcule avant la declaration de CLASHES, ils sont recalcules apres l'initialisation.
+setTimeout(() => monEspace.majCompteurs(), 0);
 
 commandesIA = creerCommandesIA({
   bouton: commandesIABtn,

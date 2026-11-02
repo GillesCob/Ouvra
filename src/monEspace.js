@@ -8,12 +8,13 @@
 //    (main.js, ouvrirDepuisEspace) ; un bandeau « Retour a Mon espace » ramene ici, a la meme position de defilement (revenir) ;
 //  - le micro bascule seulement son etat (aucune dictee reelle ici). Rien n'est memorise : un rechargement remet tout.
 import { WIDGETS, TEXTES_ESPACE } from "./monEspaceDonnees.js";
-import { htmlPageEspace } from "./monEspaceRendu.js";
+import { htmlPageEspace, htmlCompteurs } from "./monEspaceRendu.js";
 import { MESSAGES_ESPACE, DELAI_ANNULATION_MS, appliquerInstruction, retirerWidget, restaurer, lignesJournal, idVue, phraseModifier, trouverCible, creerMemoireDefilement } from "./monEspaceLogique.js";
 import { VUE_ESPACE } from "./vuesIdees.js";
 
 // ouvrir(cible, position) : ouvre la discussion ou la collision visee ; position = defilement de la page, que le bandeau de retour rendra (revenir).
-export function creerMonEspace({ racine, aller, ouvrir = () => {}, fenetre = window }) {
+// effectifs() : { <identifiant de filtre>: nombre } des collisions suivies, relu a chaque arrivee sur la page (jamais a la creation : la page Collision n'est pas encore prete).
+export function creerMonEspace({ racine, aller, ouvrir = () => {}, effectifs = () => ({}), fenetre = window }) {
   racine.innerHTML = htmlPageEspace();
   const champ = racine.querySelector(".esp-champ");
   const etat = racine.querySelector(".esp-etat-saisie");
@@ -118,12 +119,25 @@ export function creerMonEspace({ racine, aller, ouvrir = () => {}, fenetre = win
     ecrireEtat(on ? MESSAGES_ESPACE.ecoute : "");
   });
 
+  // Compteurs de « Collisions suivies » : recalcules depuis la source (favoris et statuts), jamais memorises.
+  function majCompteurs() {
+    const widget = WIDGETS.find((w) => w.type === "compteurs");
+    const liste = widget && racine.querySelector(`[data-widget="${widget.id}"] .esp-compteurs`);
+    if (!liste) return;
+    let valeurs;
+    try { valeurs = effectifs(); } catch { return; } // appelee pendant l'initialisation de main.js (rechargement sur #espace) : les collisions ne sont pas encore declarees, main.js rappelle apres l'initialisation
+    liste.outerHTML = htmlCompteurs(widget.items, valeurs);
+  }
+
   rendre();
 
   return {
+    majCompteurs,
     // Appelee a chaque changement de vue : la page s'ouvre en haut, sauf au retour par le bandeau (revenir).
     surVueActivee(vue) {
-      if (vue === VUE_ESPACE && conteneur) conteneur.scrollTop = memoire.consommer();
+      if (vue !== VUE_ESPACE) return;
+      majCompteurs();
+      if (conteneur) conteneur.scrollTop = memoire.consommer();
     },
     // Retour par le bandeau « Retour a Mon espace » : la page se rouvre a la position memorisee (une seule fois).
     revenir(position) {

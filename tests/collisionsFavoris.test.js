@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { creerDepotLocal } from "../src/quantitatifHistorique.js";
 import {
   CLE_FAVORIS, FAVORIS_PAR_DEFAUT, FILTRES_COLLISIONS, estNouvelle, estEnCours, estUrgente, estResolue, estFavori, filtreValide,
-  filtrerCollisions, resoudreFavoris, basculerFavori
+  filtrerCollisions, compterSuivies, resoudreFavoris, basculerFavori
 } from "../src/collisionsFavoris.js";
 
 const c = (id, statut, priorite) => ({ id, statut, priorite });
@@ -14,8 +14,8 @@ test("cle propre, distincte de l'etat des collisions", () => {
   assert.equal(CLE_FAVORIS, "ouvra-collisions-favoris");
 });
 
-test("les 9 favoris par defaut sont les collisions Nouveau n° 1, 3, 4, 6, 9, 11, 12, 13, 14", () => {
-  assert.deepEqual(FAVORIS_PAR_DEFAUT, [1, 3, 4, 6, 9, 11, 12, 13, 14].map((n) => "hosp-clash-" + n));
+test("les 13 favoris par defaut sont les collisions actives : Nouveau n° 1, 3, 4, 6, 9, 11, 12, 13, 14 et En cours n° 2, 5, 10, 15 (les ecartees 7 et 8 ne sont pas suivies)", () => {
+  assert.deepEqual(FAVORIS_PAR_DEFAUT, [1, 3, 4, 6, 9, 11, 12, 13, 14, 2, 5, 10, 15].map((n) => "hosp-clash-" + n));
 });
 
 test("predicats : nouvelle = nouveau, en cours = confirme, resolue = resolu, urgente = priorite urgente", () => {
@@ -57,9 +57,10 @@ test("filtrerCollisions : chaque filtre, sans filtre tout, filtre inconnu tout, 
   const liste = [c("1", "nouveau", "urgente"), c("2", "confirme", "haute"), c("3", "resolu", "basse"), c("4", "ecarte", "normale")];
   const favoris = new Set(["2", "3"]);
   const ids = (f) => filtrerCollisions(liste, f, favoris).map((x) => x.id);
-  assert.deepEqual(ids("nouvelles"), ["1"]);
+  // Un filtre de statut ou de priorite ne garde que les collisions suivies : la 1 (nouvelle, urgente) n'est pas favorite, elle n'apparait pas.
+  assert.deepEqual(ids("nouvelles"), []);
   assert.deepEqual(ids("en-cours"), ["2"]);
-  assert.deepEqual(ids("urgentes"), ["1"]);
+  assert.deepEqual(ids("urgentes"), []);
   assert.deepEqual(ids("resolues"), ["3"]);
   assert.deepEqual(ids("favoris"), ["2", "3"]);
   assert.deepEqual(ids(null), ["1", "2", "3", "4"]);
@@ -74,18 +75,18 @@ test("resoudreFavoris : sans rien d'enregistre, les favoris par defaut", () => {
 });
 
 test("resoudreFavoris : un choix enregistre l'emporte sur le defaut, les entrees invalides sont ignorees", () => {
-  const set = resoudreFavoris([{ id: "hosp-clash-1", favori: false }, { id: "hosp-clash-2", favori: true }, null, { id: 5, favori: true }, { favori: true }, "x"]);
+  const set = resoudreFavoris([{ id: "hosp-clash-1", favori: false }, { id: "hosp-clash-7", favori: true }, null, { id: 5, favori: true }, { favori: true }, "x"]);
   assert.equal(set.has("hosp-clash-1"), false);
-  assert.equal(set.has("hosp-clash-2"), true);
+  assert.equal(set.has("hosp-clash-7"), true);
   assert.equal(set.has("hosp-clash-3"), true);
   assert.equal(set.size, FAVORIS_PAR_DEFAUT.length);
 });
 
 test("basculerFavori : ajoute, retire, ne mute pas, garde un choix explicite pour un favori par defaut retire", () => {
   const vide = [];
-  const apres = basculerFavori(vide, "hosp-clash-2");
+  const apres = basculerFavori(vide, "hosp-clash-7");
   assert.deepEqual(vide, []);
-  assert.equal(resoudreFavoris(apres).has("hosp-clash-2"), true);
+  assert.equal(resoudreFavoris(apres).has("hosp-clash-7"), true);
   const retire = basculerFavori(apres, "hosp-clash-1");
   assert.equal(resoudreFavoris(retire).has("hosp-clash-1"), false);
   const remis = basculerFavori(retire, "hosp-clash-1");
@@ -106,4 +107,26 @@ test("persistance sur le depot local : aller-retour, JSON corrompu et stockage a
   const sansStockage = creerDepotLocal({ getItem() { throw new Error("bloque"); }, setItem() { throw new Error("plein"); } }, CLE_FAVORIS);
   assert.deepEqual([...resoudreFavoris(sansStockage.lire())], FAVORIS_PAR_DEFAUT);
   assert.equal(sansStockage.ecrire([]), false);
+});
+
+test("compteurs de Mon espace : sur les 15 collisions de l'hopital et les favoris par defaut, 9 Nouvelles, 4 En cours, 1 Urgente, 0 Resolue ; l'etoile ajoutee ou retiree change le compteur, et le clic liste exactement ces collisions", async () => {
+  const { HOSPITAL_CLASHES } = await import("../src/clashesHospital.js");
+  const depot = creerDepotLocal(stockageMemoire(), CLE_FAVORIS);
+  const effectifs = () => compterSuivies(HOSPITAL_CLASHES, resoudreFavoris(depot.lire()));
+  assert.deepEqual(effectifs(), { nouvelles: 9, "en-cours": 4, urgentes: 1, resolues: 0 });
+  // Retrait d'une etoile « Nouveau » (n° 1) : 8 Nouvelles, et la liste filtree ne contient plus la collision.
+  depot.ecrire(basculerFavori(depot.lire(), "hosp-clash-1"));
+  assert.equal(effectifs().nouvelles, 8);
+  const liste = (f) => filtrerCollisions(HOSPITAL_CLASHES, f, resoudreFavoris(depot.lire())).map((x) => x.id);
+  assert.equal(liste("nouvelles").length, 8);
+  assert.equal(liste("nouvelles").includes("hosp-clash-1"), false);
+  // Retrait de l'etoile de la n° 10 (seule Urgente, En cours) : 0 Urgente, 3 En cours.
+  depot.ecrire(basculerFavori(depot.lire(), "hosp-clash-10"));
+  assert.deepEqual([effectifs().urgentes, effectifs()["en-cours"]], [0, 3]);
+  // Etoile ajoutee sur une ecartee (n° 7) : aucun compteur ne bouge (ni Nouveau, ni En cours, ni Resolu).
+  const avant = effectifs();
+  depot.ecrire(basculerFavori(depot.lire(), "hosp-clash-7"));
+  assert.deepEqual(effectifs(), avant);
+  // Chaque effectif est exactement la longueur de la liste ouverte par le compteur correspondant.
+  for (const id of ["nouvelles", "en-cours", "urgentes", "resolues"]) assert.equal(liste(id).length, effectifs()[id], id);
 });

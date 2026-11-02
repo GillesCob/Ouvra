@@ -58,6 +58,13 @@ const htmlDocument = (d) => `<li><div class="esp-corps"><p>${echapper(d.texte)}<
 const htmlEcheance = (e) => `<li class="esp-echeance"><p class="esp-ech-titre">${echapper(e.titre)}</p>`
   + `<button type="button" class="esp-source" data-cible="${echapper(e.id)}">${echapper(e.discussion)}</button></li>`;
 
+// effectifs : { <identifiant de filtre>: nombre } fourni par la page (collisions suivies) ; un compteur sans effectif connu affiche 0.
+export const htmlCompteurs = (items, effectifs = {}) => {
+  const valeur = (c) => effectifs[c.cible.filtre] ?? 0;
+  return `<ul class="esp-compteurs">${items.map((c) => `<li${c.urgent ? ' class="esp-urgent"' : ""}><button type="button" class="esp-compteur-bouton" data-cible="${echapper(c.id)}" aria-label="Voir les collisions suivies : ${echapper(valeur(c))} ${echapper(c.libelle.toLowerCase())}">`
+    + `<strong>${echapper(valeur(c))}</strong><span>${echapper(c.libelle)}</span></button></li>`).join("")}</ul>`;
+};
+
 const CORPS = {
   vues: (items) => `<ul class="esp-vues">${items.map(htmlVue).join("")}</ul>`,
   alertes: (items) => `<ul class="esp-liste">${items.map(htmlAlerte).join("")}</ul>`,
@@ -69,11 +76,10 @@ const CORPS = {
   echeances: (items) => `<ol class="esp-echeances">${items.map(htmlEcheance).join("")}</ol>`,
   documents: (items) => `<ul class="esp-liste">${items.map(htmlDocument).join("")}</ul>`,
   // Chaque compteur est un bouton : il ouvre la page Collision filtree sur ces collisions.
-  compteurs: (items) => `<ul class="esp-compteurs">${items.map((c) => `<li${c.urgent ? ' class="esp-urgent"' : ""}><button type="button" class="esp-compteur-bouton" data-cible="${echapper(c.id)}" aria-label="Voir les collisions : ${echapper(c.valeur)} ${echapper(c.libelle.toLowerCase())}">`
-    + `<strong>${echapper(c.valeur)}</strong><span>${echapper(c.libelle)}</span></button></li>`).join("")}</ul>`
+  compteurs: (items, effectifs) => htmlCompteurs(items, effectifs)
 };
 
-export function htmlWidget(widget, rang) {
+export function htmlWidget(widget, rang, effectifs) {
   const corps = CORPS[widget.type];
   if (!corps) throw new Error(`Type de widget inconnu : ${widget.type}`);
   // « Mes points de vue » n'affiche aucun titre : seules les collisions sont visibles, le nom reste porte par la section (lecteurs d'ecran) et par les boutons stylo et croix.
@@ -83,10 +89,10 @@ export function htmlWidget(widget, rang) {
   const nomAccessible = widget.type === "vues" ? ` aria-label="${echapper(widget.titre)}"` : "";
   const repere = widget.repereIA ? `<p class="esp-repere-ia">${echapper(widget.repereIA)}</p>` : "";
   return `<section class="esp-widget esp-w-${echapper(widget.zone)}" style="--i:${rang}" data-widget="${echapper(widget.id)}" data-phrase="${echapper(widget.phrase)}" data-nom="${echapper(widget.titre)}"${nomAccessible}>`
-    + `${htmlActions(widget.titre)}<div class="esp-widget-tete">${titre}${repere}</div>${corps(widget.items)}</section>`;
+    + `${htmlActions(widget.titre)}<div class="esp-widget-tete">${titre}${repere}</div>${corps(widget.items, effectifs)}</section>`;
 }
 
-export function htmlPageEspace(widgets = WIDGETS, suggestions = SUGGESTIONS, textes = TEXTES_ESPACE) {
+export function htmlPageEspace(widgets = WIDGETS, suggestions = SUGGESTIONS, textes = TEXTES_ESPACE, effectifs = {}) {
   return '<main class="esp-page">'
     + `<nav class="esp-fil" aria-label="Fil d'Ariane"><a href="#idees" data-vue="idees">${echapper(textes.filIdees)}</a> › <span aria-current="page">${echapper(textes.filCourant)}</span></nav>`
     + `<h1 class="esp-titre">${echapper(textes.titre)}</h1>`
@@ -100,7 +106,7 @@ export function htmlPageEspace(widgets = WIDGETS, suggestions = SUGGESTIONS, tex
     + `<ul class="esp-puces" aria-label="Suggestions">${suggestions.map((s) => `<li><button type="button" class="esp-puce">${echapper(s)}</button></li>`).join("")}</ul>`
     + '<p class="esp-etat-saisie" role="status" aria-live="polite"></p>'
     + "</section>"
-    + `<div class="esp-grille">${widgets.map((w, i) => htmlWidget(w, i)).join("")}</div>`
+    + `<div class="esp-grille">${widgets.map((w, i) => htmlWidget(w, i, effectifs)).join("")}</div>`
     + `<details class="esp-journal"><summary>${echapper(textes.journal)}</summary><ol class="esp-journal-liste"></ol><p class="esp-vide" hidden>${echapper(textes.journalVide)}</p></details>`
     + "</main>";
 }
