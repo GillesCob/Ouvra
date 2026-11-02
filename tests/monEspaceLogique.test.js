@@ -101,7 +101,7 @@ test("croix puis Annuler : le retrait d'une vue ne touche pas les widgets et se 
   assert.equal(restaurer(new Set(), "inconnu").size, 0);
 });
 
-test("vues : quatre points de vue enregistres (titre, miniature, cible), aucune donnee de collision a afficher", () => {
+test("vues : quatre points de vue enregistres (titre, miniature, cadrage camera), aucune donnee de collision a afficher", () => {
   const vues = WIDGETS.find((w) => w.id === "vues").items;
   assert.equal(vues.length, 4);
   for (const v of vues) assert.deepEqual(Object.keys(v).sort(), ["cible", "id", "miniature", "titre"]);
@@ -116,7 +116,7 @@ test("rendu : titre de la carte et tuile d'ajout presents, vues sans vocabulaire
   const vues = h.slice(h.indexOf('data-widget="vues"'), h.indexOf('data-widget="alertes"'));
   assert.doesNotMatch(vues, /collision|Collision|statut|Priorité|Urgente|Confirmé|Nouveau/);
   assert.equal((vues.match(/<span class="esp-vue-titre">Point de vue [1-4]<\/span>/g) || []).length, 4);
-  assert.equal((vues.match(/<img src="\/images\/vues\/hosp-clash-(2|10|1|5)\.jpg"/g) || []).length, 4);
+  assert.equal((vues.match(/<img src="\/images\/mon-espace\/point-de-vue-[1-4]\.jpg"/g) || []).length, 4);
   assert.match(h, /3 à traiter/);
   assert.match(h, /esp-urgence">Aujourd&#x27;hui/);
   assert.match(h, /Demandé par Sophie Lambert/);
@@ -128,12 +128,16 @@ test("rendu : trois taches dans la todo", () => {
   assert.equal((h.match(/class="esp-tache"/g) || []).length, 3);
 });
 
-test("donnees : chaque miniature existe et la cible de chaque vue est une collision connue", async () => {
+test("donnees : chaque miniature existe et chaque point de vue est un cadrage du Viewer sans lien avec une collision", async () => {
   const { existsSync } = await import("node:fs");
-  const { HOSPITAL_CLASHES } = await import("../src/clashesHospital.js");
   for (const v of WIDGETS.find((w) => w.id === "vues").items) {
     assert.ok(existsSync(new URL("../public" + v.miniature, import.meta.url)), v.miniature);
-    assert.ok(HOSPITAL_CLASHES.some((c) => c.id === v.cible.clashId), v.cible.clashId);
+    assert.equal(v.cible.type, "vue3d");
+    assert.deepEqual(Object.keys(v.cible).sort(), ["camera", "type"]);
+    assert.deepEqual(Object.keys(v.cible.camera).sort(), ["eye", "look", "up"]);
+    for (const k of ["eye", "look", "up"]) assert.ok(v.cible.camera[k].length === 3 && v.cible.camera[k].every(Number.isFinite), k);
+    assert.doesNotMatch(JSON.stringify(v), /clash|collision/i, "aucune trace de collision dans " + v.id);
+    assert.doesNotMatch(v.miniature, /clash/);
   }
 });
 
@@ -211,7 +215,9 @@ test("compteurs : chaque compteur ouvre la page Collision filtree sur son statut
 });
 
 test("cibles : retrouvees par identifiant dans tous les widgets, null sans cible", () => {
-  assert.deepEqual(trouverCible(WIDGETS, "vue-1"), { type: "collision", clashId: "hosp-clash-2" });
+  const cadrage1 = trouverCible(WIDGETS, "vue-1");
+  assert.equal(cadrage1.type, "vue3d");
+  assert.deepEqual(Object.keys(cadrage1).sort(), ["camera", "type"], "aucun identifiant de collision");
   assert.equal(trouverCible(WIDGETS, "todo-bcf").convId, "karim");
   assert.equal(trouverCible(WIDGETS, "ech-poutre-axe-c").sujetId, "k1");
   assert.equal(trouverCible(WIDGETS, "alerte-maquette"), null);
@@ -226,4 +232,14 @@ test("retour : la position memorisee est rendue une seule fois, puis la page s'o
   assert.equal(m.consommer(), 420);
   assert.equal(m.consommer(), 0);
   for (const mauvaise of [0, -5, NaN, undefined, null]) { m.memoriser(mauvaise); assert.equal(m.consommer(), 0); }
+});
+
+test("main.js : l'ouverture d'un point de vue ouvre le Viewer et ne touche a aucun element de collision", async () => {
+  const { readFileSync } = await import("node:fs");
+  const src = readFileSync(new URL("../src/main.js", import.meta.url), "utf8");
+  const debut = src.indexOf("function ouvrirVue3dDepuisEspace(");
+  const corps = src.slice(debut, src.indexOf("\n}\n", debut));
+  assert.ok(debut > 0 && corps.includes('l.dataset.view === "viewer"') && corps.includes("cameraFlight.flyTo"));
+  assert.doesNotMatch(corps, /activateClash|selectClash|openDetection|openCollision|CLASHES|DETECTIONS|clashId|collisionInfoPanel|Drawer|"collision"/);
+  assert.match(src, /if \(cible\.type === "vue3d"\) \{ ouvrirVue3dDepuisEspace\(cible, position\); return; \}/);
 });

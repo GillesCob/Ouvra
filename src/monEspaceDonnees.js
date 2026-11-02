@@ -4,6 +4,7 @@
 //  - messages : corpus de la messagerie (src/messagerie/corpus/*.json) ; la cible d'un element est { type: "message", convId, sujetId, texte }, le texte etant celui du
 //    message source, recopie tel quel (la page le retrouve par ce texte : les messages n'ont pas d'identifiant et leur position change avec les evenements du journal) ;
 //  - collisions : les 15 collisions de l'hopital (src/clashesHospital.js) ; la cible est { type: "collision", clashId } et la carte lit la collision elle-meme ;
+//  - points de vue : cadrages du Viewer 3D, cible { type: "vue3d", camera: { eye, look, up } }, sans aucun lien avec une collision ;
 //  - un message (Karim) s'adresse a l'utilisateur par « Gilles » : le texte est cite tel quel.
 // type : "vues" (points de vue 3D enregistres), "alertes", "todo", "echeances", "documents", "compteurs". zone : place dans la grille (grid-area du CSS).
 export const TEXTES_ESPACE = {
@@ -28,13 +29,14 @@ export const SUGGESTIONS = [
 export const WIDGETS = [
   {
     id: "vues", zone: "vues", type: "vues", titre: "Mes points de vue", phrase: "Montre mes vues du niveau 2",
-    // Un point de vue 3D enregistre = un titre (personnalisable) et une miniature (public/images/vues/). Aucune information de collision n'est affichee (ni numero, ni statut, ni priorite).
-    // Le clic rejoue le cadrage : aujourd'hui la camera vole vers la collision de l'hopital citee dans la cible (vol habituel de la page Collision), le rendu ne la lit jamais.
+    // Un point de vue 3D enregistre = un titre (personnalisable), une miniature de la scene neutre (public/images/mon-espace/) et un cadrage de camera du Viewer.
+    // Aucun lien avec une collision : ni numero, ni statut, ni couleur, ni bulle. Le clic ouvre le Viewer 3D (jamais la page Collision) et la camera vole vers le cadrage.
+    // Les coordonnees (eye = position, look = cible, up = verticale) sont de simples valeurs d'exemple.
     items: [
-      { id: "vue-1", titre: "Point de vue 1", miniature: "/images/vues/hosp-clash-2.jpg", cible: { type: "collision", clashId: "hosp-clash-2" } },
-      { id: "vue-2", titre: "Point de vue 2", miniature: "/images/vues/hosp-clash-10.jpg", cible: { type: "collision", clashId: "hosp-clash-10" } },
-      { id: "vue-3", titre: "Point de vue 3", miniature: "/images/vues/hosp-clash-1.jpg", cible: { type: "collision", clashId: "hosp-clash-1" } },
-      { id: "vue-4", titre: "Point de vue 4", miniature: "/images/vues/hosp-clash-5.jpg", cible: { type: "collision", clashId: "hosp-clash-5" } }
+      { id: "vue-1", titre: "Point de vue 1", miniature: "/images/mon-espace/point-de-vue-1.jpg", cible: { type: "vue3d", camera: { eye: [3.654, 174.913, -80.198], look: [2.154, 175.913, -81.064], up: [0, 1, 0] } } },
+      { id: "vue-2", titre: "Point de vue 2", miniature: "/images/mon-espace/point-de-vue-2.jpg", cible: { type: "vue3d", camera: { eye: [62.826, 178.972, -85.897], look: [61.094, 177.972, -85.897], up: [0, 1, 0] } } },
+      { id: "vue-3", titre: "Point de vue 3", miniature: "/images/mon-espace/point-de-vue-3.jpg", cible: { type: "vue3d", camera: { eye: [66.047, 170.662, -60.525], look: [66.047, 169.662, -58.793], up: [0, 1, 0] } } },
+      { id: "vue-4", titre: "Point de vue 4", miniature: "/images/mon-espace/point-de-vue-4.jpg", cible: { type: "vue3d", camera: { eye: [10.828, 184.383, -119.011], look: [10.828, 184.947, -116.904], up: [0, 1, 0] } } }
     ]
   },
   {

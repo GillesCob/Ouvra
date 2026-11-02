@@ -7193,8 +7193,10 @@ function revenirAMonEspace(position) {
   monEspace.revenir(position);
 }
 
-// cible : { type: "message", convId, sujetId, texte } (discussion, au message source) ou { type: "collision", clashId } (page Collision, collision choisie avec le vol de camera habituel).
+// cible : { type: "message", convId, sujetId, texte } (discussion, au message source), { type: "collision", clashId } (page Collision, collision choisie avec le vol de camera habituel),
+// { type: "collisions", filtre } (page Collision filtree) ou { type: "vue3d", camera } (Viewer, voir ouvrirVue3dDepuisEspace).
 function ouvrirDepuisEspace(cible, position) {
+  if (cible.type === "vue3d") { ouvrirVue3dDepuisEspace(cible, position); return; }
   const vue = cible.type === "collision" || cible.type === "collisions" ? "collision" : "discussions";
   const lien = navLinks.find((l) => l.dataset.view === vue);
   if (!lien) return;
@@ -7226,6 +7228,26 @@ function ouvrirDepuisEspace(cible, position) {
     if (!message) return;
     messagerie.montrerMessageIA(message.mk);
     montrerRetour();
+  });
+}
+
+// Point de vue 3D de Mon espace (cible { type: "vue3d", camera: { eye, look, up } }) : ouvre le VIEWER (jamais la page Collision) et la camera vole vers le cadrage enregistre.
+// Aucune collision n'est en jeu : le clic sur l'onglet Viewer remet la 3D au neutre (ni couleur, ni bulle, ni fantome), le tiroir des collisions n'est ni ouvert ni mis a jour.
+function ouvrirVue3dDepuisEspace(cible, position) {
+  const lien = navLinks.find((l) => l.dataset.view === "viewer");
+  const c = cible.camera;
+  if (!lien || !c) return;
+  retourEspace.effacer();
+  vueRetourEspace = "viewer";
+  lien.click();
+  attendre(vueAffichee("viewer"), () => {
+    const cadrage = { eye: c.eye.slice(), look: c.look.slice(), up: c.up.slice() };
+    viewer.cameraFlight.cancel();
+    viewer.camera.projection = "perspective";
+    viewer.cameraFlight.flyTo(Object.assign({ duration: 1.2 }, cadrage));
+    // « Recentrer » revient au cadrage enregistre, comme pour une vue ouverte depuis une conversation.
+    recenterTarget = () => viewer.cameraFlight.flyTo(Object.assign({ duration: 1 }, cadrage));
+    retourEspace.montrer({ libelle: TEXTES_ESPACE.libelleRetour, surRetour: () => revenirAMonEspace(position) });
   });
 }
 

@@ -55,7 +55,7 @@ export function retirerWidget(masques, id, message = MESSAGES_ESPACE.retire) {
   return { masques: new Set(masques).add(id), message };
 }
 
-// Cible d'un element (tache, echeance, alerte, vue) : { type: "message", convId, sujetId, texte } ou { type: "collision", clashId }, ou null. L'identifiant est celui de l'element.
+// Cible d'un element (tache, echeance, alerte, vue) : { type: "message", convId, sujetId, texte }, { type: "collision", clashId }, { type: "collisions", filtre } ou { type: "vue3d", camera: { eye, look, up } }, ou null. L'identifiant est celui de l'element.
 export function trouverCible(widgets, id) {
   for (const w of widgets) {
     const item = (w.items || []).find((i) => i.id === id && i.cible);
