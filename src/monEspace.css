@@ -173,6 +173,8 @@
   .esp-widget-tete { padding-right: 92px; }
   .esp-vues { grid-template-columns: minmax(0, 1fr); }
   .esp-vue { padding: 12px; gap: 10px; }
+  .esp-vue-titre { font-size: 16px; }
+  .esp-vue-ajout { font-size: 16px; min-height: 48px; }
   .esp-tache { grid-template-columns: auto minmax(0, 1fr); align-items: start; padding: 14px 8px; }
   .esp-etat { margin-top: 2px; }
   .esp-urgence { grid-column: 2; justify-self: start; margin-top: 4px; font-size: 14px; }
@@ -181,19 +183,18 @@
   .esp-compteur { font-size: 14px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .esp-rond-vis, .esp-tache, .esp-source { transition: none; }
+  .esp-rond-vis, .esp-vue-ajout, .esp-tache, .esp-source { transition: none; }
 }
 
-/* Mes points de vue (collisions) : miniature JPEG 640 x 400, carte de la collision */
+/* Mes points de vue : miniature JPEG 640 x 400 et titre */
 .esp-vue-image { display: block; aspect-ratio: 8 / 5; overflow: hidden; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; }
 .esp-vue-image img { display: block; width: 100%; height: 100%; object-fit: cover; }
-/* La carte garde le style de la liste (style.css) ; ici elle n'a ni survol ni curseur propres (le bouton entier est la cible), et ses deux lignes passent a la ligne plutot que d'etre tronquees. */
-.esp-vue .collision-item { flex: none; width: 100%; cursor: inherit; grid-template-columns: auto minmax(0, 1fr); row-gap: 2px; background: transparent; }
-.esp-vue .collision-item-carte:hover { background: transparent; }
-.esp-vue .collision-types, .esp-vue .collision-sub { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
-.esp-vue .collision-num-badge { grid-row: 1 / 3; align-self: start; min-width: 24px; font-size: 13px; }
-.esp-vue .collision-statut { grid-column: 2; flex-wrap: nowrap; gap: 6px; font-size: 12px; min-width: 0; }
-.esp-vue .collision-statut-label { display: inline; flex: 0 0 auto; color: var(--text); }
+.esp-vue-titre { font-size: 14px; font-weight: 600; line-height: 1.3; color: var(--text); overflow-wrap: anywhere; }
+/* Tuile « Ajouter une vue » : meme gabarit que les vues, bordure en pointilles ; pas de boutons stylo et croix */
+.esp-vue-ajout { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 44px; padding: 10px; background: none; color: var(--muted); border: 1px dashed var(--border); border-radius: 8px; font-weight: 600; transition: color .18s ease, border-color .18s ease; }
+.esp-vue-ajout:hover { color: var(--text); border-color: var(--accent); }
+.esp-vues > li:last-child { display: flex; min-width: 0; }
+.esp-vue-plus { font-size: 20px; line-height: 1; }
 
 /* Ma todo : citation du message source */
 .esp-tache-citation { margin: 6px 0 0; font-size: 13px; line-height: 1.35; color: var(--muted); font-style: italic; overflow-wrap: anywhere; }
@@ -206,10 +207,6 @@
 .esp-ech-titre { margin: 0; font-size: 15px; font-weight: 600; line-height: 1.3; overflow-wrap: anywhere; }
 
 @media (max-width: 767px) {
-  .esp-vue .collision-num-badge { font-size: 15px; min-width: 28px; }
-  .esp-vue .collision-types { font-size: 16px; }
-  .esp-vue .collision-sub { font-size: 14px; opacity: 1; }
-  .esp-vue .collision-statut { font-size: 14px; }
   .esp-tache-citation { font-size: 14px; }
   .esp-ech-titre { font-size: 16px; }
   .esp-btn-voir { font-size: 14px; }

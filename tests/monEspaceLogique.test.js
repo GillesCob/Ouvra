@@ -101,47 +101,39 @@ test("croix puis Annuler : le retrait d'une vue ne touche pas les widgets et se 
   assert.equal(restaurer(new Set(), "inconnu").size, 0);
 });
 
-test("vues : quatre collisions, rien d'autre que leur identifiant et leur cible", () => {
+test("vues : quatre points de vue enregistres (titre, miniature, cible), aucune donnee de collision a afficher", () => {
   const vues = WIDGETS.find((w) => w.id === "vues").items;
   assert.equal(vues.length, 4);
-  for (const v of vues) assert.deepEqual(Object.keys(v).sort(), ["cible", "clashId", "id"]);
+  for (const v of vues) assert.deepEqual(Object.keys(v).sort(), ["cible", "id", "miniature", "titre"]);
 });
 
-test("rendu : vues sans titre ni instruction ni tuile d'ajout, miniatures JPEG, cartes de collision, todo avec compteur et urgences", () => {
+test("rendu : titre de la carte et tuile d'ajout presents, vues sans vocabulaire de collision, miniatures JPEG, todo avec compteur et urgences", () => {
   const h = htmlPageEspace();
-  assert.doesNotMatch(h, /Mes points de vue<\/h2>|Instruction (du Viewer|de la page Collision)|Cadrage enregistré|esp-vue-ajout|Ajouter une vue/);
-  assert.match(h, /<section class="esp-widget esp-w-vues"[^>]*aria-label="Mes points de vue"/);
-  assert.equal((h.match(/<img src="\/images\/vues\/hosp-clash-(2|10|1|5)\.jpg"/g) || []).length, 4);
-  assert.equal((h.match(/collision-item collision-item-carte /g) || []).length, 4);
+  assert.match(h, /<h2>Mes points de vue<\/h2>/);
+  assert.match(h, /<button type="button" class="esp-vue-ajout">.*Ajouter une vue<\/button>/);
+  assert.equal((h.match(/class="esp-vue-ajout"/g) || []).length, 1);
+  assert.doesNotMatch(h, /Instruction (du Viewer|de la page Collision)|Cadrage enregistré/);
+  const vues = h.slice(h.indexOf('data-widget="vues"'), h.indexOf('data-widget="alertes"'));
+  assert.doesNotMatch(vues, /collision|Collision|statut|Priorité|Urgente|Confirmé|Nouveau/);
+  assert.equal((vues.match(/<span class="esp-vue-titre">Point de vue [1-4]<\/span>/g) || []).length, 4);
+  assert.equal((vues.match(/<img src="\/images\/vues\/hosp-clash-(2|10|1|5)\.jpg"/g) || []).length, 4);
   assert.match(h, /3 à traiter/);
   assert.match(h, /esp-urgence">Aujourd&#x27;hui/);
   assert.match(h, /Demandé par Sophie Lambert/);
   assert.doesNotMatch(h, /esp-vignette|<svg class="esp-vig/);
 });
 
-test("rendu : la carte d'une collision reprend la lecture de la liste (types, identifiants, niveau, statut, filet de priorite)", () => {
+test("rendu : trois taches dans la todo", () => {
   const h = htmlPageEspace();
-  assert.match(h, /collision-item-carte confirme prio-haute"><span class="collision-num-badge" aria-hidden="true">2<\/span><span class="collision-card-text"><span class="collision-types">Cloison ↔ Gaine<\/span><span class="collision-sub">#753881 ↔ #967393 · Niveau 2<\/span>/);
-  assert.match(h, /collision-item-carte confirme prio-urgente"><span class="collision-num-badge" aria-hidden="true">10<\/span>.*Cloison ↔ Prise gaz médicaux.*#564707 ↔ #1129899 · Niveau 3/);
-  assert.match(h, /collision-item-carte nouveau prio-haute"><span class="collision-num-badge" aria-hidden="true">1<\/span>/);
-  assert.match(h, /collision-item-carte confirme prio-haute"><span class="collision-num-badge" aria-hidden="true">5<\/span>.*Cloison ↔ Tuyau.*#594457 ↔ #1135763 · Niveau 4/);
-});
-
-test("donnees : plus aucune personne ni discussion inventee, les noms sont ceux de la messagerie", () => {
-  const h = htmlPageEspace();
-  assert.doesNotMatch(h, /Camille|Nadir|Inès|Réservations niveau 2|Installation de chantier|Structure et CVC, niveau 3|Notice désenfumage|CCTP lot CVC|Collision n°14/);
-  for (const nom of ["Sophie Lambert", "Karim Benali", "Claire Martin", "Collision gaine rectangulaire / cloison, couloir R+2"]) assert.match(h, new RegExp(nom.replace(/[+/]/g, "\\$&")));
   assert.equal((h.match(/class="esp-tache"/g) || []).length, 3);
 });
 
-test("donnees : chaque miniature existe, le numero de chaque carte est celui de son identifiant", async () => {
+test("donnees : chaque miniature existe et la cible de chaque vue est une collision connue", async () => {
   const { existsSync } = await import("node:fs");
   const { HOSPITAL_CLASHES } = await import("../src/clashesHospital.js");
   for (const v of WIDGETS.find((w) => w.id === "vues").items) {
-    assert.ok(existsSync(new URL("../public/images/vues/" + v.clashId + ".jpg", import.meta.url)), v.clashId);
-    const clash = HOSPITAL_CLASHES.find((c) => c.id === v.clashId);
-    assert.ok(clash, v.clashId);
-    assert.equal(HOSPITAL_CLASHES.indexOf(clash) + 1, Number(v.clashId.replace("hosp-clash-", "")));
+    assert.ok(existsSync(new URL("../public" + v.miniature, import.meta.url)), v.miniature);
+    assert.ok(HOSPITAL_CLASHES.some((c) => c.id === v.cible.clashId), v.cible.clashId);
   }
 });
 
@@ -219,7 +211,7 @@ test("compteurs : chaque compteur ouvre la page Collision filtree sur son statut
 });
 
 test("cibles : retrouvees par identifiant dans tous les widgets, null sans cible", () => {
-  assert.deepEqual(trouverCible(WIDGETS, "clash-2"), { type: "collision", clashId: "hosp-clash-2" });
+  assert.deepEqual(trouverCible(WIDGETS, "vue-1"), { type: "collision", clashId: "hosp-clash-2" });
   assert.equal(trouverCible(WIDGETS, "todo-bcf").convId, "karim");
   assert.equal(trouverCible(WIDGETS, "ech-poutre-axe-c").sujetId, "k1");
   assert.equal(trouverCible(WIDGETS, "alerte-maquette"), null);

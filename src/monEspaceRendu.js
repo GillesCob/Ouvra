@@ -1,8 +1,6 @@
 // Rendu HTML de la page « Mon espace » (02/11) : fonctions pures (sans DOM, testables sous Node). Reproduit le HTML du mockup ouvra-mon-espace.html,
 // classes prefixees esp- (voir src/monEspace.css). Toutes les valeurs passent par echapper().
 import { WIDGETS, SUGGESTIONS, TEXTES_ESPACE } from "./monEspaceDonnees.js";
-import { HOSPITAL_CLASHES } from "./clashesHospital.js";
-import { decrireCarteCollision, htmlPrioriteCollision, LIBELLES_STATUT_COLLISION, LIBELLES_PRIORITE_COLLISION } from "./collisionCarte.js";
 
 export const echapper = (texte) => String(texte).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#x27;");
 
@@ -19,33 +17,11 @@ export function htmlActions(nom, compact = false) {
 
 const initiale = (nom) => String(nom).trim().charAt(0).toUpperCase();
 
-// Carte d'une collision : meme contenu et memes classes que buildCollisionCard (main.js), donc le meme style (style.css) : pastille du numero, types en francais,
-// identifiants et niveau, point de statut, filet de couleur = priorite. Le libelle du statut et la priorite sont ecrits en toutes lettres (pas de survol sur mobile).
-export function htmlCarteCollision(clash, clashes = HOSPITAL_CLASHES) {
-  const infos = decrireCarteCollision(clash.zone);
-  if (!infos) throw new Error(`Collision sans deux identifiants : ${clash.id}`);
-  const numero = clashes.indexOf(clash) + 1;
-  const statut = LIBELLES_STATUT_COLLISION[clash.statut] || clash.statut;
-  const prio = LIBELLES_PRIORITE_COLLISION[clash.priorite] ? clash.priorite : "normale";
-  return `<span class="collision-item collision-item-carte ${echapper(clash.statut)} prio-${prio}">`
-    + `<span class="collision-num-badge" aria-hidden="true">${numero}</span>`
-    + `<span class="collision-card-text"><span class="collision-types">${echapper(infos.titre)}</span><span class="collision-sub">${echapper(infos.sousTitre)}</span></span>`
-    + `<span class="collision-statut"><span class="collision-statut-dot ${echapper(clash.statut)}"></span><span class="collision-statut-label">${echapper(statut)}</span>`
-    + `${htmlPrioriteCollision(prio)}</span></span>`;
-}
-
-const clashParId = (id, clashes = HOSPITAL_CLASHES) => clashes.find((c) => c.id === id) || null;
-export const urlMiniature = (clashId) => `/images/vues/${clashId}.jpg`;
-export const nomVue = (clash, clashes = HOSPITAL_CLASHES) => "Collision n° " + (clashes.indexOf(clash) + 1);
-
 function htmlVue(v) {
-  const clash = clashParId(v.clashId);
-  if (!clash) throw new Error(`Collision inconnue : ${v.clashId}`);
-  const nom = nomVue(clash);
-  return `<li class="esp-vue-item" data-vue-id="${echapper(v.id)}" data-nom="${echapper(nom)}">`
-    + `<button type="button" class="esp-vue" data-cible="${echapper(v.id)}" aria-label="Ouvrir ${echapper(nom.toLowerCase())} sur la page Collision">`
-    + `<span class="esp-vue-image"><img src="${echapper(urlMiniature(v.clashId))}" alt="" width="640" height="400" loading="lazy" decoding="async"></span>`
-    + `${htmlCarteCollision(clash)}</button>${htmlActions(nom, true)}</li>`;
+  return `<li class="esp-vue-item" data-vue-id="${echapper(v.id)}" data-nom="${echapper(v.titre)}">`
+    + `<button type="button" class="esp-vue" data-cible="${echapper(v.id)}" aria-label="Ouvrir le point de vue ${echapper(v.titre)}">`
+    + `<span class="esp-vue-image"><img src="${echapper(v.miniature)}" alt="" width="640" height="400" loading="lazy" decoding="async"></span>`
+    + `<span class="esp-vue-titre">${echapper(v.titre)}</span></button>${htmlActions(v.titre, true)}</li>`;
 }
 
 // Bouton « Voir » (alertes et documents) : seulement quand la ligne a une cible reelle (collision, discussion) ; une mise a jour de maquette n'en a pas.
@@ -66,7 +42,8 @@ export const htmlCompteurs = (items, effectifs = {}) => {
 };
 
 const CORPS = {
-  vues: (items) => `<ul class="esp-vues">${items.map(htmlVue).join("")}</ul>`,
+  vues: (items) => `<ul class="esp-vues">${items.map(htmlVue).join("")}`
+    + `<li><button type="button" class="esp-vue-ajout"><span class="esp-vue-plus" aria-hidden="true">+</span>${echapper(TEXTES_ESPACE.ajoutVue)}</button></li></ul>`,
   alertes: (items) => `<ul class="esp-liste">${items.map(htmlAlerte).join("")}</ul>`,
   todo: (items) => `<ul class="esp-taches">${items.map((t) => `<li class="esp-tache"><span class="esp-etat" aria-hidden="true"></span><div class="esp-tache-corps"><p class="esp-tache-titre">${echapper(t.titre)}</p>`
     + `<p class="esp-tache-contexte"><span class="esp-initiale" aria-hidden="true">${echapper(initiale(t.par))}</span><span>Demandé par ${echapper(t.par)}</span>`
@@ -82,13 +59,11 @@ const CORPS = {
 export function htmlWidget(widget, rang, effectifs) {
   const corps = CORPS[widget.type];
   if (!corps) throw new Error(`Type de widget inconnu : ${widget.type}`);
-  // « Mes points de vue » n'affiche aucun titre : seules les collisions sont visibles, le nom reste porte par la section (lecteurs d'ecran) et par les boutons stylo et croix.
   const titre = widget.type === "todo"
     ? `<div class="esp-todo-entete"><h2>${echapper(widget.titre)}</h2><span class="esp-compteur">${widget.items.length} à traiter</span></div>`
-    : widget.type === "vues" ? "" : `<h2>${echapper(widget.titre)}</h2>`;
-  const nomAccessible = widget.type === "vues" ? ` aria-label="${echapper(widget.titre)}"` : "";
+    : `<h2>${echapper(widget.titre)}</h2>`;
   const repere = widget.repereIA ? `<p class="esp-repere-ia">${echapper(widget.repereIA)}</p>` : "";
-  return `<section class="esp-widget esp-w-${echapper(widget.zone)}" style="--i:${rang}" data-widget="${echapper(widget.id)}" data-phrase="${echapper(widget.phrase)}" data-nom="${echapper(widget.titre)}"${nomAccessible}>`
+  return `<section class="esp-widget esp-w-${echapper(widget.zone)}" style="--i:${rang}" data-widget="${echapper(widget.id)}" data-phrase="${echapper(widget.phrase)}" data-nom="${echapper(widget.titre)}">`
     + `${htmlActions(widget.titre)}<div class="esp-widget-tete">${titre}${repere}</div>${corps(widget.items, effectifs)}</section>`;
 }
 

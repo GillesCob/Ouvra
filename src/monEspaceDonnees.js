@@ -5,7 +5,7 @@
 //    message source, recopie tel quel (la page le retrouve par ce texte : les messages n'ont pas d'identifiant et leur position change avec les evenements du journal) ;
 //  - collisions : les 15 collisions de l'hopital (src/clashesHospital.js) ; la cible est { type: "collision", clashId } et la carte lit la collision elle-meme ;
 //  - un message (Karim) s'adresse a l'utilisateur par « Gilles » : le texte est cite tel quel.
-// type : "vues" (collisions suivies en vue), "alertes", "todo", "echeances", "documents", "compteurs". zone : place dans la grille (grid-area du CSS).
+// type : "vues" (points de vue 3D enregistres), "alertes", "todo", "echeances", "documents", "compteurs". zone : place dans la grille (grid-area du CSS).
 export const TEXTES_ESPACE = {
   filIdees: "Idées d'évolution",
   filCourant: "Mon espace",
@@ -13,6 +13,8 @@ export const TEXTES_ESPACE = {
   sousTitre: "Ce que tu consultes souvent, au même endroit. Tu le composes en le disant ou en l'écrivant.",
   placeholder: "Dis ou écris ce que tu veux voir ici",
   journal: "Ce que tu as demandé",
+  ajoutVue: "Ajouter une vue",
+  ajoutVuePhrase: "Ajoute une vue : ",
   journalVide: "Aucune instruction pour l'instant.",
   libelleRetour: "Retour à Mon espace"
 };
@@ -26,12 +28,13 @@ export const SUGGESTIONS = [
 export const WIDGETS = [
   {
     id: "vues", zone: "vues", type: "vues", titre: "Mes points de vue", phrase: "Montre mes vues du niveau 2",
-    // Chaque vue est une collision de l'hopital, avec sa miniature 3D (public/images/vues/<clashId>.jpg). Rien d'autre n'est affiche : ni titre de section, ni phrase d'instruction.
+    // Un point de vue 3D enregistre = un titre (personnalisable) et une miniature (public/images/vues/). Aucune information de collision n'est affichee (ni numero, ni statut, ni priorite).
+    // Le clic rejoue le cadrage : aujourd'hui la camera vole vers la collision de l'hopital citee dans la cible (vol habituel de la page Collision), le rendu ne la lit jamais.
     items: [
-      { id: "clash-2", clashId: "hosp-clash-2", cible: { type: "collision", clashId: "hosp-clash-2" } },
-      { id: "clash-10", clashId: "hosp-clash-10", cible: { type: "collision", clashId: "hosp-clash-10" } },
-      { id: "clash-1", clashId: "hosp-clash-1", cible: { type: "collision", clashId: "hosp-clash-1" } },
-      { id: "clash-5", clashId: "hosp-clash-5", cible: { type: "collision", clashId: "hosp-clash-5" } }
+      { id: "vue-1", titre: "Point de vue 1", miniature: "/images/vues/hosp-clash-2.jpg", cible: { type: "collision", clashId: "hosp-clash-2" } },
+      { id: "vue-2", titre: "Point de vue 2", miniature: "/images/vues/hosp-clash-10.jpg", cible: { type: "collision", clashId: "hosp-clash-10" } },
+      { id: "vue-3", titre: "Point de vue 3", miniature: "/images/vues/hosp-clash-1.jpg", cible: { type: "collision", clashId: "hosp-clash-1" } },
+      { id: "vue-4", titre: "Point de vue 4", miniature: "/images/vues/hosp-clash-5.jpg", cible: { type: "collision", clashId: "hosp-clash-5" } }
     ]
   },
   {
