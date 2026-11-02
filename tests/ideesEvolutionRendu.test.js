@@ -102,7 +102,7 @@ test("donnees : retours du 02/11, premiere bulle, etape IA de la convention, sou
 });
 
 test("fleche : debut place a mi-distance entre deux ronds, quelle que soit la largeur des noeuds", () => {
-  // ronds de 52 px : precedent [0,52], courant [152,204], fleche de 36 px -> centree sur 102, debut a 84
+  // ronds de 52 px : precedent [0,52], courant [152,204], fleche de 36 px (valeur d exemple) -> centree sur 102, debut a 84
   assert.equal(debutFlecheCentree(52, 152, 36, 0), 84);
   assert.equal(debutFlecheCentree(52, 152, 36, 100), -16); // relatif au bord du noeud courant
   const d = debutFlecheCentree(100, 300, 36, 0);

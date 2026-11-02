@@ -61,7 +61,7 @@ export function creerIdeesEvolution({ racine, aller, fenetre = window }) {
         const precedent = i > 0 ? noeuds[i - 1].querySelector(".ide-rond") : null;
         if (!rond || !precedent || !rond.offsetWidth) { n.style.removeProperty(vertical ? "--ar-y" : "--ar-x"); return; }
         const longueur = parseFloat(fenetre.getComputedStyle(chaine).getPropertyValue("--fleche"));
-        if (!(longueur > 0)) return;
+        if (!(longueur > 0)) { n.style.removeProperty("--ar-x"); n.style.removeProperty("--ar-y"); return; }
         if (vertical) {
           const debut = debutFlecheCentree(noeuds[i - 1].offsetTop + precedent.offsetTop + precedent.offsetHeight, n.offsetTop + rond.offsetTop, longueur, n.offsetTop);
           n.style.setProperty("--ar-y", debut + "px");
