@@ -14,7 +14,7 @@ test("cle propre, distincte de l'etat des collisions", () => {
   assert.equal(CLE_FAVORIS, "ouvra-collisions-favoris");
 });
 
-test("les 4 favoris par defaut illustrent la demo : Nouveau n° 1 et 9, En cours n° 2 et 10 (les 9 autres collisions ne sont pas suivies)", () => {
+test("les 4 favoris par defaut illustrent la demo : Nouveau n° 1 et 9, En cours n° 2 et 10 (les 11 autres collisions ne sont pas suivies)", () => {
   assert.deepEqual(FAVORIS_PAR_DEFAUT, [1, 9, 2, 10].map((n) => "hosp-clash-" + n));
 });
 
