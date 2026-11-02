@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { WIDGETS } from "../src/monEspaceDonnees.js";
+import { WIDGETS, TEXTES_ESPACE } from "../src/monEspaceDonnees.js";
 import { trouverCible, creerMemoireDefilement, idVue, restaurer, widgetsAffiches, lignesJournal, retirerWidget, MESSAGES_ESPACE } from "../src/monEspaceLogique.js";
 import { htmlPageEspace } from "../src/monEspaceRendu.js";
 
@@ -261,4 +261,9 @@ test("page figee : aucun chemin de code de Mon espace n'atteint l'IA (aucun fetc
     assert.doesNotMatch(code, /\bfetch\s*\(|XMLHttpRequest|WebSocket|\/api\/|iaSaisie|discussionsIA|reglesIA|anthropic/i, f);
     assert.doesNotMatch(code, /addEventListener\("(submit|input|keydown)"/, f);
   }
+});
+
+test("page : le sous-titre ne promet plus de composer la page en le disant ou en l'ecrivant", () => {
+  assert.equal(TEXTES_ESPACE.sousTitre, "Ce que tu consultes souvent, au même endroit.");
+  assert.doesNotMatch(htmlPageEspace(), /composes/);
 });

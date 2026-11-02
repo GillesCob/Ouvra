@@ -11,7 +11,7 @@ export const TEXTES_ESPACE = {
   filIdees: "Idées d'évolution",
   filCourant: "Mon espace",
   titre: "Mon espace",
-  sousTitre: "Ce que tu consultes souvent, au même endroit. Tu le composes en le disant ou en l'écrivant.",
+  sousTitre: "Ce que tu consultes souvent, au même endroit.",
   placeholder: "Dis ou écris ce que tu veux voir ici",
   journal: "Ce que tu as demandé",
   ajoutVue: "Ajouter une vue",
