@@ -70,26 +70,26 @@ export const WIDGETS = [
   },
   {
     id: "echeances", zone: "ech", type: "echeances", titre: "Échéances", repereIA: "Tirées des discussions", phrase: "Ajoute mes échéances tirées des discussions",
-    // Une seule liste, dans l'ordre des dates. date : jour reel (la proximite « Aujourd'hui », « Dans 2 jours »... se calcule a l'affichage). label : reunion, modification ou decision.
+    // Une seule liste, dans l'ordre des dates (date : jour reel, non affichee). Chaque ligne montre son titre et la discussion d'origine.
     items: [
       {
-        id: "ech-poutre-axe-c", date: "2026-11-02", titre: "Point avec Nadia sur la poutre axe C (C40/50 avec section 60 contre section 70)", label: "decision",
-        personne: "Vous, avec Nadia Faure", discussion: "Poutre axe C : reprise de section",
+        id: "ech-poutre-axe-c", date: "2026-11-02", titre: "Point avec Nadia sur la poutre axe C (C40/50 avec section 60 contre section 70)",
+        discussion: "Poutre axe C : reprise de section",
         cible: { type: "message", convId: "karim", sujetId: "k1", texte: "Parfait, je prends ça demain pour le point avec Nadia. Je garde la section 70 comme hypothèse de travail dans la V4." }
       },
       {
-        id: "ech-visite-maquette", date: "2026-11-04", titre: "Visite de la maquette avec la direction des soins", label: "reunion",
-        personne: "Nadia Faure", discussion: "Coordination tous lots",
+        id: "ech-visite-maquette", date: "2026-11-04", titre: "Visite de la maquette avec la direction des soins",
+        discussion: "Coordination tous lots",
         cible: { type: "message", convId: "g-coord", sujetId: null, texte: "Bonjour, pouvez-vous me confirmer que la visite de la maquette avec la direction des soins reste calée le 4 novembre ?" }
       },
       {
-        id: "ech-plans-coffrage", date: "2026-11-05", titre: "Geler les plans de coffrage R+2 avec l'indice D", label: "modification",
-        personne: "Karim Benali, demandé par Claire Martin", discussion: "Lot Structure",
+        id: "ech-plans-coffrage", date: "2026-11-05", titre: "Geler les plans de coffrage R+2 avec l'indice D",
+        discussion: "Lot Structure",
         cible: { type: "message", convId: "g-structure", sujetId: null, texte: "On gèle les plans avant le 5, tu seras prêt ?" }
       },
       {
-        id: "ech-synthese", date: "2026-11-05", titre: "Synthèse : figer les réservations et les trémies, apporter les listes à jour", label: "reunion",
-        personne: "Vous", discussion: "Synthèse hebdomadaire",
+        id: "ech-synthese", date: "2026-11-05", titre: "Synthèse : figer les réservations et les trémies, apporter les listes à jour",
+        discussion: "Synthèse hebdomadaire",
         cible: { type: "message", convId: "g-synthese", sujetId: null, texte: "Jeudi prochain, on fige les réservations et les trémies avant l'indice du 5. Merci d'amener vos listes à jour." }
       }
     ]

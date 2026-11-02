@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { WIDGETS, SUGGESTIONS } from "../src/monEspaceDonnees.js";
-import { proximite, pastilleDate, trouverCible, creerMemoireDefilement, idVue, phraseModifier, restaurer, widgetsAffiches, widgetDeLaPhrase, lignesJournal, appliquerInstruction, retirerWidget, MESSAGES_ESPACE } from "../src/monEspaceLogique.js";
+import { trouverCible, creerMemoireDefilement, idVue, phraseModifier, restaurer, widgetsAffiches, widgetDeLaPhrase, lignesJournal, appliquerInstruction, retirerWidget, MESSAGES_ESPACE } from "../src/monEspaceLogique.js";
 import { htmlPageEspace } from "../src/monEspaceRendu.js";
 
 const aucun = () => new Set();
@@ -182,33 +182,17 @@ test("documents : un document sans cible n'a pas de bouton « Voir »", async ()
   assert.doesNotMatch(h, /esp-btn-voir/);
 });
 
-test("echeances : une seule liste dans l'ordre des dates, quatre lignes, etiquettes Reunion, Modification, Decision, proximite et pastille de date", () => {
+test("echeances : une seule liste dans l'ordre des dates, quatre lignes, chacune = un titre et le lien vers sa conversation, rien d'autre", () => {
   const ech = WIDGETS.find((w) => w.id === "echeances").items;
   assert.equal(ech.length, 4);
   assert.deepEqual(ech.map((e) => e.date), [...ech.map((e) => e.date)].sort());
   const h = htmlPageEspace(WIDGETS, undefined, undefined);
   assert.equal((h.match(/<ol class="esp-echeances">/g) || []).length, 1);
-  assert.equal((h.match(/class="esp-echeance"/g) || []).length, 4);
-  for (const label of ["Réunion", "Modification", "Décision"]) assert.match(h, new RegExp(">" + label + "</span>"));
-  assert.match(h, /esp-label esp-label-decision/);
-  assert.equal((h.match(/class="esp-source" data-cible="ech-/g) || []).length, 4, "chaque echeance a une discussion source ouvrable");
-});
-
-test("proximite : jours civils, aujourd'hui, demain, passe", () => {
-  const lundi = new Date(2026, 10, 2, 23, 30);
-  assert.equal(proximite("2026-11-02", lundi), "Aujourd'hui");
-  assert.equal(proximite("2026-11-03", lundi), "Demain");
-  assert.equal(proximite("2026-11-04", lundi), "Dans 2 jours");
-  assert.equal(proximite("2026-11-05", lundi), "Dans 3 jours");
-  assert.equal(proximite("2026-11-01", lundi), "Hier");
-  assert.equal(proximite("2026-10-30", lundi), "Il y a 3 jours");
-  assert.equal(proximite("nimporte", lundi), "");
-});
-
-test("pastille de date : jour de la semaine, jour sur deux chiffres, mois abrege", () => {
-  assert.deepEqual(pastilleDate("2026-11-05"), { jourSemaine: "jeudi", jour: "05", mois: "nov." });
-  assert.deepEqual(pastilleDate("2026-11-02"), { jourSemaine: "lundi", jour: "02", mois: "nov." });
-  assert.deepEqual(pastilleDate("x"), { jourSemaine: "", jour: "", mois: "" });
+  const lignes = h.match(/<li class="esp-echeance">.*?<\/li>/g) || [];
+  assert.equal(lignes.length, 4);
+  for (const l of lignes) assert.match(l, /^<li class="esp-echeance"><p class="esp-ech-titre">[^<]+<\/p><button type="button" class="esp-source" data-cible="ech-[a-z-]+">[^<]+<\/button><\/li>$/);
+  assert.doesNotMatch(h, /esp-label|esp-date|esp-ech-contexte|Réunion<|Modification<|Décision<|Dans \d jours|Aujourd&#x27;hui<\/span><span class="esp-date/);
+  assert.match(h, /<button type="button" class="esp-source" data-cible="ech-synthese">Synthèse hebdomadaire<\/button>/);
 });
 
 test("cibles : retrouvees par identifiant dans tous les widgets, null sans cible", () => {

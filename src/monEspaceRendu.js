@@ -1,7 +1,6 @@
 // Rendu HTML de la page « Mon espace » (02/11) : fonctions pures (sans DOM, testables sous Node). Reproduit le HTML du mockup ouvra-mon-espace.html,
 // classes prefixees esp- (voir src/monEspace.css). Toutes les valeurs passent par echapper().
 import { WIDGETS, SUGGESTIONS, TEXTES_ESPACE } from "./monEspaceDonnees.js";
-import { proximite, pastilleDate } from "./monEspaceLogique.js";
 import { HOSPITAL_CLASHES } from "./clashesHospital.js";
 import { decrireCarteCollision, LIBELLES_STATUT_COLLISION, LIBELLES_PRIORITE_COLLISION } from "./collisionCarte.js";
 
@@ -19,8 +18,6 @@ export function htmlActions(nom, compact = false) {
 }
 
 const initiale = (nom) => String(nom).trim().charAt(0).toUpperCase();
-
-const LABELS_ECHEANCE = { reunion: "Réunion", modification: "Modification", decision: "Décision" };
 
 // Carte d'une collision : meme contenu et memes classes que buildCollisionCard (main.js), donc le meme style (style.css) : pastille du numero, types en francais,
 // identifiants et niveau, point de statut, filet de couleur = priorite. Le libelle du statut et la priorite sont ecrits en toutes lettres (pas de survol sur mobile).
@@ -57,15 +54,9 @@ const htmlAlerte = (a) => `<li><span class="esp-heure">${echapper(a.heure)}</spa
 const htmlDocument = (d) => `<li><div class="esp-corps"><p>${echapper(d.texte)}</p>${d.meta ? `<p class="esp-meta">${echapper(d.meta)}</p>` : ""}</div>`
   + `<span class="esp-heure esp-heure-large">${echapper(d.quand)}</span>${htmlBoutonVoir(d, d.texte)}</li>`;
 
-function htmlEcheance(e, maintenant) {
-  const p = pastilleDate(e.date);
-  const label = LABELS_ECHEANCE[e.label] || e.label;
-  return `<li class="esp-echeance"><div class="esp-date"><span class="esp-date-prox">${echapper(proximite(e.date, maintenant))}</span>`
-    + `<span class="esp-date-jour">${echapper(p.jour)}</span><span class="esp-date-mois">${echapper(p.mois)}</span></div>`
-    + `<div class="esp-ech-corps"><p class="esp-ech-titre">${echapper(e.titre)}</p>`
-    + `<p class="esp-ech-contexte"><span class="esp-label esp-label-${echapper(e.label)}">${echapper(label)}</span><span>${echapper(e.personne)}</span>`
-    + `<button type="button" class="esp-source" data-cible="${echapper(e.id)}">${echapper(e.discussion)}</button></p></div></li>`;
-}
+// Une echeance = son titre et le lien vers la conversation d'origine (meme puce que la todo), rien d'autre.
+const htmlEcheance = (e) => `<li class="esp-echeance"><p class="esp-ech-titre">${echapper(e.titre)}</p>`
+  + `<button type="button" class="esp-source" data-cible="${echapper(e.id)}">${echapper(e.discussion)}</button></li>`;
 
 const CORPS = {
   vues: (items) => `<ul class="esp-vues">${items.map(htmlVue).join("")}</ul>`,
@@ -75,12 +66,12 @@ const CORPS = {
     + `<button type="button" class="esp-source" data-cible="${echapper(t.id)}">${echapper(t.discussion)}</button><span class="esp-tache-heure">${echapper(t.heure)}</span></p>`
     + (t.citation ? `<p class="esp-tache-citation">« ${echapper(t.citation)} »</p>` : "") + "</div>"
     + `<span class="esp-urgence">${echapper(t.urgence)}</span></li>`).join("")}</ul>`,
-  echeances: (items, maintenant) => `<ol class="esp-echeances">${items.map((e) => htmlEcheance(e, maintenant)).join("")}</ol>`,
+  echeances: (items) => `<ol class="esp-echeances">${items.map(htmlEcheance).join("")}</ol>`,
   documents: (items) => `<ul class="esp-liste">${items.map(htmlDocument).join("")}</ul>`,
   compteurs: (items) => `<ul class="esp-compteurs">${items.map((c) => `<li${c.urgent ? ' class="esp-urgent"' : ""}><strong>${echapper(c.valeur)}</strong><span>${echapper(c.libelle)}</span></li>`).join("")}</ul>`
 };
 
-export function htmlWidget(widget, rang, maintenant = new Date()) {
+export function htmlWidget(widget, rang) {
   const corps = CORPS[widget.type];
   if (!corps) throw new Error(`Type de widget inconnu : ${widget.type}`);
   // « Mes points de vue » n'affiche aucun titre : seules les collisions sont visibles, le nom reste porte par la section (lecteurs d'ecran) et par les boutons stylo et croix.
@@ -90,7 +81,7 @@ export function htmlWidget(widget, rang, maintenant = new Date()) {
   const nomAccessible = widget.type === "vues" ? ` aria-label="${echapper(widget.titre)}"` : "";
   const repere = widget.repereIA ? `<p class="esp-repere-ia">${echapper(widget.repereIA)}</p>` : "";
   return `<section class="esp-widget esp-w-${echapper(widget.zone)}" style="--i:${rang}" data-widget="${echapper(widget.id)}" data-phrase="${echapper(widget.phrase)}" data-nom="${echapper(widget.titre)}"${nomAccessible}>`
-    + `${htmlActions(widget.titre)}<div class="esp-widget-tete">${titre}${repere}</div>${corps(widget.items, maintenant)}</section>`;
+    + `${htmlActions(widget.titre)}<div class="esp-widget-tete">${titre}${repere}</div>${corps(widget.items)}</section>`;
 }
 
 export function htmlPageEspace(widgets = WIDGETS, suggestions = SUGGESTIONS, textes = TEXTES_ESPACE) {
