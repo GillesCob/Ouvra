@@ -56,7 +56,7 @@ export const SCENARIOS = [
   },
   {
     batiment: "batiment-estime-2-consulter.svg",
-    titre: "Le bon document, là où je regarde",
+    titre: "Consulter les documents de la GED",
     noeuds: [
       { type: "humain", icone: "cursor", label: "Je sélectionne un élément de la maquette" },
       { type: "ia", icone: "link", label: "Documents de la GED reliés à l'élément" },
@@ -78,7 +78,7 @@ export const SCENARIOS = [
   },
   {
     batiment: "batiment-estime-3-preparer.svg",
-    titre: "Une page qui s'adapte à moi, à la voix",
+    titre: "Création d'une page personnelle",
     noeuds: [
       { type: "humain", icone: "mic", label: "Je dis ce que je veux" },
       { type: "ia", icone: "wand", label: "L'IA comprend" },
